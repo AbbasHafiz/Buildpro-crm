@@ -1,0 +1,1849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a0908">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="BuildPro">
+<title>BuildPro CRM</title>
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<style>
+:root{
+  --bg:#0a0908;--s1:#141210;--s2:#1e1b18;--s3:#272320;
+  --bor:#302c28;--bor2:#3d3830;
+  --gold:#e8b84b;--gold2:#c97b3a;--gold3:#f5d47a;
+  --txt:#ede9e3;--mut:#8a8278;--mut2:#5a5550;
+  --red:#e05555;--grn:#52b56a;--blu:#4d94d4;--pur:#9b7fd4;--ora:#e8944b;
+  --safe-t:env(safe-area-inset-top);--safe-b:env(safe-area-inset-bottom);
+  --r:14px;
+  --fs-xs:11px;--fs-sm:13px;--fs-md:15px;--fs-lg:17px;--fs-xl:20px;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overflow:hidden;background:var(--bg);}
+body{color:var(--txt);font-family:'Inter',sans-serif;overscroll-behavior:none;font-size:var(--fs-md);}
+
+/* ── LOGIN ── */
+#login{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;padding:32px 28px;
+  background-image:radial-gradient(ellipse at 15% 50%,rgba(232,184,75,.08) 0%,transparent 55%),radial-gradient(ellipse at 85% 20%,rgba(201,123,58,.06) 0%,transparent 50%);}
+.l-logo{font-family:'Bebas Neue',sans-serif;font-size:72px;color:var(--gold);letter-spacing:6px;line-height:1;text-shadow:0 0 80px rgba(232,184,75,.3);}
+.l-sub{font-size:var(--fs-sm);color:var(--mut);letter-spacing:2.5px;text-transform:uppercase;margin-top:6px;}
+.l-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:28px 0;width:100%;max-width:340px;}
+.l-cell{background:var(--s2);border:1px solid var(--bor);border-radius:12px;padding:16px 14px;}
+.l-cell-icon{font-size:26px;margin-bottom:7px;}
+.l-cell-ttl{font-size:var(--fs-md);font-weight:700;color:var(--txt);}
+.l-cell-sub{font-size:var(--fs-xs);color:var(--mut);margin-top:3px;line-height:1.5;}
+.g-btn{display:flex;align-items:center;gap:14px;background:#fff;color:#111;border:none;border-radius:14px;padding:16px 28px;font-size:var(--fs-md);font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;transition:all .18s;box-shadow:0 8px 32px rgba(0,0,0,.55);width:100%;max-width:300px;justify-content:center;}
+.g-btn:active{transform:scale(.96);}
+.g-btn svg{width:24px;height:24px;flex-shrink:0;}
+.l-note{font-size:var(--fs-xs);color:var(--mut2);margin-top:16px;text-align:center;line-height:1.8;}
+
+/* ── APP ── */
+#app{display:none;flex-direction:column;height:100%;padding-top:var(--safe-t);padding-bottom:var(--safe-b);}
+#app.on{display:flex;}
+
+/* TOPBAR */
+.topbar{background:var(--s1);border-bottom:1px solid var(--bor);padding:13px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.tb-l{display:flex;align-items:center;gap:11px;}
+.tb-logo{font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--gold);letter-spacing:2px;}
+.tb-pg{font-size:var(--fs-sm);color:var(--mut);font-weight:600;letter-spacing:.4px;text-transform:uppercase;}
+.tb-r{display:flex;align-items:center;gap:9px;}
+.tb-sync{background:none;border:1px solid var(--bor);border-radius:8px;padding:6px 12px;color:var(--mut);font-size:var(--fs-xs);font-family:'Inter',sans-serif;cursor:pointer;display:flex;align-items:center;gap:6px;}
+.tb-sync.spin svg{animation:rot .7s linear infinite;}
+@keyframes rot{to{transform:rotate(360deg)}}
+.ava{width:33px;height:33px;border-radius:50%;border:2px solid var(--bor);overflow:hidden;background:var(--s2);cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:var(--gold);}
+.ava img{width:100%;height:100%;object-fit:cover;display:none;}
+.ava img.on{display:block;}
+
+/* CONTENT */
+.content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 16px 0;}
+
+/* BOTTOM NAV — scrollable */
+.bnav{background:var(--s1);border-top:1px solid var(--bor);display:flex;flex-shrink:0;padding-bottom:var(--safe-b);overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+.bnav::-webkit-scrollbar{display:none;}
+.bi{min-width:62px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;padding:9px 2px 7px;cursor:pointer;color:var(--mut);font-size:9px;font-weight:600;gap:4px;border-top:2px solid transparent;transition:all .15s;text-transform:uppercase;letter-spacing:.3px;position:relative;}
+.bi svg{width:20px;height:20px;}
+.bi.on{color:var(--gold);border-top-color:var(--gold);}
+.bi-dot{position:absolute;top:7px;right:calc(50% - 14px);width:6px;height:6px;border-radius:50%;background:var(--gold);display:none;}
+.bi-dot.on{display:block;}
+
+/* PAGES */
+.pg{display:none;animation:fi .18s ease;padding-bottom:88px;}
+.pg.on{display:block;}
+@keyframes fi{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+
+/* STATS */
+.stats2{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:14px;}
+.stat{background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:15px 16px;position:relative;overflow:hidden;}
+.stat::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--gold),transparent);opacity:.4;}
+.stat-lbl{font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:.8px;font-weight:600;}
+.stat-val{font-family:'Bebas Neue',sans-serif;font-size:30px;line-height:1;margin:5px 0 3px;}
+.stat-unit{font-size:var(--fs-xs);color:var(--mut);}
+
+/* SECTION */
+.sec{display:flex;justify-content:space-between;align-items:center;margin:18px 0 10px;}
+.sec-t{font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:1.2px;font-weight:700;}
+.sec-a{font-size:var(--fs-sm);color:var(--gold);cursor:pointer;font-weight:600;}
+
+/* SYNC BAR */
+.sync-bar{display:inline-flex;align-items:center;gap:8px;padding:7px 14px;background:var(--s2);border-radius:20px;margin-bottom:14px;font-size:var(--fs-xs);color:var(--mut);}
+.sdot{width:7px;height:7px;border-radius:50%;background:var(--grn);flex-shrink:0;}
+.sdot.pend{background:var(--gold);animation:blink 1s infinite;}
+.sdot.err{background:var(--red);}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* PROJECT CARD */
+.proj-card{background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);overflow:hidden;margin-bottom:12px;}
+.proj-hd{padding:15px 16px;display:flex;justify-content:space-between;align-items:flex-start;cursor:pointer;}
+.proj-nm{font-size:var(--fs-lg);font-weight:700;}
+.proj-meta{font-size:var(--fs-sm);color:var(--mut);margin-top:4px;}
+.proj-r{text-align:right;flex-shrink:0;margin-left:12px;}
+.proj-val{font-family:'JetBrains Mono',monospace;font-size:var(--fs-md);color:var(--gold);}
+.proj-pft{font-size:var(--fs-sm);margin-top:3px;}
+.proj-exp{max-height:0;overflow:hidden;transition:max-height .32s ease;}
+.proj-exp.open{max-height:1200px;}
+.proj-body{border-top:1px solid var(--bor);padding:15px 16px;}
+.prow{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--bor);font-size:var(--fs-md);align-items:center;}
+.prow:last-child{border-bottom:none;}
+.prow-lbl{color:var(--mut);}
+.prow-val{font-family:'JetBrains Mono',monospace;font-weight:500;}
+.pbar-wrap{background:var(--s2);border-radius:4px;height:6px;overflow:hidden;margin:9px 0 4px;}
+.pbar{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--gold),var(--gold2));transition:width .6s;}
+.pbar-lbl{display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--mut);}
+
+/* OUTSTANDING */
+.out-item{background:var(--s1);border:1px solid var(--bor);border-left:3px solid var(--red);border-radius:var(--r);padding:14px 15px;margin-bottom:9px;display:flex;justify-content:space-between;align-items:center;}
+.out-nm{font-size:var(--fs-md);font-weight:700;}
+.out-sub{font-size:var(--fs-sm);color:var(--mut);margin-top:3px;}
+.out-amt{font-family:'JetBrains Mono',monospace;font-size:var(--fs-lg);color:var(--red);}
+.out-due{font-size:var(--fs-xs);color:var(--red);margin-top:3px;text-align:right;}
+
+/* ACTIVITY */
+.act-wrap{background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);overflow:hidden;margin-bottom:16px;}
+.act-row{display:flex;justify-content:space-between;align-items:center;padding:13px 15px;border-bottom:1px solid var(--bor);}
+.act-row:last-child{border-bottom:none;}
+.act-type{font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:.5px;font-weight:700;}
+.act-nm{font-size:var(--fs-md);font-weight:600;margin-top:2px;}
+.act-proj{font-size:var(--fs-sm);color:var(--mut);}
+.act-amt{font-family:'JetBrains Mono',monospace;font-size:var(--fs-md);text-align:right;}
+.act-date{font-size:var(--fs-xs);color:var(--mut);margin-top:3px;text-align:right;}
+
+/* DOC CARD */
+.card-list{display:flex;flex-direction:column;gap:12px;padding-bottom:8px;}
+.card{background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:16px;}
+.card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;}
+.card-num{font-family:'JetBrains Mono',monospace;font-size:var(--fs-xs);color:var(--gold);margin-bottom:4px;}
+.card-nm{font-size:var(--fs-lg);font-weight:700;}
+.card-sub{font-size:var(--fs-sm);color:var(--mut);margin-top:3px;}
+.card-mid{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-top:1px solid var(--bor);border-bottom:1px solid var(--bor);margin:0 0 12px;}
+.card-amt{font-family:'JetBrains Mono',monospace;font-size:18px;}
+.card-date{font-size:var(--fs-sm);color:var(--mut);}
+.card-acts{display:flex;gap:8px;}
+.ca{flex:1;background:var(--s2);border:1px solid var(--bor);border-radius:9px;padding:9px 6px;font-size:var(--fs-sm);font-weight:600;color:var(--mut);cursor:pointer;font-family:'Inter',sans-serif;text-align:center;transition:all .15s;}
+.ca:active{transform:scale(.96);}
+.ca.gold{color:var(--gold);border-color:rgba(232,184,75,.25);background:rgba(232,184,75,.07);}
+.ca.red{color:var(--red);border-color:rgba(224,85,85,.2);background:rgba(224,85,85,.06);}
+.ca.blu{color:var(--blu);border-color:rgba(77,148,212,.2);background:rgba(77,148,212,.06);}
+.ca.grn{color:var(--grn);border-color:rgba(82,181,106,.2);background:rgba(82,181,106,.06);}
+.ca.ora{color:var(--ora);border-color:rgba(232,148,75,.2);background:rgba(232,148,75,.06);}
+
+/* SUB-CON */
+.sub-card{background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:16px;margin-bottom:12px;}
+.sub-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin:12px 0;}
+.sub-stat{background:var(--s2);border-radius:10px;padding:11px 10px;text-align:center;}
+.sub-stat-val{font-family:'JetBrains Mono',monospace;font-size:var(--fs-md);font-weight:500;}
+.sub-stat-lbl{font-size:var(--fs-xs);color:var(--mut);margin-top:4px;text-transform:uppercase;letter-spacing:.4px;}
+.phi{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--bor);font-size:var(--fs-sm);align-items:flex-start;}
+.phi:last-child{border-bottom:none;}
+
+/* PAYMENT CARD */
+.pay-card{background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:15px 16px;margin-bottom:10px;}
+.pay-type{font-size:var(--fs-xs);font-weight:700;text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px;}
+.pay-nm{font-size:var(--fs-lg);font-weight:700;}
+.pay-sub{font-size:var(--fs-sm);color:var(--mut);margin-top:3px;}
+.pay-amt{font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:500;}
+.pay-bot{display:flex;justify-content:space-between;align-items:center;margin-top:11px;padding-top:11px;border-top:1px solid var(--bor);}
+.pay-meta{font-size:var(--fs-sm);color:var(--mut);}
+
+/* BADGE */
+.b{display:inline-flex;align-items:center;padding:4px 10px;border-radius:20px;font-size:var(--fs-xs);font-weight:700;letter-spacing:.3px;text-transform:uppercase;}
+.b-g{background:rgba(82,181,106,.12);color:var(--grn);}
+.b-y{background:rgba(232,184,75,.12);color:var(--gold);}
+.b-r{background:rgba(224,85,85,.12);color:var(--red);}
+.b-m{background:rgba(138,130,120,.12);color:var(--mut);}
+.b-b{background:rgba(77,148,212,.12);color:var(--blu);}
+.b-p{background:rgba(155,127,212,.12);color:var(--pur);}
+
+/* COMPANY PROFILE PAGE */
+.cp-header{background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:20px 16px;margin-bottom:14px;display:flex;align-items:center;gap:16px;}
+.cp-logo-box{width:72px;height:72px;border-radius:12px;border:2px dashed var(--bor2);background:var(--s2);display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;flex-shrink:0;}
+.cp-logo-box img{width:100%;height:100%;object-fit:contain;display:none;}
+.cp-logo-box img.on{display:block;}
+.cp-logo-ph{font-size:30px;opacity:.5;}
+.cp-info{}
+.cp-name{font-size:var(--fs-xl);font-weight:700;}
+.cp-city{font-size:var(--fs-sm);color:var(--mut);margin-top:3px;}
+.cp-ntn{font-size:var(--fs-xs);color:var(--mut);margin-top:2px;}
+.profile-section{background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:16px;margin-bottom:12px;}
+.ps-title{font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:14px;}
+.ps-row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--bor);font-size:var(--fs-md);}
+.ps-row:last-child{border-bottom:none;}
+.ps-lbl{color:var(--mut);}
+.ps-val{font-weight:600;text-align:right;max-width:58%;word-break:break-all;}
+
+/* FAB */
+.fab{position:fixed;right:16px;bottom:calc(68px + var(--safe-b));width:54px;height:54px;border-radius:50%;background:var(--gold);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 28px rgba(232,184,75,.5);z-index:60;transition:all .18s;}
+.fab:active{transform:scale(.91);}
+.fab svg{width:24px;height:24px;color:#0a0908;}
+
+/* SHEET */
+.sh-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);backdrop-filter:blur(6px);z-index:200;align-items:flex-end;justify-content:center;}
+.sh-ov.on{display:flex;}
+.sh{background:var(--s1);border-radius:24px 24px 0 0;width:100%;max-width:640px;max-height:94vh;overflow-y:auto;-webkit-overflow-scrolling:touch;animation:shUp .24s cubic-bezier(.34,1.25,.64,1);padding-bottom:calc(18px + var(--safe-b));}
+@keyframes shUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.sh-grip{width:38px;height:4px;background:var(--bor2);border-radius:2px;margin:12px auto 0;}
+.sh-hd{padding:16px 20px 14px;border-bottom:1px solid var(--bor);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:var(--s1);z-index:2;}
+.sh-title{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:1px;}
+.sh-x{background:none;border:none;color:var(--mut);font-size:26px;cursor:pointer;line-height:1;padding:0 4px;}
+.sh-body{padding:18px 20px;}
+.sh-ft{padding:14px 20px;border-top:1px solid var(--bor);display:flex;gap:10px;position:sticky;bottom:0;background:var(--s1);}
+
+/* FORM */
+.f2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.fw{grid-column:1/-1;}
+.fg{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;}
+.fg:last-child{margin-bottom:0;}
+label{font-size:var(--fs-xs);color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.7px;}
+input,select,textarea{background:var(--bg);border:1px solid var(--bor);border-radius:10px;padding:13px 14px;color:var(--txt);font-size:var(--fs-md);font-family:'Inter',sans-serif;outline:none;transition:border-color .15s;width:100%;-webkit-appearance:none;appearance:none;}
+input:focus,select:focus,textarea:focus{border-color:var(--gold);}
+input::placeholder{color:var(--mut2);}
+textarea{resize:vertical;min-height:72px;}
+select option{background:var(--s2);}
+.hdiv{border:none;border-top:1px solid var(--bor);margin:16px 0;}
+.edit-badge{display:none;background:rgba(232,184,75,.09);border:1px solid rgba(232,184,75,.25);border-radius:8px;padding:8px 13px;font-size:var(--fs-sm);color:var(--gold);margin-bottom:14px;font-weight:500;}
+.edit-badge.on{display:block;}
+.auto-id-badge{display:inline-flex;align-items:center;gap:7px;background:rgba(77,148,212,.08);border:1px solid rgba(77,148,212,.2);border-radius:7px;padding:6px 12px;font-size:var(--fs-sm);color:var(--blu);margin-bottom:12px;font-family:'JetBrains Mono',monospace;}
+
+/* DROPDOWN */
+.ds-wrap{position:relative;}
+.ds-inp{cursor:pointer;}
+.ds-list{position:absolute;top:calc(100% + 5px);left:0;right:0;background:var(--s2);border:1px solid var(--bor2);border-radius:13px;z-index:300;max-height:230px;overflow-y:auto;box-shadow:0 12px 48px rgba(0,0,0,.7);display:none;}
+.ds-list.on{display:block;}
+.ds-item{padding:13px 16px;font-size:var(--fs-md);cursor:pointer;border-bottom:1px solid var(--bor);}
+.ds-item:last-child{border-bottom:none;}
+.ds-item:active{background:var(--s3);}
+.ds-ref{font-family:'JetBrains Mono',monospace;font-size:var(--fs-xs);color:var(--gold);margin-bottom:3px;}
+.ds-nm{font-size:var(--fs-md);font-weight:600;}
+.ds-sub{font-size:var(--fs-sm);color:var(--mut);margin-top:3px;}
+.ds-empty{padding:16px;font-size:var(--fs-sm);color:var(--mut);text-align:center;}
+.ds-add{padding:13px 16px;font-size:var(--fs-sm);color:var(--gold);cursor:pointer;border-top:1px solid var(--bor);font-weight:600;}
+
+/* LINE ITEMS */
+.li-wrap{background:var(--bg);border:1px solid var(--bor);border-radius:10px;overflow:hidden;margin-bottom:10px;}
+.li-hd{display:grid;gap:3px;padding:9px 10px;background:var(--s2);font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:.5px;font-weight:700;}
+.li-row{padding:7px 8px;border-top:1px solid var(--bor);display:grid;gap:3px;align-items:center;}
+.li-row input{padding:9px 9px;font-size:var(--fs-sm);border-radius:7px;}
+.li-del{background:none;border:none;color:var(--red);font-size:19px;cursor:pointer;text-align:center;line-height:1;}
+.li-foot{padding:11px 14px;background:var(--s2);border-top:1px solid var(--bor);display:flex;justify-content:space-between;font-size:var(--fs-md);font-weight:600;}
+.li-tot{font-family:'JetBrains Mono',monospace;color:var(--gold);}
+/* Standard invoice line items */
+.li-std .li-hd{grid-template-columns:1fr 52px 65px 80px 28px;}
+.li-std .li-row{grid-template-columns:1fr 52px 65px 80px 28px;}
+/* Labour invoice line items */
+.li-lab .li-hd{grid-template-columns:1fr 60px 75px 80px 28px;}
+.li-lab .li-row{grid-template-columns:1fr 60px 75px 80px 28px;}
+/* Progress invoice line items */
+.li-prg .li-hd{grid-template-columns:1fr 80px 70px 28px;}
+.li-prg .li-row{grid-template-columns:1fr 80px 70px 28px;}
+
+/* INVOICE TYPE TABS */
+.inv-type-tabs{display:flex;gap:7px;margin-bottom:16px;}
+.itt{flex:1;background:var(--s2);border:1px solid var(--bor);border-radius:10px;padding:10px 8px;font-size:var(--fs-xs);font-weight:700;color:var(--mut);cursor:pointer;text-align:center;transition:all .15s;line-height:1.4;}
+.itt.on{background:rgba(232,184,75,.1);border-color:var(--gold);color:var(--gold);}
+
+/* FILTER TABS */
+.ftabs{display:flex;gap:7px;margin-bottom:14px;overflow-x:auto;padding-bottom:2px;}
+.ftab{background:var(--s2);border:1px solid var(--bor);border-radius:20px;padding:7px 15px;font-size:var(--fs-sm);font-weight:700;color:var(--mut);cursor:pointer;white-space:nowrap;flex-shrink:0;}
+.ftab.on{background:rgba(232,184,75,.1);border-color:var(--gold);color:var(--gold);}
+
+/* BUTTONS */
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:14px 20px;border-radius:12px;font-size:var(--fs-md);font-weight:700;cursor:pointer;border:none;font-family:'Inter',sans-serif;transition:all .15s;white-space:nowrap;}
+.btn-gold{background:var(--gold);color:#0a0908;flex:1;}
+.btn-gold:active{background:var(--gold3);}
+.btn-grey{background:var(--s2);color:var(--txt);border:1px solid var(--bor);}
+.btn-grey:active{background:var(--s3);}
+
+/* EMPTY */
+.empty{text-align:center;padding:48px 20px;color:var(--mut);}
+.empty-i{font-size:42px;margin-bottom:12px;opacity:.5;}
+.empty-t{font-size:var(--fs-md);line-height:1.6;}
+
+/* TOAST */
+.toast{position:fixed;bottom:calc(78px + var(--safe-b));left:50%;transform:translateX(-50%) translateY(18px);background:var(--s2);border:1px solid var(--bor2);border-radius:12px;padding:12px 20px;font-size:var(--fs-sm);display:flex;align-items:center;gap:10px;opacity:0;transition:all .24s cubic-bezier(.34,1.4,.64,1);z-index:9999;white-space:nowrap;box-shadow:0 8px 36px rgba(0,0,0,.7);pointer-events:none;}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0);}
+.td{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+
+/* USER MENU */
+.umenu{position:fixed;top:56px;right:12px;background:var(--s2);border:1px solid var(--bor2);border-radius:14px;padding:8px;z-index:500;min-width:185px;box-shadow:0 14px 48px rgba(0,0,0,.7);display:none;}
+.umenu.on{display:block;}
+.um-nm{padding:10px 13px;font-size:var(--fs-sm);font-weight:700;border-bottom:1px solid var(--bor);margin-bottom:5px;}
+.um-i{padding:10px 13px;font-size:var(--fs-md);color:var(--mut);cursor:pointer;border-radius:9px;}
+.um-i:hover{background:var(--s3);color:var(--txt);}
+.um-i.red{color:var(--red);}
+
+/* LOGO UPLOAD IN PROFILE */
+.logo-upload-area{display:flex;align-items:center;gap:16px;background:var(--bg);border:1px solid var(--bor);border-radius:10px;padding:16px;margin-bottom:14px;cursor:pointer;}
+.logo-box{width:64px;height:64px;border-radius:10px;border:2px dashed var(--bor2);background:var(--s2);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;}
+.logo-box img{width:100%;height:100%;object-fit:contain;display:none;}
+.logo-box img.on{display:block;}
+.logo-hint{}
+.logo-hint strong{font-size:var(--fs-md);color:var(--gold);display:block;margin-bottom:3px;}
+.logo-hint span{font-size:var(--fs-sm);color:var(--mut);line-height:1.5;}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login">
+  <div class="l-logo">BuildPro</div>
+  <div class="l-sub">Construction CRM · Pakistan</div>
+  <div class="l-grid">
+    <div class="l-cell"><div class="l-cell-icon">🏗</div><div class="l-cell-ttl">Projects</div><div class="l-cell-sub">Full P&L breakdown</div></div>
+    <div class="l-cell"><div class="l-cell-icon">🧾</div><div class="l-cell-ttl">Invoices</div><div class="l-cell-sub">Labour, Progress, BOQ</div></div>
+    <div class="l-cell"><div class="l-cell-icon">👷</div><div class="l-cell-ttl">Sub-Con</div><div class="l-cell-sub">Payment history</div></div>
+    <div class="l-cell"><div class="l-cell-icon">☁️</div><div class="l-cell-ttl">Google Drive</div><div class="l-cell-sub">Auto sync backup</div></div>
+  </div>
+  <button class="g-btn" onclick="signIn()">
+    <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+    Sign in with Google
+  </button>
+  <div class="l-note">Data saved privately to your Google Drive · Works offline<br>Install on Android: Chrome menu → Add to Home Screen</div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="topbar">
+    <div class="tb-l">
+      <div class="tb-logo">BP</div>
+      <div class="tb-pg" id="tb-pg">Dashboard</div>
+    </div>
+    <div class="tb-r">
+      <button class="tb-sync" id="tb-sync" onclick="syncNow()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        <span id="sync-lbl">Sync</span>
+      </button>
+      <div class="ava" id="ava" onclick="toggleMenu()">
+        <img id="upic" src="" alt="" onload="this.classList.add('on')">
+        <span id="ava-i">U</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="umenu" id="umenu">
+    <div class="um-nm" id="um-nm">—</div>
+    <div class="um-i" onclick="syncNow();cMenu()">🔄 Sync Now</div>
+    <div class="um-i" onclick="exportBk()">⬇ Export Backup</div>
+    <div class="um-i" onclick="importBk()">⬆ Import Backup</div>
+    <div class="um-i red" onclick="signOut()">Sign Out</div>
+  </div>
+
+  <div class="content">
+
+    <!-- DASHBOARD -->
+    <div class="pg on" id="pg-dash">
+      <div class="stats2">
+        <div class="stat"><div class="stat-lbl">Total Invoiced</div><div class="stat-val" id="d-inv">0</div><div class="stat-unit">PKR</div></div>
+        <div class="stat"><div class="stat-lbl">Received</div><div class="stat-val" id="d-rec">0</div><div class="stat-unit">PKR</div></div>
+        <div class="stat"><div class="stat-lbl">Sub-Con Paid</div><div class="stat-val" id="d-sub">0</div><div class="stat-unit">PKR out</div></div>
+        <div class="stat"><div class="stat-lbl">Net Profit</div><div class="stat-val" id="d-pft">0</div><div class="stat-unit">PKR</div></div>
+      </div>
+      <div class="sync-bar"><div class="sdot" id="sdot"></div><span id="sync-txt">Connecting…</span></div>
+      <div class="sec"><div class="sec-t">Projects P&L</div><div class="sec-a" onclick="O('sh-proj');iP()">+ New</div></div>
+      <div id="proj-list"></div>
+      <div class="sec"><div class="sec-t">Outstanding Invoices</div></div>
+      <div id="out-list"></div>
+      <div class="sec"><div class="sec-t">Recent Activity</div></div>
+      <div id="act-list"></div>
+      <div class="sec"><div class="sec-t">Agreements</div><div class="sec-a" onclick="goPage('agr',document.querySelector('.bi:nth-child(5)'),'Agreements')">View All →</div></div>
+      <div id="dash-agr-list"></div>
+    </div>
+
+    <!-- INVOICES -->
+    <div class="pg" id="pg-inv">
+      <div class="ftabs">
+        <div class="ftab on" onclick="fInv('all',this)">All</div>
+        <div class="ftab" onclick="fInv('pending',this)">Pending</div>
+        <div class="ftab" onclick="fInv('paid',this)">Paid</div>
+        <div class="ftab" onclick="fInv('overdue',this)">Overdue</div>
+        <div class="ftab" onclick="fInv('draft',this)">Draft</div>
+      </div>
+      <div class="card-list" id="list-inv"></div>
+    </div>
+
+    <!-- ESTIMATES/BOQ -->
+    <div class="pg" id="pg-est">
+      <div class="ftabs">
+        <div class="ftab on" onclick="fEst('all',this)">All</div>
+        <div class="ftab" onclick="fEst('draft',this)">Draft</div>
+        <div class="ftab" onclick="fEst('sent',this)">Sent</div>
+        <div class="ftab" onclick="fEst('approved',this)">Approved</div>
+      </div>
+      <div class="card-list" id="list-est"></div>
+    </div>
+
+    <!-- PAYMENTS -->
+    <div class="pg" id="pg-pay">
+      <div class="ftabs">
+        <div class="ftab on" onclick="fPay('all',this)">All</div>
+        <div class="ftab" onclick="fPay('in',this)">💳 Received</div>
+        <div class="ftab" onclick="fPay('out',this)">💸 Paid Out</div>
+      </div>
+      <div class="stats2">
+        <div class="stat"><div class="stat-lbl">Total In</div><div class="stat-val" id="pay-in">0</div><div class="stat-unit">PKR received</div></div>
+        <div class="stat"><div class="stat-lbl">Total Out</div><div class="stat-val" id="pay-out">0</div><div class="stat-unit">PKR paid</div></div>
+      </div>
+      <div id="list-pay"></div>
+    </div>
+
+    <!-- SUB-CON -->
+    <div class="pg" id="pg-sub"><div id="list-sub"></div></div>
+
+    <!-- AGREEMENTS -->
+    <div class="pg" id="pg-agr"><div class="card-list" id="list-agr"></div></div>
+
+    <!-- PROFILE -->
+    <div class="pg" id="pg-profile">
+      <div class="cp-header" onclick="O('sh-profile');openProfileSheet()">
+        <div class="cp-logo-box" id="cp-logo-box">
+          <img id="cp-logo-img" src="" alt="">
+          <div class="cp-logo-ph" id="cp-logo-ph">🏗</div>
+        </div>
+        <div class="cp-info">
+          <div class="cp-name" id="cp-nm">Your Company</div>
+          <div class="cp-city" id="cp-city-txt">Islamabad, Pakistan</div>
+          <div class="cp-ntn" id="cp-ntn-txt"></div>
+        </div>
+      </div>
+      <div class="profile-section">
+        <div class="ps-title">Company Details</div>
+        <div class="ps-row"><span class="ps-lbl">Phone</span><span class="ps-val" id="ps-ph">—</span></div>
+        <div class="ps-row"><span class="ps-lbl">Email</span><span class="ps-val" id="ps-em">—</span></div>
+        <div class="ps-row"><span class="ps-lbl">Address</span><span class="ps-val" id="ps-addr">—</span></div>
+        <div class="ps-row"><span class="ps-lbl">NTN</span><span class="ps-val" id="ps-ntn">—</span></div>
+      </div>
+      <div class="profile-section">
+        <div class="ps-title">Bank Details (Printed on all PDFs)</div>
+        <div class="ps-row"><span class="ps-lbl">Bank</span><span class="ps-val" id="ps-bank">—</span></div>
+        <div class="ps-row"><span class="ps-lbl">Account No.</span><span class="ps-val" id="ps-acc">—</span></div>
+        <div class="ps-row"><span class="ps-lbl">Account Title</span><span class="ps-val" id="ps-acc-t">—</span></div>
+        <div class="ps-row"><span class="ps-lbl">IBAN</span><span class="ps-val" id="ps-iban">—</span></div>
+      </div>
+      <button class="btn btn-gold" style="width:100%" onclick="O('sh-profile');openProfileSheet()">✏️ Edit Company Profile</button>
+    </div>
+
+  </div><!-- /content -->
+
+  <!-- BOTTOM NAV — scrollable, all items -->
+  <div class="bnav">
+    <div class="bi on" onclick="goPage('dash',this,'Dashboard')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      Home
+    </div>
+    <div class="bi" onclick="goPage('inv',this,'Invoices')">
+      <span class="bi-dot" id="bd-inv"></span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      Invoices
+    </div>
+    <div class="bi" onclick="goPage('est',this,'BOQ / Estimates')">
+      <span class="bi-dot" id="bd-est"></span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      BOQ
+    </div>
+    <div class="bi" onclick="goPage('pay',this,'Payments')">
+      <span class="bi-dot" id="bd-pay"></span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+      Payments
+    </div>
+    <div class="bi" onclick="goPage('sub',this,'Sub-Contractors')">
+      <span class="bi-dot" id="bd-sub"></span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Sub-Con
+    </div>
+    <div class="bi" onclick="goPage('agr',this,'Agreements')">
+      <span class="bi-dot" id="bd-agr"></span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+      Agree.
+    </div>
+    <div class="bi" onclick="goPage('profile',this,'Company Profile')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+      Profile
+    </div>
+  </div>
+
+  <button class="fab" onclick="O('sh-new')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+  </button>
+</div>
+
+<!-- ═══ SHEETS ═══ -->
+
+<!-- NEW CHOOSER -->
+<div class="sh-ov" id="sh-new"><div class="sh">
+  <div class="sh-grip"></div>
+  <div class="sh-hd"><div class="sh-title">Create New</div><button class="sh-x" onclick="X('sh-new')">×</button></div>
+  <div class="sh-body" style="display:flex;flex-direction:column;gap:9px;padding-bottom:20px">
+    <button class="btn btn-grey" style="justify-content:flex-start;gap:15px;padding:14px" onclick="X('sh-new');O('sh-proj');iP()"><span style="font-size:22px">🏗</span><div style="text-align:left"><div style="font-size:var(--fs-md)">New Project</div><div style="font-size:var(--fs-xs);color:var(--mut);font-weight:400;margin-top:2px">E-16/E-17 plot or any site</div></div></button>
+    <button class="btn btn-grey" style="justify-content:flex-start;gap:15px;padding:14px" onclick="X('sh-new');O('sh-cli');iCli()"><span style="font-size:22px">👤</span><div style="text-align:left"><div style="font-size:var(--fs-md)">New Client</div><div style="font-size:var(--fs-xs);color:var(--mut);font-weight:400;margin-top:2px">Add to client directory</div></div></button>
+    <button class="btn btn-grey" style="justify-content:flex-start;gap:15px;padding:14px" onclick="X('sh-new');O('sh-sub');iSub()"><span style="font-size:22px">👷</span><div style="text-align:left"><div style="font-size:var(--fs-md)">New Sub-Contractor</div><div style="font-size:var(--fs-xs);color:var(--mut);font-weight:400;margin-top:2px">Raj Mistri, Electrician, Plumber…</div></div></button>
+    <button class="btn btn-grey" style="justify-content:flex-start;gap:15px;padding:14px" onclick="X('sh-new');O('sh-inv');iInv('standard')"><span style="font-size:22px">🧾</span><div style="text-align:left"><div style="font-size:var(--fs-md)">New Invoice</div><div style="font-size:var(--fs-xs);color:var(--mut);font-weight:400;margin-top:2px">Standard / Labour / Progress billing</div></div></button>
+    <button class="btn btn-grey" style="justify-content:flex-start;gap:15px;padding:14px" onclick="X('sh-new');O('sh-est');iEst()"><span style="font-size:22px">📊</span><div style="text-align:left"><div style="font-size:var(--fs-md)">New Estimate / BOQ</div><div style="font-size:var(--fs-xs);color:var(--mut);font-weight:400;margin-top:2px">Bill of quantities with rates</div></div></button>
+    <button class="btn btn-grey" style="justify-content:flex-start;gap:15px;padding:14px" onclick="X('sh-new');O('sh-agr');iAgr()"><span style="font-size:22px">✍️</span><div style="text-align:left"><div style="font-size:var(--fs-md)">New Agreement</div><div style="font-size:var(--fs-xs);color:var(--mut);font-weight:400;margin-top:2px">Construction contract</div></div></button>
+    <button class="btn btn-grey" style="justify-content:flex-start;gap:15px;padding:14px" onclick="X('sh-new');O('sh-spay');iSpay()"><span style="font-size:22px">💸</span><div style="text-align:left"><div style="font-size:var(--fs-md)">Sub-Con Payment</div><div style="font-size:var(--fs-xs);color:var(--mut);font-weight:400;margin-top:2px">Pay contractor for work done</div></div></button>
+    <button class="btn btn-grey" style="justify-content:flex-start;gap:15px;padding:14px" onclick="X('sh-new');O('sh-cpay');iCpay()"><span style="font-size:22px">💳</span><div style="text-align:left"><div style="font-size:var(--fs-md)">Payment Received</div><div style="font-size:var(--fs-xs);color:var(--mut);font-weight:400;margin-top:2px">Record client payment</div></div></button>
+  </div>
+</div></div>
+
+<!-- PROJECT SHEET -->
+<div class="sh-ov" id="sh-proj"><div class="sh">
+  <div class="sh-grip"></div>
+  <div class="sh-hd"><div class="sh-title" id="proj-sh-t">New Project</div><button class="sh-x" onclick="X('sh-proj')">×</button></div>
+  <div class="sh-body">
+    <div class="edit-badge" id="proj-eb">✏️ Editing existing project</div>
+    <input type="hidden" id="proj-eid">
+    <div class="fg"><label>Project Name</label><input id="p-name" placeholder="e.g. E-16/3 Plot 45 Construction"></div>
+    <div class="f2">
+      <div class="fg"><label>Sector / Location</label><input id="p-loc" placeholder="E-16/3, CDECHS"></div>
+      <div class="fg"><label>Plot No.</label><input id="p-plot" placeholder="Plot 45"></div>
+    </div>
+    <div class="fg"><label>Client</label>
+      <div class="ds-wrap"><input class="ds-inp" id="p-cli-t" placeholder="Select or add client" readonly onclick="oDs('ds-p-cli')"><div class="ds-list" id="ds-p-cli"></div><input type="hidden" id="p-cli-id"></div>
+    </div>
+    <div class="f2">
+      <div class="fg"><label>Contract Value (PKR)</label><input type="number" id="p-val" placeholder="0"></div>
+      <div class="fg"><label>Current Phase</label>
+        <select id="p-phase"><option>Foundation</option><option>Structure</option><option>Finishing</option><option>Handover</option><option>Completed</option></select>
+      </div>
+    </div>
+    <div class="f2">
+      <div class="fg"><label>Start Date</label><input type="date" id="p-start"></div>
+      <div class="fg"><label>Expected End</label><input type="date" id="p-end"></div>
+    </div>
+    <div class="fg"><label>Notes</label><textarea id="p-notes" placeholder="Extra details…"></textarea></div>
+  </div>
+  <div class="sh-ft"><button class="btn btn-grey" onclick="X('sh-proj')">Cancel</button><button class="btn btn-gold" onclick="saveP()">💾 Save Project</button></div>
+</div></div>
+
+<!-- CLIENT SHEET -->
+<div class="sh-ov" id="sh-cli"><div class="sh">
+  <div class="sh-grip"></div>
+  <div class="sh-hd"><div class="sh-title" id="cli-sh-t">New Client</div><button class="sh-x" onclick="X('sh-cli')">×</button></div>
+  <div class="sh-body">
+    <div class="edit-badge" id="cli-eb">✏️ Editing client</div>
+    <input type="hidden" id="cli-eid">
+    <div class="fg"><label>Full Name</label><input id="c-name" placeholder="Client full name"></div>
+    <div class="f2">
+      <div class="fg"><label>Phone</label><input id="c-ph" type="tel" placeholder="03xx-xxxxxxx"></div>
+      <div class="fg"><label>CNIC (optional)</label><input id="c-cnic" placeholder="xxxxx-xxxxxxx-x"></div>
+    </div>
+    <div class="f2">
+      <div class="fg"><label>City</label><input id="c-city" placeholder="Islamabad"></div>
+      <div class="fg"><label>Email</label><input id="c-email" type="email" placeholder="email@example.com"></div>
+    </div>
+    <div class="fg"><label>Address</label><textarea id="c-addr" placeholder="Full address…" style="min-height:58px"></textarea></div>
+  </div>
+  <div class="sh-ft"><button class="btn btn-grey" onclick="X('sh-cli')">Cancel</button><button class="btn btn-gold" onclick="saveCli()">💾 Save Client</button></div>
+</div></div>
+
+<!-- SUB-CON SHEET -->
+<div class="sh-ov" id="sh-sub"><div class="sh">
+  <div class="sh-grip"></div>
+  <div class="sh-hd"><div class="sh-title" id="sub-sh-t">New Sub-Contractor</div><button class="sh-x" onclick="X('sh-sub')">×</button></div>
+  <div class="sh-body">
+    <div class="edit-badge" id="sub-eb">✏️ Editing contractor</div>
+    <input type="hidden" id="sub-eid">
+    <div class="fg"><label>Full Name</label><input id="s-name" placeholder="Contractor name"></div>
+    <div class="f2">
+      <div class="fg"><label>Trade</label>
+        <select id="s-trade"><option>Contractor / Mason (Raj Mistri)</option><option>Electrician</option><option>Plumber</option><option>Tile Work</option><option>Painting</option><option>Steel / Iron Work</option><option>Excavation</option><option>Carpenter</option><option>Waterproofing</option><option>Other</option></select>
+      </div>
+      <div class="fg"><label>Phone</label><input id="s-ph" type="tel" placeholder="03xx-xxxxxxx"></div>
+    </div>
+    <div class="f2">
+      <div class="fg"><label>Contract Amount (PKR)</label><input type="number" id="s-contract" placeholder="Total agreed"></div>
+      <div class="fg"><label>Payment Type</label>
+        <select id="s-ptype"><option>Per Work Done</option><option>Advance + Installments</option><option>Daily Rate</option><option>Weekly</option><option>Fixed Lump Sum</option></select>
+      </div>
+    </div>
+    <div class="fg"><label>Linked Project</label>
+      <div class="ds-wrap"><input class="ds-inp" id="s-proj-t" placeholder="Select project" readonly onclick="oDs('ds-s-proj')"><div class="ds-list" id="ds-s-proj"></div><input type="hidden" id="s-proj-id"></div>
+    </div>
+    <div class="fg"><label>CNIC / ID</label><input id="s-cnic" placeholder="xxxxx-xxxxxxx-x"></div>
+    <div class="fg"><label>Notes / Scope</label><textarea id="s-notes" placeholder="Kaam ki tafseelaat, agreed rates…"></textarea></div>
+  </div>
+  <div class="sh-ft"><button class="btn btn-grey" onclick="X('sh-sub')">Cancel</button><button class="btn btn-gold" onclick="saveSub()">💾 Save</button></div>
+</div></div>
+
+<!-- SUB-CON PAYMENT SHEET -->
+<div class="sh-ov" id="sh-spay"><div class="sh">
+  <div class="sh-grip"></div>
+  <div class="sh-hd"><div class="sh-title" id="spay-sh-t">Sub-Con Payment</div><button class="sh-x" onclick="X('sh-spay')">×</button></div>
+  <div class="sh-body">
+    <div class="edit-badge" id="spay-eb">✏️ Editing payment</div>
+    <input type="hidden" id="spay-eid">
+    <div class="fg"><label>Sub-Contractor</label>
+      <div class="ds-wrap"><input class="ds-inp" id="sp-sub-t" placeholder="Select contractor" readonly onclick="oDs('ds-sp-sub')"><div class="ds-list" id="ds-sp-sub"></div><input type="hidden" id="sp-sub-id"></div>
+    </div>
+    <div class="fg"><label>Project</label>
+      <div class="ds-wrap"><input class="ds-inp" id="sp-proj-t" placeholder="Select project" readonly onclick="oDs('ds-sp-proj')"><div class="ds-list" id="ds-sp-proj"></div><input type="hidden" id="sp-proj-id"></div>
+    </div>
+    <div class="f2">
+      <div class="fg"><label>Date</label><input type="date" id="sp-date"></div>
+      <div class="fg"><label>Amount (PKR)</label><input type="number" id="sp-amt" placeholder="0"></div>
+    </div>
+    <div class="f2">
+      <div class="fg"><label>Phase / Milestone</label>
+        <select id="sp-phase"><option>Advance</option><option>Foundation</option><option>DPC Level</option><option>Lintel Level</option><option>Roof Slab</option><option>Structure Complete</option><option>Finishing</option><option>Final Payment</option><option>Other</option></select>
+      </div>
+      <div class="fg"><label>Method</label>
+        <select id="sp-method"><option>Cash</option><option>Bank Transfer</option><option>JazzCash</option><option>EasyPaisa</option><option>Cheque</option></select>
+      </div>
+    </div>
+    <div class="fg"><label>Work Description (Kaam)</label><textarea id="sp-desc" placeholder="e.g. Foundation complete, 1st floor slab done, tiling 3 rooms…"></textarea></div>
+  </div>
+  <div class="sh-ft"><button class="btn btn-grey" onclick="X('sh-spay')">Cancel</button><button class="btn btn-gold" onclick="saveSpay()">💸 Save Payment</button></div>
+</div></div>
+
+<!-- CLIENT PAYMENT RECEIVED -->
+<div class="sh-ov" id="sh-cpay"><div class="sh">
+  <div class="sh-grip"></div>
+  <div class="sh-hd"><div class="sh-title" id="cpay-sh-t">Payment Received</div><button class="sh-x" onclick="X('sh-cpay')">×</button></div>
+  <div class="sh-body">
+    <div class="edit-badge" id="cpay-eb">✏️ Editing payment</div>
+    <input type="hidden" id="cpay-eid">
+    <div class="fg"><label>Client</label>
+      <div class="ds-wrap"><input class="ds-inp" id="cp-cli-t" placeholder="Select client" readonly onclick="oDs('ds-cp-cli')"><div class="ds-list" id="ds-cp-cli"></div><input type="hidden" id="cp-cli-id"></div>
+    </div>
+    <div class="fg"><label>Project</label>
+      <div class="ds-wrap"><input class="ds-inp" id="cp-proj-t" placeholder="Select project" readonly onclick="oDs('ds-cp-proj')"><div class="ds-list" id="ds-cp-proj"></div><input type="hidden" id="cp-proj-id"></div>
+    </div>
+    <div class="fg"><label>Invoice Reference</label>
+      <div class="ds-wrap"><input class="ds-inp" id="cp-inv-t" placeholder="Link to invoice (optional)" readonly onclick="oDs('ds-cp-inv')"><div class="ds-list" id="ds-cp-inv"></div><input type="hidden" id="cp-inv-id"></div>
+    </div>
+    <div class="f2">
+      <div class="fg"><label>Date</label><input type="date" id="cp-date"></div>
+      <div class="fg"><label>Amount (PKR)</label><input type="number" id="cp-amt" placeholder="0"></div>
+    </div>
+    <div class="f2">
+      <div class="fg"><label>Payment Milestone</label>
+        <select id="cp-milestone"><option>Advance / Booking</option><option>Foundation Stage</option><option>Structure Stage</option><option>Finishing Stage</option><option>Final Payment</option><option>Other</option></select>
+      </div>
+      <div class="fg"><label>Method</label>
+        <select id="cp-method"><option>Cash</option><option>Bank Transfer</option><option>JazzCash</option><option>EasyPaisa</option><option>Cheque</option></select>
+      </div>
+    </div>
+    <div class="fg"><label>Note</label><input id="cp-note" placeholder="Optional note"></div>
+  </div>
+  <div class="sh-ft"><button class="btn btn-grey" onclick="X('sh-cpay')">Cancel</button><button class="btn btn-gold" onclick="saveCpay()">💳 Save Payment</button></div>
+</div></div>
+
+<!-- INVOICE SHEET — Advanced construction types -->
+<div class="sh-ov" id="sh-inv"><div class="sh">
+  <div class="sh-grip"></div>
+  <div class="sh-hd"><div class="sh-title" id="inv-sh-t">New Invoice</div><button class="sh-x" onclick="X('sh-inv')">×</button></div>
+  <div class="sh-body">
+    <div class="edit-badge" id="inv-eb">✏️ Editing invoice</div>
+    <input type="hidden" id="inv-eid">
+    <input type="hidden" id="inv-type-val" value="standard">
+
+    <!-- Invoice Type Selector -->
+    <div style="font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:.7px;font-weight:700;margin-bottom:9px">Invoice Type</div>
+    <div class="inv-type-tabs">
+      <div class="itt on" onclick="switchInvType('standard',this)">📋<br>Standard</div>
+      <div class="itt" onclick="switchInvType('labour',this)">👷<br>Labour</div>
+      <div class="itt" onclick="switchInvType('progress',this)">📈<br>Progress</div>
+      <div class="itt" onclick="switchInvType('material',this)">🧱<br>Material</div>
+    </div>
+
+    <div class="auto-id-badge" id="inv-auto-id">🔖 Auto ID: —</div>
+    <div class="f2">
+      <div class="fg"><label>Invoice #</label><input id="i-num" placeholder="INV-001"></div>
+      <div class="fg"><label>Date</label><input type="date" id="i-date"></div>
+    </div>
+    <div class="fg"><label>Client</label>
+      <div class="ds-wrap"><input class="ds-inp" id="i-cli-t" placeholder="Select client" readonly onclick="oDs('ds-i-cli')"><div class="ds-list" id="ds-i-cli"></div><input type="hidden" id="i-cli-id"></div>
+    </div>
+    <div class="fg"><label>Project / Site</label>
+      <div class="ds-wrap"><input class="ds-inp" id="i-proj-t" placeholder="Select project" readonly onclick="oDs('ds-i-proj')"><div class="ds-list" id="ds-i-proj"></div><input type="hidden" id="i-proj-id"></div>
+    </div>
+    <div class="f2">
+      <div class="fg"><label>Due Date</label><input type="date" id="i-due"></div>
+      <div class="fg"><label>Status</label>
+        <select id="i-st"><option value="pending">Pending</option><option value="paid">Paid</option><option value="overdue">Overdue</option><option value="draft">Draft</option></select>
+      </div>
+    </div>
+
+    <!-- Progress billing extras -->
+    <div id="progress-extras" style="display:none">
+      <div class="f2">
+        <div class="fg"><label>Contract Total (PKR)</label><input type="number" id="i-contract-total" placeholder="Full contract value" oninput="calcProgress()"></div>
+        <div class="fg"><label>Previously Billed (PKR)</label><input type="number" id="i-prev-billed" placeholder="0" oninput="calcProgress()"></div>
+      </div>
+      <div class="f2">
+        <div class="fg"><label>Billing Period</label><input id="i-period" placeholder="e.g. April 2025"></div>
+        <div class="fg"><label>Work Stage</label>
+          <select id="i-stage"><option>Foundation</option><option>DPC Level</option><option>Lintel Level</option><option>Roof Slab</option><option>Brickwork</option><option>Plastering</option><option>Tiling</option><option>Painting</option><option>Finishing</option><option>Final</option></select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Labour extras -->
+    <div id="labour-extras" style="display:none">
+      <div class="f2">
+        <div class="fg"><label>Period From</label><input type="date" id="i-lab-from"></div>
+        <div class="fg"><label>Period To</label><input type="date" id="i-lab-to"></div>
+      </div>
+      <div class="fg"><label>Site / Work Location</label><input id="i-site" placeholder="e.g. E-16/3 Plot 45, Foundation work"></div>
+    </div>
+
+    <div class="hdiv"></div>
+
+    <!-- STANDARD / MATERIAL line items -->
+    <div id="li-standard-wrap">
+      <label style="display:block;margin-bottom:10px" id="li-label">Line Items</label>
+      <div class="li-wrap li-std">
+        <div class="li-hd"><span>Description</span><span>Qty</span><span>Unit</span><span>Rate PKR</span><span></span></div>
+        <div id="li-i"></div>
+        <div class="li-foot"><span>Total (PKR)</span><span class="li-tot" id="li-i-tot">0</span></div>
+      </div>
+      <button class="btn btn-grey" style="width:100%;padding:11px;margin-bottom:4px" onclick="addLI('i','std')">+ Add Row</button>
+    </div>
+
+    <!-- LABOUR line items -->
+    <div id="li-labour-wrap" style="display:none">
+      <label style="display:block;margin-bottom:10px">Labour Details</label>
+      <div class="li-wrap li-lab">
+        <div class="li-hd"><span>Worker / Trade</span><span>Days</span><span>Rate/Day</span><span>Amount</span><span></span></div>
+        <div id="li-lab"></div>
+        <div class="li-foot"><span>Total Labour (PKR)</span><span class="li-tot" id="li-lab-tot">0</span></div>
+      </div>
+      <button class="btn btn-grey" style="width:100%;padding:11px;margin-bottom:4px" onclick="addLI('lab','lab')">+ Add Worker</button>
+    </div>
+
+    <!-- PROGRESS billing -->
+    <div id="li-progress-wrap" style="display:none">
+      <label style="display:block;margin-bottom:10px">Work Items (Progress)</label>
+      <div class="li-wrap li-prg">
+        <div class="li-hd"><span>Work Item / Phase</span><span>% Done</span><span>Amount PKR</span><span></span></div>
+        <div id="li-prg"></div>
+        <div class="li-foot"><span>This Period (PKR)</span><span class="li-tot" id="li-prg-tot">0</span></div>
+      </div>
+      <button class="btn btn-grey" style="width:100%;padding:11px;margin-bottom:4px" onclick="addLI('prg','prg')">+ Add Item</button>
+      <div id="progress-summary" style="background:var(--s2);border-radius:10px;padding:13px;margin-top:8px;font-size:var(--fs-sm)">
+        <div style="display:flex;justify-content:space-between;padding:5px 0"><span style="color:var(--mut)">Contract Total</span><span class="li-tot" id="prg-contract">0</span></div>
+        <div style="display:flex;justify-content:space-between;padding:5px 0"><span style="color:var(--mut)">Previously Billed</span><span class="li-tot" id="prg-prev">0</span></div>
+        <div style="display:flex;justify-content:space-between;padding:5px 0;border-top:1px solid var(--bor);margin-top:4px;font-weight:700"><span>This Invoice</span><span class="li-tot" id="prg-this" style="color:var(--gold)">0</span></div>
+      </div>
+    </div>
+
+    <div class="fg" style="margin-top:12px"><label>Notes / Terms</label><textarea id="i-notes" placeholder="Payment terms, bank details, site address…"></textarea></div>
+  </div>
+  <div class="sh-ft"><button class="btn btn-grey" onclick="X('sh-inv')">Cancel</button><button class="btn btn-gold" onclick="saveInv()">💾 Save Invoice</button></div>
+</div></div>
+
+<!-- ESTIMATE SHEET -->
+<div class="sh-ov" id="sh-est"><div class="sh">
+  <div class="sh-grip"></div>
+  <div class="sh-hd"><div class="sh-title" id="est-sh-t">New Estimate / BOQ</div><button class="sh-x" onclick="X('sh-est')">×</button></div>
+  <div class="sh-body">
+    <div class="edit-badge" id="est-eb">✏️ Editing estimate</div>
+    <input type="hidden" id="est-eid">
+    <div class="auto-id-badge" id="est-auto-id">🔖 Auto ID: —</div>
+    <div class="f2">
+      <div class="fg"><label>Estimate #</label><input id="e-num" placeholder="EST-001"></div>
+      <div class="fg"><label>Date</label><input type="date" id="e-date"></div>
+    </div>
+    <div class="fg"><label>Client</label>
+      <div class="ds-wrap"><input class="ds-inp" id="e-cli-t" placeholder="Select client" readonly onclick="oDs('ds-e-cli')"><div class="ds-list" id="ds-e-cli"></div><input type="hidden" id="e-cli-id"></div>
+    </div>
+    <div class="fg"><label>Project / Site</label>
+      <div class="ds-wrap"><input class="ds-inp" id="e-proj-t" placeholder="Select project" readonly onclick="oDs('ds-e-proj')"><div class="ds-list" id="ds-e-proj"></div><input type="hidden" id="e-proj-id"></div>
+    </div>
+    <div class="f2">
+      <div class="fg"><label>Valid Until</label><input type="date" id="e-vld"></div>
+      <div class="fg"><label>Status</label>
+        <select id="e-st"><option value="draft">Draft</option><option value="sent">Sent</option><option value="approved">Approved</option></select>
+      </div>
+    </div>
+    <div class="fg"><label>Notes / Scope Summary</label><textarea id="e-notes" placeholder="Inclusions, exclusions, assumptions, site conditions…"></textarea></div>
+    <div class="hdiv"></div>
+    <label style="display:block;margin-bottom:10px">BOQ Items</label>
+    <div class="li-wrap li-std">
+      <div class="li-hd"><span>Work Item / Description</span><span>Qty</span><span>Unit</span><span>Rate PKR</span><span></span></div>
+      <div id="li-e"></div>
+      <div class="li-foot"><span>Total (PKR)</span><span class="li-tot" id="li-e-tot">0</span></div>
+    </div>
+    <button class="btn btn-grey" style="width:100%;padding:11px;margin-bottom:4px" onclick="addLI('e','std')">+ Add Item</button>
+  </div>
+  <div class="sh-ft"><button class="btn btn-grey" onclick="X('sh-est')">Cancel</button><button class="btn btn-gold" onclick="saveEst()">💾 Save Estimate</button></div>
+</div></div>
+
+<!-- AGREEMENT SHEET — Simple & Clean -->
+<div class="sh-ov" id="sh-agr"><div class="sh">
+  <div class="sh-grip"></div>
+  <div class="sh-hd"><div class="sh-title" id="agr-sh-t">New Agreement</div><button class="sh-x" onclick="X('sh-agr')">×</button></div>
+  <div class="sh-body">
+    <div class="edit-badge" id="agr-eb">✏️ Editing agreement</div>
+    <input type="hidden" id="agr-eid">
+    <div class="auto-id-badge" id="agr-auto-id">🔖 Auto ID: —</div>
+
+    <div class="f2">
+      <div class="fg"><label>Ref #</label><input id="a-num" placeholder="AGR-001"></div>
+      <div class="fg"><label>Date</label><input type="date" id="a-date"></div>
+    </div>
+    <div class="fg"><label>Client</label>
+      <div class="ds-wrap"><input class="ds-inp" id="a-cli-t" placeholder="Select client" readonly onclick="oDs('ds-a-cli')"><div class="ds-list" id="ds-a-cli"></div><input type="hidden" id="a-cli-id"></div>
+    </div>
+    <div class="fg"><label>Project / Property</label>
+      <div class="ds-wrap"><input class="ds-inp" id="a-proj-t" placeholder="Select project" readonly onclick="oDs('ds-a-proj')"><div class="ds-list" id="ds-a-proj"></div><input type="hidden" id="a-proj-id"></div>
+    </div>
+    <div class="f2">
+      <div class="fg"><label>Contract Value (PKR)</label><input type="number" id="a-val" placeholder="0"></div>
+      <div class="fg"><label>Status</label>
+        <select id="a-st"><option value="draft">Draft</option><option value="signed">Signed</option><option value="active">Active</option><option value="completed">Completed</option></select>
+      </div>
+    </div>
+    <div class="f2">
+      <div class="fg"><label>Start Date</label><input type="date" id="a-s"></div>
+      <div class="fg"><label>Completion Date</label><input type="date" id="a-e"></div>
+    </div>
+
+    <div class="hdiv"></div>
+
+    <!-- House Specs -->
+    <div class="f2">
+      <div class="fg"><label>Plot Size</label>
+        <select id="a-plot-size">
+          <option value="">Select size</option>
+          <option>3 Marla</option>
+          <option>5 Marla</option>
+          <option>7 Marla</option>
+          <option>10 Marla</option>
+          <option>1 Kanal</option>
+          <option>2 Kanal</option>
+          <option>Custom</option>
+        </select>
+      </div>
+      <div class="fg"><label>Storeys</label>
+        <select id="a-storeys">
+          <option value="single">Single Storey</option>
+          <option value="double">Double Storey</option>
+          <option value="triple">Triple Storey</option>
+          <option value="b_single">Basement + Single</option>
+          <option value="b_double">Basement + Double</option>
+        </select>
+      </div>
+    </div>
+    <div class="f2">
+      <div class="fg"><label>Covered Area (sft)</label><input type="number" id="a-covered" placeholder="e.g. 2250" oninput="calcAgr()"></div>
+      <div class="fg"><label>Plot Dimensions</label><input id="a-dims" placeholder="e.g. 45×90 ft"></div>
+    </div>
+
+    <div class="hdiv"></div>
+
+    <!-- Agreement Type & Rate -->
+    <div class="f2">
+      <div class="fg"><label>Agreement Type</label>
+        <select id="a-type" onchange="calcAgr()">
+          <option value="labour">Labour Rate (per sft)</option>
+          <option value="material">Labour + Material (per sft)</option>
+          <option value="lump">Lump Sum (Fixed Price)</option>
+        </select>
+      </div>
+      <div class="fg"><label>Rate / Amount (PKR)</label><input type="number" id="a-rate" placeholder="e.g. 650 per sft" oninput="calcAgr()"></div>
+    </div>
+    <!-- Calculated value hint -->
+    <div id="agr-calc-row" style="background:var(--s2);border-radius:9px;padding:11px 13px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:var(--fs-xs);color:var(--mut)" id="agr-formula">Enter area × rate to auto-calculate</span>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-md);color:var(--gold);font-weight:700" id="agr-calc">—</span>
+    </div>
+
+    <div class="hdiv"></div>
+
+    <!-- Scope & Terms -->
+    <div class="fg"><label>Scope of Work</label><textarea id="a-scope" placeholder="e.g. Grey structure, single storey, as per CDA approved drawing. Foundation, RCC columns, beams, slab, brickwork, plaster included…" style="min-height:80px"></textarea></div>
+    <div class="fg"><label>Payment Schedule</label><textarea id="a-terms" placeholder="e.g. 30% advance, 30% at slab level, 20% at roof, 20% on completion…"></textarea></div>
+    <div class="fg"><label>Special Conditions</label><textarea id="a-conditions" placeholder="e.g. CDA approved drawings by client. Water + electricity by client. Work hours 7am–6pm…" style="min-height:60px"></textarea></div>
+    <div class="f2">
+      <div class="fg"><label>CDA / Permit No.</label><input id="a-permit" placeholder="Optional"></div>
+      <div class="fg"><label>Architect / Engineer</label><input id="a-arch" placeholder="Name optional"></div>
+    </div>
+
+    <div class="hdiv"></div>
+
+    <!-- General Conditions — editable -->
+    <div style="font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:.8px;font-weight:700;margin-bottom:9px">General Conditions <span style="color:var(--mut2);font-weight:400;text-transform:none;letter-spacing:0">(editable)</span></div>
+    <div class="fg"><textarea id="a-general" style="min-height:130px;font-size:var(--fs-sm);line-height:1.7"></textarea></div>
+
+    <div class="hdiv"></div>
+
+    <!-- PDF Footer note — editable -->
+    <div style="font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:.8px;font-weight:700;margin-bottom:9px">PDF Footer Note <span style="color:var(--mut2);font-weight:400;text-transform:none;letter-spacing:0">(overrides bank details if filled)</span></div>
+    <div class="fg"><input id="a-footer" placeholder="Leave empty to use company bank details from Profile"></div>
+  </div>
+  <div class="sh-ft"><button class="btn btn-grey" onclick="X('sh-agr')">Cancel</button><button class="btn btn-gold" onclick="saveAgr()">💾 Save Agreement</button></div>
+</div></div>
+
+
+<!-- COMPANY PROFILE SHEET -->
+<div class="sh-ov" id="sh-profile"><div class="sh">
+  <div class="sh-grip"></div>
+  <div class="sh-hd"><div class="sh-title">Company Profile</div><button class="sh-x" onclick="X('sh-profile')">×</button></div>
+  <div class="sh-body">
+    <div class="logo-upload-area" onclick="document.getElementById('logo-file').click()">
+      <div class="logo-box">
+        <img id="logo-img" src="" alt="">
+        <span id="logo-ph" style="font-size:28px">🏗</span>
+      </div>
+      <div class="logo-hint">
+        <strong>Company Logo</strong>
+        <span>Tap to upload PNG or JPG<br>Will appear on all PDF documents</span>
+      </div>
+    </div>
+    <input type="file" id="logo-file" accept="image/*" style="display:none" onchange="handleLogo(this)">
+    <div class="fg"><label>Company Name</label><input id="co-name" placeholder="Your Company Name (Pvt Ltd)"></div>
+    <div class="f2">
+      <div class="fg"><label>Phone</label><input id="co-ph" type="tel" placeholder="03xx-xxxxxxx"></div>
+      <div class="fg"><label>Email</label><input id="co-email" type="email" placeholder="info@company.com"></div>
+    </div>
+    <div class="fg"><label>Office Address</label><textarea id="co-addr" placeholder="Complete office address, Islamabad" style="min-height:58px"></textarea></div>
+    <div class="f2">
+      <div class="fg"><label>City</label><input id="co-city" placeholder="Islamabad"></div>
+      <div class="fg"><label>NTN Number</label><input id="co-ntn" placeholder="NTN-xxxxxxx"></div>
+    </div>
+    <div class="hdiv"></div>
+    <div style="font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:.8px;margin-bottom:14px;font-weight:700">Bank Account Details</div>
+    <div class="fg"><label>Bank Name</label><input id="co-bank" placeholder="e.g. HBL, MCB, Meezan, UBL"></div>
+    <div class="f2">
+      <div class="fg"><label>Account Number</label><input id="co-acc" placeholder="Account number"></div>
+      <div class="fg"><label>Account Title</label><input id="co-acc-t" placeholder="Name on account"></div>
+    </div>
+    <div class="fg"><label>IBAN</label><input id="co-iban" placeholder="PK00XXXX0000000000000000"></div>
+  </div>
+  <div class="sh-ft"><button class="btn btn-grey" onclick="X('sh-profile')">Cancel</button><button class="btn btn-gold" onclick="saveProfile()">💾 Save Profile</button></div>
+</div></div>
+
+<div class="toast" id="toast"><div class="td" id="tdot"></div><span id="tmsg">Saved</span></div>
+
+<script>
+// ════ CONFIG ════
+const CID='352786216895-8ro80gsupaufpcmoba3k3gonlvgkg63i.apps.googleusercontent.com';
+const SCOPES='https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.profile';
+const FNAME='buildpro_v5.json';
+let tc,tok=null,fid=null,stmr=null,usr=null;
+
+// ════ DATA ════
+let D={
+  company:{name:'Your Company',phone:'',email:'',addr:'',city:'Islamabad',ntn:'',bank:'',acc:'',accT:'',iban:'',logo:''},
+  clients:[],projects:[],subcons:[],
+  subpays:[],cpays:[],
+  invoices:[],estimates:[],agreements:[]
+};
+
+// ════ AUTH ════
+function loadGIS(){
+  const s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';
+  s.onload=()=>{tc=google.accounts.oauth2.initTokenClient({client_id:CID,scope:SCOPES,callback:async r=>{
+    if(r.error){toast('Sign in failed','err');return;}
+    tok=r.access_token;await fetchUsr();await loadDrive();launchApp();
+  }});};document.head.appendChild(s);
+}
+function signIn(){if(!tc){toast('Loading…','info');setTimeout(signIn,900);return;}tc.requestAccessToken({prompt:'consent'});}
+function signOut(){if(tok)try{google.accounts.oauth2.revoke(tok);}catch(e){}tok=null;localStorage.removeItem('bp5_user');document.getElementById('app').classList.remove('on');document.getElementById('login').style.display='flex';cMenu();toast('Signed out','info');}
+async function fetchUsr(){
+  try{const r=await fetch('https://www.googleapis.com/oauth2/v1/userinfo',{headers:{Authorization:'Bearer '+tok}});
+  usr=await r.json();
+  const img=e$('upic');if(usr.picture)img.src=usr.picture;
+  if(usr.name){e$('ava-i').textContent=usr.name[0].toUpperCase();}
+  e$('um-nm').textContent=usr.name||usr.email;}catch(e){}
+}
+function launchApp(){
+  document.getElementById('login').style.display='none';
+  document.getElementById('app').classList.add('on');
+  localStorage.setItem('bp5_user','1'); // mark as logged in
+  renderAll();refreshProfileUI();
+}
+
+// ════ DRIVE ════
+async function loadDrive(){
+  setSync('loading');
+  try{
+    const sr=await fetch(`https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name='${FNAME}'&fields=files(id)`,{headers:{Authorization:'Bearer '+tok}});
+    const sd=await sr.json();
+    if(sd.files&&sd.files.length){
+      fid=sd.files[0].id;
+      const dr=await fetch(`https://www.googleapis.com/drive/v3/files/${fid}?alt=media`,{headers:{Authorization:'Bearer '+tok}});
+      if(dr.ok){const t=await dr.text();if(t.trim())try{const p=JSON.parse(t);Object.keys(p).forEach(k=>{if(D[k]!==undefined)D[k]=p[k];});}catch(e){}}
+    }else{
+      const cr=await fetch('https://www.googleapis.com/drive/v3/files',{method:'POST',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({name:FNAME,parents:['appDataFolder']})});
+      fid=(await cr.json()).id;await writeDrive();
+    }
+    setSync('synced');
+  }catch(e){setSync('error');const lo=localStorage.getItem('bp5');if(lo)try{const p=JSON.parse(lo);Object.keys(p).forEach(k=>{if(D[k]!==undefined)D[k]=p[k];});}catch(e2){}; toast('Offline mode','info');}
+}
+async function writeDrive(){
+  if(!tok||!fid){localStorage.setItem('bp5',JSON.stringify(D));setSync('pending');return;}
+  try{
+    const blob=new Blob([JSON.stringify(D)],{type:'application/json'});
+    const form=new FormData();
+    form.append('metadata',new Blob([JSON.stringify({name:FNAME})],{type:'application/json'}));
+    form.append('file',blob);
+    await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fid}?uploadType=multipart`,{method:'PATCH',headers:{Authorization:'Bearer '+tok},body:form});
+    localStorage.setItem('bp5',JSON.stringify(D));setSync('synced');
+  }catch(e){localStorage.setItem('bp5',JSON.stringify(D));setSync('pending');}
+}
+function sched(){localStorage.setItem('bp5',JSON.stringify(D));setSync('pending');clearTimeout(stmr);stmr=setTimeout(writeDrive,2500);}
+async function syncNow(){const b=e$('tb-sync');b.classList.add('spin');e$('sync-lbl').textContent='Syncing…';await writeDrive();b.classList.remove('spin');e$('sync-lbl').textContent='Sync';}
+function setSync(s){const dot=e$('sdot'),txt=e$('sync-txt');
+  if(s==='synced'){dot.className='sdot';txt.textContent='Synced to Google Drive';}
+  else if(s==='pending'){dot.className='sdot pend';txt.textContent='Pending sync…';}
+  else if(s==='saving'||s==='loading'){dot.className='sdot';dot.style.background='var(--blu)';txt.textContent=s==='loading'?'Loading from Drive…':'Saving…';}
+  else if(s==='error'){dot.className='sdot err';txt.textContent='Offline mode — data cached locally';}}
+
+// ════ NAVIGATION ════
+let curPg='dash';
+function goPage(p,el,title){
+  document.querySelectorAll('.pg').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.bi').forEach(x=>x.classList.remove('on'));
+  document.getElementById('pg-'+p).classList.add('on');
+  if(el)el.classList.add('on');
+  curPg=p;e$('tb-pg').textContent=title;cMenu();
+  if(p==='profile')refreshProfileUI();
+  else renderPage(p);
+}
+function renderPage(p){if(p==='dash')renderDash();else if(p==='inv')renderInv();else if(p==='est')renderEst();else if(p==='pay')renderPay();else if(p==='sub')renderSub();else if(p==='agr')renderAgr();}
+function renderAll(){renderDash();renderInv();renderEst();renderPay();renderSub();renderAgr();updateDots();}
+
+// ════ HELPERS ════
+const today=()=>new Date().toISOString().split('T')[0];
+const dF=n=>{const d=new Date();d.setDate(d.getDate()+n);return d.toISOString().split('T')[0];};
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+const nxt=(pfx,arr)=>pfx+'-'+String((arr||[]).length+1).padStart(3,'0');
+const fmt=n=>(n||0).toLocaleString('en-PK',{minimumFractionDigits:0,maximumFractionDigits:0});
+const nW=n=>{if(n>=10000000)return(n/10000000).toFixed(2)+' Crore';if(n>=100000)return(n/100000).toFixed(2)+' Lakh';if(n>=1000)return(n/1000).toFixed(0)+' Thousand';return String(n||0);};
+const e$=id=>document.getElementById(id);
+const sv=(id,v)=>{const el=e$(id);if(el)el.value=(v===null||v===undefined)?'':String(v);};
+function bdg(s){const m={paid:'b-g',pending:'b-y',overdue:'b-r',draft:'b-m',signed:'b-b',active:'b-b',sent:'b-y',approved:'b-g',completed:'b-g'};return`<span class="b ${m[s]||'b-m'}">${s}</span>`;}
+function trC(t){const m={'Contractor / Mason (Raj Mistri)':'b-y',Electrician:'b-b',Plumber:'b-b','Tile Work':'b-p',Painting:'b-p','Steel / Iron Work':'b-m',Excavation:'b-m',Carpenter:'b-m',Waterproofing:'b-p'};return m[t]||'b-m';}
+function toast(msg,type='ok'){const e=e$('toast');e$('tmsg').textContent=msg;e$('tdot').style.background=type==='ok'?'var(--grn)':type==='err'?'var(--red)':'var(--blu)';e.classList.add('on');setTimeout(()=>e.classList.remove('on'),3200);}
+
+// ════ SHEETS ════
+function O(id){document.querySelectorAll('.ds-list').forEach(d=>d.classList.remove('on'));e$(id).classList.add('on');cMenu();}
+function X(id){e$(id).classList.remove('on');}
+document.querySelectorAll('.sh-ov').forEach(el=>el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('on');}));
+function toggleMenu(){e$('umenu').classList.toggle('on');}
+function cMenu(){e$('umenu').classList.remove('on');}
+document.addEventListener('click',e=>{if(!e.target.closest('#umenu')&&!e.target.closest('.ava'))cMenu();if(!e.target.closest('.ds-wrap'))document.querySelectorAll('.ds-list').forEach(d=>d.classList.remove('on'));});
+
+// ════ DROPDOWNS ════
+const DS={
+  'ds-p-cli':{t:'clients',tx:'p-cli-t',id:'p-cli-id'},
+  'ds-s-proj':{t:'projects',tx:'s-proj-t',id:'s-proj-id'},
+  'ds-i-cli':{t:'clients',tx:'i-cli-t',id:'i-cli-id'},
+  'ds-i-proj':{t:'projects',tx:'i-proj-t',id:'i-proj-id'},
+  'ds-e-cli':{t:'clients',tx:'e-cli-t',id:'e-cli-id'},
+  'ds-e-proj':{t:'projects',tx:'e-proj-t',id:'e-proj-id'},
+  'ds-a-cli':{t:'clients',tx:'a-cli-t',id:'a-cli-id'},
+  'ds-a-proj':{t:'projects',tx:'a-proj-t',id:'a-proj-id'},
+  'ds-sp-sub':{t:'subcons',tx:'sp-sub-t',id:'sp-sub-id'},
+  'ds-sp-proj':{t:'projects',tx:'sp-proj-t',id:'sp-proj-id'},
+  'ds-cp-cli':{t:'clients',tx:'cp-cli-t',id:'cp-cli-id'},
+  'ds-cp-proj':{t:'projects',tx:'cp-proj-t',id:'cp-proj-id'},
+  'ds-cp-inv':{t:'invoices',tx:'cp-inv-t',id:'cp-inv-id'},
+};
+function oDs(dsId){
+  document.querySelectorAll('.ds-list').forEach(d=>d.classList.remove('on'));
+  const el=e$(dsId),cfg=DS[dsId];if(!el||!cfg)return;
+  const arr=D[cfg.t]||[];
+  let html='';
+  if(!arr.length){html='<div class="ds-empty">Nothing added yet</div>';}
+  else html=arr.map(item=>{
+    let ref='',sub='';
+    if(cfg.t==='clients'){ref='Client';sub=item.phone||item.city||'';}
+    if(cfg.t==='projects'){ref='Project';const c=D.clients.find(x=>x.id===item.clientId);sub=(item.loc||'')+(c?' · '+c.name:'');}
+    if(cfg.t==='subcons'){ref=item.trade;sub=item.phone||'';}
+    if(cfg.t==='invoices'){ref=item.num+' · '+item.invType;sub=item.clientName+' · PKR '+fmt(item.total);}
+    return`<div class="ds-item" onclick="selDs('${dsId}','${item.id}','${esc(item.name||item.num||'')}')">
+      <div class="ds-ref">${ref}</div>
+      <div class="ds-nm">${item.name||item.num}</div>
+      ${sub?`<div class="ds-sub">${sub}</div>`:''}
+    </div>`;
+  }).join('');
+  if(cfg.t==='clients')html+=`<div class="ds-add" onclick="X(curSh());O('sh-cli');iCli()">+ Add New Client</div>`;
+  if(cfg.t==='projects')html+=`<div class="ds-add" onclick="X(curSh());O('sh-proj');iP()">+ Add New Project</div>`;
+  el.innerHTML=html;el.classList.add('on');
+}
+function selDs(dsId,val,label){e$(dsId).classList.remove('on');const cfg=DS[dsId];if(!cfg)return;sv(cfg.tx,label);sv(cfg.id,val);}
+const esc=s=>(s||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+function curSh(){const op=document.querySelector('.sh-ov.on');return op?op.id:'';}
+
+// ════ INVOICE TYPE SWITCHER ════
+let currentInvType='standard';
+function switchInvType(type,el){
+  currentInvType=type;sv('inv-type-val',type);
+  document.querySelectorAll('.itt').forEach(t=>t.classList.remove('on'));el.classList.add('on');
+  // Show/hide sections
+  const isStd=type==='standard'||type==='material';
+  const isLab=type==='labour';
+  const isPrg=type==='progress';
+  e$('li-standard-wrap').style.display=isStd||isLab?'block':'none';
+  e$('li-labour-wrap').style.display=isLab?'block':'none';
+  e$('li-progress-wrap').style.display=isPrg?'block':'none';
+  e$('progress-extras').style.display=isPrg?'block':'none';
+  e$('labour-extras').style.display=isLab?'block':'none';
+  const lbl=e$('li-label');
+  if(lbl){if(type==='material')lbl.textContent='Material Items';else if(type==='standard')lbl.textContent='Line Items';else lbl.textContent='';}
+}
+
+// ════ LINE ITEMS ════
+function addLI(t,mode){
+  let tmpl='';
+  if(mode==='lab'){
+    tmpl=`<input class="ld" placeholder="e.g. Mason (Raj Mistri)" oninput="cLI('${t}')"><input class="lq" type="number" value="1" placeholder="Days" oninput="cLI('${t}')"><input class="lr" type="number" value="0" placeholder="Rate/Day" oninput="cLI('${t}')"><input class="la" type="number" readonly style="background:var(--s2)" placeholder="Amount"><button class="li-del" onclick="this.parentElement.remove();cLI('${t}')">×</button>`;
+  } else if(mode==='prg'){
+    tmpl=`<input class="ld" placeholder="e.g. Foundation, Slab Work" oninput="cLI('${t}')"><input class="lq" type="number" value="0" placeholder="%" oninput="cLI('${t}')"><input class="lr" type="number" value="0" placeholder="Amount PKR" oninput="cLI('${t}')"><button class="li-del" onclick="this.parentElement.remove();cLI('${t}')">×</button>`;
+  } else {
+    tmpl=`<input class="ld" placeholder="Description" oninput="cLI('${t}')"><input class="lq" type="number" value="1" oninput="cLI('${t}')"><input class="lu" placeholder="sft"><input class="lr" type="number" value="0" oninput="cLI('${t}')"><button class="li-del" onclick="this.parentElement.remove();cLI('${t}')">×</button>`;
+  }
+  const div=document.createElement('div');div.className='li-row';div.innerHTML=tmpl;
+  e$('li-'+t).appendChild(div);cLI(t);
+}
+function addLIData(t,mode,item){
+  // Add with existing data (for editing)
+  addLI(t,mode);
+  const rows=e$('li-'+t).querySelectorAll('.li-row');
+  const row=rows[rows.length-1];
+  if(item.d&&row.querySelector('.ld'))row.querySelector('.ld').value=item.d||'';
+  if(row.querySelector('.lq'))row.querySelector('.lq').value=item.q||1;
+  if(item.u&&row.querySelector('.lu'))row.querySelector('.lu').value=item.u||'';
+  if(row.querySelector('.lr'))row.querySelector('.lr').value=item.r||0;
+  cLI(t);
+}
+function cLI(t){
+  let s=0;
+  const rows=e$('li-'+t);if(!rows)return;
+  rows.querySelectorAll('.li-row').forEach(row=>{
+    const q=parseFloat(row.querySelector('.lq')?.value)||0;
+    const r=parseFloat(row.querySelector('.lr')?.value)||0;
+    const amt=q*r;s+=amt;
+    const la=row.querySelector('.la');if(la)la.value=fmt(amt);
+  });
+  const totEl=e$('li-'+t+'-tot');if(totEl)totEl.textContent=fmt(s);
+  // Progress summary
+  if(t==='prg'){
+    const ct=parseFloat(e$('i-contract-total')?.value)||0;
+    const pb=parseFloat(e$('i-prev-billed')?.value)||0;
+    if(e$('prg-contract'))e$('prg-contract').textContent=fmt(ct);
+    if(e$('prg-prev'))e$('prg-prev').textContent=fmt(pb);
+    if(e$('prg-this'))e$('prg-this').textContent=fmt(s);
+    if(e$('li-i-tot'))e$('li-i-tot').textContent=fmt(s);
+  }
+  if(t==='lab'){if(e$('li-i-tot'))e$('li-i-tot').textContent=fmt(s);}
+}
+function calcProgress(){cLI('prg');}
+function gLI(t){
+  const items=[];const rows=e$('li-'+t);if(!rows)return items;
+  rows.querySelectorAll('.li-row').forEach(row=>{
+    const d=row.querySelector('.ld')?.value||'';
+    const q=parseFloat(row.querySelector('.lq')?.value)||0;
+    const u=row.querySelector('.lu')?.value||'';
+    const r=parseFloat(row.querySelector('.lr')?.value)||0;
+    if(d)items.push({d,q,u,r,a:q*r});
+  });return items;
+}
+const totLI=items=>items.reduce((s,i)=>s+i.a,0);
+
+// ════ INIT FORMS ════
+function iP(){sv('proj-eid','');e$('proj-eb').classList.remove('on');e$('proj-sh-t').textContent='New Project';['p-name','p-loc','p-plot','p-val','p-notes','p-start','p-end'].forEach(id=>sv(id,''));sv('p-cli-t','');sv('p-cli-id','');sv('p-phase','Foundation');}
+function iCli(){sv('cli-eid','');e$('cli-eb').classList.remove('on');e$('cli-sh-t').textContent='New Client';['c-name','c-ph','c-cnic','c-city','c-email','c-addr'].forEach(id=>sv(id,''));}
+function iSub(){sv('sub-eid','');e$('sub-eb').classList.remove('on');e$('sub-sh-t').textContent='New Sub-Contractor';['s-name','s-ph','s-contract','s-notes','s-cnic'].forEach(id=>sv(id,''));sv('s-proj-t','');sv('s-proj-id','');}
+function iSpay(){sv('spay-eid','');e$('spay-eb').classList.remove('on');e$('spay-sh-t').textContent='Sub-Con Payment';['sp-sub-t','sp-sub-id','sp-proj-t','sp-proj-id','sp-desc'].forEach(id=>sv(id,''));sv('sp-amt','');sv('sp-date',today());}
+function iCpay(){sv('cpay-eid','');e$('cpay-eb').classList.remove('on');e$('cpay-sh-t').textContent='Payment Received';['cp-cli-t','cp-cli-id','cp-proj-t','cp-proj-id','cp-inv-t','cp-inv-id','cp-note'].forEach(id=>sv(id,''));sv('cp-amt','');sv('cp-date',today());}
+function iInv(type){
+  sv('inv-eid','');e$('inv-eb').classList.remove('on');e$('inv-sh-t').textContent='New Invoice';
+  const num=nxt('INV',D.invoices);sv('i-num',num);sv('i-date',today());sv('i-due',dF(14));
+  ['i-cli-t','i-cli-id','i-proj-t','i-proj-id','i-notes','i-period','i-site'].forEach(id=>sv(id,''));
+  sv('i-st','pending');sv('i-contract-total','');sv('i-prev-billed','0');
+  e$('inv-auto-id').textContent='🔖 Auto ID: '+num;
+  e$('li-i').innerHTML='';e$('li-lab').innerHTML='';e$('li-prg').innerHTML='';
+  e$('li-i-tot').textContent='0';if(e$('li-lab-tot'))e$('li-lab-tot').textContent='0';if(e$('li-prg-tot'))e$('li-prg-tot').textContent='0';
+  switchInvType(type||'standard',document.querySelector('.itt'));
+  addLI('i','std');
+}
+function iEst(){
+  sv('est-eid','');e$('est-eb').classList.remove('on');e$('est-sh-t').textContent='New Estimate / BOQ';
+  const num=nxt('EST',D.estimates);sv('e-num',num);sv('e-date',today());sv('e-vld',dF(30));
+  ['e-cli-t','e-cli-id','e-proj-t','e-proj-id','e-notes'].forEach(id=>sv(id,''));
+  sv('e-st','draft');e$('est-auto-id').textContent='🔖 Auto ID: '+num;
+  e$('li-e').innerHTML='';e$('li-e-tot').textContent='0';addLI('e','std');
+}
+// ════ AGREEMENT CALC ════
+function calcAgr(){
+  const type=e$('a-type')?.value||'labour';
+  const area=parseFloat(e$('a-covered')?.value)||0;
+  const rate=parseFloat(e$('a-rate')?.value)||0;
+  let val=0, formula='';
+  if(type==='labour'&&area&&rate){val=area*rate;formula=fmt(area)+' sft × PKR '+fmt(rate)+'/sft = PKR '+fmt(val);}
+  else if(type==='material'&&area&&rate){val=area*rate;formula=fmt(area)+' sft × PKR '+fmt(rate)+'/sft = PKR '+fmt(val);}
+  else if(type==='lump'&&rate){val=rate;formula='Fixed lump sum: PKR '+fmt(val);}
+  if(e$('agr-calc'))e$('agr-calc').textContent=val?'PKR '+fmt(val):'—';
+  if(e$('agr-formula'))e$('agr-formula').textContent=formula||'Enter area × rate to auto-calculate';
+  if(val>0)sv('a-val',Math.round(val));
+}
+
+function iAgr(){
+  sv('agr-eid','');const eb=e$('agr-eb');if(eb)eb.classList.remove('on');
+  const sh=e$('agr-sh-t');if(sh)sh.textContent='New Agreement';
+  const num=nxt('AGR',D.agreements);sv('a-num',num);sv('a-date',today());
+  ['a-cli-t','a-cli-id','a-proj-t','a-proj-id','a-terms','a-scope','a-conditions',
+   'a-s','a-e','a-val','a-rate','a-covered','a-dims','a-permit','a-arch','a-footer'].forEach(id=>sv(id,''));
+  sv('a-st','draft');sv('a-type','labour');
+  // Default general conditions — editable
+  sv('a-general',
+    '1. Contractor shall carry out all work as per CDA-approved drawings and agreed specifications.\n'+
+    '2. Any change in scope or specifications requires written approval from both parties before execution.\n'+
+    '3. Client shall provide timely site access, water connection, and electricity supply for construction.\n'+
+    '4. Work to be carried out during permitted hours (7:00 AM – 6:00 PM) as per CDA bylaws.\n'+
+    '5. Contractor responsible for maintaining CDA-required setbacks and building lines.\n'+
+    '6. Any dispute shall first be resolved through mutual discussion. If unresolved, CDA/court jurisdiction applies.\n'+
+    '7. This agreement is subject to applicable laws of Pakistan and CDA building bylaws, Islamabad.'
+  );
+  const aid=e$('agr-auto-id');if(aid)aid.textContent='🔖 Auto ID: '+num;
+  const calc=e$('agr-calc');if(calc)calc.textContent='—';
+  const form=e$('agr-formula');if(form)form.textContent='Enter area × rate to auto-calculate';
+}
+
+// ════ EDIT LOADERS ════
+function eP(id){const r=D.projects.find(x=>x.id===id);if(!r)return;sv('proj-eid',id);e$('proj-eb').classList.add('on');e$('proj-sh-t').textContent='Edit Project';sv('p-name',r.name);sv('p-loc',r.loc);sv('p-plot',r.plot);sv('p-val',r.value);sv('p-notes',r.notes);sv('p-phase',r.phase||'Foundation');sv('p-start',r.start);sv('p-end',r.end);const c=D.clients.find(x=>x.id===r.clientId);sv('p-cli-t',c?c.name:'');sv('p-cli-id',r.clientId||'');O('sh-proj');}
+function eCli(id){const r=D.clients.find(x=>x.id===id);if(!r)return;sv('cli-eid',id);e$('cli-eb').classList.add('on');e$('cli-sh-t').textContent='Edit Client';sv('c-name',r.name);sv('c-ph',r.phone);sv('c-cnic',r.cnic);sv('c-city',r.city);sv('c-email',r.email);sv('c-addr',r.addr);O('sh-cli');}
+function eSub(id){const r=D.subcons.find(x=>x.id===id);if(!r)return;sv('sub-eid',id);e$('sub-eb').classList.add('on');e$('sub-sh-t').textContent='Edit Contractor';sv('s-name',r.name);sv('s-trade',r.trade);sv('s-ph',r.phone);sv('s-contract',r.contract);sv('s-ptype',r.ptype);sv('s-notes',r.notes);sv('s-cnic',r.cnic||'');const p=D.projects.find(x=>x.id===r.projectId);sv('s-proj-t',p?p.name:'');sv('s-proj-id',r.projectId||'');O('sh-sub');}
+function eSpay(id){const r=D.subpays.find(x=>x.id===id);if(!r)return;sv('spay-eid',id);e$('spay-eb').classList.add('on');e$('spay-sh-t').textContent='Edit Payment';const sc=D.subcons.find(x=>x.id===r.subconId);sv('sp-sub-t',sc?sc.name:r.subconName||'');sv('sp-sub-id',r.subconId||'');const p=D.projects.find(x=>x.id===r.projectId);sv('sp-proj-t',p?p.name:r.projectName||'');sv('sp-proj-id',r.projectId||'');sv('sp-date',r.date);sv('sp-amt',r.amount);sv('sp-phase',r.phase);sv('sp-method',r.method);sv('sp-desc',r.desc);O('sh-spay');}
+function eCpay(id){const r=D.cpays.find(x=>x.id===id);if(!r)return;sv('cpay-eid',id);e$('cpay-eb').classList.add('on');e$('cpay-sh-t').textContent='Edit Payment';const c=D.clients.find(x=>x.id===r.clientId);sv('cp-cli-t',c?c.name:'');sv('cp-cli-id',r.clientId||'');const p=D.projects.find(x=>x.id===r.projectId);sv('cp-proj-t',p?p.name:'');sv('cp-proj-id',r.projectId||'');sv('cp-date',r.date);sv('cp-amt',r.amount);const inv=D.invoices.find(x=>x.id===r.invoiceId);sv('cp-inv-t',inv?inv.num:'');sv('cp-inv-id',r.invoiceId||'');sv('cp-method',r.method);sv('cp-note',r.note);sv('cp-milestone',r.milestone||'Other');O('sh-cpay');}
+function eInv(id){
+  const r=D.invoices.find(x=>x.id===id);if(!r)return;
+  sv('inv-eid',id);e$('inv-eb').classList.add('on');e$('inv-sh-t').textContent='Edit Invoice';
+  e$('inv-auto-id').textContent='🔖 ID: '+r.num;
+  sv('i-num',r.num);sv('i-date',r.date);
+  const c=D.clients.find(x=>x.id===r.clientId);sv('i-cli-t',c?c.name:r.clientName||'');sv('i-cli-id',r.clientId||'');
+  const p=D.projects.find(x=>x.id===r.projectId);sv('i-proj-t',p?p.name:r.projectName||'');sv('i-proj-id',r.projectId||'');
+  sv('i-due',r.due);sv('i-st',r.status);sv('i-notes',r.notes||'');
+  sv('i-contract-total',r.contractTotal||'');sv('i-prev-billed',r.prevBilled||'0');
+  sv('i-period',r.period||'');sv('i-site',r.site||'');
+  const type=r.invType||'standard';
+  const btn=document.querySelectorAll('.itt');
+  const typeMap={standard:0,labour:1,progress:2,material:3};
+  switchInvType(type,btn[typeMap[type]||0]);
+  e$('li-i').innerHTML='';e$('li-lab').innerHTML='';e$('li-prg').innerHTML='';
+  if(type==='labour')(r.items||[]).forEach(item=>addLIData('lab','lab',item));
+  else if(type==='progress')(r.items||[]).forEach(item=>addLIData('prg','prg',item));
+  else(r.items||[]).forEach(item=>addLIData('i','std',item));
+  if(!r.items||!r.items.length){if(type==='labour')addLI('lab','lab');else if(type==='progress')addLI('prg','prg');else addLI('i','std');}
+  O('sh-inv');
+}
+function eEst(id){const r=D.estimates.find(x=>x.id===id);if(!r)return;sv('est-eid',id);e$('est-eb').classList.add('on');e$('est-sh-t').textContent='Edit Estimate';e$('est-auto-id').textContent='🔖 ID: '+r.num;sv('e-num',r.num);sv('e-date',r.date);const c=D.clients.find(x=>x.id===r.clientId);sv('e-cli-t',c?c.name:r.clientName||'');sv('e-cli-id',r.clientId||'');const p=D.projects.find(x=>x.id===r.projectId);sv('e-proj-t',p?p.name:r.projectName||'');sv('e-proj-id',r.projectId||'');sv('e-vld',r.valid);sv('e-st',r.status);sv('e-notes',r.notes);e$('li-e').innerHTML='';(r.items||[]).forEach(item=>addLIData('e','std',item));if(!r.items||!r.items.length)addLI('e','std');O('sh-est');}
+function eAgr(id){
+  const r=D.agreements.find(x=>x.id===id);if(!r)return;
+  sv('agr-eid',id);const eb=e$('agr-eb');if(eb)eb.classList.add('on');
+  const sh=e$('agr-sh-t');if(sh)sh.textContent='Edit Agreement';
+  const aid=e$('agr-auto-id');if(aid)aid.textContent='🔖 ID: '+r.num;
+  sv('a-num',r.num);sv('a-date',r.date);
+  const c=D.clients.find(x=>x.id===r.clientId);
+  sv('a-cli-t',c?c.name:r.clientName||'');sv('a-cli-id',r.clientId||'');
+  const p=D.projects.find(x=>x.id===r.projectId);
+  sv('a-proj-t',p?p.name:r.projectName||'');sv('a-proj-id',r.projectId||'');
+  sv('a-val',r.value);sv('a-st',r.status);sv('a-s',r.start);sv('a-e',r.end);
+  sv('a-scope',r.scope||'');sv('a-terms',r.terms||'');sv('a-conditions',r.conditions||'');
+  sv('a-covered',r.covered||'');sv('a-dims',r.dims||'');
+  sv('a-permit',r.permit||'');sv('a-arch',r.arch||'');
+  sv('a-rate',r.rate||r.labRate||r.matRate||'');
+  sv('a-general',r.general||'');sv('a-footer',r.footerNote||'');
+  const ts=e$('a-type');if(ts&&r.agrType)ts.value=r.agrType;
+  const ps=e$('a-plot-size');if(ps&&r.plotSize)ps.value=r.plotSize;
+  const ss=e$('a-storeys');if(ss&&r.storeys)ss.value=r.storeys;
+  calcAgr();O('sh-agr');
+}
+
+// ════ UPSERT ════
+function ups(store,doc){const eid=doc.id&&D[store].find(x=>x.id===doc.id)?doc.id:null;if(eid){const idx=D[store].findIndex(x=>x.id===eid);D[store][idx]={...D[store][idx],...doc};}else{if(!doc.id)doc.id=uid();doc.createdAt=new Date().toISOString();D[store].unshift(doc);}sched();}
+
+// ════ SAVES ════
+function saveP(){const eid=e$('proj-eid').value;const doc={id:eid||uid(),name:e$('p-name').value,loc:e$('p-loc').value,plot:e$('p-plot').value,clientId:e$('p-cli-id').value,value:parseFloat(e$('p-val').value)||0,phase:e$('p-phase').value,start:e$('p-start').value,end:e$('p-end').value,notes:e$('p-notes').value};if(!doc.name){toast('Enter project name','err');return;}ups('projects',doc);X('sh-proj');renderAll();toast(eid?'Project updated ✓':'Project saved ✓');}
+function saveCli(){const eid=e$('cli-eid').value;const doc={id:eid||uid(),name:e$('c-name').value,phone:e$('c-ph').value,cnic:e$('c-cnic').value,city:e$('c-city').value,email:e$('c-email').value,addr:e$('c-addr').value};if(!doc.name){toast('Enter name','err');return;}ups('clients',doc);X('sh-cli');renderAll();toast(eid?'Client updated ✓':'Client added ✓');}
+function saveSub(){const eid=e$('sub-eid').value;const doc={id:eid||uid(),name:e$('s-name').value,trade:e$('s-trade').value,phone:e$('s-ph').value,cnic:e$('s-cnic').value,contract:parseFloat(e$('s-contract').value)||0,ptype:e$('s-ptype').value,projectId:e$('s-proj-id').value,notes:e$('s-notes').value};if(!doc.name){toast('Enter name','err');return;}ups('subcons',doc);X('sh-sub');renderSub();updateDots();toast(eid?'Updated ✓':'Saved ✓');}
+function saveSpay(){const eid=e$('spay-eid').value;const doc={id:eid||uid(),subconId:e$('sp-sub-id').value,subconName:e$('sp-sub-t').value,projectId:e$('sp-proj-id').value,projectName:e$('sp-proj-t').value,date:e$('sp-date').value||today(),amount:parseFloat(e$('sp-amt').value)||0,phase:e$('sp-phase').value,method:e$('sp-method').value,desc:e$('sp-desc').value};if(!doc.subconId||!doc.amount){toast('Select contractor and enter amount','err');return;}ups('subpays',doc);X('sh-spay');renderAll();toast(eid?'Updated ✓':'PKR '+fmt(doc.amount)+' recorded ✓');}
+function saveCpay(){
+  const eid=e$('cpay-eid').value;const invId=e$('cp-inv-id').value;
+  const doc={id:eid||uid(),clientId:e$('cp-cli-id').value,clientName:e$('cp-cli-t').value,projectId:e$('cp-proj-id').value,projectName:e$('cp-proj-t').value,date:e$('cp-date').value||today(),amount:parseFloat(e$('cp-amt').value)||0,invoiceId:invId,invoiceRef:e$('cp-inv-t').value,milestone:e$('cp-milestone').value,method:e$('cp-method').value,note:e$('cp-note').value};
+  if(!doc.amount){toast('Enter amount','err');return;}
+  ups('cpays',doc);
+  if(invId){const inv=D.invoices.find(x=>x.id===invId);if(inv){const tot=D.cpays.filter(x=>x.invoiceId===invId).reduce((s,x)=>s+(x.id===doc.id?0:x.amount),0)+doc.amount;if(tot>=inv.total){inv.status='paid';sched();}}}
+  X('sh-cpay');renderAll();toast(eid?'Updated ✓':'PKR '+fmt(doc.amount)+' received ✓');
+}
+function saveInv(){
+  const eid=e$('inv-eid').value;const type=e$('inv-type-val').value;
+  let items=[],total=0;
+  if(type==='labour'){items=gLI('lab');total=totLI(items);}
+  else if(type==='progress'){items=gLI('prg');total=totLI(items);}
+  else{items=gLI('i');total=totLI(items);}
+  const doc={id:eid||uid(),num:e$('i-num').value,date:e$('i-date').value,invType:type,clientId:e$('i-cli-id').value,clientName:e$('i-cli-t').value,projectId:e$('i-proj-id').value,projectName:e$('i-proj-t').value,due:e$('i-due').value,status:e$('i-st').value,notes:e$('i-notes').value,contractTotal:parseFloat(e$('i-contract-total').value)||0,prevBilled:parseFloat(e$('i-prev-billed').value)||0,period:e$('i-period').value,site:e$('i-site').value,items,total};
+  if(!doc.clientName){toast('Select a client','err');return;}
+  ups('invoices',doc);X('sh-inv');renderInv();updateDots();renderDash();toast(eid?'Invoice updated ✓':'Invoice '+doc.num+' saved ✓');
+}
+function saveEst(){const eid=e$('est-eid').value;const items=gLI('e'),total=totLI(items);const doc={id:eid||uid(),num:e$('e-num').value,date:e$('e-date').value,clientId:e$('e-cli-id').value,clientName:e$('e-cli-t').value,projectId:e$('e-proj-id').value,projectName:e$('e-proj-t').value,valid:e$('e-vld').value,status:e$('e-st').value,notes:e$('e-notes').value,items,total};if(!doc.clientName){toast('Select a client','err');return;}ups('estimates',doc);X('sh-est');renderEst();updateDots();renderDash();toast(eid?'Estimate updated ✓':'Estimate '+doc.num+' saved ✓');}
+function saveAgr(){
+  const eid=e$('agr-eid').value;
+  const doc={
+    id:eid||uid(),
+    num:e$('a-num').value||nxt('AGR',D.agreements),
+    date:e$('a-date').value||today(),
+    clientId:e$('a-cli-id').value,clientName:e$('a-cli-t').value,
+    projectId:e$('a-proj-id').value,projectName:e$('a-proj-t').value,
+    value:parseFloat(e$('a-val').value)||0,
+    status:e$('a-st').value,start:e$('a-s').value,end:e$('a-e').value,
+    agrType:e$('a-type')?.value||'labour',
+    rate:parseFloat(e$('a-rate')?.value)||0,
+    covered:parseFloat(e$('a-covered')?.value)||0,
+    dims:e$('a-dims')?.value||'',
+    plotSize:e$('a-plot-size')?.value||'',
+    storeys:e$('a-storeys')?.value||'single',
+    permit:e$('a-permit')?.value||'',
+    arch:e$('a-arch')?.value||'',
+    scope:e$('a-scope').value,
+    terms:e$('a-terms').value,
+    conditions:e$('a-conditions').value,
+    general:e$('a-general')?.value||'',
+    footerNote:e$('a-footer')?.value||''
+  };
+  if(!doc.clientName){toast('Select a client','err');return;}
+  ups('agreements',doc);X('sh-agr');renderAgr();updateDots();renderDash();
+  toast(eid?'Agreement updated ✓':'Agreement '+doc.num+' saved ✓');
+}
+
+
+// Convert Estimate → Invoice
+function est2inv(id){const r=D.estimates.find(x=>x.id===id);if(!r)return;iInv('standard');sv('i-cli-t',r.clientName);sv('i-cli-id',r.clientId||'');sv('i-proj-t',r.projectName||'');sv('i-proj-id',r.projectId||'');e$('li-i').innerHTML='';(r.items||[]).forEach(item=>addLIData('i','std',item));if(!r.items||!r.items.length)addLI('i','std');X('sh-est');O('sh-inv');toast('Estimate loaded into Invoice ✓','info');}
+
+// ════ COMPANY PROFILE ════
+function handleLogo(inp){const f=inp.files[0];if(!f)return;const rd=new FileReader();rd.onload=ev=>{D.company.logo=ev.target.result;sched();const img=e$('logo-img');img.src=D.company.logo;img.classList.add('on');e$('logo-ph').style.display='none';};rd.readAsDataURL(f);}
+function openProfileSheet(){const c=D.company;sv('co-name',c.name);sv('co-ph',c.phone);sv('co-email',c.email);sv('co-addr',c.addr);sv('co-city',c.city);sv('co-ntn',c.ntn);sv('co-bank',c.bank);sv('co-acc',c.acc);sv('co-acc-t',c.accT);sv('co-iban',c.iban);const img=e$('logo-img');if(c.logo){img.src=c.logo;img.classList.add('on');if(e$('logo-ph'))e$('logo-ph').style.display='none';}}
+function saveProfile(){D.company={...D.company,name:e$('co-name').value||'Your Company',phone:e$('co-ph').value,email:e$('co-email').value,addr:e$('co-addr').value,city:e$('co-city').value,ntn:e$('co-ntn').value,bank:e$('co-bank').value,acc:e$('co-acc').value,accT:e$('co-acc-t').value,iban:e$('co-iban').value};sched();X('sh-profile');refreshProfileUI();toast('Company profile saved ✓');}
+function refreshProfileUI(){
+  const c=D.company;
+  const set=(id,v)=>{const el=e$(id);if(el)el.textContent=v||'—';};
+  // Header
+  if(e$('cp-nm'))e$('cp-nm').textContent=c.name||'Your Company';
+  if(e$('cp-city-txt'))e$('cp-city-txt').textContent=(c.city||'Islamabad')+', Pakistan';
+  if(e$('cp-ntn-txt'))e$('cp-ntn-txt').textContent=c.ntn?'NTN: '+c.ntn:'';
+  const logoImg=e$('cp-logo-img');if(logoImg&&c.logo){logoImg.src=c.logo;logoImg.classList.add('on');if(e$('cp-logo-ph'))e$('cp-logo-ph').style.display='none';}
+  // Details
+  set('ps-ph',c.phone);set('ps-em',c.email);set('ps-addr',c.addr);set('ps-ntn',c.ntn);
+  set('ps-bank',c.bank);set('ps-acc',c.acc);set('ps-acc-t',c.accT);set('ps-iban',c.iban);
+}
+
+// ════ DELETE ════
+function del(store,id){if(!confirm('Delete this record?'))return;D[store]=D[store].filter(x=>x.id!==id);sched();renderAll();toast('Deleted','info');}
+
+// ════ FILTER TABS ════
+let fInvF='all',fEstF='all',fPayF='all';
+function fInv(f,el){fInvF=f;document.querySelectorAll('#pg-inv .ftab').forEach(t=>t.classList.remove('on'));el.classList.add('on');renderInv();}
+function fEst(f,el){fEstF=f;document.querySelectorAll('#pg-est .ftab').forEach(t=>t.classList.remove('on'));el.classList.add('on');renderEst();}
+function fPay(f,el){fPayF=f;document.querySelectorAll('#pg-pay .ftab').forEach(t=>t.classList.remove('on'));el.classList.add('on');renderPay();}
+
+// ════ RENDER DASHBOARD ════
+function renderDash(){
+  const ti=D.invoices.reduce((s,i)=>s+i.total,0);
+  const tr=D.cpays.reduce((s,p)=>s+p.amount,0);
+  const ts=D.subpays.reduce((s,p)=>s+p.amount,0);
+  const pft=tr-ts;
+  e$('d-inv').textContent=fmt(ti);e$('d-rec').textContent=fmt(tr);e$('d-sub').textContent=fmt(ts);
+  e$('d-pft').textContent=fmt(Math.abs(pft));e$('d-pft').style.color=pft>=0?'var(--grn)':'var(--red)';
+
+  // Projects
+  const pl=e$('proj-list');
+  if(!D.projects.length){pl.innerHTML='<div class="empty"><div class="empty-i">🏗</div><div class="empty-t">No projects yet.<br>Tap + to add your first project.</div></div>';}
+  else pl.innerHTML=D.projects.map(p=>{
+    const cli=D.clients.find(c=>c.id===p.clientId);
+    const rec=D.cpays.filter(x=>x.projectId===p.id).reduce((s,x)=>s+x.amount,0);
+    const sub=D.subpays.filter(x=>x.projectId===p.id).reduce((s,x)=>s+x.amount,0);
+    const inv=D.invoices.filter(x=>x.projectId===p.id).reduce((s,x)=>s+x.total,0);
+    const pft=rec-sub,pct=p.value>0?Math.min(100,Math.round(rec/p.value*100)):0;
+    const spRows=D.subpays.filter(x=>x.projectId===p.id).slice(0,5);
+    const cpRows=D.cpays.filter(x=>x.projectId===p.id).slice(0,3);
+    return`<div class="proj-card">
+      <div class="proj-hd" onclick="this.nextElementSibling.classList.toggle('open')">
+        <div><div class="proj-nm">${p.name}</div><div class="proj-meta">${[p.loc,p.plot,cli?cli.name:''].filter(Boolean).join(' · ')}</div><div style="margin-top:6px"><span class="b b-b" style="font-size:10px">${p.phase||'—'}</span></div></div>
+        <div class="proj-r"><div class="proj-val">${fmt(p.value)}</div><div class="proj-pft" style="color:${pft>=0?'var(--grn)':'var(--red)'}">${pft>=0?'▲':'▼'} ${fmt(Math.abs(pft))}</div></div>
+      </div>
+      <div class="proj-exp">
+        <div class="proj-body">
+          <div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:8px">Collection Progress: ${pct}%</div>
+          <div class="pbar-wrap"><div class="pbar" style="width:${pct}%"></div></div>
+          <div class="pbar-lbl"><span>PKR 0</span><span>${fmt(p.value)}</span></div>
+          <div style="height:10px"></div>
+          <div class="prow"><span class="prow-lbl">Contract Value</span><span class="prow-val" style="color:var(--gold)">${fmt(p.value)}</span></div>
+          <div class="prow"><span class="prow-lbl">Total Invoiced</span><span class="prow-val">${fmt(inv)}</span></div>
+          <div class="prow"><span class="prow-lbl">Received from Client</span><span class="prow-val" style="color:var(--grn)">${fmt(rec)}</span></div>
+          <div class="prow"><span class="prow-lbl">Remaining to Collect</span><span class="prow-val" style="color:${p.value-rec>0?'var(--gold)':'var(--grn)'}">${fmt(Math.max(0,p.value-rec))}</span></div>
+          <div class="prow"><span class="prow-lbl">Sub-Contractor Paid</span><span class="prow-val" style="color:var(--red)">${fmt(sub)}</span></div>
+          <div class="prow" style="border-top:2px solid var(--bor2);margin-top:6px"><span class="prow-lbl" style="font-weight:700;color:var(--txt);font-size:var(--fs-md)">Net Profit</span><span class="prow-val" style="font-size:var(--fs-lg);font-weight:700;color:${pft>=0?'var(--grn)':'var(--red)'}">${fmt(pft)}</span></div>
+          ${spRows.length?`<div style="margin-top:14px;font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">Sub-Con Payments Out</div>`+spRows.map(sp=>`<div class="prow"><span class="prow-lbl"><span style="font-size:var(--fs-sm)">${sp.subconName||'—'}</span><br><span style="font-size:var(--fs-xs);color:var(--mut2)">${sp.phase} · ${sp.date}</span></span><div style="text-align:right"><span class="prow-val" style="color:var(--red)">${fmt(sp.amount)}</span><br><button style="font-size:var(--fs-xs);color:var(--blu);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="eSpay('${sp.id}')">Edit</button></div></div>`).join(''):''}
+          ${cpRows.length?`<div style="margin-top:14px;font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">Client Payments Received</div>`+cpRows.map(cp=>`<div class="prow"><span class="prow-lbl"><span style="font-size:var(--fs-sm)">${cp.clientName||'—'}</span><br><span style="font-size:var(--fs-xs);color:var(--mut2)">${cp.milestone||''} · ${cp.date}</span></span><div style="text-align:right"><span class="prow-val" style="color:var(--grn)">${fmt(cp.amount)}</span><br><button style="font-size:var(--fs-xs);color:var(--blu);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="eCpay('${cp.id}')">Edit</button></div></div>`).join(''):''}
+          <div style="display:flex;gap:8px;margin-top:14px">
+            <button class="ca blu" onclick="eP('${p.id}')">✏️ Edit</button>
+            <button class="ca gold" onclick="O('sh-spay');iSpay();sv('sp-proj-t','${esc(p.name)}');sv('sp-proj-id','${p.id}')">+ Pay Sub-Con</button>
+            <button class="ca red" onclick="del('projects','${p.id}')">🗑</button>
+          </div>
+        </div>
+      </div>
+    </div>`;}).join('');
+
+  // Outstanding
+  const outs=D.invoices.filter(i=>i.status==='pending'||i.status==='overdue');
+  const ol=e$('out-list');
+  if(!outs.length)ol.innerHTML='<div style="font-size:var(--fs-sm);color:var(--mut);padding:8px 0 12px">No outstanding invoices ✓</div>';
+  else ol.innerHTML=outs.map(i=>`<div class="out-item"><div><div class="out-nm">${i.clientName}</div><div class="out-sub">${i.num} · ${i.projectName||'—'}</div></div><div style="text-align:right"><div class="out-amt">${fmt(i.total)}</div><div class="out-due">Due: ${i.due||'—'}</div></div></div>`).join('');
+
+  // Activity
+  const acts=[
+    ...D.cpays.map(x=>({type:'💳 Received',name:x.clientName,sub:x.milestone||x.invoiceRef||x.projectName,amt:x.amount,date:x.date,clr:'var(--grn)'})),
+    ...D.subpays.map(x=>({type:'💸 Paid Out',name:x.subconName,sub:x.phase+' · '+(x.projectName||''),amt:x.amount,date:x.date,clr:'var(--red)'})),
+    ...D.invoices.slice(0,6).map(x=>({type:'🧾 '+((x.invType||'standard').charAt(0).toUpperCase()+(x.invType||'standard').slice(1)),name:x.clientName,sub:x.num,amt:x.total,date:x.date,clr:'var(--txt)'})),
+  ].sort((a,b)=>(b.date||'').localeCompare(a.date||'')).slice(0,10);
+  const al=e$('act-list');
+  if(!acts.length){al.innerHTML='<div style="font-size:var(--fs-sm);color:var(--mut);padding:6px 0">No activity yet</div>';return;}
+  al.innerHTML='<div class="act-wrap">'+acts.map(a=>`<div class="act-row"><div><div class="act-type">${a.type}</div><div class="act-nm">${a.name||'—'}</div><div class="act-proj">${a.sub||''}</div></div><div><div class="act-amt" style="color:${a.clr}">${fmt(a.amt)}</div><div class="act-date">${a.date||'—'}</div></div></div>`).join('')+'</div>';
+
+  // Agreements mini-list on dashboard
+  const dal=e$('dash-agr-list');if(!dal)return;
+  if(!D.agreements.length){dal.innerHTML='<div style="font-size:var(--fs-sm);color:var(--mut);padding:6px 0 10px">No agreements yet. Tap + to create one.</div>';return;}
+  dal.innerHTML='<div class="act-wrap">'+D.agreements.slice(0,4).map(r=>`
+    <div class="act-row" style="cursor:pointer" onclick="eAgr('${r.id}')">
+      <div>
+        <div class="act-type">✍️ ${r.agrType==='labour'?'Labour Rate':r.agrType==='material'?'Labour+Material':'Lump Sum'}</div>
+        <div class="act-nm">${r.clientName}</div>
+        <div class="act-proj">${r.num} · ${r.projectName||'—'} · ${r.storeys==='double'?'Double Storey':r.storeys==='single'?'Single Storey':r.storeys||'—'}</div>
+      </div>
+      <div style="text-align:right">
+        <div class="act-amt" style="color:var(--gold)">${fmt(r.value)}</div>
+        <div>${bdg(r.status)}</div>
+      </div>
+    </div>`).join('')+'</div>';
+}
+
+// ════ RENDER INVOICES ════
+function renderInv(){
+  const el=e$('list-inv');let rows=fInvF==='all'?D.invoices:D.invoices.filter(r=>r.status===fInvF);
+  if(!rows.length){el.innerHTML=`<div class="empty"><div class="empty-i">🧾</div><div class="empty-t">No invoices${fInvF!=='all'?' with status "'+fInvF+'"':' yet'}</div></div>`;return;}
+  const typeLabel={standard:'Standard',labour:'Labour',progress:'Progress Billing',material:'Material'};
+  el.innerHTML=rows.map(r=>`<div class="card">
+    <div class="card-top"><div><div class="card-num">${r.num} · <span style="color:var(--mut)">${typeLabel[r.invType||'standard']||'Standard'}</span></div><div class="card-nm">${r.clientName}</div><div class="card-sub">${r.projectName||'—'} ${r.period?'· '+r.period:''}</div></div>${bdg(r.status)}</div>
+    <div class="card-mid"><div class="card-amt">PKR ${fmt(r.total)}</div><div class="card-date">Due: ${r.due||'—'}</div></div>
+    <div class="card-acts">
+      <button class="ca blu" onclick="eInv('${r.id}')">✏️ Edit</button>
+      <button class="ca gold" onclick="pdfInv('${r.id}')">⬇ PDF</button>
+      <button class="ca grn" onclick="O('sh-cpay');iCpay();sv('cp-inv-t','${esc(r.num)}');sv('cp-inv-id','${r.id}');sv('cp-cli-t','${esc(r.clientName)}');sv('cp-cli-id','${r.clientId||''}')">💳 Pay</button>
+      <button class="ca red" onclick="del('invoices','${r.id}')">🗑</button>
+    </div></div>`).join('');
+}
+
+// ════ RENDER ESTIMATES ════
+function renderEst(){
+  const el=e$('list-est');let rows=fEstF==='all'?D.estimates:D.estimates.filter(r=>r.status===fEstF);
+  if(!rows.length){el.innerHTML='<div class="empty"><div class="empty-i">📊</div><div class="empty-t">No estimates yet</div></div>';return;}
+  el.innerHTML=rows.map(r=>`<div class="card">
+    <div class="card-top"><div><div class="card-num">${r.num}</div><div class="card-nm">${r.clientName}</div><div class="card-sub">${r.projectName||'—'}</div></div>${bdg(r.status)}</div>
+    <div class="card-mid"><div class="card-amt">PKR ${fmt(r.total)}</div><div class="card-date">${r.date||'—'}</div></div>
+    <div class="card-acts">
+      <button class="ca blu" onclick="eEst('${r.id}')">✏️ Edit</button>
+      <button class="ca gold" onclick="pdfEst('${r.id}')">⬇ PDF</button>
+      <button class="ca ora" onclick="est2inv('${r.id}')">→ Invoice</button>
+      <button class="ca red" onclick="del('estimates','${r.id}')">🗑</button>
+    </div></div>`).join('');
+}
+
+// ════ RENDER PAYMENTS ════
+function renderPay(){
+  const tin=D.cpays.reduce((s,p)=>s+p.amount,0);const tout=D.subpays.reduce((s,p)=>s+p.amount,0);
+  e$('pay-in').textContent=fmt(tin);e$('pay-out').textContent=fmt(tout);
+  const el=e$('list-pay');
+  let rows=[];
+  if(fPayF==='all')rows=[...D.cpays.map(p=>({...p,dir:'in'})),...D.subpays.map(p=>({...p,dir:'out'}))].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  else if(fPayF==='in')rows=[...D.cpays.map(p=>({...p,dir:'in'}))].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  else rows=[...D.subpays.map(p=>({...p,dir:'out'}))].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  if(!rows.length){el.innerHTML='<div class="empty"><div class="empty-i">💳</div><div class="empty-t">No payments yet</div></div>';return;}
+  el.innerHTML=rows.map(p=>{
+    const isIn=p.dir==='in';
+    return`<div class="pay-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div class="pay-type" style="color:${isIn?'var(--grn)':'var(--red)'}">${isIn?'💳 Received from Client':'💸 Paid to Sub-Con'}</div>
+          <div class="pay-nm">${isIn?(p.clientName||'—'):(p.subconName||'—')}</div>
+          <div class="pay-sub">${isIn?(p.milestone||p.invoiceRef||p.projectName||'—'):(p.phase+' · '+(p.projectName||'—'))}</div>
+        </div>
+        <div class="pay-amt" style="color:${isIn?'var(--grn)':'var(--red)'}">${isIn?'+':'-'}${fmt(p.amount)}</div>
+      </div>
+      <div class="pay-bot">
+        <span class="pay-meta">${p.date||'—'} · ${p.method||'Cash'}</span>
+        <div style="display:flex;gap:8px">
+          <button class="ca blu" style="padding:5px 12px;font-size:var(--fs-xs)" onclick="${isIn?'eCpay':'eSpay'}('${p.id}')">✏️ Edit</button>
+          <button class="ca red" style="padding:5px 12px;font-size:var(--fs-xs)" onclick="del('${isIn?'cpays':'subpays'}','${p.id}')">🗑</button>
+        </div>
+      </div>
+    </div>`;}).join('');
+}
+
+// ════ RENDER SUB-CON ════
+function renderSub(){
+  const el=e$('list-sub');
+  if(!D.subcons.length){el.innerHTML='<div class="empty"><div class="empty-i">👷</div><div class="empty-t">No sub-contractors yet</div></div>';return;}
+  el.innerHTML=D.subcons.map(s=>{
+    const paid=D.subpays.filter(p=>p.subconId===s.id).reduce((t,p)=>t+p.amount,0);
+    const rem=Math.max(0,(s.contract||0)-paid);
+    const pct=s.contract>0?Math.min(100,Math.round(paid/s.contract*100)):0;
+    const pays=D.subpays.filter(p=>p.subconId===s.id).slice(0,6);
+    return`<div class="sub-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+        <div><div style="font-size:var(--fs-lg);font-weight:700">${s.name}</div><div style="margin-top:5px"><span class="b ${trC(s.trade)}">${s.trade}</span></div></div>
+        <div style="text-align:right;font-size:var(--fs-sm);color:var(--mut)">${s.phone||''}<br>${s.ptype||''}</div>
+      </div>
+      <div class="sub-stats">
+        <div class="sub-stat"><div class="sub-stat-val" style="color:var(--gold)">${fmt(s.contract)}</div><div class="sub-stat-lbl">Contract</div></div>
+        <div class="sub-stat"><div class="sub-stat-val" style="color:var(--red)">${fmt(paid)}</div><div class="sub-stat-lbl">Paid</div></div>
+        <div class="sub-stat"><div class="sub-stat-val" style="color:${rem>0?'var(--gold)':'var(--grn)'}">${fmt(rem)}</div><div class="sub-stat-lbl">Remaining</div></div>
+      </div>
+      <div class="pbar-wrap"><div class="pbar" style="width:${pct}%"></div></div>
+      <div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:12px">Paid ${pct}% of contract</div>
+      ${pays.length?`<div style="font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px">Payment History</div>`+pays.map(p=>`<div class="phi"><div><div style="color:var(--txt);font-size:var(--fs-sm)">${p.date} · <span style="color:var(--mut2)">${p.phase}</span></div><div style="color:var(--mut);font-size:var(--fs-xs);margin-top:2px">${p.method}${p.desc?' · '+p.desc:''}</div></div><div style="text-align:right;flex-shrink:0;margin-left:12px"><div style="font-family:'JetBrains Mono',monospace;color:var(--red);font-size:var(--fs-md)">${fmt(p.amount)}</div><button style="font-size:var(--fs-xs);color:var(--blu);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="eSpay('${p.id}')">Edit</button></div></div>`).join(''):''}
+      <div class="card-acts" style="margin-top:12px">
+        <button class="ca blu" onclick="eSub('${s.id}')">✏️ Edit</button>
+        <button class="ca gold" onclick="O('sh-spay');iSpay();sv('sp-sub-t','${esc(s.name)}');sv('sp-sub-id','${s.id}')">+ Pay</button>
+        <button class="ca red" onclick="del('subcons','${s.id}')">🗑</button>
+      </div>
+    </div>`;}).join('');
+}
+
+// ════ RENDER AGREEMENTS ════
+function renderAgr(){
+  const el=e$('list-agr');
+  if(!D.agreements.length){el.innerHTML='<div class="empty"><div class="empty-i">✍️</div><div class="empty-t">No agreements yet</div></div>';return;}
+  el.innerHTML=D.agreements.map(r=>`<div class="card">
+    <div class="card-top"><div><div class="card-num">${r.num}</div><div class="card-nm">${r.clientName}</div><div class="card-sub">${r.projectName||'—'}</div></div>${bdg(r.status)}</div>
+    <div class="card-mid"><div class="card-amt">PKR ${fmt(r.value)}</div><div class="card-date">${r.date||'—'}</div></div>
+    <div class="card-acts">
+      <button class="ca blu" onclick="eAgr('${r.id}')">✏️ Edit</button>
+      <button class="ca gold" onclick="pdfAgr('${r.id}')">⬇ PDF</button>
+      <button class="ca red" onclick="del('agreements','${r.id}')">🗑</button>
+    </div></div>`).join('');
+}
+
+function updateDots(){[['inv',D.invoices],['est',D.estimates],['pay',[...D.cpays,...D.subpays]],['sub',D.subcons],['agr',D.agreements]].forEach(([k,arr])=>{const el=e$('bd-'+k);if(el)el.classList.toggle('on',arr.length>0);});}
+
+// ════ PDF GENERATION — Advanced Construction ════
+const co=()=>D.company||{};
+function bPDF(){const{jsPDF}=window.jspdf;return new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});}
+
+function drawHeader(doc,title,ref,date,sub,subVal){
+  const c=co();const pw=210;
+  // Gold top bar
+  doc.setFillColor(232,184,75);doc.rect(0,0,pw,7,'F');
+  // Logo
+  let contentX=14;
+  if(c.logo){try{doc.addImage(c.logo,'PNG',14,11,22,22);contentX=40;}catch(e){}}
+  // Company name
+  doc.setFont('helvetica','bold');doc.setFontSize(16);doc.setTextColor(30,30,30);
+  doc.text(c.name||'BuildPro',contentX,20);
+  doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(140,135,125);
+  const info=[(c.addr||''),(c.city||'Islamabad')+', Pakistan',(c.phone||''),(c.email||'')].filter(Boolean);
+  if(info.length)doc.text(info.join(' · '),contentX,26.5);
+  if(c.ntn)doc.text('NTN: '+c.ntn,contentX,31.5);
+  // Right: doc type
+  doc.setFont('helvetica','bold');doc.setFontSize(20);doc.setTextColor(30,30,30);
+  doc.text(title,pw-14,19,{align:'right'});
+  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(120,120,120);
+  doc.text('# '+ref,pw-14,25,{align:'right'});
+  doc.text('Date: '+date,pw-14,30,{align:'right'});
+  if(subVal)doc.text(sub+': '+subVal,pw-14,35,{align:'right'});
+  // Divider
+  doc.setDrawColor(200,195,188);doc.setLineWidth(.5);doc.line(14,40,pw-14,40);
+  return 46;
+}
+
+function drawBankFooter(doc){
+  const c=co();const h=doc.internal.pageSize.getHeight();const pw=210;
+  doc.setFillColor(232,184,75);doc.rect(0,h-10,pw,10,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(30,30,30);
+  if(c.bank||c.acc){
+    doc.text('Bank: '+(c.bank||'—'),14,h-5);
+    if(c.acc)doc.text('A/C: '+c.acc+(c.accT?' | '+c.accT:''),75,h-5);
+    if(c.iban)doc.text('IBAN: '+c.iban,152,h-5,{align:'right'});
+  } else {
+    doc.text('Payment: Cash · Bank Transfer · JazzCash · EasyPaisa',14,h-5);
+  }
+  doc.text(c.name||'BuildPro',pw-14,h-5,{align:'right'});
+}
+
+function pdfInv(id){
+  const r=D.invoices.find(x=>x.id===id);if(!r)return;
+  const doc=bPDF();const type=r.invType||'standard';
+  const typeLabels={standard:'INVOICE',labour:'LABOUR PAYMENT INVOICE',progress:'PROGRESS BILLING INVOICE',material:'MATERIAL INVOICE'};
+  let y=drawHeader(doc,typeLabels[type]||'INVOICE',r.num,r.date,'Due Date',r.due);
+
+  // Bill To section
+  doc.setFontSize(8);doc.setTextColor(160,155,148);doc.text('BILL TO',14,y);
+  doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor(20,20,20);doc.text(r.clientName,14,y+7);
+  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(100,100,100);
+  const cli=D.clients.find(x=>x.id===r.clientId);
+  if(r.projectName)doc.text('Project: '+r.projectName,14,y+13);
+  if(r.site)doc.text('Site: '+r.site,14,y+18);
+  if(cli?.phone)doc.text('Phone: '+cli.phone,14,y+23);
+  // Right: status + period
+  doc.setFontSize(8);doc.setTextColor(160,155,148);doc.text('STATUS',196,y,{align:'right'});
+  doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(20,20,20);doc.text(r.status.toUpperCase(),196,y+7,{align:'right'});
+  if(r.period){doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(120,120,120);doc.text('Period: '+r.period,196,y+13,{align:'right'});}
+  y+=28;
+
+  // Progress billing summary box
+  if(type==='progress'&&r.contractTotal){
+    doc.setFillColor(248,246,242);doc.rect(14,y,182,20,'F');
+    doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(100,100,100);
+    doc.text('Contract Total: PKR '+fmt(r.contractTotal),16,y+7);
+    doc.text('Previously Billed: PKR '+fmt(r.prevBilled||0),90,y+7);
+    doc.setFont('helvetica','bold');doc.setTextColor(30,30,30);
+    doc.text('This Invoice: PKR '+fmt(r.total),16,y+15);
+    y+=24;
+  }
+
+  // Labour period
+  if(type==='labour'){
+    doc.setFillColor(248,246,242);doc.rect(14,y,182,12,'F');
+    doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(100,100,100);
+    const labPeriod=(r.labFrom&&r.labTo)?r.labFrom+' to '+r.labTo:(r.period||'');
+    if(labPeriod)doc.text('Labour Period: '+labPeriod,16,y+8);
+    y+=16;
+  }
+
+  // Line items table
+  let head,body,colStyles;
+  if(type==='labour'){
+    head=[['Worker / Trade','Days','Rate/Day (PKR)','Amount (PKR)']];
+    body=(r.items||[]).map(i=>[i.d,i.q,fmt(i.r),fmt(i.a)]);
+    colStyles={0:{cellWidth:80},1:{halign:'center'},2:{halign:'right'},3:{halign:'right'}};
+  } else if(type==='progress'){
+    head=[['Work Item / Phase','% Complete','Amount (PKR)']];
+    body=(r.items||[]).map(i=>[i.d,i.q+'%',fmt(i.a)]);
+    colStyles={0:{cellWidth:100},1:{halign:'center'},2:{halign:'right'}};
+  } else {
+    head=[['Description','Qty','Unit','Rate (PKR)','Amount (PKR)']];
+    body=(r.items||[]).map(i=>[i.d,i.q,i.u||'—',fmt(i.r),fmt(i.a)]);
+    colStyles={0:{cellWidth:72},3:{halign:'right'},4:{halign:'right'}};
+  }
+  doc.autoTable({startY:y,head,body,foot:[['','','','Total (PKR)',fmt(r.total)]],styles:{fontSize:9.5,cellPadding:3.5,textColor:[30,30,30]},headStyles:{fillColor:[242,240,235],textColor:[130,125,118],fontStyle:'bold',fontSize:8.5},footStyles:{fillColor:[248,246,242],fontStyle:'bold',textColor:[201,123,58],fontSize:11},columnStyles:colStyles,margin:{left:14,right:14}});
+
+  // Notes
+  if(r.notes){const fy=doc.lastAutoTable.finalY+8;doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(80,80,80);doc.text('Notes:',14,fy);doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(100,100,100);doc.text(r.notes,14,fy+6,{maxWidth:182});}
+
+  drawBankFooter(doc);
+  doc.save((type==='labour'?'Labour-':'Invoice-')+r.num+'.pdf');
+  toast(type==='labour'?'Labour Invoice PDF ✓':'Invoice PDF ✓');
+}
+
+function pdfEst(id){
+  const r=D.estimates.find(x=>x.id===id);if(!r)return;
+  const doc=bPDF();let y=drawHeader(doc,'ESTIMATE / BOQ',r.num,r.date,'Valid Until',r.valid);
+  doc.setFontSize(8);doc.setTextColor(160,155,148);doc.text('PREPARED FOR',14,y);
+  doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor(20,20,20);doc.text(r.clientName,14,y+7);
+  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(100,100,100);if(r.projectName)doc.text('Project: '+r.projectName,14,y+13);y+=22;
+  doc.autoTable({startY:y,head:[['Work Item / Description','Qty','Unit','Rate (PKR)','Amount (PKR)']],body:(r.items||[]).map(i=>[i.d,i.q,i.u||'—',fmt(i.r),fmt(i.a)]),foot:[['','','','Total (PKR)',fmt(r.total)]],styles:{fontSize:9.5,cellPadding:3.5,textColor:[30,30,30]},headStyles:{fillColor:[242,240,235],textColor:[130,125,118],fontStyle:'bold',fontSize:8.5},footStyles:{fillColor:[248,246,242],fontStyle:'bold',textColor:[201,123,58],fontSize:11},columnStyles:{0:{cellWidth:72},3:{halign:'right'},4:{halign:'right'}},margin:{left:14,right:14}});
+  if(r.notes){const fy=doc.lastAutoTable.finalY+8;doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(80,80,80);doc.text('Notes / Scope:',14,fy);doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(100,100,100);doc.text(r.notes,14,fy+6,{maxWidth:182});}
+  drawBankFooter(doc);doc.save('Estimate-'+r.num+'.pdf');toast('Estimate PDF ✓');
+}
+
+function pdfAgr(id){
+  const r=D.agreements.find(x=>x.id===id);if(!r)return;
+  const c=co();const doc=bPDF();const pw=210;
+  // Header bar
+  doc.setFillColor(232,184,75);doc.rect(0,0,pw,7,'F');
+  if(c.logo){try{doc.addImage(c.logo,'PNG',14,11,20,20);}catch(e){}}
+  doc.setFont('helvetica','bold');doc.setFontSize(18);doc.setTextColor(30,30,30);
+  doc.text('CONSTRUCTION AGREEMENT',pw/2,22,{align:'center'});
+  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(140,135,125);
+  doc.text(r.num+' · Date: '+r.date,pw/2,29,{align:'center'});
+  doc.setDrawColor(200,195,188);doc.setLineWidth(.5);doc.line(14,33,pw-14,33);
+  let y=40;
+
+  const sec=(title,content,titleColor)=>{
+    if(y>252){doc.addPage();y=20;}
+    doc.setFillColor(titleColor||242,240,235);
+    doc.rect(14,y-4,182,8,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(8.5);
+    doc.setTextColor(titleColor?255:110,titleColor?255:105,titleColor?255:98);
+    if(titleColor)doc.setTextColor(30,30,30);
+    doc.text(title.toUpperCase(),16,y+1);y+=10;
+    doc.setFont('helvetica','normal');doc.setFontSize(10.5);doc.setTextColor(30,30,30);
+    const lines=doc.splitTextToSize(content,178);
+    doc.text(lines,14,y);y+=lines.length*5.5+5;
+  };
+
+  // 1. Parties
+  const cli=D.clients.find(x=>x.id===r.clientId);
+  sec('Contractor / Service Provider',
+    (c.name||'[Contractor Name]')+'\n'+
+    (c.addr?c.addr+', ':'')+( c.city||'Islamabad')+', Pakistan'+
+    (c.phone?'\nPhone: '+c.phone:'')+
+    (c.ntn?'\nNTN: '+c.ntn:'')
+  );
+  sec('Client / Owner',
+    r.clientName+
+    (cli?(cli.addr||cli.city?'\nAddress: '+(cli.addr||cli.city):''):'')+
+    (cli&&cli.phone?'\nPhone: '+cli.phone:'')+
+    (cli&&cli.cnic?'\nCNIC: '+cli.cnic:'')
+  );
+
+  // 2. Project details
+  const proj=D.projects.find(x=>x.id===r.projectId);
+  let projDetail=r.projectName||'';
+  if(proj){if(proj.loc)projDetail+='\nLocation: '+proj.loc;if(proj.plot)projDetail+='\nPlot: '+proj.plot;}
+  sec('Project / Property',projDetail);
+
+  // 3. House specs
+  const storeyMap={single:'Single Storey',double:'Double Storey',triple:'Triple Storey',b_single:'Basement + Single Storey',b_double:'Basement + Double Storey'};
+  let specs='Structure: '+(storeyMap[r.storeys]||r.storeys||'—');
+  if(r.plotSize)specs+='\nPlot Size: '+r.plotSize;
+  if(r.dims)specs+='\nPlot Dimensions: '+r.dims;
+  if(r.covered)specs+='\nTotal Covered Area: '+fmt(r.covered)+' sft';
+  if(r.gfArea)specs+='\nGround Floor: '+fmt(r.gfArea)+' sft';
+  if(r.ffArea)specs+='\nFirst Floor: '+fmt(r.ffArea)+' sft';
+  if(r.arch)specs+='\nArchitect/Engineer: '+r.arch;
+  if(r.drawing)specs+='\nApproved Drawing No.: '+r.drawing;
+  if(r.permit)specs+='\nCDA/Society Permit No.: '+r.permit;
+  sec('House / Structure Specifications',specs);
+
+  // 4. Agreement type & contract value
+  const typeLabel={labour:'Labour Rate Contract',material:'Labour + Material Contract',lump:'Lump Sum Contract',phase:'Phase-wise Contract'};
+  let rateDetail='Agreement Type: '+(typeLabel[r.agrType]||'Labour Rate Contract')+'\n';
+  if(r.agrType==='labour'&&r.labRate){
+    const area=r.covered||(r.gfArea+r.ffArea)||0;
+    rateDetail+='Labour Rate: PKR '+fmt(r.labRate)+' per sft\n';
+    if(area)rateDetail+='Covered Area: '+fmt(area)+' sft\n';
+    rateDetail+='Construction Scope: '+(r.constType||'Grey Structure');
+  }else if(r.agrType==='material'&&r.matRate){
+    const area=r.covered||(r.gfArea+r.ffArea)||0;
+    rateDetail+='Rate: PKR '+fmt(r.matRate)+' per sft (Labour + Material)\n';
+    if(area)rateDetail+='Covered Area: '+fmt(area)+' sft\n';
+    if(r.matGrade)rateDetail+='Material Grade: '+r.matGrade+'\n';
+    if(r.matSupply)rateDetail+='Material Supply: '+r.matSupply;
+  }else if(r.agrType==='phase'){
+    const phases=[['Foundation',r.ph1],['DPC/Plinth',r.ph2],['Structure/Slab',r.ph3],['Brickwork',r.ph4],['Plaster',r.ph5],['Finishing',r.ph6]];
+    phases.filter(([,v])=>v>0).forEach(([n,v])=>{rateDetail+=n+': PKR '+fmt(v)+'\n';});
+  }
+  rateDetail+='\nContract Value: PKR '+fmt(r.value)+'\n('+nW(r.value)+' Pakistani Rupees Only)';
+  sec('Contract Value & Rate Details',rateDetail);
+
+  // 5. Duration
+  sec('Contract Duration','Start Date: '+(r.start||'—')+'          Expected Completion: '+(r.end||'—'));
+
+  // 6. Scope
+  if(r.inclusions&&r.inclusions.length){
+    sec('Work Included in Contract',r.inclusions.join(' · '));
+  }
+  if(r.scope)sec('Detailed Scope of Work',r.scope);
+  if(r.exclusions)sec('Exclusions (Not Included)',r.exclusions);
+
+  // 7. Payment schedule
+  let payDetail='';
+  if(r.pay1)payDetail+='Advance: '+r.pay1+'\n';
+  if(r.pay2)payDetail+='At DPC/Slab Level: '+r.pay2+'\n';
+  if(r.pay3)payDetail+='At Roof/Structure: '+r.pay3+'\n';
+  if(r.pay4)payDetail+='Final on Completion: '+r.pay4+'\n';
+  if(r.terms)payDetail+=r.terms;
+  if(payDetail)sec('Payment Schedule',payDetail.trim());
+
+  // 8. Compliance
+  if(r.compliance&&r.compliance.length){
+    sec('CDA / Society Compliance',r.compliance.join('\n'));
+  }
+
+
+  // 9. General conditions — use editable saved text
+  const generalText=r.general||'1. Contractor shall carry out all work as per CDA-approved drawings and agreed specifications.\n2. Any change in scope or specifications requires written approval from both parties before execution.\n3. Client shall provide timely site access, water connection, and electricity supply for construction.\n4. Work to be carried out during permitted hours (7:00 AM – 6:00 PM) as per CDA bylaws.\n5. Contractor responsible for maintaining CDA-required setbacks and building lines.\n6. Any dispute shall first be resolved through mutual discussion. If unresolved, CDA/court jurisdiction applies.\n7. This agreement is subject to applicable laws of Pakistan and CDA building bylaws, Islamabad.';
+  sec('General Conditions',generalText);
+
+  // 10. Bank/payment details — use footer note if set, else company bank details
+  if(r.footerNote){
+    sec('Payment Details',r.footerNote);
+  }else if(c.bank||c.acc){
+    sec('Payment Bank Account','Bank: '+(c.bank||'—')+'\nAccount No.: '+(c.acc||'—')+(c.accT?' | Account Title: '+c.accT:'')+(c.iban?'\nIBAN: '+c.iban:''));
+  }
+
+  // Special conditions
+  if(r.conditions)sec('Special Conditions / Notes',r.conditions);
+
+
+  // Signature block
+  y+=8;if(y>238){doc.addPage();y=20;}
+  doc.setFillColor(248,246,242);doc.rect(14,y-2,182,52,'F');
+  doc.setDrawColor(180,175,165);
+  doc.line(22,y+30,90,y+30);doc.line(118,y+30,186,y+30);
+  doc.setFont('helvetica','bold');doc.setFontSize(9.5);doc.setTextColor(40,40,40);
+  doc.text('Contractor / Service Provider',22,y+36);doc.text('Client / Owner',118,y+36);
+  doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(120,115,108);
+  doc.text(c.name||'Company',22,y+42);doc.text(r.clientName,118,y+42);
+  doc.text('Date: _______________',22,y+48);doc.text('Date: _______________',118,y+48);
+  doc.setFontSize(8);doc.setTextColor(150,145,138);
+  doc.text('Thumb Impression / Signature',22,y+53);doc.text('Thumb Impression / Signature',118,y+53);
+
+  // Footer bar — use custom footer note or bank details
+  if(r.footerNote){
+    const h=doc.internal.pageSize.getHeight(),pw=210;
+    doc.setFillColor(232,184,75);doc.rect(0,h-10,pw,10,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(30,30,30);
+    doc.text(r.footerNote,pw/2,h-4,{align:'center',maxWidth:pw-28});
+  }else{
+    drawBankFooter(doc);
+  }
+  doc.save('Agreement-'+r.num+'.pdf');
+  toast('Agreement PDF downloaded ✓');
+}
+
+// ════ BACKUP ════
+function exportBk(){const blob=new Blob([JSON.stringify(D,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='buildpro-backup-'+today()+'.json';a.click();cMenu();toast('Backup downloaded ✓');}
+function importBk(){const inp=document.createElement('input');inp.type='file';inp.accept='.json';inp.onchange=e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=ev=>{try{const p=JSON.parse(ev.target.result);Object.keys(p).forEach(k=>{if(D[k]!==undefined)D[k]=p[k];});sched();renderAll();refreshProfileUI();toast('Backup imported ✓');}catch(err){toast('Invalid file','err');}};rd.readAsText(f);};inp.click();cMenu();}
+
+// ════ SERVICE WORKER ════
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+
+// ════ BOOT — load cached data immediately, show app without login if data exists ════
+try{const lo=localStorage.getItem('bp5');if(lo){const p=JSON.parse(lo);Object.keys(p).forEach(k=>{if(D[k]!==undefined)D[k]=p[k];});}}catch(e){}
+
+// If we have cached data, show app immediately without waiting for Google
+const hasCachedData = localStorage.getItem('bp5') !== null;
+const wasLoggedIn = localStorage.getItem('bp5_user') !== null;
+
+if(hasCachedData && wasLoggedIn){
+  // Show app directly from cache
+  document.getElementById('login').style.display='none';
+  document.getElementById('app').classList.add('on');
+  renderAll();
+  refreshProfileUI();
+  setSync('error'); // show offline indicator
+  document.getElementById('sync-txt').textContent='Offline — showing cached data';
+}
+
+loadGIS(); // still load Google in background for when online
+</script>
+</body>
+</html>
