@@ -66,7 +66,7 @@ body{color:var(--txt);font-family:'Inter',sans-serif;overscroll-behavior:none;fo
 /* BOTTOM NAV — scrollable */
 .bnav{background:var(--s1);border-top:1px solid var(--bor);display:flex;flex-shrink:0;padding-bottom:var(--safe-b);overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
 .bnav::-webkit-scrollbar{display:none;}
-.bi{min-width:62px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;padding:9px 2px 7px;cursor:pointer;color:var(--mut);font-size:9px;font-weight:600;gap:4px;border-top:2px solid transparent;transition:all .15s;text-transform:uppercase;letter-spacing:.3px;position:relative;}
+.bi{min-width:58px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;padding:9px 2px 7px;cursor:pointer;color:var(--mut);font-size:9px;font-weight:600;gap:4px;border-top:2px solid transparent;transition:all .15s;text-transform:uppercase;letter-spacing:.3px;position:relative;}
 .bi svg{width:20px;height:20px;}
 .bi.on{color:var(--gold);border-top-color:var(--gold);}
 .bi-dot{position:absolute;top:7px;right:calc(50% - 14px);width:6px;height:6px;border-radius:50%;background:var(--gold);display:none;}
@@ -416,6 +416,9 @@ select option{background:var(--s2);}
     <!-- AGREEMENTS -->
     <div class="pg" id="pg-agr"><div class="card-list" id="list-agr"></div></div>
 
+    <!-- CLIENTS -->
+    <div class="pg" id="pg-cli"><div class="card-list" id="list-cli"></div></div>
+
     <!-- PROFILE -->
     <div class="pg" id="pg-profile">
       <div class="cp-header" onclick="O('sh-profile');openProfileSheet()">
@@ -478,6 +481,11 @@ select option{background:var(--s2);}
       <span class="bi-dot" id="bd-agr"></span>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
       Agree.
+    </div>
+    <div class="bi" onclick="goPage('cli',this,'Clients')">
+      <span class="bi-dot" id="bd-cli"></span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+      Clients
     </div>
     <div class="bi" onclick="goPage('profile',this,'Company Profile')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
@@ -1025,8 +1033,8 @@ function goPage(p,el,title){
   if(p==='profile')refreshProfileUI();
   else renderPage(p);
 }
-function renderPage(p){if(p==='dash')renderDash();else if(p==='inv')renderInv();else if(p==='est')renderEst();else if(p==='pay')renderPay();else if(p==='sub')renderSub();else if(p==='agr')renderAgr();}
-function renderAll(){renderDash();renderInv();renderEst();renderPay();renderSub();renderAgr();updateDots();}
+function renderPage(p){if(p==='dash')renderDash();else if(p==='inv')renderInv();else if(p==='est')renderEst();else if(p==='pay')renderPay();else if(p==='sub')renderSub();else if(p==='agr')renderAgr();else if(p==='cli')renderCli();}
+function renderAll(){renderDash();renderInv();renderEst();renderPay();renderSub();renderAgr();renderCli();updateDots();}
 
 // ════ HELPERS ════
 const today=()=>new Date().toISOString().split('T')[0];
@@ -1282,7 +1290,7 @@ function ups(store,doc){const eid=doc.id&&D[store].find(x=>x.id===doc.id)?doc.id
 
 // ════ SAVES ════
 function saveP(){const eid=e$('proj-eid').value;const doc={id:eid||uid(),name:e$('p-name').value,loc:e$('p-loc').value,plot:e$('p-plot').value,clientId:e$('p-cli-id').value,value:parseFloat(e$('p-val').value)||0,phase:e$('p-phase').value,start:e$('p-start').value,end:e$('p-end').value,notes:e$('p-notes').value};if(!doc.name){toast('Enter project name','err');return;}ups('projects',doc);X('sh-proj');renderAll();toast(eid?'Project updated ✓':'Project saved ✓');}
-function saveCli(){const eid=e$('cli-eid').value;const doc={id:eid||uid(),name:e$('c-name').value,phone:e$('c-ph').value,cnic:e$('c-cnic').value,city:e$('c-city').value,email:e$('c-email').value,addr:e$('c-addr').value};if(!doc.name){toast('Enter name','err');return;}ups('clients',doc);X('sh-cli');renderAll();toast(eid?'Client updated ✓':'Client added ✓');}
+function saveCli(){const eid=e$('cli-eid').value;const doc={id:eid||uid(),name:e$('c-name').value,phone:e$('c-ph').value,cnic:e$('c-cnic').value,city:e$('c-city').value,email:e$('c-email').value,addr:e$('c-addr').value};if(!doc.name){toast('Enter name','err');return;}ups('clients',doc);X('sh-cli');renderCli();renderDash();updateDots();toast(eid?'Client updated ✓':'Client added ✓');}
 function saveSub(){const eid=e$('sub-eid').value;const doc={id:eid||uid(),name:e$('s-name').value,trade:e$('s-trade').value,phone:e$('s-ph').value,cnic:e$('s-cnic').value,contract:parseFloat(e$('s-contract').value)||0,ptype:e$('s-ptype').value,projectId:e$('s-proj-id').value,notes:e$('s-notes').value};if(!doc.name){toast('Enter name','err');return;}ups('subcons',doc);X('sh-sub');renderSub();updateDots();toast(eid?'Updated ✓':'Saved ✓');}
 function saveSpay(){const eid=e$('spay-eid').value;const doc={id:eid||uid(),subconId:e$('sp-sub-id').value,subconName:e$('sp-sub-t').value,projectId:e$('sp-proj-id').value,projectName:e$('sp-proj-t').value,date:e$('sp-date').value||today(),amount:parseFloat(e$('sp-amt').value)||0,phase:e$('sp-phase').value,method:e$('sp-method').value,desc:e$('sp-desc').value};if(!doc.subconId||!doc.amount){toast('Select contractor and enter amount','err');return;}ups('subpays',doc);X('sh-spay');renderAll();toast(eid?'Updated ✓':'PKR '+fmt(doc.amount)+' recorded ✓');}
 function saveCpay(){
@@ -1550,7 +1558,28 @@ function renderAgr(){
     </div></div>`).join('');
 }
 
-function updateDots(){[['inv',D.invoices],['est',D.estimates],['pay',[...D.cpays,...D.subpays]],['sub',D.subcons],['agr',D.agreements]].forEach(([k,arr])=>{const el=e$('bd-'+k);if(el)el.classList.toggle('on',arr.length>0);});}
+// ════ RENDER CLIENTS ════
+function renderCli(){
+  const el=e$('list-cli');if(!el)return;
+  if(!D.clients.length){el.innerHTML='<div class="empty"><div class="empty-i">👤</div><div class="empty-t">No clients yet.<br>Tap + to add your first client.</div></div>';return;}
+  el.innerHTML=D.clients.map(r=>`<div class="card">
+    <div class="card-top">
+      <div>
+        <div class="card-nm">${r.name}</div>
+        <div class="card-sub">${[r.phone,r.city].filter(Boolean).join(' · ')}</div>
+        ${r.cnic?`<div class="card-sub">CNIC: ${r.cnic}</div>`:''}
+        ${r.email?`<div class="card-sub">${r.email}</div>`:''}
+        ${r.addr?`<div class="card-sub">${r.addr}</div>`:''}
+      </div>
+    </div>
+    <div class="card-acts">
+      <button class="ca blu" onclick="eCli('${r.id}')">✏️ Edit</button>
+      <button class="ca red" onclick="del('clients','${r.id}')">🗑 Delete</button>
+    </div>
+  </div>`).join('');
+}
+
+function updateDots(){[['inv',D.invoices],['est',D.estimates],['pay',[...D.cpays,...D.subpays]],['sub',D.subcons],['agr',D.agreements],['cli',D.clients]].forEach(([k,arr])=>{const el=e$('bd-'+k);if(el)el.classList.toggle('on',arr.length>0);});}
 
 // ════ PDF GENERATION — Advanced Construction ════
 const co=()=>D.company||{};
@@ -1824,7 +1853,11 @@ function exportBk(){const blob=new Blob([JSON.stringify(D,null,2)],{type:'applic
 function importBk(){const inp=document.createElement('input');inp.type='file';inp.accept='.json';inp.onchange=e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=ev=>{try{const p=JSON.parse(ev.target.result);Object.keys(p).forEach(k=>{if(D[k]!==undefined)D[k]=p[k];});sched();renderAll();refreshProfileUI();toast('Backup imported ✓');}catch(err){toast('Invalid file','err');}};rd.readAsText(f);};inp.click();cMenu();}
 
 // ════ SERVICE WORKER ════
-if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('./sw.js').then(reg => {
+    reg.update();
+  }).catch(()=>{});
+}
 
 // ════ BOOT — load cached data immediately, show app without login if data exists ════
 try{const lo=localStorage.getItem('bp5');if(lo){const p=JSON.parse(lo);Object.keys(p).forEach(k=>{if(D[k]!==undefined)D[k]=p[k];});}}catch(e){}
