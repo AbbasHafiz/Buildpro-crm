@@ -1010,10 +1010,36 @@ let D={
 function loadGIS(){
   const s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';
   s.onload=()=>{tc=google.accounts.oauth2.initTokenClient({client_id:CID,scope:SCOPES,callback:async r=>{
-    if(r.error){toast('Sign in failed','err');return;}
-    tok=r.access_token;await fetchUsr();await loadDrive();launchApp();
+    if(r.error){
+      // Token refresh failed silently — keep using cached data
+      if(tok) { toast('Session refreshed ✓','info'); return; }
+      toast('Sign in failed','err');return;
+    }
+    const isRefresh = tok !== null;
+    tok=r.access_token;
+    if(isRefresh){
+      // Just refreshed — retry any pending sync
+      scheduleTokenRefresh();
+      await writeDrive();
+      toast('Synced ✓');
+      return;
+    }
+    await fetchUsr();await loadDrive();launchApp();
   }});};document.head.appendChild(s);
 }
+// ════ TOKEN AUTO-REFRESH ════
+let tokenExpiry = 0;
+
+function scheduleTokenRefresh(){
+  // Google tokens expire in 3600s, refresh at 55 min
+  const refreshIn = 55 * 60 * 1000;
+  setTimeout(()=>{
+    if(tc && tok){
+      tc.requestAccessToken({prompt:''});
+    }
+  }, refreshIn);
+}
+
 function signIn(){if(!tc){toast('Loading…','info');setTimeout(signIn,900);return;}tc.requestAccessToken({prompt:'consent'});}
 function signOut(){if(tok)try{google.accounts.oauth2.revoke(tok);}catch(e){}tok=null;localStorage.removeItem('bp5_user');document.getElementById('app').classList.remove('on');document.getElementById('login').style.display='flex';cMenu();toast('Signed out','info');}
 async function fetchUsr(){
@@ -1026,7 +1052,12 @@ async function fetchUsr(){
 function launchApp(){
   document.getElementById('login').style.display='none';
   document.getElementById('app').classList.add('on');
-  localStorage.setItem('bp5_user','1'); // mark as logged in
+  localStorage.setItem('bp5_user','1');
+  scheduleTokenRefresh();
+  // Auto-save to Drive every 5 minutes as safety net
+  setInterval(()=>{
+    if(tok && fid) writeDrive();
+  }, 5 * 60 * 1000);
   renderAll();refreshProfileUI();
 }
 
@@ -1054,11 +1085,23 @@ async function writeDrive(){
     const form=new FormData();
     form.append('metadata',new Blob([JSON.stringify({name:FNAME})],{type:'application/json'}));
     form.append('file',blob);
-    await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fid}?uploadType=multipart`,{method:'PATCH',headers:{Authorization:'Bearer '+tok},body:form});
+    const res=await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fid}?uploadType=multipart`,{method:'PATCH',headers:{Authorization:'Bearer '+tok},body:form});
+    if(res.status===401){
+      // Token expired — request new one silently
+      setSync('pending');
+      if(tc)tc.requestAccessToken({prompt:''});
+      return;
+    }
     localStorage.setItem('bp5',JSON.stringify(D));setSync('synced');
   }catch(e){localStorage.setItem('bp5',JSON.stringify(D));setSync('pending');}
 }
-function sched(){localStorage.setItem('bp5',JSON.stringify(D));setSync('pending');clearTimeout(stmr);stmr=setTimeout(writeDrive,2500);}
+function sched(){
+  // Save to localStorage IMMEDIATELY — never lose data
+  localStorage.setItem('bp5',JSON.stringify(D));
+  setSync('pending');
+  clearTimeout(stmr);
+  stmr=setTimeout(writeDrive,2000);
+}
 async function syncNow(){const b=e$('tb-sync');b.classList.add('spin');e$('sync-lbl').textContent='Syncing…';await writeDrive();b.classList.remove('spin');e$('sync-lbl').textContent='Sync';}
 function setSync(s){const dot=e$('sdot'),txt=e$('sync-txt');
   if(s==='synced'){dot.className='sdot';txt.textContent='Synced to Google Drive';}
