@@ -366,42 +366,42 @@ select option{background:var(--s2);}
 
       <!-- Quick Access Tiles -->
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px">
-        <div onclick="goPage('inv',document.querySelectorAll('.bi')[1],'Invoices')" style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:12px 8px;text-align:center;cursor:pointer;active:opacity:.7">
+        <div onclick="navTo('inv','Invoices')" style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:12px 8px;text-align:center;cursor:pointer;active:opacity:.7">
           <div style="font-size:22px;margin-bottom:4px">🧾</div>
           <div style="font-size:var(--fs-xs);color:var(--mut);font-weight:600">Invoices</div>
           <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--gold);margin-top:2px" id="qt-inv">0</div>
         </div>
-        <div onclick="goPage('est',document.querySelectorAll('.bi')[2],'BOQ / Estimates')" style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:12px 8px;text-align:center;cursor:pointer">
+        <div onclick="navTo('est','BOQ / Estimates')" style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:12px 8px;text-align:center;cursor:pointer">
           <div style="font-size:22px;margin-bottom:4px">📊</div>
           <div style="font-size:var(--fs-xs);color:var(--mut);font-weight:600">BOQ</div>
           <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--gold);margin-top:2px" id="qt-est">0</div>
         </div>
-        <div onclick="goPage('sub',document.querySelectorAll('.bi')[4],'Sub-Contractors')" style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:12px 8px;text-align:center;cursor:pointer">
+        <div onclick="navTo('sub','Sub-Contractors')" style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:12px 8px;text-align:center;cursor:pointer">
           <div style="font-size:22px;margin-bottom:4px">👷</div>
           <div style="font-size:var(--fs-xs);color:var(--mut);font-weight:600">Sub-Con</div>
           <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--gold);margin-top:2px" id="qt-sub">0</div>
         </div>
-        <div onclick="goPage('pay',document.querySelectorAll('.bi')[3],'Payments')" style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:12px 8px;text-align:center;cursor:pointer">
+        <div onclick="navTo('pay','Payments')" style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:12px 8px;text-align:center;cursor:pointer">
           <div style="font-size:22px;margin-bottom:4px">💳</div>
           <div style="font-size:var(--fs-xs);color:var(--mut);font-weight:600">Payments</div>
           <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--gold);margin-top:2px" id="qt-pay">0</div>
         </div>
-        <div onclick="goPage('agr',document.querySelectorAll('.bi')[5],'Agreements')" style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:12px 8px;text-align:center;cursor:pointer">
+        <div onclick="navTo('agr','Agreements')" style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:12px 8px;text-align:center;cursor:pointer">
           <div style="font-size:22px;margin-bottom:4px">✍️</div>
           <div style="font-size:var(--fs-xs);color:var(--mut);font-weight:600">Agree.</div>
           <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--gold);margin-top:2px" id="qt-agr">0</div>
         </div>
-        <div onclick="goPage('cli',document.querySelectorAll('.bi')[6],'Clients')" style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:12px 8px;text-align:center;cursor:pointer">
+        <div onclick="navTo('cli','Clients')" style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:12px 8px;text-align:center;cursor:pointer">
           <div style="font-size:22px;margin-bottom:4px">👤</div>
           <div style="font-size:var(--fs-xs);color:var(--mut);font-weight:600">Clients</div>
           <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--gold);margin-top:2px" id="qt-cli">0</div>
         </div>
-        <div onclick="document.getElementById('proj-list').scrollIntoView({behavior:'smooth'});goPage('dash',document.querySelectorAll('.bi')[0],'Dashboard')" style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:12px 8px;text-align:center;cursor:pointer">
+        <div onclick="scrollToProjects()" style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:12px 8px;text-align:center;cursor:pointer">
           <div style="font-size:22px;margin-bottom:4px">🏗</div>
           <div style="font-size:var(--fs-xs);color:var(--mut);font-weight:600">Projects</div>
           <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--gold);margin-top:2px" id="qt-proj">0</div>
         </div>
-        <div onclick="goPage('profile',document.querySelectorAll('.bi')[7],'Company Profile')" style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:12px 8px;text-align:center;cursor:pointer">
+        <div onclick="navTo('profile','Company Profile')" style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:12px 8px;text-align:center;cursor:pointer">
           <div style="font-size:22px;margin-bottom:4px">🏢</div>
           <div style="font-size:var(--fs-xs);color:var(--mut);font-weight:600">Profile</div>
           <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--mut);margin-top:2px">→</div>
@@ -1286,7 +1286,27 @@ function iEst(){
   sv('e-st','draft');e$('est-auto-id').textContent='🔖 Auto ID: '+num;
   e$('li-e').innerHTML='';e$('li-e-tot').textContent='0';addLI('e','std');
 }
-// ════ AGREEMENT CALC ════
+// ════ NAV HELPERS ════
+function navTo(page, title){
+  document.querySelectorAll('.pg').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.bi').forEach(x=>x.classList.remove('on'));
+  const pg=e$('pg-'+page);if(pg)pg.classList.add('on');
+  // Find matching nav tab by data or text
+  document.querySelectorAll('.bi').forEach(b=>{
+    if(b.getAttribute('onclick')&&b.getAttribute('onclick').includes("'"+page+"'")){b.classList.add('on');}
+  });
+  curPg=page;e$('tb-pg').textContent=title;cMenu();
+  renderPage(page);
+}
+function scrollToProjects(){
+  // Make sure we are on dashboard
+  if(curPg!=='dash'){
+    navTo('dash','Dashboard');
+    setTimeout(()=>{const el=e$('proj-list');if(el)el.scrollIntoView({behavior:'smooth'});},300);
+  } else {
+    const el=e$('proj-list');if(el)el.scrollIntoView({behavior:'smooth'});
+  }
+}
 function calcAgr(){
   const type=e$('a-type')?.value||'labour';
   const area=parseFloat(e$('a-covered')?.value)||0;
