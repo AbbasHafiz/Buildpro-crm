@@ -396,7 +396,7 @@ select option{background:var(--s2);}
           <div style="font-size:var(--fs-xs);color:var(--mut);font-weight:600">Clients</div>
           <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--gold);margin-top:2px" id="qt-cli">0</div>
         </div>
-        <div onclick="O('sh-new')" style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:12px 8px;text-align:center;cursor:pointer">
+        <div onclick="document.getElementById('proj-list').scrollIntoView({behavior:'smooth'});goPage('dash',document.querySelectorAll('.bi')[0],'Dashboard')" style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:12px 8px;text-align:center;cursor:pointer">
           <div style="font-size:22px;margin-bottom:4px">🏗</div>
           <div style="font-size:var(--fs-xs);color:var(--mut);font-weight:600">Projects</div>
           <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--gold);margin-top:2px" id="qt-proj">0</div>
@@ -1605,6 +1605,7 @@ function renderInv(){
       <button class="ca blu" onclick="eInv('${r.id}')">✏️ Edit</button>
       <button class="ca gold" onclick="pdfInv('${r.id}')">⬇ PDF</button>
       <button class="ca grn" onclick="O('sh-cpay');iCpay();sv('cp-inv-t','${esc(r.num)}');sv('cp-inv-id','${r.id}');sv('cp-cli-t','${esc(r.clientName)}');sv('cp-cli-id','${r.clientId||''}')">💳 Pay</button>
+      <button class="ca" style="color:#25D366;border-color:rgba(37,211,102,.25);background:rgba(37,211,102,.06);flex:none;padding:8px 10px" onclick="waInv('${r.id}')">📤</button>
       <button class="ca red" onclick="del('invoices','${r.id}')">🗑</button>
     </div></div>`).join('');
 }
@@ -2033,6 +2034,63 @@ function pdfAgr(id){
   }
   doc.save('Agreement-'+r.num+'.pdf');
   toast('Agreement PDF downloaded ✓');
+}
+
+// ════ WHATSAPP SHARE ════
+function waInv(id){
+  const r=D.invoices.find(x=>x.id===id);if(!r)return;
+  const c=D.company||{};
+  const msg=
+`🧾 *INVOICE — ${r.num}*
+━━━━━━━━━━━━━━━━━━━
+🏢 *${c.name||'BuildPro'}*
+📍 ${c.city||'Islamabad'}, Pakistan
+${c.phone?'📞 '+c.phone:''}
+
+👤 *Bill To:* ${r.clientName}
+📋 *Project:* ${r.projectName||'—'}
+📅 *Date:* ${r.date}
+📅 *Due:* ${r.due||'—'}
+
+━━━━━━━━━━━━━━━━━━━
+${(r.items||[]).map(i=>`• ${i.d}
+  ${i.q} ${i.u||''} × PKR ${fmt(i.r)} = PKR ${fmt(i.a)}`).join('\n')}
+━━━━━━━━━━━━━━━━━━━
+💰 *Total: PKR ${fmt(r.total)}*
+Status: ${r.status.toUpperCase()}
+
+${c.bank?`🏦 *Bank:* ${c.bank}
+💳 *A/C:* ${c.acc||'—'}${c.accT?' ('+c.accT+')':''}
+${c.iban?'IBAN: '+c.iban:''}`:
+'Payment: Cash / Bank Transfer / JazzCash / EasyPaisa'}
+
+_${c.name||'BuildPro'} — Construction Management_`;
+  window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
+}
+
+function waCpay(id){
+  const r=D.cpays.find(x=>x.id===id);if(!r)return;
+  const c=D.company||{};
+  const msg=
+`✅ *PAYMENT RECEIVED CONFIRMATION*
+━━━━━━━━━━━━━━━━━━━
+🏢 *${c.name||'BuildPro'}*
+${c.phone?'📞 '+c.phone:''}
+
+👤 *Client:* ${r.clientName}
+📋 *Project:* ${r.projectName||'—'}
+🔖 *Reference:* ${r.invoiceRef||r.id}
+📅 *Date:* ${r.date}
+💳 *Method:* ${r.method||'Cash'}
+${r.milestone?'📍 Milestone: '+r.milestone:''}
+
+━━━━━━━━━━━━━━━━━━━
+💰 *Amount Received: PKR ${fmt(r.amount)}*
+━━━━━━━━━━━━━━━━━━━
+${r.note?'📝 Note: '+r.note+'\n':''}
+_Thank you for your payment!_
+_${c.name||'BuildPro'} — Construction Management_`;
+  window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
 }
 
 // ════ BACKUP ════
