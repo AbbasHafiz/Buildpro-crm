@@ -1031,16 +1031,20 @@ function loadGIS(){
 let tokenExpiry = 0;
 
 function scheduleTokenRefresh(){
-  // Google tokens expire in 3600s, refresh at 55 min
-  const refreshIn = 55 * 60 * 1000;
-  setTimeout(()=>{
-    if(tc && tok){
+  // Refresh 5 min before expiry (token lasts 3600s)
+  clearTimeout(window._tokenTimer);
+  window._tokenTimer = setTimeout(()=>{
+    if(tc){
+      // Silent refresh - no popup
       tc.requestAccessToken({prompt:''});
     }
-  }, refreshIn);
+  }, 55 * 60 * 1000);
 }
 
-function signIn(){if(!tc){toast('Loading…','info');setTimeout(signIn,900);return;}tc.requestAccessToken({prompt:'consent'});}
+function signIn(){
+  if(!tc){toast('Loading…','info');setTimeout(signIn,900);return;}
+  tc.requestAccessToken({prompt:'consent'});
+}
 function signOut(){if(tok)try{google.accounts.oauth2.revoke(tok);}catch(e){}tok=null;localStorage.removeItem('bp5_user');document.getElementById('app').classList.remove('on');document.getElementById('login').style.display='flex';cMenu();toast('Signed out','info');}
 async function fetchUsr(){
   try{const r=await fetch('https://www.googleapis.com/oauth2/v1/userinfo',{headers:{Authorization:'Bearer '+tok}});
@@ -2124,24 +2128,17 @@ if('serviceWorker' in navigator){
   }).catch(()=>{});
 }
 
-// ════ BOOT — load cached data immediately, show app without login if data exists ════
+// ════ BOOT ════
 try{const lo=localStorage.getItem('bp5');if(lo){const p=JSON.parse(lo);Object.keys(p).forEach(k=>{if(D[k]!==undefined)D[k]=p[k];});}}catch(e){}
-
-// If we have cached data, show app immediately without waiting for Google
-const hasCachedData = localStorage.getItem('bp5') !== null;
-const wasLoggedIn = localStorage.getItem('bp5_user') !== null;
-
-if(hasCachedData && wasLoggedIn){
-  // Show app directly from cache
+const wasLoggedIn=localStorage.getItem('bp5_user')==='1';
+if(wasLoggedIn){
   document.getElementById('login').style.display='none';
   document.getElementById('app').classList.add('on');
-  renderAll();
-  refreshProfileUI();
-  setSync('error'); // show offline indicator
-  document.getElementById('sync-txt').textContent='Offline — showing cached data';
+  renderAll();refreshProfileUI();
+  setSync('pending');
+  const st=e$('sync-txt');if(st)st.textContent='Reconnecting to Drive…';
 }
-
-loadGIS(); // still load Google in background for when online
+loadGIS();
 </script>
 </body>
 </html>
