@@ -1009,59 +1009,42 @@ let D={
 // ════ AUTH ════
 function loadGIS(){
   const s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';
-  s.onload=()=>{tc=google.accounts.oauth2.initTokenClient({client_id:CID,scope:SCOPES,callback:async r=>{
-    if(r.error){
-      // Token refresh failed silently — keep using cached data
-      if(tok) { toast('Session refreshed ✓','info'); return; }
-      toast('Sign in failed','err');return;
-    }
-    const isRefresh = tok !== null;
-    tok=r.access_token;
-    if(isRefresh){
-      // Just refreshed — retry any pending sync
-      scheduleTokenRefresh();
-      await writeDrive();
-      toast('Synced ✓');
-      return;
-    }
-    await fetchUsr();await loadDrive();launchApp();
-  }});};document.head.appendChild(s);
+  s.onload=()=>{
+    tc=google.accounts.oauth2.initTokenClient({
+      client_id:CID,scope:SCOPES,
+      callback:async r=>{
+        if(r.error){toast('Sign in failed','err');return;}
+        tok=r.access_token;
+        // Schedule next refresh at 55 min
+        clearTimeout(window._tkTimer);
+        window._tkTimer=setTimeout(()=>{if(tc)tc.requestAccessToken({prompt:''});},55*60*1000);
+        if(window._isRefresh){
+          // Silent refresh complete — sync drive
+          window._isRefresh=false;
+          await writeDrive();
+          return;
+        }
+        await fetchUsr();await loadDrive();launchApp();
+      }
+    });
+  };
+  document.head.appendChild(s);
 }
-// ════ TOKEN AUTO-REFRESH ════
-let tokenExpiry = 0;
-
-function scheduleTokenRefresh(){
-  // Refresh 5 min before expiry (token lasts 3600s)
-  clearTimeout(window._tokenTimer);
-  window._tokenTimer = setTimeout(()=>{
-    if(tc){
-      // Silent refresh - no popup
-      tc.requestAccessToken({prompt:''});
-    }
-  }, 55 * 60 * 1000);
-}
-
-function signIn(){
-  if(!tc){toast('Loading…','info');setTimeout(signIn,900);return;}
-  tc.requestAccessToken({prompt:'consent'});
-}
+function signIn(){if(!tc){toast('Loading…','info');setTimeout(signIn,900);return;}tc.requestAccessToken({prompt:'consent'});}
 function signOut(){if(tok)try{google.accounts.oauth2.revoke(tok);}catch(e){}tok=null;localStorage.removeItem('bp5_user');document.getElementById('app').classList.remove('on');document.getElementById('login').style.display='flex';cMenu();toast('Signed out','info');}
 async function fetchUsr(){
   try{const r=await fetch('https://www.googleapis.com/oauth2/v1/userinfo',{headers:{Authorization:'Bearer '+tok}});
   usr=await r.json();
   const img=e$('upic');if(usr.picture)img.src=usr.picture;
-  if(usr.name){e$('ava-i').textContent=usr.name[0].toUpperCase();}
+  if(usr.name)e$('ava-i').textContent=usr.name[0].toUpperCase();
   e$('um-nm').textContent=usr.name||usr.email;}catch(e){}
 }
 function launchApp(){
   document.getElementById('login').style.display='none';
   document.getElementById('app').classList.add('on');
   localStorage.setItem('bp5_user','1');
-  scheduleTokenRefresh();
-  // Auto-save to Drive every 5 minutes as safety net
-  setInterval(()=>{
-    if(tok && fid) writeDrive();
-  }, 5 * 60 * 1000);
+  // Auto-save every 5 min as safety net
+  setInterval(()=>{if(tok&&fid)writeDrive();},5*60*1000);
   renderAll();refreshProfileUI();
 }
 
@@ -2130,13 +2113,13 @@ if('serviceWorker' in navigator){
 
 // ════ BOOT ════
 try{const lo=localStorage.getItem('bp5');if(lo){const p=JSON.parse(lo);Object.keys(p).forEach(k=>{if(D[k]!==undefined)D[k]=p[k];});}}catch(e){}
-const wasLoggedIn=localStorage.getItem('bp5_user')==='1';
-if(wasLoggedIn){
+// If previously logged in, show app with cached data immediately
+if(localStorage.getItem('bp5_user')==='1'){
   document.getElementById('login').style.display='none';
   document.getElementById('app').classList.add('on');
   renderAll();refreshProfileUI();
-  setSync('pending');
-  const st=e$('sync-txt');if(st)st.textContent='Reconnecting to Drive…';
+  // Mark next token request as refresh (not first login)
+  window._isRefresh=true;
 }
 loadGIS();
 </script>
