@@ -1031,7 +1031,7 @@ function loadGIS(){
   document.head.appendChild(s);
 }
 function signIn(){if(!tc){toast('Loading…','info');setTimeout(signIn,900);return;}tc.requestAccessToken({prompt:'consent'});}
-function signOut(){if(tok)try{google.accounts.oauth2.revoke(tok);}catch(e){}tok=null;localStorage.removeItem('bp5_user');document.getElementById('app').classList.remove('on');document.getElementById('login').style.display='flex';cMenu();toast('Signed out','info');}
+function signOut(){if(tok)try{google.accounts.oauth2.revoke(tok);}catch(e){}tok=null;localStorage.setItem('bp5_user','0');document.getElementById('app').classList.remove('on');document.getElementById('login').style.display='flex';cMenu();toast('Signed out','info');}
 async function fetchUsr(){
   try{const r=await fetch('https://www.googleapis.com/oauth2/v1/userinfo',{headers:{Authorization:'Bearer '+tok}});
   usr=await r.json();
@@ -2113,14 +2113,20 @@ if('serviceWorker' in navigator){
 
 // ════ BOOT ════
 try{const lo=localStorage.getItem('bp5');if(lo){const p=JSON.parse(lo);Object.keys(p).forEach(k=>{if(D[k]!==undefined)D[k]=p[k];});}}catch(e){}
-// If previously logged in, show app with cached data immediately
-if(localStorage.getItem('bp5_user')==='1'){
+
+// bp5_user='1' = logged in normally (exit without logout)
+// bp5_user='0' = explicitly signed out → show login screen
+const sessionState = localStorage.getItem('bp5_user');
+
+if(sessionState === '1'){
+  // User just exited app without logging out — show app with cached data
   document.getElementById('login').style.display='none';
   document.getElementById('app').classList.add('on');
   renderAll();refreshProfileUI();
-  // Mark next token request as refresh (not first login)
-  window._isRefresh=true;
+  window._isRefresh=true; // silent token refresh in background
 }
+// else: sessionState is null or '0' — show login screen (default)
+
 loadGIS();
 </script>
 </body>
