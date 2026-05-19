@@ -1010,36 +1010,10 @@ let D={
 function loadGIS(){
   const s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';
   s.onload=()=>{tc=google.accounts.oauth2.initTokenClient({client_id:CID,scope:SCOPES,callback:async r=>{
-    if(r.error){
-      // Token refresh failed silently — keep using cached data
-      if(tok) { toast('Session refreshed ✓','info'); return; }
-      toast('Sign in failed','err');return;
-    }
-    const isRefresh = tok !== null;
-    tok=r.access_token;
-    if(isRefresh){
-      // Just refreshed — retry any pending sync
-      scheduleTokenRefresh();
-      await writeDrive();
-      toast('Synced ✓');
-      return;
-    }
-    await fetchUsr();await loadDrive();launchApp();
+    if(r.error){toast('Sign in failed','err');return;}
+    tok=r.access_token;await fetchUsr();await loadDrive();launchApp();
   }});};document.head.appendChild(s);
 }
-// ════ TOKEN AUTO-REFRESH ════
-let tokenExpiry = 0;
-
-function scheduleTokenRefresh(){
-  // Google tokens expire in 3600s, refresh at 55 min
-  const refreshIn = 55 * 60 * 1000;
-  setTimeout(()=>{
-    if(tc && tok){
-      tc.requestAccessToken({prompt:''});
-    }
-  }, refreshIn);
-}
-
 function signIn(){if(!tc){toast('Loading…','info');setTimeout(signIn,900);return;}tc.requestAccessToken({prompt:'consent'});}
 function signOut(){if(tok)try{google.accounts.oauth2.revoke(tok);}catch(e){}tok=null;localStorage.removeItem('bp5_user');document.getElementById('app').classList.remove('on');document.getElementById('login').style.display='flex';cMenu();toast('Signed out','info');}
 async function fetchUsr(){
@@ -1052,12 +1026,7 @@ async function fetchUsr(){
 function launchApp(){
   document.getElementById('login').style.display='none';
   document.getElementById('app').classList.add('on');
-  localStorage.setItem('bp5_user','1');
-  scheduleTokenRefresh();
-  // Auto-save to Drive every 5 minutes as safety net
-  setInterval(()=>{
-    if(tok && fid) writeDrive();
-  }, 5 * 60 * 1000);
+  localStorage.setItem('bp5_user','1'); // mark as logged in
   renderAll();refreshProfileUI();
 }
 
@@ -1085,23 +1054,11 @@ async function writeDrive(){
     const form=new FormData();
     form.append('metadata',new Blob([JSON.stringify({name:FNAME})],{type:'application/json'}));
     form.append('file',blob);
-    const res=await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fid}?uploadType=multipart`,{method:'PATCH',headers:{Authorization:'Bearer '+tok},body:form});
-    if(res.status===401){
-      // Token expired — request new one silently
-      setSync('pending');
-      if(tc)tc.requestAccessToken({prompt:''});
-      return;
-    }
+    await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fid}?uploadType=multipart`,{method:'PATCH',headers:{Authorization:'Bearer '+tok},body:form});
     localStorage.setItem('bp5',JSON.stringify(D));setSync('synced');
   }catch(e){localStorage.setItem('bp5',JSON.stringify(D));setSync('pending');}
 }
-function sched(){
-  // Save to localStorage IMMEDIATELY — never lose data
-  localStorage.setItem('bp5',JSON.stringify(D));
-  setSync('pending');
-  clearTimeout(stmr);
-  stmr=setTimeout(writeDrive,2000);
-}
+function sched(){localStorage.setItem('bp5',JSON.stringify(D));setSync('pending');clearTimeout(stmr);stmr=setTimeout(writeDrive,2500);}
 async function syncNow(){const b=e$('tb-sync');b.classList.add('spin');e$('sync-lbl').textContent='Syncing…';await writeDrive();b.classList.remove('spin');e$('sync-lbl').textContent='Sync';}
 function setSync(s){const dot=e$('sdot'),txt=e$('sync-txt');
   if(s==='synced'){dot.className='sdot';txt.textContent='Synced to Google Drive';}
@@ -1659,76 +1616,30 @@ function renderPay(){
 function renderSub(){
   const el=e$('list-sub');
   if(!D.subcons.length){el.innerHTML='<div class="empty"><div class="empty-i">👷</div><div class="empty-t">No sub-contractors yet</div></div>';return;}
-
   el.innerHTML=D.subcons.map(s=>{
-    const allPays=D.subpays.filter(p=>p.subconId===s.id);
-    const totalPaid=allPays.reduce((t,p)=>t+p.amount,0);
-    const rem=Math.max(0,(s.contract||0)-totalPaid);
-    const pct=s.contract>0?Math.min(100,Math.round(totalPaid/s.contract*100)):0;
-
-    // Group payments by project
-    const projIds=[...new Set(allPays.map(p=>p.projectId||'__none__'))];
-    const byProject=projIds.map(pid=>{
-      const proj=D.projects.find(x=>x.id===pid);
-      const projPays=allPays.filter(p=>(p.projectId||'__none__')===pid).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
-      const projTotal=projPays.reduce((s,p)=>s+p.amount,0);
-      return{projName:proj?proj.name:(pid==='__none__'?'No Project':projPays[0]?.projectName||'Unknown Project'),projPays,projTotal};
-    });
-
+    const paid=D.subpays.filter(p=>p.subconId===s.id).reduce((t,p)=>t+p.amount,0);
+    const rem=Math.max(0,(s.contract||0)-paid);
+    const pct=s.contract>0?Math.min(100,Math.round(paid/s.contract*100)):0;
+    const pays=D.subpays.filter(p=>p.subconId===s.id).slice(0,6);
     return`<div class="sub-card">
-      <!-- Header -->
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
-        <div>
-          <div style="font-size:var(--fs-lg);font-weight:700">${s.name}</div>
-          <div style="margin-top:5px"><span class="b ${trC(s.trade)}">${s.trade}</span></div>
-          ${s.phone?`<div style="font-size:var(--fs-sm);color:var(--mut);margin-top:3px">${s.phone}</div>`:''}
-        </div>
-        <div style="text-align:right;font-size:var(--fs-sm);color:var(--mut)">${s.ptype||''}</div>
+        <div><div style="font-size:var(--fs-lg);font-weight:700">${s.name}</div><div style="margin-top:5px"><span class="b ${trC(s.trade)}">${s.trade}</span></div></div>
+        <div style="text-align:right;font-size:var(--fs-sm);color:var(--mut)">${s.phone||''}<br>${s.ptype||''}</div>
       </div>
-
-      <!-- Summary stats -->
       <div class="sub-stats">
         <div class="sub-stat"><div class="sub-stat-val" style="color:var(--gold)">${fmt(s.contract)}</div><div class="sub-stat-lbl">Contract</div></div>
-        <div class="sub-stat"><div class="sub-stat-val" style="color:var(--red)">${fmt(totalPaid)}</div><div class="sub-stat-lbl">Paid</div></div>
+        <div class="sub-stat"><div class="sub-stat-val" style="color:var(--red)">${fmt(paid)}</div><div class="sub-stat-lbl">Paid</div></div>
         <div class="sub-stat"><div class="sub-stat-val" style="color:${rem>0?'var(--gold)':'var(--grn)'}">${fmt(rem)}</div><div class="sub-stat-lbl">Remaining</div></div>
       </div>
       <div class="pbar-wrap"><div class="pbar" style="width:${pct}%"></div></div>
-      <div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:14px">Paid ${pct}% of contract</div>
-
-      <!-- Project-wise breakdown -->
-      ${byProject.length?byProject.map(pg=>`
-        <div style="background:var(--s2);border-radius:10px;overflow:hidden;margin-bottom:10px">
-          <!-- Project header -->
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 13px;border-bottom:1px solid var(--bor)">
-            <div style="display:flex;align-items:center;gap:8px">
-              <span style="font-size:14px">📁</span>
-              <span style="font-size:var(--fs-md);font-weight:700;color:var(--txt)">${pg.projName}</span>
-            </div>
-            <span style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-md);color:var(--red);font-weight:700">PKR ${fmt(pg.projTotal)}</span>
-          </div>
-          <!-- Payment rows for this project -->
-          ${pg.projPays.map(p=>`
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:10px 13px;border-bottom:1px solid var(--bor)">
-            <div>
-              <div style="font-size:var(--fs-sm);font-weight:600;color:var(--txt)">${p.phase}</div>
-              <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">${p.date} · ${p.method||'Cash'}</div>
-              ${p.desc?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">${p.desc}</div>`:''}
-            </div>
-            <div style="text-align:right;flex-shrink:0;margin-left:12px">
-              <div style="font-family:'JetBrains Mono',monospace;color:var(--red);font-size:var(--fs-md)">${fmt(p.amount)}</div>
-              <button style="font-size:var(--fs-xs);color:var(--blu);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif;margin-top:3px" onclick="eSpay('${p.id}')">Edit</button>
-            </div>
-          </div>`).join('')}
-        </div>`).join(''):'<div style="font-size:var(--fs-sm);color:var(--mut);padding:6px 0 10px">No payments recorded yet</div>'}
-
-      <!-- Actions -->
-      <div class="card-acts" style="margin-top:4px">
+      <div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:12px">Paid ${pct}% of contract</div>
+      ${pays.length?`<div style="font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px">Payment History</div>`+pays.map(p=>`<div class="phi"><div><div style="color:var(--txt);font-size:var(--fs-sm)">${p.date} · <span style="color:var(--mut2)">${p.phase}</span></div><div style="color:var(--mut);font-size:var(--fs-xs);margin-top:2px">${p.method}${p.desc?' · '+p.desc:''}</div></div><div style="text-align:right;flex-shrink:0;margin-left:12px"><div style="font-family:'JetBrains Mono',monospace;color:var(--red);font-size:var(--fs-md)">${fmt(p.amount)}</div><button style="font-size:var(--fs-xs);color:var(--blu);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="eSpay('${p.id}')">Edit</button></div></div>`).join(''):''}
+      <div class="card-acts" style="margin-top:12px">
         <button class="ca blu" onclick="eSub('${s.id}')">✏️ Edit</button>
         <button class="ca gold" onclick="O('sh-spay');iSpay();sv('sp-sub-t','${esc(s.name)}');sv('sp-sub-id','${s.id}')">+ Pay</button>
         <button class="ca red" onclick="del('subcons','${s.id}')">🗑</button>
       </div>
-    </div>`;
-  }).join('');
+    </div>`;}).join('');
 }
 
 // ════ RENDER AGREEMENTS ════
