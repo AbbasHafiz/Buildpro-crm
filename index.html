@@ -2119,11 +2119,10 @@ try{const lo=localStorage.getItem('bp5');if(lo){const p=JSON.parse(lo);Object.ke
 const sessionState = localStorage.getItem('bp5_user');
 
 if(sessionState === '1'){
-  // User just exited app without logging out — show app with cached data
   document.getElementById('login').style.display='none';
   document.getElementById('app').classList.add('on');
   renderAll();refreshProfileUI();
-  window._isRefresh=true; // silent token refresh in background
+  window._isRefresh=true;
 }
 // else: sessionState is null or '0' — show login screen (default)
 
