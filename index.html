@@ -366,42 +366,42 @@ select option{background:var(--s2);}
 
       <!-- Quick Access Tiles -->
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px">
-        <div onclick="navTo('inv','Invoices')" style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:12px 8px;text-align:center;cursor:pointer;active:opacity:.7">
+        <div onclick="goPage('inv',document.querySelectorAll('.bi')[1],'Invoices')" style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:12px 8px;text-align:center;cursor:pointer;active:opacity:.7">
           <div style="font-size:22px;margin-bottom:4px">🧾</div>
           <div style="font-size:var(--fs-xs);color:var(--mut);font-weight:600">Invoices</div>
           <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--gold);margin-top:2px" id="qt-inv">0</div>
         </div>
-        <div onclick="navTo('est','BOQ / Estimates')" style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:12px 8px;text-align:center;cursor:pointer">
+        <div onclick="goPage('est',document.querySelectorAll('.bi')[2],'BOQ / Estimates')" style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:12px 8px;text-align:center;cursor:pointer">
           <div style="font-size:22px;margin-bottom:4px">📊</div>
           <div style="font-size:var(--fs-xs);color:var(--mut);font-weight:600">BOQ</div>
           <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--gold);margin-top:2px" id="qt-est">0</div>
         </div>
-        <div onclick="navTo('sub','Sub-Contractors')" style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:12px 8px;text-align:center;cursor:pointer">
+        <div onclick="goPage('sub',document.querySelectorAll('.bi')[4],'Sub-Contractors')" style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:12px 8px;text-align:center;cursor:pointer">
           <div style="font-size:22px;margin-bottom:4px">👷</div>
           <div style="font-size:var(--fs-xs);color:var(--mut);font-weight:600">Sub-Con</div>
           <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--gold);margin-top:2px" id="qt-sub">0</div>
         </div>
-        <div onclick="navTo('pay','Payments')" style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:12px 8px;text-align:center;cursor:pointer">
+        <div onclick="goPage('pay',document.querySelectorAll('.bi')[3],'Payments')" style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:12px 8px;text-align:center;cursor:pointer">
           <div style="font-size:22px;margin-bottom:4px">💳</div>
           <div style="font-size:var(--fs-xs);color:var(--mut);font-weight:600">Payments</div>
           <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--gold);margin-top:2px" id="qt-pay">0</div>
         </div>
-        <div onclick="navTo('agr','Agreements')" style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:12px 8px;text-align:center;cursor:pointer">
+        <div onclick="goPage('agr',document.querySelectorAll('.bi')[5],'Agreements')" style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:12px 8px;text-align:center;cursor:pointer">
           <div style="font-size:22px;margin-bottom:4px">✍️</div>
           <div style="font-size:var(--fs-xs);color:var(--mut);font-weight:600">Agree.</div>
           <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--gold);margin-top:2px" id="qt-agr">0</div>
         </div>
-        <div onclick="navTo('cli','Clients')" style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:12px 8px;text-align:center;cursor:pointer">
+        <div onclick="goPage('cli',document.querySelectorAll('.bi')[6],'Clients')" style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:12px 8px;text-align:center;cursor:pointer">
           <div style="font-size:22px;margin-bottom:4px">👤</div>
           <div style="font-size:var(--fs-xs);color:var(--mut);font-weight:600">Clients</div>
           <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--gold);margin-top:2px" id="qt-cli">0</div>
         </div>
-        <div onclick="scrollToProjects()" style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:12px 8px;text-align:center;cursor:pointer">
+        <div onclick="O('sh-new')" style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:12px 8px;text-align:center;cursor:pointer">
           <div style="font-size:22px;margin-bottom:4px">🏗</div>
           <div style="font-size:var(--fs-xs);color:var(--mut);font-weight:600">Projects</div>
           <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--gold);margin-top:2px" id="qt-proj">0</div>
         </div>
-        <div onclick="navTo('profile','Company Profile')" style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:12px 8px;text-align:center;cursor:pointer">
+        <div onclick="goPage('profile',document.querySelectorAll('.bi')[7],'Company Profile')" style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:12px 8px;text-align:center;cursor:pointer">
           <div style="font-size:22px;margin-bottom:4px">🏢</div>
           <div style="font-size:var(--fs-xs);color:var(--mut);font-weight:600">Profile</div>
           <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--mut);margin-top:2px">→</div>
@@ -1009,42 +1009,24 @@ let D={
 // ════ AUTH ════
 function loadGIS(){
   const s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';
-  s.onload=()=>{
-    tc=google.accounts.oauth2.initTokenClient({
-      client_id:CID,scope:SCOPES,
-      callback:async r=>{
-        if(r.error){toast('Sign in failed','err');return;}
-        tok=r.access_token;
-        // Schedule next refresh at 55 min
-        clearTimeout(window._tkTimer);
-        window._tkTimer=setTimeout(()=>{if(tc)tc.requestAccessToken({prompt:''});},55*60*1000);
-        if(window._isRefresh){
-          // Silent refresh complete — sync drive
-          window._isRefresh=false;
-          await writeDrive();
-          return;
-        }
-        await fetchUsr();await loadDrive();launchApp();
-      }
-    });
-  };
-  document.head.appendChild(s);
+  s.onload=()=>{tc=google.accounts.oauth2.initTokenClient({client_id:CID,scope:SCOPES,callback:async r=>{
+    if(r.error){toast('Sign in failed','err');return;}
+    tok=r.access_token;await fetchUsr();await loadDrive();launchApp();
+  }});};document.head.appendChild(s);
 }
 function signIn(){if(!tc){toast('Loading…','info');setTimeout(signIn,900);return;}tc.requestAccessToken({prompt:'consent'});}
-function signOut(){if(tok)try{google.accounts.oauth2.revoke(tok);}catch(e){}tok=null;localStorage.setItem('bp5_user','0');document.getElementById('app').classList.remove('on');document.getElementById('login').style.display='flex';cMenu();toast('Signed out','info');}
+function signOut(){if(tok)try{google.accounts.oauth2.revoke(tok);}catch(e){}tok=null;localStorage.removeItem('bp5_user');document.getElementById('app').classList.remove('on');document.getElementById('login').style.display='flex';cMenu();toast('Signed out','info');}
 async function fetchUsr(){
   try{const r=await fetch('https://www.googleapis.com/oauth2/v1/userinfo',{headers:{Authorization:'Bearer '+tok}});
   usr=await r.json();
   const img=e$('upic');if(usr.picture)img.src=usr.picture;
-  if(usr.name)e$('ava-i').textContent=usr.name[0].toUpperCase();
+  if(usr.name){e$('ava-i').textContent=usr.name[0].toUpperCase();}
   e$('um-nm').textContent=usr.name||usr.email;}catch(e){}
 }
 function launchApp(){
   document.getElementById('login').style.display='none';
   document.getElementById('app').classList.add('on');
-  localStorage.setItem('bp5_user','1');
-  // Auto-save every 5 min as safety net
-  setInterval(()=>{if(tok&&fid)writeDrive();},5*60*1000);
+  localStorage.setItem('bp5_user','1'); // mark as logged in
   renderAll();refreshProfileUI();
 }
 
@@ -1072,23 +1054,11 @@ async function writeDrive(){
     const form=new FormData();
     form.append('metadata',new Blob([JSON.stringify({name:FNAME})],{type:'application/json'}));
     form.append('file',blob);
-    const res=await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fid}?uploadType=multipart`,{method:'PATCH',headers:{Authorization:'Bearer '+tok},body:form});
-    if(res.status===401){
-      // Token expired — request new one silently
-      setSync('pending');
-      if(tc)tc.requestAccessToken({prompt:''});
-      return;
-    }
+    await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fid}?uploadType=multipart`,{method:'PATCH',headers:{Authorization:'Bearer '+tok},body:form});
     localStorage.setItem('bp5',JSON.stringify(D));setSync('synced');
   }catch(e){localStorage.setItem('bp5',JSON.stringify(D));setSync('pending');}
 }
-function sched(){
-  // Save to localStorage IMMEDIATELY — never lose data
-  localStorage.setItem('bp5',JSON.stringify(D));
-  setSync('pending');
-  clearTimeout(stmr);
-  stmr=setTimeout(writeDrive,2000);
-}
+function sched(){localStorage.setItem('bp5',JSON.stringify(D));setSync('pending');clearTimeout(stmr);stmr=setTimeout(writeDrive,2500);}
 async function syncNow(){const b=e$('tb-sync');b.classList.add('spin');e$('sync-lbl').textContent='Syncing…';await writeDrive();b.classList.remove('spin');e$('sync-lbl').textContent='Sync';}
 function setSync(s){const dot=e$('sdot'),txt=e$('sync-txt');
   if(s==='synced'){dot.className='sdot';txt.textContent='Synced to Google Drive';}
@@ -1273,27 +1243,7 @@ function iEst(){
   sv('e-st','draft');e$('est-auto-id').textContent='🔖 Auto ID: '+num;
   e$('li-e').innerHTML='';e$('li-e-tot').textContent='0';addLI('e','std');
 }
-// ════ NAV HELPERS ════
-function navTo(page, title){
-  document.querySelectorAll('.pg').forEach(x=>x.classList.remove('on'));
-  document.querySelectorAll('.bi').forEach(x=>x.classList.remove('on'));
-  const pg=e$('pg-'+page);if(pg)pg.classList.add('on');
-  // Find matching nav tab by data or text
-  document.querySelectorAll('.bi').forEach(b=>{
-    if(b.getAttribute('onclick')&&b.getAttribute('onclick').includes("'"+page+"'")){b.classList.add('on');}
-  });
-  curPg=page;e$('tb-pg').textContent=title;cMenu();
-  renderPage(page);
-}
-function scrollToProjects(){
-  // Make sure we are on dashboard
-  if(curPg!=='dash'){
-    navTo('dash','Dashboard');
-    setTimeout(()=>{const el=e$('proj-list');if(el)el.scrollIntoView({behavior:'smooth'});},300);
-  } else {
-    const el=e$('proj-list');if(el)el.scrollIntoView({behavior:'smooth'});
-  }
-}
+// ════ AGREEMENT CALC ════
 function calcAgr(){
   const type=e$('a-type')?.value||'labour';
   const area=parseFloat(e$('a-covered')?.value)||0;
@@ -1612,7 +1562,6 @@ function renderInv(){
       <button class="ca blu" onclick="eInv('${r.id}')">✏️ Edit</button>
       <button class="ca gold" onclick="pdfInv('${r.id}')">⬇ PDF</button>
       <button class="ca grn" onclick="O('sh-cpay');iCpay();sv('cp-inv-t','${esc(r.num)}');sv('cp-inv-id','${r.id}');sv('cp-cli-t','${esc(r.clientName)}');sv('cp-cli-id','${r.clientId||''}')">💳 Pay</button>
-      <button class="ca" style="color:#25D366;border-color:rgba(37,211,102,.25);background:rgba(37,211,102,.06);flex:none;padding:8px 10px" onclick="waInv('${r.id}')">📤</button>
       <button class="ca red" onclick="del('invoices','${r.id}')">🗑</button>
     </div></div>`).join('');
 }
@@ -2043,63 +1992,6 @@ function pdfAgr(id){
   toast('Agreement PDF downloaded ✓');
 }
 
-// ════ WHATSAPP SHARE ════
-function waInv(id){
-  const r=D.invoices.find(x=>x.id===id);if(!r)return;
-  const c=D.company||{};
-  const msg=
-`🧾 *INVOICE — ${r.num}*
-━━━━━━━━━━━━━━━━━━━
-🏢 *${c.name||'BuildPro'}*
-📍 ${c.city||'Islamabad'}, Pakistan
-${c.phone?'📞 '+c.phone:''}
-
-👤 *Bill To:* ${r.clientName}
-📋 *Project:* ${r.projectName||'—'}
-📅 *Date:* ${r.date}
-📅 *Due:* ${r.due||'—'}
-
-━━━━━━━━━━━━━━━━━━━
-${(r.items||[]).map(i=>`• ${i.d}
-  ${i.q} ${i.u||''} × PKR ${fmt(i.r)} = PKR ${fmt(i.a)}`).join('\n')}
-━━━━━━━━━━━━━━━━━━━
-💰 *Total: PKR ${fmt(r.total)}*
-Status: ${r.status.toUpperCase()}
-
-${c.bank?`🏦 *Bank:* ${c.bank}
-💳 *A/C:* ${c.acc||'—'}${c.accT?' ('+c.accT+')':''}
-${c.iban?'IBAN: '+c.iban:''}`:
-'Payment: Cash / Bank Transfer / JazzCash / EasyPaisa'}
-
-_${c.name||'BuildPro'} — Construction Management_`;
-  window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
-}
-
-function waCpay(id){
-  const r=D.cpays.find(x=>x.id===id);if(!r)return;
-  const c=D.company||{};
-  const msg=
-`✅ *PAYMENT RECEIVED CONFIRMATION*
-━━━━━━━━━━━━━━━━━━━
-🏢 *${c.name||'BuildPro'}*
-${c.phone?'📞 '+c.phone:''}
-
-👤 *Client:* ${r.clientName}
-📋 *Project:* ${r.projectName||'—'}
-🔖 *Reference:* ${r.invoiceRef||r.id}
-📅 *Date:* ${r.date}
-💳 *Method:* ${r.method||'Cash'}
-${r.milestone?'📍 Milestone: '+r.milestone:''}
-
-━━━━━━━━━━━━━━━━━━━
-💰 *Amount Received: PKR ${fmt(r.amount)}*
-━━━━━━━━━━━━━━━━━━━
-${r.note?'📝 Note: '+r.note+'\n':''}
-_Thank you for your payment!_
-_${c.name||'BuildPro'} — Construction Management_`;
-  window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
-}
-
 // ════ BACKUP ════
 function exportBk(){const blob=new Blob([JSON.stringify(D,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='buildpro-backup-'+today()+'.json';a.click();cMenu();toast('Backup downloaded ✓');}
 function importBk(){const inp=document.createElement('input');inp.type='file';inp.accept='.json';inp.onchange=e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=ev=>{try{const p=JSON.parse(ev.target.result);Object.keys(p).forEach(k=>{if(D[k]!==undefined)D[k]=p[k];});sched();renderAll();refreshProfileUI();toast('Backup imported ✓');}catch(err){toast('Invalid file','err');}};rd.readAsText(f);};inp.click();cMenu();}
@@ -2111,22 +2003,24 @@ if('serviceWorker' in navigator){
   }).catch(()=>{});
 }
 
-// ════ BOOT ════
+// ════ BOOT — load cached data immediately, show app without login if data exists ════
 try{const lo=localStorage.getItem('bp5');if(lo){const p=JSON.parse(lo);Object.keys(p).forEach(k=>{if(D[k]!==undefined)D[k]=p[k];});}}catch(e){}
 
-// bp5_user='1' = logged in normally (exit without logout)
-// bp5_user='0' = explicitly signed out → show login screen
-const sessionState = localStorage.getItem('bp5_user');
+// If we have cached data, show app immediately without waiting for Google
+const hasCachedData = localStorage.getItem('bp5') !== null;
+const wasLoggedIn = localStorage.getItem('bp5_user') !== null;
 
-if(sessionState === '1'){
+if(hasCachedData && wasLoggedIn){
+  // Show app directly from cache
   document.getElementById('login').style.display='none';
   document.getElementById('app').classList.add('on');
-  renderAll();refreshProfileUI();
-  window._isRefresh=true;
+  renderAll();
+  refreshProfileUI();
+  setSync('error'); // show offline indicator
+  document.getElementById('sync-txt').textContent='Offline — showing cached data';
 }
-// else: sessionState is null or '0' — show login screen (default)
 
-loadGIS();
+loadGIS(); // still load Google in background for when online
 </script>
 </body>
 </html>
