@@ -1015,15 +1015,11 @@ function loadGIS(){
       callback:async r=>{
         if(r.error){toast('Sign in failed','err');return;}
         tok=r.access_token;
-        // Schedule next refresh at 55 min
+        // Auto refresh token at 55 min while app is open
         clearTimeout(window._tkTimer);
-        window._tkTimer=setTimeout(()=>{if(tc)tc.requestAccessToken({prompt:''});},55*60*1000);
-        if(window._isRefresh){
-          // Silent refresh complete — sync drive
-          window._isRefresh=false;
-          await writeDrive();
-          return;
-        }
+        window._tkTimer=setTimeout(async()=>{
+          if(tc)tc.requestAccessToken({prompt:''});
+        },55*60*1000);
         await fetchUsr();await loadDrive();launchApp();
       }
     });
@@ -2113,19 +2109,7 @@ if('serviceWorker' in navigator){
 
 // ════ BOOT ════
 try{const lo=localStorage.getItem('bp5');if(lo){const p=JSON.parse(lo);Object.keys(p).forEach(k=>{if(D[k]!==undefined)D[k]=p[k];});}}catch(e){}
-
-// bp5_user='1' = logged in normally (exit without logout)
-// bp5_user='0' = explicitly signed out → show login screen
-const sessionState = localStorage.getItem('bp5_user');
-
-if(sessionState === '1'){
-  document.getElementById('login').style.display='none';
-  document.getElementById('app').classList.add('on');
-  renderAll();refreshProfileUI();
-  window._isRefresh=true;
-}
-// else: sessionState is null or '0' — show login screen (default)
-
+// Always show login screen — Google remembers you so sign in is 1 tap
 loadGIS();
 </script>
 </body>
