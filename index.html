@@ -582,7 +582,7 @@ select option{background:var(--s2);}
     </div>
   </div>
 
-  <button class="fab" onclick="O('sh-new')">
+  <button class="fab" onclick="fabAction()">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
   </button>
 </div>
@@ -1045,6 +1045,22 @@ select option{background:var(--s2);}
   <div class="sh-ft"><button class="btn btn-grey" onclick="X('sh-profile')">Cancel</button><button class="btn btn-gold" onclick="saveProfile()">💾 Save Profile</button></div>
 </div></div>
 
+<!-- PAYMENT CHOOSER -->
+<div class="sh-ov" id="sh-pay-choose"><div class="sh">
+  <div class="sh-grip"></div>
+  <div class="sh-hd"><div class="sh-title">Add Payment</div><button class="sh-x" onclick="X('sh-pay-choose')">×</button></div>
+  <div class="sh-body" style="display:flex;flex-direction:column;gap:9px;padding-bottom:20px">
+    <button class="btn btn-grey" style="justify-content:flex-start;gap:15px;padding:14px" onclick="X('sh-pay-choose');iCpay();O('sh-cpay')">
+      <span style="font-size:22px">💳</span>
+      <div style="text-align:left"><div style="font-size:var(--fs-md)">Payment Received</div><div style="font-size:var(--fs-xs);color:var(--mut);font-weight:400;margin-top:2px">Record money received from client</div></div>
+    </button>
+    <button class="btn btn-grey" style="justify-content:flex-start;gap:15px;padding:14px" onclick="X('sh-pay-choose');iSpay();O('sh-spay')">
+      <span style="font-size:22px">💸</span>
+      <div style="text-align:left"><div style="font-size:var(--fs-md)">Sub-Con Payment</div><div style="font-size:var(--fs-xs);color:var(--mut);font-weight:400;margin-top:2px">Pay a sub-contractor</div></div>
+    </button>
+  </div>
+</div></div>
+
 <!-- TASK SHEET -->
 <div class="sh-ov" id="sh-task"><div class="sh">
   <div class="sh-grip"></div>
@@ -1424,6 +1440,24 @@ function iEst(){
   sv('e-st','draft');e$('est-auto-id').textContent='🔖 Auto ID: '+num;
   e$('li-e').innerHTML='';e$('li-e-tot').textContent='0';addLI('e','std');
 }
+// ════ FAB CONTEXT ACTION ════
+function fabAction(){
+  const actions={
+    'dash':  ()=>O('sh-new'),
+    'inv':   ()=>{iInv('standard');O('sh-inv');},
+    'est':   ()=>{iEst();O('sh-est');},
+    'pay':   ()=>O('sh-pay-choose'),
+    'sub':   ()=>{iSub();O('sh-sub');},
+    'agr':   ()=>{iAgr();O('sh-agr');},
+    'cli':   ()=>{iCli();O('sh-cli');},
+    'tasks': ()=>{iTask();O('sh-task');},
+    'exp':   ()=>{iExp();O('sh-exp');},
+    'profile':()=>O('sh-new'),
+  };
+  const action=actions[curPg];
+  if(action)action();else O('sh-new');
+}
+
 // ════ NAV HELPERS ════
 function navTo(page, title){
   document.querySelectorAll('.pg').forEach(x=>x.classList.remove('on'));
