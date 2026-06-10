@@ -2567,14 +2567,6 @@ function pdfCpayConfirm(id){
     });
     y=doc.lastAutoTable.finalY+8;
   }
-  // Signature
-  y+=14;if(y>240){doc.addPage();y=20;}
-  doc.setDrawColor(180,175,165);
-  doc.line(14,y+20,84,y+20);doc.line(125,y+20,pw-14,y+20);
-  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(40,40,40);
-  doc.text('Client Signature',14,y+25);doc.text('Authorized Signature',125,y+25);
-  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(140,135,125);
-  doc.text(r.clientName||'—',14,y+30);doc.text(c.name||'BuildPro',125,y+30);
   drawBankFooter(doc);
   doc.save('PaymentReceipt-'+r.clientName+'-'+r.date+'.pdf');
   toast('Payment receipt PDF ✓');
@@ -2636,14 +2628,6 @@ function pdfSpayConfirm(id){
     y=doc.lastAutoTable.finalY+8;
     if(sc2?.contract){const rem=sc2.contract-totalPaid;doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(rem>0?201:82,rem>0?123:181,rem>0?58:106);doc.text('Contract: PKR '+fmt(sc2.contract)+'   |   Total Paid: PKR '+fmt(totalPaid)+'   |   Remaining: PKR '+fmt(Math.max(0,rem)),14,y);}
   }
-  // Signature
-  y+=14;if(y>240){doc.addPage();y=20;}
-  doc.setDrawColor(180,175,165);
-  doc.line(14,y+20,84,y+20);doc.line(125,y+20,pw-14,y+20);
-  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(40,40,40);
-  doc.text('Contractor Signature',14,y+25);doc.text('Authorized Signature',125,y+25);
-  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(140,135,125);
-  doc.text(r.subconName||'—',14,y+30);doc.text(c.name||'BuildPro',125,y+30);
   drawBankFooter(doc);
   doc.save('PaymentVoucher-'+r.subconName+'-'+r.date+'.pdf');
   toast('Payment voucher PDF ✓');
@@ -2683,14 +2667,6 @@ function pdfProjPayments(pid){
     doc.setFont('helvetica','italic');doc.setFontSize(10);doc.setTextColor(150,145,138);
     doc.text('No payments received yet.',14,y);y+=12;
   }
-  // Signature
-  if(y>240){doc.addPage();y=20;}
-  doc.setDrawColor(180,175,165);
-  doc.line(14,y+20,84,y+20);doc.line(125,y+20,pw-14,y+20);
-  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(40,40,40);
-  doc.text('Client / Owner Signature',14,y+25);doc.text('Contractor Signature',125,y+25);
-  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(140,135,125);
-  doc.text(cli?cli.name:'Client',14,y+30);doc.text(c.name||'BuildPro',125,y+30);
   drawBankFooter(doc);
   doc.save('PaymentStatement-'+proj.name.replace(/\s+/g,'-')+'-'+today()+'.pdf');
   toast('Payment statement PDF ✓');
