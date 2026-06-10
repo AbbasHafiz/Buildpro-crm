@@ -1163,7 +1163,19 @@ function loadGIS(){
   };
   document.head.appendChild(s);
 }
-function signIn(){if(!tc){toast('Loading…','info');setTimeout(signIn,900);return;}tc.requestAccessToken({prompt:'consent'});}
+function signIn(){
+  if(!tc){
+    toast('Loading Google SDK…','info');
+    setTimeout(signIn,1200);
+    return;
+  }
+  try{
+    tc.requestAccessToken({prompt:'consent'});
+  }catch(e){
+    toast('Sign in error: '+e.message,'err');
+    console.error('SignIn error:',e);
+  }
+}
 function signOut(){if(tok)try{google.accounts.oauth2.revoke(tok);}catch(e){}tok=null;localStorage.setItem('bp5_user','0');document.getElementById('app').classList.remove('on');document.getElementById('login').style.display='flex';cMenu();toast('Signed out','info');}
 async function fetchUsr(){
   try{const r=await fetch('https://www.googleapis.com/oauth2/v1/userinfo',{headers:{Authorization:'Bearer '+tok}});
