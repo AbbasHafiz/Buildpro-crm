@@ -2566,7 +2566,6 @@ function pdfCpayConfirm(id){
       didParseCell:data=>{if(data.cell.raw&&String(data.cell.raw).includes('◀ THIS'))data.cell.styles.fontStyle='bold';}
     });
     y=doc.lastAutoTable.finalY+8;
-    if(proj?.value){const rem=proj.value-totalPaid;doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(rem>0?201:82,rem>0?123:181,rem>0?58:106);doc.text('Contract Value: PKR '+fmt(proj.value)+'   |   Total Received: PKR '+fmt(totalPaid)+'   |   Remaining: PKR '+fmt(Math.max(0,rem)),14,y);}
   }
   // Signature
   y+=14;if(y>240){doc.addPage();y=20;}
