@@ -1851,33 +1851,6 @@ function renderPay(){
     </div>`;
   }).join('');
 }
-  const el=e$('list-pay');
-  let rows=[];
-  if(fPayF==='all')rows=[...D.cpays.map(p=>({...p,dir:'in'})),...D.subpays.map(p=>({...p,dir:'out'}))].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
-  else if(fPayF==='in')rows=[...D.cpays.map(p=>({...p,dir:'in'}))].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
-  else rows=[...D.subpays.map(p=>({...p,dir:'out'}))].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
-  if(!rows.length){el.innerHTML='<div class="empty"><div class="empty-i">💳</div><div class="empty-t">No payments yet</div></div>';return;}
-  el.innerHTML=rows.map(p=>{
-    const isIn=p.dir==='in';
-    return`<div class="pay-card">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start">
-        <div>
-          <div class="pay-type" style="color:${isIn?'var(--grn)':'var(--red)'}">${isIn?'💳 Received from Client':'💸 Paid to Sub-Con'}</div>
-          <div class="pay-nm">${isIn?(p.clientName||'—'):(p.subconName||'—')}</div>
-          <div class="pay-sub">${isIn?(p.milestone||p.invoiceRef||p.projectName||'—'):(p.phase+' · '+(p.projectName||'—'))}</div>
-        </div>
-        <div class="pay-amt" style="color:${isIn?'var(--grn)':'var(--red)'}">${isIn?'+':'-'}${fmt(p.amount)}</div>
-      </div>
-      <div class="pay-bot">
-        <span class="pay-meta">${p.date||'—'} · ${p.method||'Cash'}</span>
-        <div style="display:flex;gap:7px">
-          <button class="ca gold" style="padding:5px 10px;font-size:var(--fs-xs);flex:none" onclick="${isIn?`pdfCpayConfirm('${p.id}')`:`pdfSpayConfirm('${p.id}')`}">⬇ PDF</button>
-          <button class="ca blu" style="padding:5px 12px;font-size:var(--fs-xs)" onclick="${isIn?'eCpay':'eSpay'}('${p.id}')">✏️ Edit</button>
-          <button class="ca red" style="padding:5px 12px;font-size:var(--fs-xs)" onclick="del('${isIn?'cpays':'subpays'}','${p.id}')">🗑</button>
-        </div>
-      </div>
-    </div>`;}).join('');
-}
 
 // ════ RENDER SUB-CON ════
 function renderSub(){
