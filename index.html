@@ -1145,36 +1145,40 @@ let D={
 
 // ════ AUTH ════
 function loadGIS(){
-  const s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';
+  const s=document.createElement('script');
+  s.src='https://accounts.google.com/gsi/client';
+  s.async=true;s.defer=true;
   s.onload=()=>{
-    tc=google.accounts.oauth2.initTokenClient({
-      client_id:CID,scope:SCOPES,
-      callback:async r=>{
-        if(r.error){toast('Sign in failed','err');return;}
-        tok=r.access_token;
-        // Auto refresh token at 55 min while app is open
-        clearTimeout(window._tkTimer);
-        window._tkTimer=setTimeout(async()=>{
-          if(tc)tc.requestAccessToken({prompt:''});
-        },55*60*1000);
-        await fetchUsr();await loadDrive();launchApp();
-      }
-    });
+    try{
+      tc=google.accounts.oauth2.initTokenClient({
+        client_id:CID,scope:SCOPES,
+        callback:async r=>{
+          if(r.error){
+            toast('Sign in failed: '+r.error,'err');
+            return;
+          }
+          tok=r.access_token;
+          clearTimeout(window._tkTimer);
+          window._tkTimer=setTimeout(()=>{
+            if(tc)tc.requestAccessToken({prompt:''});
+          },55*60*1000);
+          await fetchUsr();
+          await loadDrive();
+          launchApp();
+        }
+      });
+    }catch(e){toast('Google init error: '+e.message,'err');}
   };
+  s.onerror=()=>{toast('Failed to load Google SDK. Check internet.','err');};
   document.head.appendChild(s);
 }
 function signIn(){
   if(!tc){
-    toast('Loading Google SDK…','info');
-    setTimeout(signIn,1200);
+    toast('Google SDK loading, please wait…','info');
+    setTimeout(()=>{if(tc)tc.requestAccessToken({prompt:'consent'});else toast('Could not connect to Google. Check internet.','err');},2000);
     return;
   }
-  try{
-    tc.requestAccessToken({prompt:'consent'});
-  }catch(e){
-    toast('Sign in error: '+e.message,'err');
-    console.error('SignIn error:',e);
-  }
+  tc.requestAccessToken({prompt:'consent'});
 }
 function signOut(){if(tok)try{google.accounts.oauth2.revoke(tok);}catch(e){}tok=null;localStorage.setItem('bp5_user','0');document.getElementById('app').classList.remove('on');document.getElementById('login').style.display='flex';cMenu();toast('Signed out','info');}
 async function fetchUsr(){
