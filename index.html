@@ -13,6 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
   --bg:#0a0908;--s1:#141210;--s2:#1e1b18;--s3:#272320;
@@ -1135,7 +1136,6 @@ select option{background:var(--s2);}
         </select>
       </div>
     </div>
-    <div class="fg"><label>Budget for this project (PKR)</label><input type="number" id="ex-budget" placeholder="Set or update project budget"></div>
     <div class="fg"><label>Notes / Receipt Ref</label><input id="ex-notes" placeholder="Receipt no, supplier name…"></div>
   </div>
   <div class="sh-ft"><button class="btn btn-grey" onclick="X('sh-exp')">Cancel</button><button class="btn btn-gold" onclick="saveExp()">💾 Save Expense</button></div>
@@ -1145,10 +1145,10 @@ select option{background:var(--s2);}
 
 <script>
 // ════ CONFIG ════
-const CID='352786216895-8ro80gsupaufpcmoba3k3gonlvgkg63i.apps.googleusercontent.com';
-const SCOPES='https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.profile';
-const FNAME='buildpro_v5.json';
-let tc,tok=null,fid=null,stmr=null,usr=null;
+// ════ SUPABASE CONFIG ════
+const SUPA_URL='https://lwjcnevludsiwoudzxcj.supabase.co';
+const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3amNuZXZsdWRzaXdvdWR6eGNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExNDQ0NjAsImV4cCI6MjA5NjcyMDQ2MH0.-6O4Z6OCUqjm3B1wSqtQv5uH7QuWTTkHdximiJB2PKE';
+let supa=null,stmr=null;
 
 // ════ DATA ════
 let D={
@@ -1159,107 +1159,118 @@ let D={
   tasks:[],expenses:[]
 };
 
-// ════ AUTH ════
-function loadGIS(){
-  const s=document.createElement('script');
-  s.src='https://accounts.google.com/gsi/client';
-  s.async=true;s.defer=true;
-  s.onload=()=>{
-    try{
-      tc=google.accounts.oauth2.initTokenClient({
-        client_id:CID,scope:SCOPES,
-        callback:async r=>{
-          if(r.error){
-            toast('Sign in failed: '+r.error,'err');
-            return;
-          }
-          tok=r.access_token;
-          clearTimeout(window._tkTimer);
-          window._tkTimer=setTimeout(()=>{
-            if(tc)tc.requestAccessToken({prompt:''});
-          },55*60*1000);
-          await fetchUsr();
-          await loadDrive();
-          launchApp();
-        }
+// ════ SUPABASE AUTH & STORAGE ════
+function initSupa(){
+  supa=supabase.createClient(SUPA_URL,SUPA_KEY);
+  // Listen for auth state changes
+  supa.auth.onAuthStateChange(async(event,session)=>{
+    if(event==='SIGNED_IN'&&session){
+      await loadSupaData(session.user);
+      updateUserUI(session.user);
+      launchApp();
+    }else if(event==='SIGNED_OUT'){
+      document.getElementById('app').classList.remove('on');
+      document.getElementById('login').style.display='flex';
+      toast('Signed out','info');
+    }else if(event==='TOKEN_REFRESHED'){
+      setSync('synced');
+    }
+  });
+  // Check existing session on load
+  supa.auth.getSession().then(({data:{session}})=>{
+    if(session){
+      loadSupaData(session.user).then(()=>{
+        updateUserUI(session.user);
+        launchApp();
       });
-    }catch(e){toast('Google init error: '+e.message,'err');}
-  };
-  s.onerror=()=>{toast('Failed to load Google SDK. Check internet.','err');};
-  document.head.appendChild(s);
-}
-function signIn(){
-  if(!tc){
-    toast('Google SDK loading, please wait…','info');
-    setTimeout(()=>{if(tc)tc.requestAccessToken({prompt:'consent'});else toast('Could not connect to Google. Check internet.','err');},2000);
-    return;
-  }
-  tc.requestAccessToken({prompt:'consent'});
-}
-function signOut(){if(tok)try{google.accounts.oauth2.revoke(tok);}catch(e){}tok=null;localStorage.setItem('bp5_user','0');document.getElementById('app').classList.remove('on');document.getElementById('login').style.display='flex';cMenu();toast('Signed out','info');}
-async function fetchUsr(){
-  try{const r=await fetch('https://www.googleapis.com/oauth2/v1/userinfo',{headers:{Authorization:'Bearer '+tok}});
-  usr=await r.json();
-  const img=e$('upic');if(usr.picture)img.src=usr.picture;
-  if(usr.name)e$('ava-i').textContent=usr.name[0].toUpperCase();
-  e$('um-nm').textContent=usr.name||usr.email;}catch(e){}
-}
-function launchApp(){
-  document.getElementById('login').style.display='none';
-  document.getElementById('app').classList.add('on');
-  localStorage.setItem('bp5_user','1');
-  // Auto-save every 5 min as safety net
-  setInterval(()=>{if(tok&&fid)writeDrive();},5*60*1000);
-  renderAll();refreshProfileUI();
+    }
+  });
 }
 
-// ════ DRIVE ════
-async function loadDrive(){
+function signIn(){
+  if(!supa){toast('Loading…','info');return;}
+  supa.auth.signInWithOAuth({
+    provider:'google',
+    options:{redirectTo:window.location.origin+window.location.pathname}
+  });
+}
+
+async function signOut(){
+  if(supa)await supa.auth.signOut();
+  document.getElementById('app').classList.remove('on');
+  document.getElementById('login').style.display='flex';
+  cMenu();toast('Signed out','info');
+}
+
+function updateUserUI(user){
+  if(!user)return;
+  const meta=user.user_metadata||{};
+  const img=e$('upic');
+  if(meta.avatar_url){img.src=meta.avatar_url;img.classList.add('on');}
+  const name=meta.full_name||meta.name||user.email||'';
+  if(name)e$('ava-i').textContent=name[0].toUpperCase();
+  e$('um-nm').textContent=name||user.email||'—';
+}
+
+async function loadSupaData(user){
   setSync('loading');
   try{
-    const sr=await fetch(`https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name='${FNAME}'&fields=files(id)`,{headers:{Authorization:'Bearer '+tok}});
-    const sd=await sr.json();
-    if(sd.files&&sd.files.length){
-      fid=sd.files[0].id;
-      const dr=await fetch(`https://www.googleapis.com/drive/v3/files/${fid}?alt=media`,{headers:{Authorization:'Bearer '+tok}});
-      if(dr.ok){const t=await dr.text();if(t.trim())try{const p=JSON.parse(t);Object.keys(p).forEach(k=>{if(D[k]!==undefined)D[k]=p[k];});}catch(e){}}
-    }else{
-      const cr=await fetch('https://www.googleapis.com/drive/v3/files',{method:'POST',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({name:FNAME,parents:['appDataFolder']})});
-      fid=(await cr.json()).id;await writeDrive();
+    // Load from localStorage first (instant)
+    const lo=localStorage.getItem('bp5');
+    if(lo)try{const p=JSON.parse(lo);Object.keys(p).forEach(k=>{if(D[k]!==undefined)D[k]=p[k];});}catch(e){}
+    // Then load from Supabase (latest)
+    const{data,error}=await supa.from('buildpro_data').select('data').eq('user_id',user.id).single();
+    if(!error&&data?.data){
+      Object.keys(data.data).forEach(k=>{if(D[k]!==undefined)D[k]=data.data[k];});
+      localStorage.setItem('bp5',JSON.stringify(D));
     }
     setSync('synced');
-  }catch(e){setSync('error');const lo=localStorage.getItem('bp5');if(lo)try{const p=JSON.parse(lo);Object.keys(p).forEach(k=>{if(D[k]!==undefined)D[k]=p[k];});}catch(e2){}; toast('Offline mode','info');}
+  }catch(e){setSync('error');toast('Offline mode','info');}
 }
-async function writeDrive(){
-  if(!tok||!fid){localStorage.setItem('bp5',JSON.stringify(D));setSync('pending');return;}
+
+async function writeSupabase(){
+  if(!supa){localStorage.setItem('bp5',JSON.stringify(D));setSync('pending');return;}
+  const{data:{session}}=await supa.auth.getSession();
+  if(!session){localStorage.setItem('bp5',JSON.stringify(D));setSync('pending');return;}
   try{
-    const blob=new Blob([JSON.stringify(D)],{type:'application/json'});
-    const form=new FormData();
-    form.append('metadata',new Blob([JSON.stringify({name:FNAME})],{type:'application/json'}));
-    form.append('file',blob);
-    const res=await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fid}?uploadType=multipart`,{method:'PATCH',headers:{Authorization:'Bearer '+tok},body:form});
-    if(res.status===401){
-      // Token expired — request new one silently
-      setSync('pending');
-      if(tc)tc.requestAccessToken({prompt:''});
-      return;
-    }
-    localStorage.setItem('bp5',JSON.stringify(D));setSync('synced');
+    localStorage.setItem('bp5',JSON.stringify(D));
+    const{error}=await supa.from('buildpro_data').upsert({
+      user_id:session.user.id,
+      data:D,
+      updated_at:new Date().toISOString()
+    },{onConflict:'user_id'});
+    if(error)throw error;
+    setSync('synced');
   }catch(e){localStorage.setItem('bp5',JSON.stringify(D));setSync('pending');}
 }
+
 function sched(){
-  // Save to localStorage IMMEDIATELY — never lose data
   localStorage.setItem('bp5',JSON.stringify(D));
   setSync('pending');
   clearTimeout(stmr);
-  stmr=setTimeout(writeDrive,2000);
+  stmr=setTimeout(writeSupabase,2000);
 }
-async function syncNow(){const b=e$('tb-sync');b.classList.add('spin');e$('sync-lbl').textContent='Syncing…';await writeDrive();b.classList.remove('spin');e$('sync-lbl').textContent='Sync';}
-function setSync(s){const dot=e$('sdot'),txt=e$('sync-txt');
-  if(s==='synced'){dot.className='sdot';txt.textContent='Synced to Google Drive';}
+
+async function syncNow(){
+  const b=e$('tb-sync');b.classList.add('spin');e$('sync-lbl').textContent='Syncing…';
+  await writeSupabase();
+  b.classList.remove('spin');e$('sync-lbl').textContent='Sync';
+}
+
+function setSync(s){
+  const dot=e$('sdot'),txt=e$('sync-txt');
+  if(s==='synced'){dot.className='sdot';txt.textContent='Synced to Supabase';}
   else if(s==='pending'){dot.className='sdot pend';txt.textContent='Pending sync…';}
-  else if(s==='saving'||s==='loading'){dot.className='sdot';dot.style.background='var(--blu)';txt.textContent=s==='loading'?'Loading from Drive…':'Saving…';}
-  else if(s==='error'){dot.className='sdot err';txt.textContent='Offline mode — data cached locally';}}
+  else if(s==='loading'){dot.className='sdot';dot.style.background='var(--blu)';txt.textContent='Loading…';}
+  else if(s==='error'){dot.className='sdot err';txt.textContent='Offline — cached locally';}
+}
+
+function launchApp(){
+  document.getElementById('login').style.display='none';
+  document.getElementById('app').classList.add('on');
+  setInterval(()=>writeSupabase(),5*60*1000);
+  renderAll();refreshProfileUI();
+}
 
 // ════ NAVIGATION ════
 let curPg='dash';
@@ -2390,10 +2401,9 @@ function fExp(f,el){expFilter=f;document.querySelectorAll('#pg-exp .ftab').forEa
 
 function iExp(){sv('exp-eid','');const eb=e$('exp-eb');if(eb)eb.classList.remove('on');const sh=e$('exp-sh-t');if(sh)sh.textContent='New Expense';['ex-desc','ex-proj-t','ex-proj-id','ex-notes','ex-budget'].forEach(id=>sv(id,''));sv('ex-amount','');sv('ex-date',today());sv('ex-cat','material');sv('ex-paid','Cash');}
 
-function eExp(id){const r=(D.expenses||[]).find(x=>x.id===id);if(!r)return;sv('exp-eid',id);const eb=e$('exp-eb');if(eb)eb.classList.add('on');const sh=e$('exp-sh-t');if(sh)sh.textContent='Edit Expense';sv('ex-desc',r.desc);sv('ex-amount',r.amount);sv('ex-date',r.date||'');sv('ex-cat',r.cat||'material');sv('ex-paid',r.paid||'Cash');sv('ex-notes',r.notes||'');sv('ex-budget',r.budget||'');const p=D.projects.find(x=>x.id===r.projectId);sv('ex-proj-t',p?p.name:'');sv('ex-proj-id',r.projectId||'');O('sh-exp');}
+function eExp(id){const r=(D.expenses||[]).find(x=>x.id===id);if(!r)return;sv('exp-eid',id);const eb=e$('exp-eb');if(eb)eb.classList.add('on');const sh=e$('exp-sh-t');if(sh)sh.textContent='Edit Expense';sv('ex-desc',r.desc);sv('ex-amount',r.amount);sv('ex-date',r.date||'');sv('ex-cat',r.cat||'material');sv('ex-paid',r.paid||'Cash');sv('ex-notes',r.notes||'');;const p=D.projects.find(x=>x.id===r.projectId);sv('ex-proj-t',p?p.name:'');sv('ex-proj-id',r.projectId||'');O('sh-exp');}
 
-function saveExp(){const eid=e$('exp-eid').value;const doc={id:eid||uid(),desc:e$('ex-desc').value,projectId:e$('ex-proj-id').value,projectName:e$('ex-proj-t').value,cat:e$('ex-cat').value,date:e$('ex-date').value||today(),amount:parseFloat(e$('ex-amount').value)||0,paid:e$('ex-paid').value,budget:parseFloat(e$('ex-budget').value)||0,notes:e$('ex-notes').value};if(!doc.desc||!doc.amount){toast('Enter description and amount','err');return;}if(!D.expenses)D.expenses=[];// Update project budget if set
-if(doc.budget>0&&doc.projectId){const proj=D.projects.find(x=>x.id===doc.projectId);if(proj){proj.budget=doc.budget;}}ups('expenses',doc);X('sh-exp');renderExp();updateDots();renderDash();toast(eid?'Expense updated ✓':'Expense saved ✓');}
+function saveExp(){const eid=e$('exp-eid').value;const doc={id:eid||uid(),desc:e$('ex-desc').value,projectId:e$('ex-proj-id').value,projectName:e$('ex-proj-t').value,cat:e$('ex-cat').value,date:e$('ex-date').value||today(),amount:parseFloat(e$('ex-amount').value)||0,paid:e$('ex-paid').value,notes:e$('ex-notes').value};if(!doc.desc||!doc.amount){toast('Enter description and amount','err');return;}if(!D.expenses)D.expenses=[];ups('expenses',doc);X('sh-exp');renderExp();updateDots();renderDash();toast(eid?'Expense updated ✓':'Expense saved ✓');}
 
 function renderExp(){
   const el=e$('list-exp');if(!el)return;
@@ -2590,14 +2600,13 @@ function pdfCpayConfirm(id){
     doc.autoTable({
       startY:y,
       head:[['Date','Milestone','Method','Amount (PKR)']],
-      body:history.map(p=>[p.date||'—',p.milestone||'—',p.method||'Cash',fmt(p.amount)+(p.id===id?' ◀ THIS':'')]),
+      body:history.map(p=>[p.date||'—',p.milestone||'—',p.method||'Cash',fmt(p.amount)]),
       foot:[['','','Total Received',fmt(totalPaid)]],
       styles:{fontSize:9,cellPadding:3,textColor:[30,30,30]},
       headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
       footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[82,181,106],fontSize:9},
       columnStyles:{3:{halign:'right'}},
-      margin:{left:14,right:14},
-      didParseCell:data=>{if(data.cell.raw&&String(data.cell.raw).includes('◀ THIS'))data.cell.styles.fontStyle='bold';}
+      margin:{left:14,right:14}
     });
     y=doc.lastAutoTable.finalY+8;
   }
@@ -2719,8 +2728,7 @@ if('serviceWorker' in navigator){
 
 // ════ BOOT ════
 try{const lo=localStorage.getItem('bp5');if(lo){const p=JSON.parse(lo);Object.keys(p).forEach(k=>{if(D[k]!==undefined)D[k]=p[k];});}}catch(e){}
-// Always show login screen — Google remembers you so sign in is 1 tap
-loadGIS();
+initSupa();
 </script>
 </body>
 </html>
