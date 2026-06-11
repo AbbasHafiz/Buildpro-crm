@@ -1215,17 +1215,30 @@ function updateUserUI(user){
 async function loadSupaData(user){
   setSync('loading');
   try{
-    // Load from localStorage first (instant)
+    // Load localStorage first (instant display)
     const lo=localStorage.getItem('bp5');
-    if(lo)try{const p=JSON.parse(lo);Object.keys(p).forEach(k=>{if(D[k]!==undefined)D[k]=p[k];});}catch(e){}
-    // Then load from Supabase (latest)
+    if(lo){
+      try{
+        const p=JSON.parse(lo);
+        const keys=['company','clients','projects','subcons','subpays','cpays','invoices','estimates','agreements','tasks','expenses'];
+        keys.forEach(k=>{if(p[k]!==undefined)D[k]=p[k];});
+      }catch(e){}
+    }
+    // Then load from Supabase (authoritative)
     const{data,error}=await supa.from('buildpro_data').select('data').eq('user_id',user.id).single();
     if(!error&&data?.data){
-      Object.keys(data.data).forEach(k=>{if(D[k]!==undefined)D[k]=data.data[k];});
+      const p=data.data;
+      const keys=['company','clients','projects','subcons','subpays','cpays','invoices','estimates','agreements','tasks','expenses'];
+      keys.forEach(k=>{if(p[k]!==undefined)D[k]=p[k];});
+      // Restore logo from localStorage
+      if(D.company?.logo==='__local__'){
+        const saved=localStorage.getItem('bp5_logo');
+        if(saved)D.company.logo=saved;
+      }
       localStorage.setItem('bp5',JSON.stringify(D));
     }
     setSync('synced');
-  }catch(e){setSync('error');toast('Offline mode','info');}
+  }catch(e){setSync('error');toast('Offline — showing cached data','info');}
 }
 
 async function writeSupabase(){
@@ -1234,9 +1247,15 @@ async function writeSupabase(){
   if(!session){localStorage.setItem('bp5',JSON.stringify(D));setSync('pending');return;}
   try{
     localStorage.setItem('bp5',JSON.stringify(D));
+    // Strip large logo before saving to Supabase
+    const saveD=JSON.parse(JSON.stringify(D));
+    if(saveD.company?.logo&&saveD.company.logo.length>100&&saveD.company.logo!=='__local__'){
+      localStorage.setItem('bp5_logo',saveD.company.logo);
+      saveD.company.logo='__local__';
+    }
     const{error}=await supa.from('buildpro_data').upsert({
       user_id:session.user.id,
-      data:D,
+      data:saveD,
       updated_at:new Date().toISOString()
     },{onConflict:'user_id'});
     if(error)throw error;
@@ -2736,20 +2755,25 @@ function importBk(){
     rd.onload=ev=>{
       try{
         const p=JSON.parse(ev.target.result);
-        // Store logo separately in localStorage (not in Supabase JSON)
-        if(p.company?.logo){
+        // Store logo separately
+        if(p.company?.logo&&p.company.logo.length>100){
           localStorage.setItem('bp5_logo',p.company.logo);
+          p.company.logo='__local__';
         }
-        // Import all data
-        Object.keys(p).forEach(k=>{if(D[k]!==undefined)D[k]=p[k];});
-        // Remove logo from D to keep Supabase JSON small
-        if(D.company?.logo&&D.company.logo.length>50000){
-          localStorage.setItem('bp5_logo',D.company.logo);
-          D.company.logo='__local__';
-        }
-        sched();renderAll();refreshProfileUI();
-        toast('Backup imported ✓');
-      }catch(err){toast('Invalid file','err');}
+        // Import EVERY key
+        const keys=['company','clients','projects','subcons','subpays','cpays','invoices','estimates','agreements','tasks','expenses'];
+        keys.forEach(k=>{
+          if(p[k]!==undefined)D[k]=p[k];
+        });
+        // Ensure arrays are arrays
+        ['clients','projects','subcons','subpays','cpays','invoices','estimates','agreements','tasks','expenses'].forEach(k=>{
+          if(!Array.isArray(D[k]))D[k]=[];
+        });
+        sched();
+        renderAll();
+        refreshProfileUI();
+        toast('Imported: '+Object.keys(p).filter(k=>Array.isArray(p[k])).map(k=>k+' ('+p[k].length+')').join(', '),'ok');
+      }catch(err){toast('Invalid file: '+err.message,'err');}
     };
     rd.readAsText(f);
   };
