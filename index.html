@@ -1644,6 +1644,11 @@ function openProfileSheet(){const c=D.company;sv('co-name',c.name);sv('co-ph',c.
 function saveProfile(){D.company={...D.company,name:e$('co-name').value||'Your Company',phone:e$('co-ph').value,email:e$('co-email').value,addr:e$('co-addr').value,city:e$('co-city').value,ntn:e$('co-ntn').value,bank:e$('co-bank').value,acc:e$('co-acc').value,accT:e$('co-acc-t').value,iban:e$('co-iban').value};sched();X('sh-profile');refreshProfileUI();toast('Company profile saved ✓');}
 function refreshProfileUI(){
   const c=D.company;
+  // Restore logo from localStorage if stored separately
+  if(c.logo==='__local__'){
+    const savedLogo=localStorage.getItem('bp5_logo');
+    if(savedLogo)c.logo=savedLogo;
+  }
   const set=(id,v)=>{const el=e$(id);if(el)el.textContent=v||'—';};
   // Header
   if(e$('cp-nm'))e$('cp-nm').textContent=c.name||'Your Company';
@@ -2716,8 +2721,40 @@ function pdfProjPayments(pid){
 }
 
 // ════ BACKUP ════
-function exportBk(){const blob=new Blob([JSON.stringify(D,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='buildpro-backup-'+today()+'.json';a.click();cMenu();toast('Backup downloaded ✓');}
-function importBk(){const inp=document.createElement('input');inp.type='file';inp.accept='.json';inp.onchange=e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=ev=>{try{const p=JSON.parse(ev.target.result);Object.keys(p).forEach(k=>{if(D[k]!==undefined)D[k]=p[k];});sched();renderAll();refreshProfileUI();toast('Backup imported ✓');}catch(err){toast('Invalid file','err');}};rd.readAsText(f);};inp.click();cMenu();}
+function exportBk(){
+  const blob=new Blob([JSON.stringify(D,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='buildpro-backup-'+today()+'.json';a.click();
+  cMenu();toast('Backup downloaded ✓');
+}
+
+function importBk(){
+  const inp=document.createElement('input');inp.type='file';inp.accept='.json';
+  inp.onchange=e=>{
+    const f=e.target.files[0];if(!f)return;
+    const rd=new FileReader();
+    rd.onload=ev=>{
+      try{
+        const p=JSON.parse(ev.target.result);
+        // Store logo separately in localStorage (not in Supabase JSON)
+        if(p.company?.logo){
+          localStorage.setItem('bp5_logo',p.company.logo);
+        }
+        // Import all data
+        Object.keys(p).forEach(k=>{if(D[k]!==undefined)D[k]=p[k];});
+        // Remove logo from D to keep Supabase JSON small
+        if(D.company?.logo&&D.company.logo.length>50000){
+          localStorage.setItem('bp5_logo',D.company.logo);
+          D.company.logo='__local__';
+        }
+        sched();renderAll();refreshProfileUI();
+        toast('Backup imported ✓');
+      }catch(err){toast('Invalid file','err');}
+    };
+    rd.readAsText(f);
+  };
+  inp.click();cMenu();
+}
 
 // ════ SERVICE WORKER ════
 if('serviceWorker' in navigator){
