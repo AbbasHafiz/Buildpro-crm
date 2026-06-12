@@ -460,6 +460,35 @@ select option{background:var(--s2);}
     <!-- SUB-CON -->
     <div class="pg" id="pg-sub"><div id="list-sub"></div></div>
 
+    <!-- PROJECTS PAGE -->
+    <div class="pg" id="pg-proj">
+      <div class="ftabs">
+        <div class="ftab on" onclick="fProj('all',this)">All</div>
+        <div class="ftab" onclick="fProj('Foundation',this)">Foundation</div>
+        <div class="ftab" onclick="fProj('Structure',this)">Structure</div>
+        <div class="ftab" onclick="fProj('Finishing',this)">Finishing</div>
+        <div class="ftab" onclick="fProj('Completed',this)">Completed</div>
+      </div>
+      <div id="list-proj"></div>
+    </div>
+
+    <!-- INVESTORS PAGE -->
+    <div class="pg" id="pg-inv2"><div class="card-list" id="list-inv2"></div></div>
+
+    <!-- BANKS PAGE -->
+    <div class="pg" id="pg-banks"><div class="card-list" id="list-banks"></div></div>
+
+    <!-- GENERAL LEDGER PAGE -->
+    <div class="pg" id="pg-ledger">
+      <div class="stats2" style="margin-bottom:14px">
+        <div class="stat"><div class="stat-lbl">Total Income</div><div class="stat-val" id="led-in">0</div><div class="stat-unit">PKR</div></div>
+        <div class="stat"><div class="stat-lbl">Total Expense</div><div class="stat-val" id="led-out">0</div><div class="stat-unit">PKR</div></div>
+        <div class="stat"><div class="stat-lbl">Net Balance</div><div class="stat-val" id="led-net">0</div><div class="stat-unit">PKR</div></div>
+        <div class="stat"><div class="stat-lbl">Sub-Con Paid</div><div class="stat-val" id="led-sub">0</div><div class="stat-unit">PKR</div></div>
+      </div>
+      <div id="list-ledger"></div>
+    </div>
+
     <!-- AGREEMENTS -->
     <div class="pg" id="pg-agr"><div class="card-list" id="list-agr"></div></div>
 
@@ -537,6 +566,11 @@ select option{background:var(--s2);}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
       Home
     </div>
+    <div class="bi" onclick="goPage('proj',this,'Projects')">
+      <span class="bi-dot" id="bd-proj"></span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Projects
+    </div>
     <div class="bi" onclick="goPage('inv',this,'Invoices')">
       <span class="bi-dot" id="bd-inv"></span>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
@@ -576,6 +610,20 @@ select option{background:var(--s2);}
       <span class="bi-dot" id="bd-cli"></span>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
       Clients
+    </div>
+    <div class="bi" onclick="goPage('inv2',this,'Investors')">
+      <span class="bi-dot" id="bd-inv2"></span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
+      Investors
+    </div>
+    <div class="bi" onclick="goPage('banks',this,'Banks')">
+      <span class="bi-dot" id="bd-banks"></span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="10" width="18" height="11" rx="2"/><path d="M3 10l9-7 9 7"/><line x1="12" y1="10" x2="12" y2="21"/></svg>
+      Banks
+    </div>
+    <div class="bi" onclick="goPage('ledger',this,'General Ledger')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      Ledger
     </div>
     <div class="bi" onclick="goPage('profile',this,'Company Profile')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
@@ -1141,6 +1189,63 @@ select option{background:var(--s2);}
   <div class="sh-ft"><button class="btn btn-grey" onclick="X('sh-exp')">Cancel</button><button class="btn btn-gold" onclick="saveExp()">💾 Save Expense</button></div>
 </div></div>
 
+<!-- INVESTOR SHEET -->
+<div class="sh-ov" id="sh-inv2"><div class="sh">
+  <div class="sh-grip"></div>
+  <div class="sh-hd"><div class="sh-title" id="inv2-sh-t">New Investor</div><button class="sh-x" onclick="X('sh-inv2')">×</button></div>
+  <div class="sh-body">
+    <div class="edit-badge" id="inv2-eb">✏️ Editing investor</div>
+    <input type="hidden" id="inv2-eid">
+    <div class="fg"><label>Investor Name</label><input id="iv-name" placeholder="Full name"></div>
+    <div class="f2">
+      <div class="fg"><label>Phone</label><input id="iv-ph" type="tel" placeholder="03xx-xxxxxxx"></div>
+      <div class="fg"><label>CNIC</label><input id="iv-cnic" placeholder="xxxxx-xxxxxxx-x"></div>
+    </div>
+    <div class="fg"><label>Linked Project</label>
+      <div class="ds-wrap"><input class="ds-inp" id="iv-proj-t" placeholder="Select project" readonly onclick="oDs('ds-iv-proj')"><div class="ds-list" id="ds-iv-proj"></div><input type="hidden" id="iv-proj-id"></div>
+    </div>
+    <div class="f2">
+      <div class="fg"><label>Investment Amount (PKR)</label><input type="number" id="iv-amount" placeholder="0"></div>
+      <div class="fg"><label>Investment Type</label>
+        <select id="iv-type"><option>Silent Partner</option><option>Active Partner</option><option>Loan</option><option>Plot Share</option><option>Construction Share</option></select>
+      </div>
+    </div>
+    <div class="f2">
+      <div class="fg"><label>Profit Share %</label><input type="number" id="iv-share" placeholder="e.g. 25"></div>
+      <div class="fg"><label>Date</label><input type="date" id="iv-date"></div>
+    </div>
+    <div class="fg"><label>Notes</label><textarea id="iv-notes" placeholder="Agreement details, return terms…" style="min-height:56px"></textarea></div>
+  </div>
+  <div class="sh-ft"><button class="btn btn-grey" onclick="X('sh-inv2')">Cancel</button><button class="btn btn-gold" onclick="saveInv2()">💾 Save Investor</button></div>
+</div></div>
+
+<!-- BANK SHEET -->
+<div class="sh-ov" id="sh-bank"><div class="sh">
+  <div class="sh-grip"></div>
+  <div class="sh-hd"><div class="sh-title" id="bank-sh-t">Add Bank Account</div><button class="sh-x" onclick="X('sh-bank')">×</button></div>
+  <div class="sh-body">
+    <div class="edit-badge" id="bank-eb">✏️ Editing bank</div>
+    <input type="hidden" id="bank-eid">
+    <div class="fg"><label>Bank Name</label><input id="bk-name" placeholder="e.g. HBL, MCB, Meezan, UBL"></div>
+    <div class="fg"><label>Account Title</label><input id="bk-title" placeholder="Name on account"></div>
+    <div class="f2">
+      <div class="fg"><label>Account Number</label><input id="bk-acc" placeholder="Account number"></div>
+      <div class="fg"><label>Account Type</label>
+        <select id="bk-type"><option>Current</option><option>Savings</option><option>Islamic</option></select>
+      </div>
+    </div>
+    <div class="fg"><label>IBAN</label><input id="bk-iban" placeholder="PK00XXXX0000000000000000"></div>
+    <div class="f2">
+      <div class="fg"><label>Current Balance (PKR)</label><input type="number" id="bk-balance" placeholder="0"></div>
+      <div class="fg"><label>Branch</label><input id="bk-branch" placeholder="Branch name / code"></div>
+    </div>
+    <div class="fg"><label>Use on PDFs</label>
+      <select id="bk-default"><option value="0">No</option><option value="1">Yes — show on all PDFs</option></select>
+    </div>
+  </div>
+  <div class="sh-ft"><button class="btn btn-grey" onclick="X('sh-bank')">Cancel</button><button class="btn btn-gold" onclick="saveBank()">💾 Save Bank</button></div>
+</div></div>
+
 <div class="toast" id="toast"><div class="td" id="tdot"></div><span id="tmsg">Saved</span></div>
 
 <script>
@@ -1156,7 +1261,8 @@ let D={
   clients:[],projects:[],subcons:[],
   subpays:[],cpays:[],
   invoices:[],estimates:[],agreements:[],
-  tasks:[],expenses:[]
+  tasks:[],expenses:[],
+  investors:[],banks:[]
 };
 
 // ════ SUPABASE AUTH & STORAGE ════
@@ -1220,7 +1326,7 @@ async function loadSupaData(user){
     if(lo){
       try{
         const p=JSON.parse(lo);
-        const keys=['company','clients','projects','subcons','subpays','cpays','invoices','estimates','agreements','tasks','expenses'];
+        const keys=['company','clients','projects','subcons','subpays','cpays','invoices','estimates','agreements','tasks','expenses','investors','banks'];
         keys.forEach(k=>{if(p[k]!==undefined)D[k]=p[k];});
       }catch(e){}
     }
@@ -1302,8 +1408,8 @@ function goPage(p,el,title){
   if(p==='profile')refreshProfileUI();
   else renderPage(p);
 }
-function renderPage(p){if(p==='dash')renderDash();else if(p==='inv')renderInv();else if(p==='est')renderEst();else if(p==='pay')renderPay();else if(p==='sub')renderSub();else if(p==='agr')renderAgr();else if(p==='cli')renderCli();else if(p==='tasks')renderTasks();else if(p==='exp')renderExp();}
-function renderAll(){renderDash();renderInv();renderEst();renderPay();renderSub();renderAgr();renderCli();renderTasks();renderExp();updateDots();}
+function renderPage(p){if(p==='dash')renderDash();else if(p==='proj')renderProj();else if(p==='inv')renderInv();else if(p==='est')renderEst();else if(p==='pay')renderPay();else if(p==='sub')renderSub();else if(p==='agr')renderAgr();else if(p==='cli')renderCli();else if(p==='tasks')renderTasks();else if(p==='exp')renderExp();else if(p==='inv2')renderInv2();else if(p==='banks')renderBanks();else if(p==='ledger')renderLedger();}
+function renderAll(){renderDash();renderProj();renderInv();renderEst();renderPay();renderSub();renderAgr();renderCli();renderTasks();renderExp();renderInv2();renderBanks();renderLedger();updateDots();}
 
 // ════ HELPERS ════
 const today=()=>new Date().toISOString().split('T')[0];
@@ -1343,6 +1449,7 @@ const DS={
   'ds-cp-inv':{t:'invoices',tx:'cp-inv-t',id:'cp-inv-id'},
   'ds-tk-proj':{t:'projects',tx:'tk-proj-t',id:'tk-proj-id'},
   'ds-ex-proj':{t:'projects',tx:'ex-proj-t',id:'ex-proj-id'},
+  'ds-iv-proj':{t:'projects',tx:'iv-proj-t',id:'iv-proj-id'},
 };
 function oDs(dsId){
   document.querySelectorAll('.ds-list').forEach(d=>d.classList.remove('on'));
@@ -1476,7 +1583,10 @@ function fabAction(){
     'dash':  ()=>O('sh-new'),
     'inv':   ()=>{iInv('standard');O('sh-inv');},
     'est':   ()=>{iEst();O('sh-est');},
+    'proj':  ()=>{O('sh-proj');iP();},
     'pay':   ()=>O('sh-pay-choose'),
+    'banks': ()=>{iBank();O('sh-bank');},
+    'ledger':()=>O('sh-new'),
     'sub':   ()=>{iSub();O('sh-sub');},
     'agr':   ()=>{iAgr();O('sh-agr');},
     'cli':   ()=>{iCli();O('sh-cli');},
@@ -2037,7 +2147,7 @@ function renderCli(){
   </div>`).join('');
 }
 
-function updateDots(){[['inv',D.invoices],['est',D.estimates],['pay',[...D.cpays,...D.subpays]],['sub',D.subcons],['agr',D.agreements],['cli',D.clients],['tasks',D.tasks||[]],['exp',D.expenses||[]]].forEach(([k,arr])=>{const el=e$('bd-'+k);if(el)el.classList.toggle('on',arr.length>0);});}
+function updateDots(){[['inv',D.invoices],['est',D.estimates],['pay',[...D.cpays,...D.subpays]],['sub',D.subcons],['agr',D.agreements],['cli',D.clients],['tasks',D.tasks||[]],['exp',D.expenses||[]],['proj',D.projects],['inv2',D.investors||[]],['banks',D.banks||[]]].forEach(([k,arr])=>{const el=e$('bd-'+k);if(el)el.classList.toggle('on',arr.length>0);});}
 
 // ════ PDF GENERATION — Advanced Construction ════
 const co=()=>D.company||{};
@@ -2739,6 +2849,184 @@ function pdfProjPayments(pid){
   toast('Payment statement PDF ✓');
 }
 
+// ════ PROJECTS PAGE ════
+let projFilter='all';
+function fProj(f,el){projFilter=f;document.querySelectorAll('#pg-proj .ftab').forEach(t=>t.classList.remove('on'));el.classList.add('on');renderProj();}
+function renderProj(){
+  const el=e$('list-proj');if(!el)return;
+  let rows=projFilter==='all'?D.projects:D.projects.filter(r=>r.phase===projFilter);
+  if(!rows.length){el.innerHTML='<div class="empty"><div class="empty-i">🏗</div><div class="empty-t">No projects yet.<br>Tap + to add.</div></div>';return;}
+  el.innerHTML=rows.map(p=>{
+    const cli=D.clients.find(x=>x.id===p.clientId);
+    const rec=D.cpays.filter(x=>x.projectId===p.id).reduce((s,x)=>s+x.amount,0);
+    const sub=D.subpays.filter(x=>x.projectId===p.id).reduce((s,x)=>s+x.amount,0);
+    const agr=D.agreements.find(x=>x.projectId===p.id);
+    const inv=D.invoices.filter(x=>x.projectId===p.id).reduce((s,x)=>s+x.total,0);
+    const pct=p.value>0?Math.min(100,Math.round(rec/p.value*100)):0;
+    return`<div class="card">
+      <div class="card-top">
+        <div>
+          <div class="card-nm">${p.name}</div>
+          <div class="card-sub">${[p.loc,p.plot].filter(Boolean).join(' · ')}</div>
+          ${cli?`<div class="card-sub">👤 ${cli.name}${cli.phone?' · '+cli.phone:''}</div>`:''}
+          <div style="margin-top:6px"><span class="b b-b">${p.phase||'—'}</span>${agr?` <span class="b b-g" style="font-size:9px">✍️ ${agr.status}</span>`:''}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-md);color:var(--gold)">${fmt(p.value)}</div>
+          <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">${p.start||'—'} → ${p.end||'—'}</div>
+        </div>
+      </div>
+      <div style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--mut);margin-bottom:4px"><span>Collection ${pct}%</span><span>PKR ${fmt(rec)} / ${fmt(p.value)}</span></div>
+        <div class="pbar-wrap"><div class="pbar" style="width:${pct}%"></div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:11px">
+        <div style="background:var(--s2);border-radius:8px;padding:8px;text-align:center">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--grn)">${fmt(rec)}</div>
+          <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Received</div>
+        </div>
+        <div style="background:var(--s2);border-radius:8px;padding:8px;text-align:center">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--red)">${fmt(sub)}</div>
+          <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Sub-Con</div>
+        </div>
+        <div style="background:var(--s2);border-radius:8px;padding:8px;text-align:center">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:${rec-sub>=0?'var(--grn)':'var(--red)'}">${fmt(rec-sub)}</div>
+          <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Net</div>
+        </div>
+      </div>
+      ${p.notes?`<div style="font-size:var(--fs-sm);color:var(--mut);margin-bottom:10px">${p.notes}</div>`:''}
+      <div class="card-acts">
+        <button class="ca blu" onclick="eP('${p.id}')">✏️ Edit</button>
+        <button class="ca gold" onclick="pdfProjPayments('${p.id}')">⬇ PDF</button>
+        <button class="ca ora" onclick="O('sh-spay');iSpay();sv('sp-proj-t','${esc(p.name)}');sv('sp-proj-id','${p.id}')">+ Pay Sub</button>
+        <button class="ca grn" onclick="O('sh-cpay');iCpay();sv('cp-proj-t','${esc(p.name)}');sv('cp-proj-id','${p.id}')">+ Pay Recv</button>
+        <button class="ca red" onclick="del('projects','${p.id}')">🗑</button>
+      </div>
+      ${agr?`<div style="background:var(--s2);border-radius:9px;padding:12px;margin-top:10px">
+        <div style="font-size:var(--fs-xs);color:var(--gold);font-weight:700;text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px">✍️ Agreement: ${agr.num} — ${agr.status.toUpperCase()}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;font-size:var(--fs-xs)">
+          ${agr.pay1?`<div style="background:var(--bg);border-radius:7px;padding:8px"><div style="color:var(--mut)">Advance</div><div style="font-weight:600;color:var(--txt);margin-top:2px">${agr.pay1}</div></div>`:''}
+          ${agr.pay2?`<div style="background:var(--bg);border-radius:7px;padding:8px"><div style="color:var(--mut)">At DPC/Slab</div><div style="font-weight:600;color:var(--txt);margin-top:2px">${agr.pay2}</div></div>`:''}
+          ${agr.pay3?`<div style="background:var(--bg);border-radius:7px;padding:8px"><div style="color:var(--mut)">At Roof</div><div style="font-weight:600;color:var(--txt);margin-top:2px">${agr.pay3}</div></div>`:''}
+          ${agr.pay4?`<div style="background:var(--bg);border-radius:7px;padding:8px"><div style="color:var(--mut)">On Completion</div><div style="font-weight:600;color:var(--txt);margin-top:2px">${agr.pay4}</div></div>`:''}
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:9px;padding-top:9px;border-top:1px solid var(--bor);font-size:var(--fs-sm)">
+          <span style="color:var(--mut)">Contract Value</span>
+          <span style="font-family:'JetBrains Mono',monospace;color:var(--gold)">${fmt(agr.value)}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:5px;font-size:var(--fs-sm)">
+          <span style="color:var(--mut)">Received So Far</span>
+          <span style="font-family:'JetBrains Mono',monospace;color:var(--grn)">${fmt(rec)}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:5px;font-size:var(--fs-sm)">
+          <span style="color:var(--mut)">Balance Due</span>
+          <span style="font-family:'JetBrains Mono',monospace;color:${agr.value-rec>0?'var(--red)':'var(--grn)'}">${fmt(Math.max(0,agr.value-rec))}</span>
+        </div>
+        <button class="ca gold" style="width:100%;margin-top:9px;padding:8px" onclick="eAgr('${agr.id}')">✏️ Edit Agreement</button>
+      </div>`:''}
+    </div>`;
+  }).join('');
+}
+
+// ════ INVESTORS ════
+function iInv2(){sv('inv2-eid','');const eb=e$('inv2-eb');if(eb)eb.classList.remove('on');const sh=e$('inv2-sh-t');if(sh)sh.textContent='New Investor';['iv-name','iv-ph','iv-cnic','iv-proj-t','iv-proj-id','iv-notes','iv-share'].forEach(id=>sv(id,''));sv('iv-amount','');sv('iv-date',today());sv('iv-type','Silent Partner');}
+function eInv2(id){const r=(D.investors||[]).find(x=>x.id===id);if(!r)return;sv('inv2-eid',id);const eb=e$('inv2-eb');if(eb)eb.classList.add('on');sv('iv-name',r.name);sv('iv-ph',r.phone||'');sv('iv-cnic',r.cnic||'');sv('iv-amount',r.amount);sv('iv-share',r.share||'');sv('iv-date',r.date||'');sv('iv-notes',r.notes||'');sv('iv-type',r.type||'Silent Partner');const p=D.projects.find(x=>x.id===r.projectId);sv('iv-proj-t',p?p.name:'');sv('iv-proj-id',r.projectId||'');O('sh-inv2');}
+function saveInv2(){const eid=e$('inv2-eid').value;const doc={id:eid||uid(),name:e$('iv-name').value,phone:e$('iv-ph').value,cnic:e$('iv-cnic').value,projectId:e$('iv-proj-id').value,projectName:e$('iv-proj-t').value,amount:parseFloat(e$('iv-amount').value)||0,type:e$('iv-type').value,share:parseFloat(e$('iv-share').value)||0,date:e$('iv-date').value||today(),notes:e$('iv-notes').value};if(!doc.name){toast('Enter investor name','err');return;}if(!D.investors)D.investors=[];ups('investors',doc);X('sh-inv2');renderInv2();updateDots();toast(eid?'Updated ✓':'Investor saved ✓');}
+function renderInv2(){
+  const el=e$('list-inv2');if(!el)return;
+  const investors=D.investors||[];
+  if(!investors.length){el.innerHTML='<div class="empty"><div class="empty-i">📈</div><div class="empty-t">No investors yet.<br>Tap + to add.</div></div>';return;}
+  const total=investors.reduce((s,i)=>s+i.amount,0);
+  el.innerHTML=`<div style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:14px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
+    <div><div style="font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:.8px">Total Investment</div><div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-xl);color:var(--gold);margin-top:4px">PKR ${fmt(total)}</div></div>
+    <div style="font-size:var(--fs-xs);color:var(--mut)">${investors.length} investors</div>
+  </div>`+
+  investors.map(r=>`<div class="card">
+    <div class="card-top">
+      <div><div class="card-nm">${r.name}</div><div class="card-sub">${r.phone||''} ${r.cnic?'· CNIC: '+r.cnic:''}</div><div style="margin-top:5px"><span class="b b-p">${r.type}</span></div></div>
+      <div style="text-align:right"><div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-lg);color:var(--gold)">${fmt(r.amount)}</div>${r.share?`<div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">${r.share}% profit share</div>`:''}</div>
+    </div>
+    ${r.projectName?`<div style="font-size:var(--fs-sm);color:var(--mut);margin-bottom:10px">📁 ${r.projectName}</div>`:''}
+    ${r.notes?`<div style="font-size:var(--fs-sm);color:var(--mut);margin-bottom:10px">${r.notes}</div>`:''}
+    <div class="card-acts">
+      <button class="ca blu" onclick="eInv2('${r.id}')">✏️ Edit</button>
+      <button class="ca red" onclick="del('investors','${r.id}')">🗑</button>
+    </div>
+  </div>`).join('');
+}
+
+// ════ BANKS ════
+function iBank(){sv('bank-eid','');const eb=e$('bank-eb');if(eb)eb.classList.remove('on');const sh=e$('bank-sh-t');if(sh)sh.textContent='Add Bank Account';['bk-name','bk-title','bk-acc','bk-iban','bk-branch'].forEach(id=>sv(id,''));sv('bk-balance','');sv('bk-type','Current');sv('bk-default','0');}
+function eBank(id){const r=(D.banks||[]).find(x=>x.id===id);if(!r)return;sv('bank-eid',id);const eb=e$('bank-eb');if(eb)eb.classList.add('on');sv('bk-name',r.name);sv('bk-title',r.title);sv('bk-acc',r.acc);sv('bk-type',r.type||'Current');sv('bk-iban',r.iban||'');sv('bk-balance',r.balance||'');sv('bk-branch',r.branch||'');sv('bk-default',r.isDefault?'1':'0');O('sh-bank');}
+function saveBank(){const eid=e$('bank-eid').value;const doc={id:eid||uid(),name:e$('bk-name').value,title:e$('bk-title').value,acc:e$('bk-acc').value,type:e$('bk-type').value,iban:e$('bk-iban').value,balance:parseFloat(e$('bk-balance').value)||0,branch:e$('bk-branch').value,isDefault:e$('bk-default').value==='1'};if(!doc.name||!doc.acc){toast('Enter bank name and account number','err');return;}if(!D.banks)D.banks=[];if(doc.isDefault)D.banks.forEach(b=>b.isDefault=false);ups('banks',doc);X('sh-bank');renderBanks();updateDots();toast(eid?'Updated ✓':'Bank saved ✓');}
+function renderBanks(){
+  const el=e$('list-banks');if(!el)return;
+  const banks=D.banks||[];
+  if(!banks.length){el.innerHTML='<div class="empty"><div class="empty-i">🏦</div><div class="empty-t">No bank accounts yet.<br>Tap + to add.</div></div>';return;}
+  const total=banks.reduce((s,b)=>s+b.balance,0);
+  el.innerHTML=`<div style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:14px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
+    <div><div style="font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:.8px">Total Balance</div><div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-xl);color:var(--grn);margin-top:4px">PKR ${fmt(total)}</div></div>
+    <div style="font-size:var(--fs-xs);color:var(--mut)">${banks.length} accounts</div>
+  </div>`+
+  banks.map(r=>`<div class="card" style="border-left:3px solid ${r.isDefault?'var(--gold)':'var(--bor)'}">
+    <div class="card-top">
+      <div><div class="card-nm">${r.name}${r.isDefault?' ⭐':''}</div><div class="card-sub">${r.title}</div><div style="margin-top:5px"><span class="b b-m">${r.type}</span></div></div>
+      <div style="text-align:right"><div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-lg);color:var(--grn)">${fmt(r.balance)}</div></div>
+    </div>
+    <div style="font-size:var(--fs-sm);color:var(--mut);margin-bottom:10px">
+      A/C: ${r.acc}${r.iban?'<br>IBAN: '+r.iban:''}${r.branch?'<br>Branch: '+r.branch:''}
+    </div>
+    <div class="card-acts">
+      <button class="ca blu" onclick="eBank('${r.id}')">✏️ Edit</button>
+      <button class="ca red" onclick="del('banks','${r.id}')">🗑</button>
+    </div>
+  </div>`).join('');
+}
+
+// ════ GENERAL LEDGER ════
+function renderLedger(){
+  const el=e$('list-ledger');if(!el)return;
+  const totalIn=D.cpays.reduce((s,p)=>s+p.amount,0);
+  const totalOut=(D.subpays.reduce((s,p)=>s+p.amount,0))+(D.expenses||[]).reduce((s,e)=>s+e.amount,0);
+  const net=totalIn-totalOut;
+  const subTotal=D.subpays.reduce((s,p)=>s+p.amount,0);
+  const setV=(id,v,color)=>{const x=e$(id);if(x){x.textContent=fmt(v);if(color)x.style.color=color;}};
+  setV('led-in',totalIn,'var(--grn)');setV('led-out',totalOut,'var(--red)');
+  setV('led-net',Math.abs(net),net>=0?'var(--grn)':'var(--red)');setV('led-sub',subTotal,'var(--red)');
+  // All transactions combined sorted by date
+  const txns=[
+    ...D.cpays.map(p=>({date:p.date,type:'Receipt',desc:p.clientName+' — '+(p.milestone||p.projectName||''),ref:p.invoiceRef||'',amount:p.amount,dir:'in',project:p.projectName})),
+    ...D.subpays.map(p=>({date:p.date,type:'Sub-Con Payment',desc:p.subconName+' — '+p.phase,ref:'',amount:p.amount,dir:'out',project:p.projectName})),
+    ...(D.expenses||[]).map(p=>({date:p.date,type:'Expense',desc:p.desc+' ('+p.cat+')',ref:'',amount:p.amount,dir:'out',project:p.projectName})),
+  ].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  if(!txns.length){el.innerHTML='<div class="empty"><div class="empty-i">📒</div><div class="empty-t">No transactions yet</div></div>';return;}
+  let running=0;
+  // Group by project
+  const projects=[...new Set(txns.map(t=>t.project||'General'))];
+  el.innerHTML=projects.map(proj=>{
+    const ptxns=txns.filter(t=>(t.project||'General')===proj);
+    const pIn=ptxns.filter(t=>t.dir==='in').reduce((s,t)=>s+t.amount,0);
+    const pOut=ptxns.filter(t=>t.dir==='out').reduce((s,t)=>s+t.amount,0);
+    return`<div style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);overflow:hidden;margin-bottom:12px">
+      <div style="padding:12px 14px;border-bottom:1px solid var(--bor);display:flex;justify-content:space-between;align-items:center">
+        <div style="font-size:var(--fs-md);font-weight:700">📁 ${proj}</div>
+        <div style="text-align:right;font-size:var(--fs-xs)"><span style="color:var(--grn)">+${fmt(pIn)}</span> <span style="color:var(--mut)">|</span> <span style="color:var(--red)">-${fmt(pOut)}</span></div>
+      </div>
+      ${ptxns.map(t=>`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:10px 14px;border-bottom:1px solid var(--bor)">
+        <div>
+          <div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:2px">${t.date||'—'} · ${t.type}</div>
+          <div style="font-size:var(--fs-sm);font-weight:600">${t.desc}</div>
+        </div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-md);color:${t.dir==='in'?'var(--grn)':'var(--red)'};flex-shrink:0;margin-left:10px">${t.dir==='in'?'+':'-'}${fmt(t.amount)}</div>
+      </div>`).join('')}
+      <div style="padding:10px 14px;background:var(--s2);display:flex;justify-content:space-between;font-size:var(--fs-sm);font-weight:700">
+        <span style="color:var(--mut)">Net</span>
+        <span style="font-family:'JetBrains Mono',monospace;color:${pIn-pOut>=0?'var(--grn)':'var(--red)'}">PKR ${fmt(pIn-pOut)}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
 // ════ BACKUP ════
 function exportBk(){
   const blob=new Blob([JSON.stringify(D,null,2)],{type:'application/json'});
@@ -2747,12 +3035,12 @@ function exportBk(){
   cMenu();toast('Backup downloaded ✓');
 }
 
-function importBk(){
+async function importBk(){
   const inp=document.createElement('input');inp.type='file';inp.accept='.json';
-  inp.onchange=e=>{
+  inp.onchange=async e=>{
     const f=e.target.files[0];if(!f)return;
     const rd=new FileReader();
-    rd.onload=ev=>{
+    rd.onload=async ev=>{
       try{
         const p=JSON.parse(ev.target.result);
         // Store logo separately
@@ -2760,20 +3048,22 @@ function importBk(){
           localStorage.setItem('bp5_logo',p.company.logo);
           p.company.logo='__local__';
         }
-        // Import EVERY key
+        // Import EVERY key into D
         const keys=['company','clients','projects','subcons','subpays','cpays','invoices','estimates','agreements','tasks','expenses'];
-        keys.forEach(k=>{
-          if(p[k]!==undefined)D[k]=p[k];
-        });
-        // Ensure arrays are arrays
-        ['clients','projects','subcons','subpays','cpays','invoices','estimates','agreements','tasks','expenses'].forEach(k=>{
-          if(!Array.isArray(D[k]))D[k]=[];
-        });
-        sched();
+        keys.forEach(k=>{if(p[k]!==undefined)D[k]=p[k];});
+        // Ensure arrays
+        keys.filter(k=>k!=='company').forEach(k=>{if(!Array.isArray(D[k]))D[k]=[];});
+        // Save to localStorage immediately
+        localStorage.setItem('bp5',JSON.stringify(D));
+        // Write to Supabase immediately (not debounced)
+        toast('Importing…','info');
+        await writeSupabase();
+        // Now render
         renderAll();
         refreshProfileUI();
-        toast('Imported: '+Object.keys(p).filter(k=>Array.isArray(p[k])).map(k=>k+' ('+p[k].length+')').join(', '),'ok');
-      }catch(err){toast('Invalid file: '+err.message,'err');}
+        const counts=keys.filter(k=>Array.isArray(D[k])).map(k=>k+':'+D[k].length).join(' ');
+        toast('Imported ✓ — '+counts,'ok');
+      }catch(err){toast('Import error: '+err.message,'err');console.error(err);}
     };
     rd.readAsText(f);
   };
