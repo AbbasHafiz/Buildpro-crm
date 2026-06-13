@@ -520,6 +520,8 @@ select option{background:var(--s2);}
       </div>
       <div class="ftabs">
         <div class="ftab on" onclick="fExp('all',this)">All</div>
+        <div class="ftab" onclick="fExp('unpaid',this)">🔴 Unpaid</div>
+        <div class="ftab" onclick="fExp('paid',this)">✅ Paid</div>
         <div class="ftab" onclick="fExp('material',this)">Material</div>
         <div class="ftab" onclick="fExp('labour',this)">Labour</div>
         <div class="ftab" onclick="fExp('equipment',this)">Equipment</div>
@@ -611,16 +613,6 @@ select option{background:var(--s2);}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
       Clients
     </div>
-    <div class="bi" onclick="goPage('inv2',this,'Investors')">
-      <span class="bi-dot" id="bd-inv2"></span>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
-      Investors
-    </div>
-    <div class="bi" onclick="goPage('banks',this,'Banks')">
-      <span class="bi-dot" id="bd-banks"></span>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="10" width="18" height="11" rx="2"/><path d="M3 10l9-7 9 7"/><line x1="12" y1="10" x2="12" y2="21"/></svg>
-      Banks
-    </div>
     <div class="bi" onclick="goPage('ledger',this,'General Ledger')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
       Ledger
@@ -674,8 +666,9 @@ select option{background:var(--s2);}
     <div class="f2">
       <div class="fg"><label>Contract Value (PKR)</label><input type="number" id="p-val" placeholder="0"></div>
       <div class="fg"><label>Current Phase</label>
-        <select id="p-phase"><option>Foundation</option><option>Structure</option><option>Finishing</option><option>Handover</option><option>Completed</option></select>
+        <select id="p-phase"><option>Foundation</option><option>Structure</option><option>DPC Level</option><option>Lintel Level</option><option>Roof Slab</option><option>Brickwork</option><option>Plaster</option><option>Finishing</option><option>Handover</option><option>Completed</option><option>Custom</option></select>
       </div>
+      <div class="fg"><label>Custom Stage (optional)</label><input id="p-custom-stage" placeholder="e.g. Tiling done, 1st floor slab…"></div>
     </div>
     <div class="f2">
       <div class="fg"><label>Start Date</label><input type="date" id="p-start"></div>
@@ -753,6 +746,7 @@ select option{background:var(--s2);}
       <div class="fg"><label>Date</label><input type="date" id="sp-date"></div>
       <div class="fg"><label>Amount (PKR)</label><input type="number" id="sp-amt" placeholder="0"></div>
     </div>
+    <div class="fg"><label>Contract Value for This Project (PKR)</label><input type="number" id="sp-proj-contract" placeholder="Total agreed for this project"></div>
     <div class="f2">
       <div class="fg"><label>Phase / Milestone</label>
         <select id="sp-phase"><option>Advance</option><option>Foundation</option><option>DPC Level</option><option>Lintel Level</option><option>Roof Slab</option><option>Structure Complete</option><option>Finishing</option><option>Final Payment</option><option>Other</option></select>
@@ -1185,6 +1179,7 @@ select option{background:var(--s2);}
       </div>
     </div>
     <div class="fg"><label>Notes / Receipt Ref</label><input id="ex-notes" placeholder="Receipt no, supplier name…"></div>
+    <label style="display:flex;align-items:center;gap:11px;font-size:var(--fs-sm);color:var(--txt);text-transform:none;letter-spacing:0;font-weight:400;cursor:pointer;background:var(--bg);border:1px solid var(--bor);border-radius:8px;padding:11px 13px"><input type="checkbox" id="ex-ispaid" style="width:16px;height:16px;accent-color:var(--grn);flex-shrink:0"> <div><div style="font-weight:600">✅ Mark as Paid</div><div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Paid expenses excluded from PDF report</div></div></label>
   </div>
   <div class="sh-ft"><button class="btn btn-grey" onclick="X('sh-exp')">Cancel</button><button class="btn btn-gold" onclick="saveExp()">💾 Save Expense</button></div>
 </div></div>
@@ -1554,7 +1549,7 @@ function gLI(t){
 const totLI=items=>items.reduce((s,i)=>s+i.a,0);
 
 // ════ INIT FORMS ════
-function iP(){sv('proj-eid','');e$('proj-eb').classList.remove('on');e$('proj-sh-t').textContent='New Project';['p-name','p-loc','p-plot','p-val','p-notes','p-start','p-end'].forEach(id=>sv(id,''));sv('p-cli-t','');sv('p-cli-id','');sv('p-phase','Foundation');}
+function iP(){sv('proj-eid','');e$('proj-eb').classList.remove('on');e$('proj-sh-t').textContent='New Project';['p-name','p-loc','p-plot','p-val','p-notes','p-start','p-end','p-custom-stage'].forEach(id=>sv(id,''));sv('p-cli-t','');sv('p-cli-id','');sv('p-phase','Foundation');}
 function iCli(){sv('cli-eid','');e$('cli-eb').classList.remove('on');e$('cli-sh-t').textContent='New Client';['c-name','c-ph','c-cnic','c-city','c-email','c-addr'].forEach(id=>sv(id,''));}
 function iSub(){sv('sub-eid','');e$('sub-eb').classList.remove('on');e$('sub-sh-t').textContent='New Sub-Contractor';['s-name','s-ph','s-contract','s-notes','s-cnic'].forEach(id=>sv(id,''));sv('s-proj-t','');sv('s-proj-id','');}
 function iSpay(){sv('spay-eid','');e$('spay-eb').classList.remove('on');e$('spay-sh-t').textContent='Sub-Con Payment';['sp-sub-t','sp-sub-id','sp-proj-t','sp-proj-id','sp-desc'].forEach(id=>sv(id,''));sv('sp-amt','');sv('sp-date',today());}
@@ -1656,10 +1651,10 @@ function iAgr(){
 }
 
 // ════ EDIT LOADERS ════
-function eP(id){const r=D.projects.find(x=>x.id===id);if(!r)return;sv('proj-eid',id);e$('proj-eb').classList.add('on');e$('proj-sh-t').textContent='Edit Project';sv('p-name',r.name);sv('p-loc',r.loc);sv('p-plot',r.plot);sv('p-val',r.value);sv('p-notes',r.notes);sv('p-phase',r.phase||'Foundation');sv('p-start',r.start);sv('p-end',r.end);const c=D.clients.find(x=>x.id===r.clientId);sv('p-cli-t',c?c.name:'');sv('p-cli-id',r.clientId||'');O('sh-proj');}
+function eP(id){const r=D.projects.find(x=>x.id===id);if(!r)return;sv('proj-eid',id);e$('proj-eb').classList.add('on');e$('proj-sh-t').textContent='Edit Project';sv('p-name',r.name);sv('p-loc',r.loc);sv('p-plot',r.plot);sv('p-val',r.value);sv('p-notes',r.notes);sv('p-phase',r.phase||'Foundation');sv('p-custom-stage',r.customStage||'');sv('p-start',r.start);sv('p-end',r.end);const c=D.clients.find(x=>x.id===r.clientId);sv('p-cli-t',c?c.name:'');sv('p-cli-id',r.clientId||'');O('sh-proj');}
 function eCli(id){const r=D.clients.find(x=>x.id===id);if(!r)return;sv('cli-eid',id);e$('cli-eb').classList.add('on');e$('cli-sh-t').textContent='Edit Client';sv('c-name',r.name);sv('c-ph',r.phone);sv('c-cnic',r.cnic);sv('c-city',r.city);sv('c-email',r.email);sv('c-addr',r.addr);O('sh-cli');}
 function eSub(id){const r=D.subcons.find(x=>x.id===id);if(!r)return;sv('sub-eid',id);e$('sub-eb').classList.add('on');e$('sub-sh-t').textContent='Edit Contractor';sv('s-name',r.name);sv('s-trade',r.trade);sv('s-ph',r.phone);sv('s-contract',r.contract);sv('s-ptype',r.ptype);sv('s-notes',r.notes);sv('s-cnic',r.cnic||'');const p=D.projects.find(x=>x.id===r.projectId);sv('s-proj-t',p?p.name:'');sv('s-proj-id',r.projectId||'');O('sh-sub');}
-function eSpay(id){const r=D.subpays.find(x=>x.id===id);if(!r)return;sv('spay-eid',id);e$('spay-eb').classList.add('on');e$('spay-sh-t').textContent='Edit Payment';const sc=D.subcons.find(x=>x.id===r.subconId);sv('sp-sub-t',sc?sc.name:r.subconName||'');sv('sp-sub-id',r.subconId||'');const p=D.projects.find(x=>x.id===r.projectId);sv('sp-proj-t',p?p.name:r.projectName||'');sv('sp-proj-id',r.projectId||'');sv('sp-date',r.date);sv('sp-amt',r.amount);sv('sp-phase',r.phase);sv('sp-method',r.method);sv('sp-desc',r.desc);O('sh-spay');}
+function eSpay(id){const r=D.subpays.find(x=>x.id===id);if(!r)return;sv('spay-eid',id);e$('spay-eb').classList.add('on');e$('spay-sh-t').textContent='Edit Payment';const sc=D.subcons.find(x=>x.id===r.subconId);sv('sp-sub-t',sc?sc.name:r.subconName||'');sv('sp-sub-id',r.subconId||'');const p=D.projects.find(x=>x.id===r.projectId);sv('sp-proj-t',p?p.name:r.projectName||'');sv('sp-proj-id',r.projectId||'');sv('sp-date',r.date);sv('sp-amt',r.amount);sv('sp-proj-contract',r.projContract||'');sv('sp-phase',r.phase);sv('sp-method',r.method);sv('sp-desc',r.desc);O('sh-spay');}
 function eCpay(id){const r=D.cpays.find(x=>x.id===id);if(!r)return;sv('cpay-eid',id);e$('cpay-eb').classList.add('on');e$('cpay-sh-t').textContent='Edit Payment';const c=D.clients.find(x=>x.id===r.clientId);sv('cp-cli-t',c?c.name:'');sv('cp-cli-id',r.clientId||'');const p=D.projects.find(x=>x.id===r.projectId);sv('cp-proj-t',p?p.name:'');sv('cp-proj-id',r.projectId||'');sv('cp-date',r.date);sv('cp-amt',r.amount);const inv=D.invoices.find(x=>x.id===r.invoiceId);sv('cp-inv-t',inv?inv.num:'');sv('cp-inv-id',r.invoiceId||'');sv('cp-method',r.method);sv('cp-note',r.note);sv('cp-milestone',r.milestone||'Other');O('sh-cpay');}
 function eInv(id){
   const r=D.invoices.find(x=>x.id===id);if(!r)return;
@@ -1710,10 +1705,10 @@ function eAgr(id){
 function ups(store,doc){const eid=doc.id&&D[store].find(x=>x.id===doc.id)?doc.id:null;if(eid){const idx=D[store].findIndex(x=>x.id===eid);D[store][idx]={...D[store][idx],...doc};}else{if(!doc.id)doc.id=uid();doc.createdAt=new Date().toISOString();D[store].unshift(doc);}sched();}
 
 // ════ SAVES ════
-function saveP(){const eid=e$('proj-eid').value;const doc={id:eid||uid(),name:e$('p-name').value,loc:e$('p-loc').value,plot:e$('p-plot').value,clientId:e$('p-cli-id').value,value:parseFloat(e$('p-val').value)||0,phase:e$('p-phase').value,start:e$('p-start').value,end:e$('p-end').value,notes:e$('p-notes').value};if(!doc.name){toast('Enter project name','err');return;}ups('projects',doc);X('sh-proj');renderAll();toast(eid?'Project updated ✓':'Project saved ✓');}
+function saveP(){const eid=e$('proj-eid').value;const customStage=e$('p-custom-stage')?.value||'';const doc={id:eid||uid(),name:e$('p-name').value,loc:e$('p-loc').value,plot:e$('p-plot').value,clientId:e$('p-cli-id').value,value:parseFloat(e$('p-val').value)||0,phase:customStage||e$('p-phase').value,customStage,start:e$('p-start').value,end:e$('p-end').value,notes:e$('p-notes').value};if(!doc.name){toast('Enter project name','err');return;}ups('projects',doc);X('sh-proj');renderAll();toast(eid?'Project updated ✓':'Project saved ✓');}
 function saveCli(){const eid=e$('cli-eid').value;const doc={id:eid||uid(),name:e$('c-name').value,phone:e$('c-ph').value,cnic:e$('c-cnic').value,city:e$('c-city').value,email:e$('c-email').value,addr:e$('c-addr').value};if(!doc.name){toast('Enter name','err');return;}ups('clients',doc);X('sh-cli');renderCli();renderDash();updateDots();toast(eid?'Client updated ✓':'Client added ✓');}
 function saveSub(){const eid=e$('sub-eid').value;const doc={id:eid||uid(),name:e$('s-name').value,trade:e$('s-trade').value,phone:e$('s-ph').value,cnic:e$('s-cnic').value,contract:parseFloat(e$('s-contract').value)||0,ptype:e$('s-ptype').value,projectId:e$('s-proj-id').value,notes:e$('s-notes').value};if(!doc.name){toast('Enter name','err');return;}ups('subcons',doc);X('sh-sub');renderSub();updateDots();toast(eid?'Updated ✓':'Saved ✓');}
-function saveSpay(){const eid=e$('spay-eid').value;const doc={id:eid||uid(),subconId:e$('sp-sub-id').value,subconName:e$('sp-sub-t').value,projectId:e$('sp-proj-id').value,projectName:e$('sp-proj-t').value,date:e$('sp-date').value||today(),amount:parseFloat(e$('sp-amt').value)||0,phase:e$('sp-phase').value,method:e$('sp-method').value,desc:e$('sp-desc').value};if(!doc.subconId||!doc.amount){toast('Select contractor and enter amount','err');return;}ups('subpays',doc);X('sh-spay');renderAll();toast(eid?'Updated ✓':'PKR '+fmt(doc.amount)+' recorded ✓');}
+function saveSpay(){const eid=e$('spay-eid').value;const doc={id:eid||uid(),subconId:e$('sp-sub-id').value,subconName:e$('sp-sub-t').value,projectId:e$('sp-proj-id').value,projectName:e$('sp-proj-t').value,date:e$('sp-date').value||today(),amount:parseFloat(e$('sp-amt').value)||0,projContract:parseFloat(e$('sp-proj-contract')?.value)||0,phase:e$('sp-phase').value,method:e$('sp-method').value,desc:e$('sp-desc').value};if(!doc.subconId||!doc.amount){toast('Select contractor and enter amount','err');return;}ups('subpays',doc);X('sh-spay');renderAll();toast(eid?'Updated ✓':'PKR '+fmt(doc.amount)+' recorded ✓');}
 function saveCpay(){
   const eid=e$('cpay-eid').value;const invId=e$('cp-inv-id').value;
   const doc={id:eid||uid(),clientId:e$('cp-cli-id').value,clientName:e$('cp-cli-t').value,projectId:e$('cp-proj-id').value,projectName:e$('cp-proj-t').value,date:e$('cp-date').value||today(),amount:parseFloat(e$('cp-amt').value)||0,invoiceId:invId,invoiceRef:e$('cp-inv-t').value,milestone:e$('cp-milestone').value,method:e$('cp-method').value,note:e$('cp-note').value};
@@ -2052,8 +2047,75 @@ function renderSub(){
       const proj=D.projects.find(x=>x.id===pid);
       const projPays=allPays.filter(p=>(p.projectId||'__none__')===pid).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
       const projTotal=projPays.reduce((s,p)=>s+p.amount,0);
-      return{projName:proj?proj.name:(pid==='__none__'?'No Project':projPays[0]?.projectName||'Unknown Project'),projPays,projTotal};
+      // Get contract value — use latest non-zero projContract from payments
+      const projContract=projPays.filter(p=>p.projContract>0).reduce((max,p)=>Math.max(max,p.projContract),0);
+      const projRem=projContract>0?Math.max(0,projContract-projTotal):0;
+      return{projName:proj?proj.name:(pid==='__none__'?'No Project':projPays[0]?.projectName||'Unknown Project'),projPays,projTotal,projContract,projRem};
     });
+
+    return`<div class="sub-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+        <div><div style="font-size:var(--fs-lg);font-weight:700">${s.name}</div><div style="margin-top:5px"><span class="b ${trC(s.trade)}">${s.trade}</span></div>${s.phone?`<div style="font-size:var(--fs-sm);color:var(--mut);margin-top:3px">${s.phone}</div>`:''}</div>
+        <div style="text-align:right;font-size:var(--fs-sm);color:var(--mut)">${s.ptype||''}</div>
+      </div>
+
+      <!-- Overall summary -->
+      <div class="sub-stats">
+        <div class="sub-stat"><div class="sub-stat-val" style="color:var(--gold)">${fmt(s.contract)}</div><div class="sub-stat-lbl">Contract</div></div>
+        <div class="sub-stat"><div class="sub-stat-val" style="color:var(--red)">${fmt(totalPaid)}</div><div class="sub-stat-lbl">Paid</div></div>
+        <div class="sub-stat"><div class="sub-stat-val" style="color:${rem>0?'var(--gold)':'var(--grn)'}">${fmt(rem)}</div><div class="sub-stat-lbl">Remaining</div></div>
+      </div>
+      <div class="pbar-wrap"><div class="pbar" style="width:${pct}%"></div></div>
+      <div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:14px">Paid ${pct}% of total contract</div>
+
+      <!-- Per-project breakdown -->
+      ${byProject.map(pg=>`
+        <div style="background:var(--s2);border-radius:10px;overflow:hidden;margin-bottom:10px">
+          <!-- Project header with contract/paid/remaining -->
+          <div style="padding:11px 13px;border-bottom:1px solid var(--bor)">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <div style="display:flex;align-items:center;gap:8px"><span>📁</span><span style="font-size:var(--fs-md);font-weight:700">${pg.projName}</span></div>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-md);color:var(--red);font-weight:700">PKR ${fmt(pg.projTotal)}</span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+              <div style="background:var(--bg);border-radius:7px;padding:7px;text-align:center">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--gold)">${pg.projContract>0?fmt(pg.projContract):'—'}</div>
+                <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Contract</div>
+              </div>
+              <div style="background:var(--bg);border-radius:7px;padding:7px;text-align:center">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--red)">${fmt(pg.projTotal)}</div>
+                <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Paid</div>
+              </div>
+              <div style="background:var(--bg);border-radius:7px;padding:7px;text-align:center">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:${pg.projRem>0?'var(--gold)':'var(--grn)'}">${pg.projContract>0?fmt(pg.projRem):'—'}</div>
+                <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Remaining</div>
+              </div>
+            </div>
+          </div>
+          <!-- Payment rows -->
+          ${pg.projPays.map(p=>`
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:10px 13px;border-bottom:1px solid var(--bor)">
+            <div>
+              <div style="font-size:var(--fs-sm);font-weight:600">${p.phase}</div>
+              <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">${p.date} · ${p.method||'Cash'}</div>
+              ${p.desc?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">${p.desc}</div>`:''}
+            </div>
+            <div style="text-align:right;flex-shrink:0;margin-left:12px">
+              <div style="font-family:'JetBrains Mono',monospace;color:var(--red)">${fmt(p.amount)}</div>
+              <div style="display:flex;gap:8px;margin-top:4px;justify-content:flex-end">
+                <button style="font-size:var(--fs-xs);color:var(--blu);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="eSpay('${p.id}')">Edit</button>
+                <button style="font-size:var(--fs-xs);color:var(--red);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="del('subpays','${p.id}')">Del</button>
+              </div>
+            </div>
+          </div>`).join('')}
+        </div>`).join('')}
+
+      <div class="card-acts" style="margin-top:4px">
+        <button class="ca blu" onclick="eSub('${s.id}')">✏️ Edit</button>
+        <button class="ca gold" onclick="O('sh-spay');iSpay();sv('sp-sub-t','${esc(s.name)}');sv('sp-sub-id','${s.id}')">+ Pay</button>
+        <button class="ca red" onclick="del('subcons','${s.id}')">🗑</button>
+      </div>
+    </div>`;
 
     return`<div class="sub-card">
       <!-- Header -->
@@ -2151,7 +2213,15 @@ function updateDots(){[['inv',D.invoices],['est',D.estimates],['pay',[...D.cpays
 
 // ════ PDF GENERATION — Advanced Construction ════
 const co=()=>D.company||{};
-function bPDF(){const{jsPDF}=window.jspdf;return new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});}
+function bPDF(){const{jsPDF}=window.jspdf;const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  // Enable unicode for Urdu/Arabic text
+  doc.setFont('helvetica','normal');
+  return doc;}
+function urduText(doc,text,x,y,opts){
+  // For Urdu - reverse text direction and use unicode
+  if(!text)return;
+  try{doc.text(text,x,y,{...opts,lang:'ur'});}catch(e){doc.text(text,x,y,opts||{});}
+}
 
 function drawHeader(doc,title,ref,date,sub,subVal){
   const c=co();const pw=210;
@@ -2533,11 +2603,17 @@ function markDone(id){const r=(D.tasks||[]).find(x=>x.id===id);if(!r)return;r.st
 let expFilter='all';
 function fExp(f,el){expFilter=f;document.querySelectorAll('#pg-exp .ftab').forEach(t=>t.classList.remove('on'));el.classList.add('on');renderExp();}
 
-function iExp(){sv('exp-eid','');const eb=e$('exp-eb');if(eb)eb.classList.remove('on');const sh=e$('exp-sh-t');if(sh)sh.textContent='New Expense';['ex-desc','ex-proj-t','ex-proj-id','ex-notes','ex-budget'].forEach(id=>sv(id,''));sv('ex-amount','');sv('ex-date',today());sv('ex-cat','material');sv('ex-paid','Cash');}
+function iExp(){sv('exp-eid','');const eb=e$('exp-eb');if(eb)eb.classList.remove('on');const sh=e$('exp-sh-t');if(sh)sh.textContent='New Expense';['ex-desc','ex-proj-t','ex-proj-id','ex-notes','ex-budget'].forEach(id=>sv(id,''));sv('ex-amount','');sv('ex-date',today());sv('ex-cat','material');sv('ex-paid','Cash');const ip=e$('ex-ispaid');if(ip)ip.checked=false;}
 
 function eExp(id){const r=(D.expenses||[]).find(x=>x.id===id);if(!r)return;sv('exp-eid',id);const eb=e$('exp-eb');if(eb)eb.classList.add('on');const sh=e$('exp-sh-t');if(sh)sh.textContent='Edit Expense';sv('ex-desc',r.desc);sv('ex-amount',r.amount);sv('ex-date',r.date||'');sv('ex-cat',r.cat||'material');sv('ex-paid',r.paid||'Cash');sv('ex-notes',r.notes||'');;const p=D.projects.find(x=>x.id===r.projectId);sv('ex-proj-t',p?p.name:'');sv('ex-proj-id',r.projectId||'');O('sh-exp');}
 
-function saveExp(){const eid=e$('exp-eid').value;const doc={id:eid||uid(),desc:e$('ex-desc').value,projectId:e$('ex-proj-id').value,projectName:e$('ex-proj-t').value,cat:e$('ex-cat').value,date:e$('ex-date').value||today(),amount:parseFloat(e$('ex-amount').value)||0,paid:e$('ex-paid').value,notes:e$('ex-notes').value};if(!doc.desc||!doc.amount){toast('Enter description and amount','err');return;}if(!D.expenses)D.expenses=[];ups('expenses',doc);X('sh-exp');renderExp();updateDots();renderDash();toast(eid?'Expense updated ✓':'Expense saved ✓');}
+function saveExp(){const eid=e$('exp-eid').value;const doc={id:eid||uid(),desc:e$('ex-desc').value,projectId:e$('ex-proj-id').value,projectName:e$('ex-proj-t').value,cat:e$('ex-cat').value,date:e$('ex-date').value||today(),amount:parseFloat(e$('ex-amount').value)||0,paid:e$('ex-paid').value,notes:e$('ex-notes').value};doc.isPaid=e$('ex-ispaid')?.checked||false;if(!doc.desc||!doc.amount){toast('Enter description and amount','err');return;}if(!D.expenses)D.expenses=[];ups('expenses',doc);X('sh-exp');renderExp();updateDots();renderDash();toast(eid?'Expense updated ✓':'Expense saved ✓');}
+
+function markExpPaid(id){
+  const r=(D.expenses||[]).find(x=>x.id===id);if(!r)return;
+  r.isPaid=!r.isPaid;sched();renderExp();
+  toast(r.isPaid?'Marked as paid ✅':'Marked as unpaid','info');
+}
 
 function renderExp(){
   const el=e$('list-exp');if(!el)return;
@@ -2549,7 +2625,7 @@ function renderExp(){
   setV('exp-budget',totalBudget);setV('exp-spent',totalSpent);
   const rem=e$('exp-rem');if(rem){rem.textContent=fmt(Math.max(0,totalBudget-totalSpent));rem.style.color=totalBudget-totalSpent<0?'var(--red)':'var(--grn)';}
   const ec=e$('exp-count');if(ec)ec.textContent=exps.length;
-  let rows=expFilter==='all'?exps:exps.filter(r=>r.cat===expFilter);
+  let rows=expFilter==='all'?exps:expFilter==='unpaid'?exps.filter(r=>!r.isPaid):expFilter==='paid'?exps.filter(r=>r.isPaid):exps.filter(r=>r.cat===expFilter);
   if(!rows.length){el.innerHTML='<div class="empty"><div class="empty-i">💰</div><div class="empty-t">No expenses yet.<br>Tap + to add an expense.</div></div>';return;}
   const catIcon={material:'🧱',labour:'👷',equipment:'🔧',transport:'🚚',utility:'💡',other:'📦'};
   // Group by project
@@ -2577,13 +2653,14 @@ function renderExp(){
       </div>
       ${projRows.map(r=>`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:11px 14px;border-bottom:1px solid var(--bor)">
         <div>
-          <div style="font-size:var(--fs-sm);font-weight:600">${catIcon[r.cat]||'📦'} ${r.desc}</div>
+          <div style="font-size:var(--fs-sm);font-weight:600">${catIcon[r.cat]||'📦'} ${r.desc} ${r.isPaid?'<span style="color:var(--grn);font-size:var(--fs-xs)">✅ Paid</span>':''}</div>
           <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">${r.date} · ${r.paid} · <span class="b b-m" style="font-size:9px">${r.cat}</span></div>
           ${r.notes?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">${r.notes}</div>`:''}
         </div>
         <div style="text-align:right;flex-shrink:0;margin-left:12px">
           <div style="font-family:'JetBrains Mono',monospace;color:var(--red);font-size:var(--fs-md)">${fmt(r.amount)}</div>
-          <div style="display:flex;gap:8px;margin-top:4px">
+          <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
+            <button style="font-size:var(--fs-xs);color:${r.isPaid?'var(--mut)':'var(--grn)'};background:none;border:none;cursor:pointer;font-family:Inter,sans-serif;font-weight:600" onclick="markExpPaid('${r.id}')">${r.isPaid?'↩ Unpaid':'✅ Paid'}</button>
             <button style="font-size:var(--fs-xs);color:var(--blu);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="eExp('${r.id}')">Edit</button>
             <button style="font-size:var(--fs-xs);color:var(--red);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="del('expenses','${r.id}')">Del</button>
           </div>
@@ -2648,46 +2725,46 @@ function pdfExp(){
 
 function pdfExpProject(pid,projName){
   const c=co();const doc=bPDF();
-  const exps=(D.expenses||[]).filter(r=>(r.projectId||'__none__')===pid);
-  if(!exps.length){toast('No expenses for this project','info');return;}
+  const allExps=(D.expenses||[]).filter(r=>(r.projectId||'__none__')===pid);
+  const exps=allExps.filter(r=>!r.isPaid);
+  const paidExps=allExps.filter(r=>r.isPaid);
+  if(!allExps.length){toast('No expenses for this project','info');return;}
   const proj=D.projects.find(x=>x.id===pid);
-  const projBudget=proj?.budget||0;
   const projSpent=exps.reduce((s,r)=>s+r.amount,0);
+  const paidTotal=paidExps.reduce((s,r)=>s+r.amount,0);
   const cli=proj?D.clients.find(x=>x.id===proj.clientId):null;
-  let y=drawHeader(doc,'EXPENSE REPORT',projName,today(),'','');
-  // Project + client info
+  let y=drawHeader(doc,'PENDING EXPENSES',projName,today(),'','');
   doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(30,30,30);
   doc.text(projName,14,y);
   doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(100,100,100);
   if(proj?.loc)doc.text('Location: '+proj.loc+(proj.plot?' · '+proj.plot:''),14,y+6);
-  if(cli)doc.text('Client: '+cli.name+(cli.phone?' · '+cli.phone:''),14,y+12);
-  // Budget summary box
+  if(cli)doc.text('Client: '+cli.name,14,y+12);
   doc.setFillColor(248,246,242);doc.rect(14,y+18,182,16,'F');
   doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(30,30,30);
-  if(projBudget>0){
-    const pct=Math.round(projSpent/projBudget*100);
-    doc.text('Budget: PKR '+fmt(projBudget),16,y+25);
-    doc.text('Spent: PKR '+fmt(projSpent),80,y+25);
-    doc.text('Remaining: PKR '+fmt(Math.max(0,projBudget-projSpent))+' ('+pct+'% used)',145,y+25,{align:'right'});
-  }else{
-    doc.text('Total Expenses: PKR '+fmt(projSpent),16,y+25);
-  }
+  doc.text('Pending: PKR '+fmt(projSpent),16,y+25);
+  doc.text('Already Paid: PKR '+fmt(paidTotal),110,y+25);
   y+=40;
-  doc.autoTable({
-    startY:y,
-    head:[['Date','Description','Category','Paid By','Amount (PKR)']],
-    body:exps.map(r=>[r.date||'—',r.desc,r.cat||'—',r.paid||'Cash',fmt(r.amount)]),
-    foot:[['','','','Total (PKR)',fmt(projSpent)]],
-    styles:{fontSize:9.5,cellPadding:3.5,textColor:[30,30,30]},
-    headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8.5},
-    footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[201,123,58],fontSize:10},
-    columnStyles:{4:{halign:'right'}},
-    margin:{left:14,right:14}
-  });
+  if(!exps.length){
+    doc.setFont('helvetica','italic');doc.setFontSize(10);doc.setTextColor(82,181,106);
+    doc.text('All expenses have been paid for this project.',14,y);
+  }else{
+    doc.autoTable({
+      startY:y,
+      head:[['Date','Description','Category','Paid By','Amount (PKR)']],
+      body:exps.map(r=>[r.date||'--',r.desc,r.cat||'--',r.paid||'Cash',fmt(r.amount)]),
+      foot:[['','','','Total Pending','PKR '+fmt(projSpent)]],
+      styles:{fontSize:9.5,cellPadding:3.5,textColor:[30,30,30]},
+      headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8.5},
+      footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[224,85,85],fontSize:10},
+      columnStyles:{4:{halign:'right'}},
+      margin:{left:14,right:14}
+    });
+  }
   drawBankFooter(doc);
-  doc.save('Expenses-'+projName.replace(/\s+/g,'-')+'-'+today()+'.pdf');
-  toast('PDF downloaded ✓');
+  doc.save('PendingExpenses-'+projName.replace(/\s+/g,'-')+'-'+today()+'.pdf');
+  toast('Pending expenses PDF downloaded');
 }
+
 
 // ════ PAYMENT CONFIRMATION PDFs ════
 function pdfCpayConfirm(id){
