@@ -751,6 +751,7 @@ select option{background:var(--s2);}
       <div class="fg"><label>Phase / Milestone</label>
         <select id="sp-phase"><option>Advance</option><option>Foundation</option><option>DPC Level</option><option>Lintel Level</option><option>Roof Slab</option><option>Structure Complete</option><option>Finishing</option><option>Final Payment</option><option>Other</option></select>
       </div>
+      <div class="fg"><label>Custom Stage (if other)</label><input id="sp-custom-stage" placeholder="e.g. 2nd floor slab done, tiling complete…"></div>
       <div class="fg"><label>Method</label>
         <select id="sp-method"><option>Cash</option><option>Bank Transfer</option><option>JazzCash</option><option>EasyPaisa</option><option>Cheque</option></select>
       </div>
@@ -784,6 +785,7 @@ select option{background:var(--s2);}
       <div class="fg"><label>Payment Milestone</label>
         <select id="cp-milestone"><option>Advance / Booking</option><option>Foundation Stage</option><option>Structure Stage</option><option>Finishing Stage</option><option>Final Payment</option><option>Other</option></select>
       </div>
+      <div class="fg"><label>Custom Stage (if other)</label><input id="cp-custom-stage" placeholder="e.g. 1st floor complete, roof done…"></div>
       <div class="fg"><label>Method</label>
         <select id="cp-method"><option>Cash</option><option>Bank Transfer</option><option>JazzCash</option><option>EasyPaisa</option><option>Cheque</option></select>
       </div>
@@ -1332,10 +1334,7 @@ async function loadSupaData(user){
       const keys=['company','clients','projects','subcons','subpays','cpays','invoices','estimates','agreements','tasks','expenses'];
       keys.forEach(k=>{if(p[k]!==undefined)D[k]=p[k];});
       // Restore logo from localStorage
-      if(D.company?.logo==='__local__'){
-        const saved=localStorage.getItem('bp5_logo');
-        if(saved)D.company.logo=saved;
-      }
+
       localStorage.setItem('bp5',JSON.stringify(D));
     }
     setSync('synced');
@@ -1348,15 +1347,10 @@ async function writeSupabase(){
   if(!session){localStorage.setItem('bp5',JSON.stringify(D));setSync('pending');return;}
   try{
     localStorage.setItem('bp5',JSON.stringify(D));
-    // Strip large logo before saving to Supabase
-    const saveD=JSON.parse(JSON.stringify(D));
-    if(saveD.company?.logo&&saveD.company.logo.length>100&&saveD.company.logo!=='__local__'){
-      localStorage.setItem('bp5_logo',saveD.company.logo);
-      saveD.company.logo='__local__';
-    }
+    // Save full data including logo to Supabase
     const{error}=await supa.from('buildpro_data').upsert({
       user_id:session.user.id,
-      data:saveD,
+      data:D,
       updated_at:new Date().toISOString()
     },{onConflict:'user_id'});
     if(error)throw error;
@@ -1552,8 +1546,8 @@ const totLI=items=>items.reduce((s,i)=>s+i.a,0);
 function iP(){sv('proj-eid','');e$('proj-eb').classList.remove('on');e$('proj-sh-t').textContent='New Project';['p-name','p-loc','p-plot','p-val','p-notes','p-start','p-end','p-custom-stage'].forEach(id=>sv(id,''));sv('p-cli-t','');sv('p-cli-id','');sv('p-phase','Foundation');}
 function iCli(){sv('cli-eid','');e$('cli-eb').classList.remove('on');e$('cli-sh-t').textContent='New Client';['c-name','c-ph','c-cnic','c-city','c-email','c-addr'].forEach(id=>sv(id,''));}
 function iSub(){sv('sub-eid','');e$('sub-eb').classList.remove('on');e$('sub-sh-t').textContent='New Sub-Contractor';['s-name','s-ph','s-contract','s-notes','s-cnic'].forEach(id=>sv(id,''));sv('s-proj-t','');sv('s-proj-id','');}
-function iSpay(){sv('spay-eid','');e$('spay-eb').classList.remove('on');e$('spay-sh-t').textContent='Sub-Con Payment';['sp-sub-t','sp-sub-id','sp-proj-t','sp-proj-id','sp-desc'].forEach(id=>sv(id,''));sv('sp-amt','');sv('sp-date',today());}
-function iCpay(){sv('cpay-eid','');e$('cpay-eb').classList.remove('on');e$('cpay-sh-t').textContent='Payment Received';['cp-cli-t','cp-cli-id','cp-proj-t','cp-proj-id','cp-inv-t','cp-inv-id','cp-note'].forEach(id=>sv(id,''));sv('cp-amt','');sv('cp-date',today());}
+function iSpay(){sv('spay-eid','');e$('spay-eb').classList.remove('on');e$('spay-sh-t').textContent='Sub-Con Payment';['sp-sub-t','sp-sub-id','sp-proj-t','sp-proj-id','sp-desc','sp-custom-stage'].forEach(id=>sv(id,''));sv('sp-amt','');sv('sp-date',today());}
+function iCpay(){sv('cpay-eid','');e$('cpay-eb').classList.remove('on');e$('cpay-sh-t').textContent='Payment Received';['cp-cli-t','cp-cli-id','cp-proj-t','cp-proj-id','cp-inv-t','cp-inv-id','cp-note','cp-custom-stage'].forEach(id=>sv(id,''));sv('cp-amt','');sv('cp-date',today());}
 function iInv(type){
   sv('inv-eid','');e$('inv-eb').classList.remove('on');e$('inv-sh-t').textContent='New Invoice';
   const num=nxt('INV',D.invoices);sv('i-num',num);sv('i-date',today());sv('i-due',dF(14));
@@ -1654,8 +1648,8 @@ function iAgr(){
 function eP(id){const r=D.projects.find(x=>x.id===id);if(!r)return;sv('proj-eid',id);e$('proj-eb').classList.add('on');e$('proj-sh-t').textContent='Edit Project';sv('p-name',r.name);sv('p-loc',r.loc);sv('p-plot',r.plot);sv('p-val',r.value);sv('p-notes',r.notes);sv('p-phase',r.phase||'Foundation');sv('p-custom-stage',r.customStage||'');sv('p-start',r.start);sv('p-end',r.end);const c=D.clients.find(x=>x.id===r.clientId);sv('p-cli-t',c?c.name:'');sv('p-cli-id',r.clientId||'');O('sh-proj');}
 function eCli(id){const r=D.clients.find(x=>x.id===id);if(!r)return;sv('cli-eid',id);e$('cli-eb').classList.add('on');e$('cli-sh-t').textContent='Edit Client';sv('c-name',r.name);sv('c-ph',r.phone);sv('c-cnic',r.cnic);sv('c-city',r.city);sv('c-email',r.email);sv('c-addr',r.addr);O('sh-cli');}
 function eSub(id){const r=D.subcons.find(x=>x.id===id);if(!r)return;sv('sub-eid',id);e$('sub-eb').classList.add('on');e$('sub-sh-t').textContent='Edit Contractor';sv('s-name',r.name);sv('s-trade',r.trade);sv('s-ph',r.phone);sv('s-contract',r.contract);sv('s-ptype',r.ptype);sv('s-notes',r.notes);sv('s-cnic',r.cnic||'');const p=D.projects.find(x=>x.id===r.projectId);sv('s-proj-t',p?p.name:'');sv('s-proj-id',r.projectId||'');O('sh-sub');}
-function eSpay(id){const r=D.subpays.find(x=>x.id===id);if(!r)return;sv('spay-eid',id);e$('spay-eb').classList.add('on');e$('spay-sh-t').textContent='Edit Payment';const sc=D.subcons.find(x=>x.id===r.subconId);sv('sp-sub-t',sc?sc.name:r.subconName||'');sv('sp-sub-id',r.subconId||'');const p=D.projects.find(x=>x.id===r.projectId);sv('sp-proj-t',p?p.name:r.projectName||'');sv('sp-proj-id',r.projectId||'');sv('sp-date',r.date);sv('sp-amt',r.amount);sv('sp-proj-contract',r.projContract||'');sv('sp-phase',r.phase);sv('sp-method',r.method);sv('sp-desc',r.desc);O('sh-spay');}
-function eCpay(id){const r=D.cpays.find(x=>x.id===id);if(!r)return;sv('cpay-eid',id);e$('cpay-eb').classList.add('on');e$('cpay-sh-t').textContent='Edit Payment';const c=D.clients.find(x=>x.id===r.clientId);sv('cp-cli-t',c?c.name:'');sv('cp-cli-id',r.clientId||'');const p=D.projects.find(x=>x.id===r.projectId);sv('cp-proj-t',p?p.name:'');sv('cp-proj-id',r.projectId||'');sv('cp-date',r.date);sv('cp-amt',r.amount);const inv=D.invoices.find(x=>x.id===r.invoiceId);sv('cp-inv-t',inv?inv.num:'');sv('cp-inv-id',r.invoiceId||'');sv('cp-method',r.method);sv('cp-note',r.note);sv('cp-milestone',r.milestone||'Other');O('sh-cpay');}
+function eSpay(id){const r=D.subpays.find(x=>x.id===id);if(!r)return;sv('spay-eid',id);e$('spay-eb').classList.add('on');e$('spay-sh-t').textContent='Edit Payment';const sc=D.subcons.find(x=>x.id===r.subconId);sv('sp-sub-t',sc?sc.name:r.subconName||'');sv('sp-sub-id',r.subconId||'');const p=D.projects.find(x=>x.id===r.projectId);sv('sp-proj-t',p?p.name:r.projectName||'');sv('sp-proj-id',r.projectId||'');sv('sp-date',r.date);sv('sp-amt',r.amount);sv('sp-proj-contract',r.projContract||'');sv('sp-phase',r.phase);sv('sp-custom-stage','');sv('sp-method',r.method);sv('sp-desc',r.desc);O('sh-spay');}
+function eCpay(id){const r=D.cpays.find(x=>x.id===id);if(!r)return;sv('cpay-eid',id);e$('cpay-eb').classList.add('on');e$('cpay-sh-t').textContent='Edit Payment';const c=D.clients.find(x=>x.id===r.clientId);sv('cp-cli-t',c?c.name:'');sv('cp-cli-id',r.clientId||'');const p=D.projects.find(x=>x.id===r.projectId);sv('cp-proj-t',p?p.name:'');sv('cp-proj-id',r.projectId||'');sv('cp-date',r.date);sv('cp-amt',r.amount);sv('cp-custom-stage','');const inv=D.invoices.find(x=>x.id===r.invoiceId);sv('cp-inv-t',inv?inv.num:'');sv('cp-inv-id',r.invoiceId||'');sv('cp-method',r.method);sv('cp-note',r.note);sv('cp-milestone',r.milestone||'Other');O('sh-cpay');}
 function eInv(id){
   const r=D.invoices.find(x=>x.id===id);if(!r)return;
   sv('inv-eid',id);e$('inv-eb').classList.add('on');e$('inv-sh-t').textContent='Edit Invoice';
@@ -1708,10 +1702,10 @@ function ups(store,doc){const eid=doc.id&&D[store].find(x=>x.id===doc.id)?doc.id
 function saveP(){const eid=e$('proj-eid').value;const customStage=e$('p-custom-stage')?.value||'';const doc={id:eid||uid(),name:e$('p-name').value,loc:e$('p-loc').value,plot:e$('p-plot').value,clientId:e$('p-cli-id').value,value:parseFloat(e$('p-val').value)||0,phase:customStage||e$('p-phase').value,customStage,start:e$('p-start').value,end:e$('p-end').value,notes:e$('p-notes').value};if(!doc.name){toast('Enter project name','err');return;}ups('projects',doc);X('sh-proj');renderAll();toast(eid?'Project updated ✓':'Project saved ✓');}
 function saveCli(){const eid=e$('cli-eid').value;const doc={id:eid||uid(),name:e$('c-name').value,phone:e$('c-ph').value,cnic:e$('c-cnic').value,city:e$('c-city').value,email:e$('c-email').value,addr:e$('c-addr').value};if(!doc.name){toast('Enter name','err');return;}ups('clients',doc);X('sh-cli');renderCli();renderDash();updateDots();toast(eid?'Client updated ✓':'Client added ✓');}
 function saveSub(){const eid=e$('sub-eid').value;const doc={id:eid||uid(),name:e$('s-name').value,trade:e$('s-trade').value,phone:e$('s-ph').value,cnic:e$('s-cnic').value,contract:parseFloat(e$('s-contract').value)||0,ptype:e$('s-ptype').value,projectId:e$('s-proj-id').value,notes:e$('s-notes').value};if(!doc.name){toast('Enter name','err');return;}ups('subcons',doc);X('sh-sub');renderSub();updateDots();toast(eid?'Updated ✓':'Saved ✓');}
-function saveSpay(){const eid=e$('spay-eid').value;const doc={id:eid||uid(),subconId:e$('sp-sub-id').value,subconName:e$('sp-sub-t').value,projectId:e$('sp-proj-id').value,projectName:e$('sp-proj-t').value,date:e$('sp-date').value||today(),amount:parseFloat(e$('sp-amt').value)||0,projContract:parseFloat(e$('sp-proj-contract')?.value)||0,phase:e$('sp-phase').value,method:e$('sp-method').value,desc:e$('sp-desc').value};if(!doc.subconId||!doc.amount){toast('Select contractor and enter amount','err');return;}ups('subpays',doc);X('sh-spay');renderAll();toast(eid?'Updated ✓':'PKR '+fmt(doc.amount)+' recorded ✓');}
+function saveSpay(){const eid=e$('spay-eid').value;const doc={id:eid||uid(),subconId:e$('sp-sub-id').value,subconName:e$('sp-sub-t').value,projectId:e$('sp-proj-id').value,projectName:e$('sp-proj-t').value,date:e$('sp-date').value||today(),amount:parseFloat(e$('sp-amt').value)||0,projContract:parseFloat(e$('sp-proj-contract')?.value)||0,phase:e$('sp-custom-stage')?.value||e$('sp-phase').value,method:e$('sp-method').value,desc:e$('sp-desc').value};if(!doc.subconId||!doc.amount){toast('Select contractor and enter amount','err');return;}ups('subpays',doc);X('sh-spay');renderAll();toast(eid?'Updated ✓':'PKR '+fmt(doc.amount)+' recorded ✓');}
 function saveCpay(){
   const eid=e$('cpay-eid').value;const invId=e$('cp-inv-id').value;
-  const doc={id:eid||uid(),clientId:e$('cp-cli-id').value,clientName:e$('cp-cli-t').value,projectId:e$('cp-proj-id').value,projectName:e$('cp-proj-t').value,date:e$('cp-date').value||today(),amount:parseFloat(e$('cp-amt').value)||0,invoiceId:invId,invoiceRef:e$('cp-inv-t').value,milestone:e$('cp-milestone').value,method:e$('cp-method').value,note:e$('cp-note').value};
+  const doc={id:eid||uid(),clientId:e$('cp-cli-id').value,clientName:e$('cp-cli-t').value,projectId:e$('cp-proj-id').value,projectName:e$('cp-proj-t').value,date:e$('cp-date').value||today(),amount:parseFloat(e$('cp-amt').value)||0,invoiceId:invId,invoiceRef:e$('cp-inv-t').value,milestone:e$('cp-custom-stage')?.value||e$('cp-milestone').value,method:e$('cp-method').value,note:e$('cp-note').value};
   if(!doc.amount){toast('Enter amount','err');return;}
   ups('cpays',doc);
   if(invId){const inv=D.invoices.find(x=>x.id===invId);if(inv){const tot=D.cpays.filter(x=>x.invoiceId===invId).reduce((s,x)=>s+(x.id===doc.id?0:x.amount),0)+doc.amount;if(tot>=inv.total){inv.status='paid';sched();}}}
@@ -1768,11 +1762,6 @@ function openProfileSheet(){const c=D.company;sv('co-name',c.name);sv('co-ph',c.
 function saveProfile(){D.company={...D.company,name:e$('co-name').value||'Your Company',phone:e$('co-ph').value,email:e$('co-email').value,addr:e$('co-addr').value,city:e$('co-city').value,ntn:e$('co-ntn').value,bank:e$('co-bank').value,acc:e$('co-acc').value,accT:e$('co-acc-t').value,iban:e$('co-iban').value};sched();X('sh-profile');refreshProfileUI();toast('Company profile saved ✓');}
 function refreshProfileUI(){
   const c=D.company;
-  // Restore logo from localStorage if stored separately
-  if(c.logo==='__local__'){
-    const savedLogo=localStorage.getItem('bp5_logo');
-    if(savedLogo)c.logo=savedLogo;
-  }
   const set=(id,v)=>{const el=e$(id);if(el)el.textContent=v||'—';};
   // Header
   if(e$('cp-nm'))e$('cp-nm').textContent=c.name||'Your Company';
@@ -2611,7 +2600,7 @@ function saveExp(){const eid=e$('exp-eid').value;const doc={id:eid||uid(),desc:e
 
 function markExpPaid(id){
   const r=(D.expenses||[]).find(x=>x.id===id);if(!r)return;
-  r.isPaid=!r.isPaid;sched();renderExp();
+  r.isPaid=!r.isPaid;sched();renderExp();renderLedger();renderDash();
   toast(r.isPaid?'Marked as paid ✅':'Marked as unpaid','info');
 }
 
