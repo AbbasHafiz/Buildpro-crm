@@ -14,7 +14,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 :root{
   --bg:#0a0908;--s1:#141210;--s2:#1e1b18;--s3:#272320;
@@ -2148,9 +2147,15 @@ function renderSub(){
   el.innerHTML=D.subcons.map(s=>{
     const allPays=D.subpays.filter(p=>p.subconId===s.id);
     const totalPaid=allPays.reduce((t,p)=>t+p.amount,0);
-    const rem=Math.max(0,(s.contract||0)-totalPaid);
-    const pct=s.contract>0?Math.min(100,Math.round(totalPaid/s.contract*100)):0;
-    const projIds=[...new Set(allPays.map(p=>p.projectId||'__none__'))];
+    // Use sum of per-project contracts if available, else s.contract
+    const projContracts=(D.subconContracts||[]).filter(x=>x.subconId===s.id);
+    const totalContract=projContracts.length>0?projContracts.reduce((s,x)=>s+x.value,0):(s.contract||0);
+    const rem=Math.max(0,totalContract-totalPaid);
+    const pct=totalContract>0?Math.min(100,Math.round(totalPaid/totalContract*100)):0;
+    // Only show projects that have payments (exclude __none__ if empty)
+    const projIds=[...new Set(allPays.filter(p=>p.projectId).map(p=>p.projectId))];
+    // Handle unlinked payments separately
+    const unlinkedPays=allPays.filter(p=>!p.projectId);
     const byProject=projIds.map(pid=>{
       const proj=D.projects.find(x=>x.id===pid);
       const projPays=allPays.filter(p=>(p.projectId||'__none__')===pid).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
@@ -2168,7 +2173,7 @@ function renderSub(){
         <div style="text-align:right;font-size:var(--fs-sm);color:var(--mut)">${s.ptype||''}</div>
       </div>
       <div class="sub-stats">
-        <div class="sub-stat"><div class="sub-stat-val" style="color:var(--gold)">${fmt(s.contract)}</div><div class="sub-stat-lbl">Total Contract</div></div>
+        <div class="sub-stat"><div class="sub-stat-val" style="color:var(--gold)">${fmt(totalContract)}</div><div class="sub-stat-lbl">Total Contract</div></div>
         <div class="sub-stat"><div class="sub-stat-val" style="color:var(--red)">${fmt(totalPaid)}</div><div class="sub-stat-lbl">Total Paid</div></div>
         <div class="sub-stat"><div class="sub-stat-val" style="color:${rem>0?'var(--gold)':'var(--grn)'}">${fmt(rem)}</div><div class="sub-stat-lbl">Remaining</div></div>
       </div>
@@ -2215,6 +2220,13 @@ function renderSub(){
             </div>
           </div>`).join('')}
         </div>`).join('')}
+      ${unlinkedPays.length?`<div style="background:var(--s2);border-radius:10px;overflow:hidden;margin-bottom:10px">
+        <div style="padding:10px 13px;border-bottom:1px solid var(--bor);font-size:var(--fs-xs);color:var(--mut);font-weight:700;text-transform:uppercase">📌 Unlinked Payments (No Project)</div>
+        ${unlinkedPays.map(p=>`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:10px 13px;border-bottom:1px solid var(--bor)">
+          <div><div style="font-size:var(--fs-sm);font-weight:600">${p.phase}</div><div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">${p.date} · ${p.method||'Cash'}</div>${p.desc?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">${p.desc}</div>`:''}</div>
+          <div style="text-align:right"><div style="font-family:'JetBrains Mono',monospace;color:var(--red)">${fmt(p.amount)}</div><div style="display:flex;gap:8px;margin-top:4px;justify-content:flex-end"><button style="font-size:var(--fs-xs);color:var(--blu);background:none;border:none;cursor:pointer" onclick="eSpay('${p.id}')">Edit</button><button style="font-size:var(--fs-xs);color:var(--red);background:none;border:none;cursor:pointer" onclick="del('subpays','${p.id}')">Del</button></div></div>
+        </div>`).join('')}
+      </div>`:''}
       <div class="card-acts" style="margin-top:4px">
         <button class="ca blu" onclick="eSub('${s.id}')">✏️ Edit</button>
         <button class="ca gold" onclick="O('sh-spay');iSpay();sv('sp-sub-t','${esc(s.name)}');sv('sp-sub-id','${s.id}')">+ Pay</button>
@@ -2263,15 +2275,7 @@ function updateDots(){[['inv',D.invoices],['est',D.estimates],['pay',[...D.cpays
 
 // ════ PDF GENERATION — Advanced Construction ════
 const co=()=>D.company||{};
-function bPDF(){const{jsPDF}=window.jspdf;const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
-  // Enable unicode for Urdu/Arabic text
-  doc.setFont('helvetica','normal');
-  return doc;}
-function urduText(doc,text,x,y,opts){
-  // For Urdu - reverse text direction and use unicode
-  if(!text)return;
-  try{doc.text(text,x,y,{...opts,lang:'ur'});}catch(e){doc.text(text,x,y,opts||{});}
-}
+function bPDF(){const{jsPDF}=window.jspdf;return new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});}
 
 function drawHeader(doc,title,ref,date,sub,subVal){
   const c=co();const pw=210;
