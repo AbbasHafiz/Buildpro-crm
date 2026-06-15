@@ -14,6 +14,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 :root{
   --bg:#0a0908;--s1:#141210;--s2:#1e1b18;--s3:#272320;
@@ -664,7 +665,12 @@ select option{background:var(--s2);}
       <div class="ds-wrap"><input class="ds-inp" id="p-cli-t" placeholder="Select or add client" readonly onclick="oDs('ds-p-cli')"><div class="ds-list" id="ds-p-cli"></div><input type="hidden" id="p-cli-id"></div>
     </div>
     <div class="f2">
-      <div class="fg"><label>Contract Value (PKR)</label><input type="number" id="p-val" placeholder="0"></div>
+      <div class="fg"><label>Covered Area (sft)</label><input type="number" id="p-area" placeholder="e.g. 2250" oninput="calcProjVal()"></div>
+      <div class="fg"><label>Rate per sft (PKR)</label><input type="number" id="p-rate" placeholder="e.g. 650" oninput="calcProjVal()"></div>
+    </div>
+    <div style="background:var(--s2);border-radius:9px;padding:10px 13px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center"><span style="font-size:var(--fs-xs);color:var(--mut)" id="proj-calc-label">Enter area × rate to calculate</span><span style="font-family:'JetBrains Mono',monospace;color:var(--gold)" id="proj-calc-val">—</span></div>
+    <div class="f2">
+      <div class="fg"><label>Contract Value (PKR) <span style="color:var(--mut);font-weight:400;text-transform:none">auto or manual</span></label><input type="number" id="p-val" placeholder="0"></div>
       <div class="fg"><label>Current Phase</label>
         <select id="p-phase"><option>Foundation</option><option>Structure</option><option>DPC Level</option><option>Lintel Level</option><option>Roof Slab</option><option>Brickwork</option><option>Plaster</option><option>Finishing</option><option>Handover</option><option>Completed</option><option>Custom</option></select>
       </div>
@@ -1243,10 +1249,49 @@ select option{background:var(--s2);}
   <div class="sh-ft"><button class="btn btn-grey" onclick="X('sh-bank')">Cancel</button><button class="btn btn-gold" onclick="saveBank()">💾 Save Bank</button></div>
 </div></div>
 
+<!-- SUB-CON PROJECT CONTRACT EDITOR -->
+<div class="sh-ov" id="sh-spcon"><div class="sh">
+  <div class="sh-grip"></div>
+  <div class="sh-hd"><div class="sh-title">Set Project Contract</div><button class="sh-x" onclick="X('sh-spcon')">×</button></div>
+  <div class="sh-body">
+    <input type="hidden" id="spcon-sid">
+    <input type="hidden" id="spcon-pid">
+    <div style="background:var(--s2);border-radius:9px;padding:12px;margin-bottom:14px">
+      <div style="font-size:var(--fs-sm);font-weight:700" id="spcon-title">—</div>
+      <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px" id="spcon-sub">—</div>
+    </div>
+    <div class="fg"><label>Contract Value for This Project (PKR)</label><input type="number" id="spcon-val" placeholder="Total agreed with this sub-con for this project"></div>
+    <div class="fg"><label>Notes</label><input id="spcon-notes" placeholder="e.g. Labour only, Grey structure complete…"></div>
+  </div>
+  <div class="sh-ft"><button class="btn btn-grey" onclick="X('sh-spcon')">Cancel</button><button class="btn btn-gold" onclick="saveSpCon()">💾 Save Contract</button></div>
+</div></div>
+
 <div class="toast" id="toast"><div class="td" id="tdot"></div><span id="tmsg">Saved</span></div>
 
 <script>
 // ════ CONFIG ════
+
+// ════ URDU PDF HELPER ════
+function hasUrdu(text){
+  if(!text)return false;
+  return /[\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]/.test(text);
+}
+function pdfTextUrdu(doc,text,x,y,opts){
+  if(!text)return;
+  if(hasUrdu(text)){
+    // For Urdu text: split into lines, detect RTL
+    const maxW=opts?.maxWidth||180;
+    const lines=doc.splitTextToSize(text,maxW);
+    const pw=210;
+    lines.forEach((line,i)=>{
+      // Render Urdu RTL from right side
+      doc.text(line,pw-14,y+(i*5.5),{align:'right',...(opts||{})});
+    });
+  }else{
+    doc.text(text,x,y,opts||{});
+  }
+}
+
 // ════ SUPABASE CONFIG ════
 const SUPA_URL='https://lwjcnevludsiwoudzxcj.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3amNuZXZsdWRzaXdvdWR6eGNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExNDQ0NjAsImV4cCI6MjA5NjcyMDQ2MH0.-6O4Z6OCUqjm3B1wSqtQv5uH7QuWTTkHdximiJB2PKE';
@@ -1259,7 +1304,7 @@ let D={
   subpays:[],cpays:[],
   invoices:[],estimates:[],agreements:[],
   tasks:[],expenses:[],
-  investors:[],banks:[]
+  investors:[],banks:[],subconContracts:[]
 };
 
 // ════ SUPABASE AUTH & STORAGE ════
@@ -1543,7 +1588,15 @@ function gLI(t){
 const totLI=items=>items.reduce((s,i)=>s+i.a,0);
 
 // ════ INIT FORMS ════
-function iP(){sv('proj-eid','');e$('proj-eb').classList.remove('on');e$('proj-sh-t').textContent='New Project';['p-name','p-loc','p-plot','p-val','p-notes','p-start','p-end','p-custom-stage'].forEach(id=>sv(id,''));sv('p-cli-t','');sv('p-cli-id','');sv('p-phase','Foundation');}
+function calcProjVal(){
+  const area=parseFloat(e$('p-area')?.value)||0;
+  const rate=parseFloat(e$('p-rate')?.value)||0;
+  const val=area*rate;
+  const lbl=e$('proj-calc-label');const cv=e$('proj-calc-val');
+  if(val>0){if(lbl)lbl.textContent=fmt(area)+' sft × PKR '+fmt(rate)+'/sft';if(cv)cv.textContent='PKR '+fmt(val);sv('p-val',val);}
+  else{if(lbl)lbl.textContent='Enter area × rate to calculate';if(cv)cv.textContent='—';}
+}
+function iP(){sv('proj-eid','');e$('proj-eb').classList.remove('on');e$('proj-sh-t').textContent='New Project';['p-name','p-loc','p-plot','p-val','p-area','p-rate','p-notes','p-start','p-end','p-custom-stage'].forEach(id=>sv(id,''));sv('p-cli-t','');sv('p-cli-id','');sv('p-phase','Foundation');const lbl=e$('proj-calc-label');if(lbl)lbl.textContent='Enter area × rate to calculate';const cv=e$('proj-calc-val');if(cv)cv.textContent='—';}
 function iCli(){sv('cli-eid','');e$('cli-eb').classList.remove('on');e$('cli-sh-t').textContent='New Client';['c-name','c-ph','c-cnic','c-city','c-email','c-addr'].forEach(id=>sv(id,''));}
 function iSub(){sv('sub-eid','');e$('sub-eb').classList.remove('on');e$('sub-sh-t').textContent='New Sub-Contractor';['s-name','s-ph','s-contract','s-notes','s-cnic'].forEach(id=>sv(id,''));sv('s-proj-t','');sv('s-proj-id','');}
 function iSpay(){sv('spay-eid','');e$('spay-eb').classList.remove('on');e$('spay-sh-t').textContent='Sub-Con Payment';['sp-sub-t','sp-sub-id','sp-proj-t','sp-proj-id','sp-desc','sp-custom-stage'].forEach(id=>sv(id,''));sv('sp-amt','');sv('sp-date',today());}
@@ -1645,7 +1698,7 @@ function iAgr(){
 }
 
 // ════ EDIT LOADERS ════
-function eP(id){const r=D.projects.find(x=>x.id===id);if(!r)return;sv('proj-eid',id);e$('proj-eb').classList.add('on');e$('proj-sh-t').textContent='Edit Project';sv('p-name',r.name);sv('p-loc',r.loc);sv('p-plot',r.plot);sv('p-val',r.value);sv('p-notes',r.notes);sv('p-phase',r.phase||'Foundation');sv('p-custom-stage',r.customStage||'');sv('p-start',r.start);sv('p-end',r.end);const c=D.clients.find(x=>x.id===r.clientId);sv('p-cli-t',c?c.name:'');sv('p-cli-id',r.clientId||'');O('sh-proj');}
+function eP(id){const r=D.projects.find(x=>x.id===id);if(!r)return;sv('proj-eid',id);e$('proj-eb').classList.add('on');e$('proj-sh-t').textContent='Edit Project';sv('p-name',r.name);sv('p-loc',r.loc);sv('p-plot',r.plot);sv('p-val',r.value);sv('p-notes',r.notes);sv('p-phase',r.phase||'Foundation');sv('p-custom-stage',r.customStage||'');sv('p-area',r.area||'');sv('p-rate',r.rate||'');sv('p-start',r.start);sv('p-end',r.end);const c=D.clients.find(x=>x.id===r.clientId);sv('p-cli-t',c?c.name:'');sv('p-cli-id',r.clientId||'');O('sh-proj');}
 function eCli(id){const r=D.clients.find(x=>x.id===id);if(!r)return;sv('cli-eid',id);e$('cli-eb').classList.add('on');e$('cli-sh-t').textContent='Edit Client';sv('c-name',r.name);sv('c-ph',r.phone);sv('c-cnic',r.cnic);sv('c-city',r.city);sv('c-email',r.email);sv('c-addr',r.addr);O('sh-cli');}
 function eSub(id){const r=D.subcons.find(x=>x.id===id);if(!r)return;sv('sub-eid',id);e$('sub-eb').classList.add('on');e$('sub-sh-t').textContent='Edit Contractor';sv('s-name',r.name);sv('s-trade',r.trade);sv('s-ph',r.phone);sv('s-contract',r.contract);sv('s-ptype',r.ptype);sv('s-notes',r.notes);sv('s-cnic',r.cnic||'');const p=D.projects.find(x=>x.id===r.projectId);sv('s-proj-t',p?p.name:'');sv('s-proj-id',r.projectId||'');O('sh-sub');}
 function eSpay(id){const r=D.subpays.find(x=>x.id===id);if(!r)return;sv('spay-eid',id);e$('spay-eb').classList.add('on');e$('spay-sh-t').textContent='Edit Payment';const sc=D.subcons.find(x=>x.id===r.subconId);sv('sp-sub-t',sc?sc.name:r.subconName||'');sv('sp-sub-id',r.subconId||'');const p=D.projects.find(x=>x.id===r.projectId);sv('sp-proj-t',p?p.name:r.projectName||'');sv('sp-proj-id',r.projectId||'');sv('sp-date',r.date);sv('sp-amt',r.amount);sv('sp-proj-contract',r.projContract||'');sv('sp-phase',r.phase);sv('sp-custom-stage','');sv('sp-method',r.method);sv('sp-desc',r.desc);O('sh-spay');}
@@ -1699,7 +1752,7 @@ function eAgr(id){
 function ups(store,doc){const eid=doc.id&&D[store].find(x=>x.id===doc.id)?doc.id:null;if(eid){const idx=D[store].findIndex(x=>x.id===eid);D[store][idx]={...D[store][idx],...doc};}else{if(!doc.id)doc.id=uid();doc.createdAt=new Date().toISOString();D[store].unshift(doc);}sched();}
 
 // ════ SAVES ════
-function saveP(){const eid=e$('proj-eid').value;const customStage=e$('p-custom-stage')?.value||'';const doc={id:eid||uid(),name:e$('p-name').value,loc:e$('p-loc').value,plot:e$('p-plot').value,clientId:e$('p-cli-id').value,value:parseFloat(e$('p-val').value)||0,phase:customStage||e$('p-phase').value,customStage,start:e$('p-start').value,end:e$('p-end').value,notes:e$('p-notes').value};if(!doc.name){toast('Enter project name','err');return;}ups('projects',doc);X('sh-proj');renderAll();toast(eid?'Project updated ✓':'Project saved ✓');}
+function saveP(){const eid=e$('proj-eid').value;const customStage=e$('p-custom-stage')?.value||'';const doc={id:eid||uid(),name:e$('p-name').value,loc:e$('p-loc').value,plot:e$('p-plot').value,clientId:e$('p-cli-id').value,value:parseFloat(e$('p-val').value)||0,area:parseFloat(e$('p-area')?.value)||0,rate:parseFloat(e$('p-rate')?.value)||0,phase:customStage||e$('p-phase').value,customStage,start:e$('p-start').value,end:e$('p-end').value,notes:e$('p-notes').value};if(!doc.name){toast('Enter project name','err');return;}ups('projects',doc);X('sh-proj');renderAll();toast(eid?'Project updated ✓':'Project saved ✓');}
 function saveCli(){const eid=e$('cli-eid').value;const doc={id:eid||uid(),name:e$('c-name').value,phone:e$('c-ph').value,cnic:e$('c-cnic').value,city:e$('c-city').value,email:e$('c-email').value,addr:e$('c-addr').value};if(!doc.name){toast('Enter name','err');return;}ups('clients',doc);X('sh-cli');renderCli();renderDash();updateDots();toast(eid?'Client updated ✓':'Client added ✓');}
 function saveSub(){const eid=e$('sub-eid').value;const doc={id:eid||uid(),name:e$('s-name').value,trade:e$('s-trade').value,phone:e$('s-ph').value,cnic:e$('s-cnic').value,contract:parseFloat(e$('s-contract').value)||0,ptype:e$('s-ptype').value,projectId:e$('s-proj-id').value,notes:e$('s-notes').value};if(!doc.name){toast('Enter name','err');return;}ups('subcons',doc);X('sh-sub');renderSub();updateDots();toast(eid?'Updated ✓':'Saved ✓');}
 function saveSpay(){const eid=e$('spay-eid').value;const doc={id:eid||uid(),subconId:e$('sp-sub-id').value,subconName:e$('sp-sub-t').value,projectId:e$('sp-proj-id').value,projectName:e$('sp-proj-t').value,date:e$('sp-date').value||today(),amount:parseFloat(e$('sp-amt').value)||0,projContract:parseFloat(e$('sp-proj-contract')?.value)||0,phase:e$('sp-custom-stage')?.value||e$('sp-phase').value,method:e$('sp-method').value,desc:e$('sp-desc').value};if(!doc.subconId||!doc.amount){toast('Select contractor and enter amount','err');return;}ups('subpays',doc);X('sh-spay');renderAll();toast(eid?'Updated ✓':'PKR '+fmt(doc.amount)+' recorded ✓');}
@@ -2019,69 +2072,133 @@ function renderPay(){
   }).join('');
 }
 
+// ════ SUB-CON PROJECT CONTRACT ════
+function openSpCon(subconId,projectId){
+  const sc=D.subcons.find(x=>x.id===subconId);
+  const pr=D.projects.find(x=>x.id===projectId);
+  const existing=(D.subconContracts||[]).find(x=>x.subconId===subconId&&x.projectId===projectId);
+  sv('spcon-sid',subconId);sv('spcon-pid',projectId);
+  sv('spcon-val',existing?.value||'');sv('spcon-notes',existing?.notes||'');
+  const t=e$('spcon-title');if(t)t.textContent=(sc?.name||'Sub-Con')+' — '+(pr?.name||'Project');
+  const s=e$('spcon-sub');if(s)s.textContent=sc?.trade||'';
+  O('sh-spcon');
+}
+function saveSpCon(){
+  const sid=e$('spcon-sid').value;const pid=e$('spcon-pid').value;
+  const val=parseFloat(e$('spcon-val').value)||0;
+  const notes=e$('spcon-notes').value;
+  if(!D.subconContracts)D.subconContracts=[];
+  const idx=D.subconContracts.findIndex(x=>x.subconId===sid&&x.projectId===pid);
+  if(idx>=0){D.subconContracts[idx].value=val;D.subconContracts[idx].notes=notes;}
+  else D.subconContracts.push({id:uid(),subconId:sid,projectId:pid,value:val,notes});
+  sched();X('sh-spcon');renderSub();toast('Contract value saved ✓');
+}
+
+function pdfSubProjStatement(subconId,projectId){
+  const sc=D.subcons.find(x=>x.id===subconId);
+  const pr=D.projects.find(x=>x.id===projectId);
+  const pays=D.subpays.filter(x=>x.subconId===subconId&&x.projectId===projectId).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  const contract=(D.subconContracts||[]).find(x=>x.subconId===subconId&&x.projectId===projectId);
+  const contractVal=contract?.value||pays.reduce((m,p)=>Math.max(m,p.projContract||0),0);
+  const totalPaid=pays.reduce((s,p)=>s+p.amount,0);
+  const remaining=contractVal>0?Math.max(0,contractVal-totalPaid):0;
+  const c=co();const doc=bPDF();const pw=210;
+  let y=drawHeader(doc,'PAYMENT STATEMENT',sc?.name||'Sub-Contractor',today(),'','');
+  doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(30,30,30);
+  doc.text(sc?.name||'—',14,y);
+  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(100,100,100);
+  if(sc?.trade)doc.text('Trade: '+sc.trade,14,y+6);
+  if(sc?.phone)doc.text('Phone: '+sc.phone,14,y+12);
+  doc.text('Project: '+(pr?.name||'—'),14,y+18);
+  // Summary box
+  doc.setFillColor(248,246,242);doc.rect(14,y+24,182,22,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(9.5);doc.setTextColor(30,30,30);
+  doc.text('Contract Value: PKR '+fmt(contractVal),16,y+32);
+  doc.text('Total Paid: PKR '+fmt(totalPaid),90,y+32);
+  const remColor=remaining>0?[224,85,85]:[82,181,106];
+  doc.setTextColor(...remColor);
+  doc.text('Remaining: PKR '+fmt(remaining),16,y+42);
+  y+=52;
+  if(pays.length){
+    let running=0;
+    doc.autoTable({
+      startY:y,
+      head:[['#','Date','Phase / Work','Method','Amount (PKR)','Cumulative']],
+      body:pays.map((p,i)=>{running+=p.amount;return[i+1,p.date||'—',p.phase||'—',p.method||'Cash',fmt(p.amount),fmt(running)];}),
+      foot:[['','','','Total Paid','PKR '+fmt(totalPaid),'']],
+      styles:{fontSize:9,cellPadding:3,textColor:[30,30,30]},
+      headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
+      footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[77,148,212],fontSize:9},
+      columnStyles:{4:{halign:'right'},5:{halign:'right',textColor:[82,181,106]}},
+      margin:{left:14,right:14}
+    });
+  }else{
+    doc.setFont('helvetica','italic');doc.setFontSize(10);doc.setTextColor(150,145,138);
+    doc.text('No payments recorded yet.',14,y);
+  }
+  drawBankFooter(doc);
+  doc.save('SubConStatement-'+(sc?.name||'').replace(/\s+/g,'-')+'-'+(pr?.name||'').replace(/\s+/g,'-')+'.pdf');
+  toast('Statement PDF ✓');
+}
+
 // ════ RENDER SUB-CON ════
 function renderSub(){
   const el=e$('list-sub');
   if(!D.subcons.length){el.innerHTML='<div class="empty"><div class="empty-i">👷</div><div class="empty-t">No sub-contractors yet</div></div>';return;}
-
   el.innerHTML=D.subcons.map(s=>{
     const allPays=D.subpays.filter(p=>p.subconId===s.id);
     const totalPaid=allPays.reduce((t,p)=>t+p.amount,0);
     const rem=Math.max(0,(s.contract||0)-totalPaid);
     const pct=s.contract>0?Math.min(100,Math.round(totalPaid/s.contract*100)):0;
-
-    // Group payments by project
     const projIds=[...new Set(allPays.map(p=>p.projectId||'__none__'))];
     const byProject=projIds.map(pid=>{
       const proj=D.projects.find(x=>x.id===pid);
       const projPays=allPays.filter(p=>(p.projectId||'__none__')===pid).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
       const projTotal=projPays.reduce((s,p)=>s+p.amount,0);
-      // Get contract value — use latest non-zero projContract from payments
-      const projContract=projPays.filter(p=>p.projContract>0).reduce((max,p)=>Math.max(max,p.projContract),0);
+      // Get contract from subconContracts first, then fallback to projContract on payments
+      const scCon=(D.subconContracts||[]).find(x=>x.subconId===s.id&&x.projectId===pid);
+      const projContract=scCon?.value||projPays.filter(p=>p.projContract>0).reduce((max,p)=>Math.max(max,p.projContract),0);
       const projRem=projContract>0?Math.max(0,projContract-projTotal):0;
-      return{projName:proj?proj.name:(pid==='__none__'?'No Project':projPays[0]?.projectName||'Unknown Project'),projPays,projTotal,projContract,projRem};
+      const projName=proj?proj.name:(pid==='__none__'?'No Project':projPays[0]?.projectName||'Unknown Project');
+      return{pid,projName,projPays,projTotal,projContract,projRem};
     });
-
     return`<div class="sub-card">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
         <div><div style="font-size:var(--fs-lg);font-weight:700">${s.name}</div><div style="margin-top:5px"><span class="b ${trC(s.trade)}">${s.trade}</span></div>${s.phone?`<div style="font-size:var(--fs-sm);color:var(--mut);margin-top:3px">${s.phone}</div>`:''}</div>
         <div style="text-align:right;font-size:var(--fs-sm);color:var(--mut)">${s.ptype||''}</div>
       </div>
-
-      <!-- Overall summary -->
       <div class="sub-stats">
-        <div class="sub-stat"><div class="sub-stat-val" style="color:var(--gold)">${fmt(s.contract)}</div><div class="sub-stat-lbl">Contract</div></div>
-        <div class="sub-stat"><div class="sub-stat-val" style="color:var(--red)">${fmt(totalPaid)}</div><div class="sub-stat-lbl">Paid</div></div>
+        <div class="sub-stat"><div class="sub-stat-val" style="color:var(--gold)">${fmt(s.contract)}</div><div class="sub-stat-lbl">Total Contract</div></div>
+        <div class="sub-stat"><div class="sub-stat-val" style="color:var(--red)">${fmt(totalPaid)}</div><div class="sub-stat-lbl">Total Paid</div></div>
         <div class="sub-stat"><div class="sub-stat-val" style="color:${rem>0?'var(--gold)':'var(--grn)'}">${fmt(rem)}</div><div class="sub-stat-lbl">Remaining</div></div>
       </div>
       <div class="pbar-wrap"><div class="pbar" style="width:${pct}%"></div></div>
       <div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:14px">Paid ${pct}% of total contract</div>
-
-      <!-- Per-project breakdown -->
       ${byProject.map(pg=>`
         <div style="background:var(--s2);border-radius:10px;overflow:hidden;margin-bottom:10px">
-          <!-- Project header with contract/paid/remaining -->
           <div style="padding:11px 13px;border-bottom:1px solid var(--bor)">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-              <div style="display:flex;align-items:center;gap:8px"><span>📁</span><span style="font-size:var(--fs-md);font-weight:700">${pg.projName}</span></div>
-              <span style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-md);color:var(--red);font-weight:700">PKR ${fmt(pg.projTotal)}</span>
+              <div style="font-size:var(--fs-md);font-weight:700">📁 ${pg.projName}</div>
+              <div style="display:flex;gap:7px;align-items:center">
+                <button class="ca gold" style="padding:5px 9px;font-size:var(--fs-xs);flex:none" onclick="pdfSubProjStatement('${s.id}','${pg.pid}')">⬇ PDF</button>
+                <button class="ca blu" style="padding:5px 9px;font-size:var(--fs-xs);flex:none" onclick="openSpCon('${s.id}','${pg.pid}')">✏️ Contract</button>
+              </div>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
-              <div style="background:var(--bg);border-radius:7px;padding:7px;text-align:center">
-                <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--gold)">${pg.projContract>0?fmt(pg.projContract):'—'}</div>
+              <div style="background:var(--bg);border-radius:7px;padding:8px;text-align:center">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--gold)">${pg.projContract>0?fmt(pg.projContract):'Tap ✏️'}</div>
                 <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Contract</div>
               </div>
-              <div style="background:var(--bg);border-radius:7px;padding:7px;text-align:center">
+              <div style="background:var(--bg);border-radius:7px;padding:8px;text-align:center">
                 <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--red)">${fmt(pg.projTotal)}</div>
                 <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Paid</div>
               </div>
-              <div style="background:var(--bg);border-radius:7px;padding:7px;text-align:center">
+              <div style="background:var(--bg);border-radius:7px;padding:8px;text-align:center">
                 <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:${pg.projRem>0?'var(--gold)':'var(--grn)'}">${pg.projContract>0?fmt(pg.projRem):'—'}</div>
                 <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Remaining</div>
               </div>
             </div>
           </div>
-          <!-- Payment rows -->
           ${pg.projPays.map(p=>`
           <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:10px 13px;border-bottom:1px solid var(--bor)">
             <div>
@@ -2098,62 +2215,6 @@ function renderSub(){
             </div>
           </div>`).join('')}
         </div>`).join('')}
-
-      <div class="card-acts" style="margin-top:4px">
-        <button class="ca blu" onclick="eSub('${s.id}')">✏️ Edit</button>
-        <button class="ca gold" onclick="O('sh-spay');iSpay();sv('sp-sub-t','${esc(s.name)}');sv('sp-sub-id','${s.id}')">+ Pay</button>
-        <button class="ca red" onclick="del('subcons','${s.id}')">🗑</button>
-      </div>
-    </div>`;
-
-    return`<div class="sub-card">
-      <!-- Header -->
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
-        <div>
-          <div style="font-size:var(--fs-lg);font-weight:700">${s.name}</div>
-          <div style="margin-top:5px"><span class="b ${trC(s.trade)}">${s.trade}</span></div>
-          ${s.phone?`<div style="font-size:var(--fs-sm);color:var(--mut);margin-top:3px">${s.phone}</div>`:''}
-        </div>
-        <div style="text-align:right;font-size:var(--fs-sm);color:var(--mut)">${s.ptype||''}</div>
-      </div>
-
-      <!-- Summary stats -->
-      <div class="sub-stats">
-        <div class="sub-stat"><div class="sub-stat-val" style="color:var(--gold)">${fmt(s.contract)}</div><div class="sub-stat-lbl">Contract</div></div>
-        <div class="sub-stat"><div class="sub-stat-val" style="color:var(--red)">${fmt(totalPaid)}</div><div class="sub-stat-lbl">Paid</div></div>
-        <div class="sub-stat"><div class="sub-stat-val" style="color:${rem>0?'var(--gold)':'var(--grn)'}">${fmt(rem)}</div><div class="sub-stat-lbl">Remaining</div></div>
-      </div>
-      <div class="pbar-wrap"><div class="pbar" style="width:${pct}%"></div></div>
-      <div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:14px">Paid ${pct}% of contract</div>
-
-      <!-- Project-wise breakdown -->
-      ${byProject.length?byProject.map(pg=>`
-        <div style="background:var(--s2);border-radius:10px;overflow:hidden;margin-bottom:10px">
-          <!-- Project header -->
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 13px;border-bottom:1px solid var(--bor)">
-            <div style="display:flex;align-items:center;gap:8px">
-              <span style="font-size:14px">📁</span>
-              <span style="font-size:var(--fs-md);font-weight:700;color:var(--txt)">${pg.projName}</span>
-            </div>
-            <span style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-md);color:var(--red);font-weight:700">PKR ${fmt(pg.projTotal)}</span>
-          </div>
-          <!-- Payment rows for this project -->
-          ${pg.projPays.map(p=>`
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:10px 13px;border-bottom:1px solid var(--bor)">
-            <div>
-              <div style="font-size:var(--fs-sm);font-weight:600;color:var(--txt)">${p.phase}</div>
-              <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">${p.date} · ${p.method||'Cash'}</div>
-              ${p.desc?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">${p.desc}</div>`:''}
-            </div>
-            <div style="text-align:right;flex-shrink:0;margin-left:12px">
-              <div style="font-family:'JetBrains Mono',monospace;color:var(--red);font-size:var(--fs-md)">${fmt(p.amount)}</div>
-              <button style="font-size:var(--fs-xs);color:var(--blu);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif;margin-top:3px" onclick="eSpay('${p.id}')">Edit</button>
-              <button style="font-size:var(--fs-xs);color:var(--red);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif;margin-top:3px;margin-left:6px" onclick="del('subpays','${p.id}')">Del</button>
-            </div>
-          </div>`).join('')}
-        </div>`).join(''):'<div style="font-size:var(--fs-sm);color:var(--mut);padding:6px 0 10px">No payments recorded yet</div>'}
-
-      <!-- Actions -->
       <div class="card-acts" style="margin-top:4px">
         <button class="ca blu" onclick="eSub('${s.id}')">✏️ Edit</button>
         <button class="ca gold" onclick="O('sh-spay');iSpay();sv('sp-sub-t','${esc(s.name)}');sv('sp-sub-id','${s.id}')">+ Pay</button>
