@@ -1045,13 +1045,21 @@ select option{background:var(--s2);}
     <div class="fg"><input id="a-footer" placeholder="Leave empty to use company bank details from Profile"></div>
   </div>
   <div style="padding:12px 20px;border-top:1px solid var(--bor)">
-    <label style="display:flex;align-items:center;gap:11px;font-size:var(--fs-sm);color:var(--txt);text-transform:none;letter-spacing:0;font-weight:400;cursor:pointer;background:rgba(232,184,75,.06);border:1px solid rgba(232,184,75,.2);border-radius:9px;padding:11px 14px">
-      <input type="checkbox" id="a-letterhead" style="width:16px;height:16px;accent-color:var(--gold);flex-shrink:0">
-      <div>
-        <div style="font-weight:600">🖨️ Print on Physical Letterhead</div>
-        <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">PDF will skip digital header & footer — use when printing on Shields Associates letterhead</div>
-      </div>
-    </label>
+    <div style="font-size:var(--fs-xs);color:var(--mut);font-weight:700;text-transform:uppercase;letter-spacing:.7px;margin-bottom:10px">🖨️ PDF Print Style</div>
+    <div style="display:flex;flex-direction:column;gap:7px">
+      <label style="display:flex;align-items:flex-start;gap:11px;background:var(--bg);border:1px solid var(--bor);border-radius:9px;padding:11px 13px;cursor:pointer">
+        <input type="radio" name="agr-print-style" id="a-style-digital" value="digital" checked style="width:16px;height:16px;accent-color:var(--gold);flex-shrink:0;margin-top:2px">
+        <div><div style="font-size:var(--fs-sm);font-weight:600;color:var(--txt)">📄 Digital Style</div><div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Gold bar + logo at top — for email / WhatsApp sharing</div></div>
+      </label>
+      <label style="display:flex;align-items:flex-start;gap:11px;background:var(--bg);border:1px solid var(--bor);border-radius:9px;padding:11px 13px;cursor:pointer">
+        <input type="radio" name="agr-print-style" id="a-style-letterhead" value="letterhead" style="width:16px;height:16px;accent-color:var(--gold);flex-shrink:0;margin-top:2px">
+        <div><div style="font-size:var(--fs-sm);font-weight:600;color:var(--txt)">📋 Letterhead Style</div><div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">~2cm empty at top, title below — print on Shields Associates letterhead</div></div>
+      </label>
+      <label style="display:flex;align-items:flex-start;gap:11px;background:var(--bg);border:1px solid var(--bor);border-radius:9px;padding:11px 13px;cursor:pointer">
+        <input type="radio" name="agr-print-style" id="a-style-legal" value="legal" style="width:16px;height:16px;accent-color:var(--gold);flex-shrink:0;margin-top:2px">
+        <div><div style="font-size:var(--fs-sm);font-weight:600;color:var(--txt)">⚖️ Legal Style</div><div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">5 inch (127mm) empty at top for stamp paper / legal letterhead</div></div>
+      </label>
+    </div>
   </div>
   <div class="sh-ft"><button class="btn btn-grey" onclick="X('sh-agr')">Cancel</button><button class="btn btn-gold" onclick="saveAgr()">💾 Save Agreement</button></div>
 </div></div>
@@ -1679,7 +1687,7 @@ function iAgr(){
   const num=nxt('AGR',D.agreements);sv('a-num',num);sv('a-date',today());
   ['a-cli-t','a-cli-id','a-proj-t','a-proj-id','a-terms','a-scope','a-conditions',
    'a-s','a-e','a-val','a-rate','a-covered','a-dims','a-permit','a-arch','a-footer'].forEach(id=>sv(id,''));
-  const lh=e$('a-letterhead');if(lh)lh.checked=false;
+  const sd=e$('a-style-digital');if(sd)sd.checked=true;
   sv('a-st','draft');sv('a-type','labour');
   // Default general conditions — editable
   sv('a-general',
@@ -1740,7 +1748,7 @@ function eAgr(id){
   sv('a-permit',r.permit||'');sv('a-arch',r.arch||'');
   sv('a-rate',r.rate||r.labRate||r.matRate||'');
   sv('a-general',r.general||'');sv('a-footer',r.footerNote||'');
-  const lh2=e$('a-letterhead');if(lh2)lh2.checked=r.letterhead||false;
+  const style=r.printStyle||'digital';const sel=e$('a-style-'+style);if(sel)sel.checked=true;
   const ts=e$('a-type');if(ts&&r.agrType)ts.value=r.agrType;
   const ps=e$('a-plot-size');if(ps&&r.plotSize)ps.value=r.plotSize;
   const ss=e$('a-storeys');if(ss&&r.storeys)ss.value=r.storeys;
@@ -1797,7 +1805,7 @@ function saveAgr(){
     conditions:e$('a-conditions').value,
     general:e$('a-general')?.value||'',
     footerNote:e$('a-footer')?.value||'',
-    letterhead:e$('a-letterhead')?.checked||false
+    printStyle:(document.querySelector('input[name="agr-print-style"]:checked')?.value)||'digital'
   };
   if(!doc.clientName){toast('Select a client','err');return;}
   ups('agreements',doc);X('sh-agr');renderAgr();updateDots();renderDash();
@@ -2395,45 +2403,92 @@ function pdfEst(id){
 
 function pdfAgr(id){
   const r=D.agreements.find(x=>x.id===id);if(!r)return;
-  const c=co();const doc=bPDF();const pw=210;
-  const useLetterhead=r.letterhead||false;
+  const co2=co();const doc=bPDF();const pw=210;
+  const style=r.printStyle||'digital';
+
   let y=20;
 
-  if(!useLetterhead){
-    // Digital header
+  if(style==='digital'){
+    // Gold bar + logo + company name at top
     doc.setFillColor(232,184,75);doc.rect(0,0,pw,7,'F');
-    if(c.logo){try{doc.addImage(c.logo,'PNG',14,11,20,20);}catch(e){}}
+    if(co2.logo){try{doc.addImage(co2.logo,'PNG',14,11,20,20);}catch(e){}}
     doc.setFont('helvetica','bold');doc.setFontSize(18);doc.setTextColor(30,30,30);
     doc.text('CONSTRUCTION AGREEMENT',pw/2,22,{align:'center'});
     doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(140,135,125);
     doc.text(r.num+' · Date: '+r.date,pw/2,29,{align:'center'});
     doc.setDrawColor(200,195,188);doc.setLineWidth(.5);doc.line(14,33,pw-14,33);
     y=40;
-  }else{
-    // Letterhead mode — just ref and date at top
-    doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(100,100,100);
+  }else if(style==='letterhead'){
+    // ~20mm empty at top for letterhead, then title
+    y=22;
+    doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(140,135,125);
     doc.text('Ref: '+r.num,14,y);doc.text('Date: '+r.date,pw-14,y,{align:'right'});
-    doc.setFont('helvetica','bold');doc.setFontSize(16);doc.setTextColor(30,30,30);
-    doc.text('CONSTRUCTION AGREEMENT',pw/2,y+10,{align:'center'});
-    doc.setDrawColor(200,195,188);doc.setLineWidth(.4);doc.line(14,y+15,pw-14,y+15);
-    y=y+22;
+    y+=7;
+    doc.setFont('helvetica','bold');doc.setFontSize(17);doc.setTextColor(30,30,30);
+    doc.text('CONSTRUCTION AGREEMENT',pw/2,y,{align:'center'});
+    doc.setDrawColor(200,195,188);doc.setLineWidth(.5);doc.line(14,y+5,pw-14,y+5);
+    y+=12;
+  }else if(style==='legal'){
+    // 127mm (5 inch) empty for stamp paper, then logo + title
+    y=135;
+    if(co2.logo){try{doc.addImage(co2.logo,'PNG',pw/2-12,y,24,24);}catch(e){}}
+    y+=28;
+    doc.setFont('helvetica','bold');doc.setFontSize(17);doc.setTextColor(30,30,30);
+    doc.text('CONSTRUCTION AGREEMENT',pw/2,y,{align:'center'});
+    doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(140,135,125);
+    doc.text(r.num+' · Date: '+r.date,pw/2,y+7,{align:'center'});
+    doc.setDrawColor(200,195,188);doc.setLineWidth(.5);doc.line(14,y+12,pw-14,y+12);
+    y+=18;
   }
 
-  const sec=(title,content,titleColor)=>{
+  // ── Urdu canvas renderer ──
+  function renderContent(content,startY){
+    if(!content)return startY;
+    if(hasUrdu(content)){
+      const scale=3;const maxWmm=182;const maxWpx=maxWmm*scale*1.18;
+      const canvas=document.createElement('canvas');
+      const tempCtx=canvas.getContext('2d');
+      const fs=13*scale;
+      tempCtx.font=fs+'px "Noto Nastaliq Urdu","Urdu Typesetting","Times New Roman",serif';
+      // Word wrap
+      const words=content.split(' ');let lines=[],cur='';
+      words.forEach(w=>{
+        const test=cur?cur+' '+w:w;
+        if(tempCtx.measureText(test).width>maxWpx&&cur){lines.push(cur);cur=w;}
+        else cur=test;
+      });
+      if(cur)lines.push(cur);
+      const lh=fs*1.6;
+      canvas.width=Math.ceil(maxWpx);
+      canvas.height=Math.ceil(lines.length*lh+12);
+      const ctx=canvas.getContext('2d');
+      ctx.fillStyle='#ffffff';ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.font=fs+'px "Noto Nastaliq Urdu","Urdu Typesetting","Times New Roman",serif';
+      ctx.fillStyle='#1a1916';ctx.textAlign='right';ctx.direction='rtl';
+      lines.forEach((ln,i)=>{ctx.fillText(ln,canvas.width-4,lh*(i+1));});
+      const imgData=canvas.toDataURL('image/jpeg',0.92);
+      const imgHmm=(lines.length*lh+12)/scale/1.18*0.85;
+      if(startY+imgHmm>252){doc.addPage();startY=20;}
+      doc.addImage(imgData,'JPEG',14,startY,maxWmm,imgHmm);
+      return startY+imgHmm+4;
+    }else{
+      if(startY>252){doc.addPage();startY=20;}
+      doc.setFont('helvetica','normal');doc.setFontSize(10.5);doc.setTextColor(30,30,30);
+      const lines=doc.splitTextToSize(content,178);
+      doc.text(lines,14,startY);
+      return startY+lines.length*5.5+5;
+    }
+  }
+
+  const sec=(title,content)=>{
     if(y>252){doc.addPage();y=20;}
-    doc.setFillColor(titleColor||242,240,235);
-    doc.rect(14,y-4,182,8,'F');
-    doc.setFont('helvetica','bold');doc.setFontSize(8.5);
-    doc.setTextColor(titleColor?255:110,titleColor?255:105,titleColor?255:98);
-    if(titleColor)doc.setTextColor(30,30,30);
+    doc.setFillColor(242,240,235);doc.rect(14,y-4,182,8,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(110,105,98);
     doc.text(title.toUpperCase(),16,y+1);y+=10;
-    doc.setFont('helvetica','normal');doc.setFontSize(10.5);doc.setTextColor(30,30,30);
-    const lines=doc.splitTextToSize(content,178);
-    doc.text(lines,14,y);y+=lines.length*5.5+5;
+    y=renderContent(content,y);
   };
 
-  // 1. Parties
-  const cli=D.clients.find(x=>x.id===r.clientId);
+
   sec('Contractor / Service Provider',
     (c.name||'[Contractor Name]')+'\n'+
     (c.addr?c.addr+', ':'')+( c.city||'Islamabad')+', Pakistan'+
@@ -2540,17 +2595,15 @@ function pdfAgr(id){
   doc.setFontSize(8);doc.setTextColor(150,145,138);
   doc.text('Thumb Impression / Signature',22,y+53);doc.text('Thumb Impression / Signature',118,y+53);
 
-  if(!useLetterhead){
+  if(style==='digital'){
     if(r.footerNote){
-      const h=doc.internal.pageSize.getHeight(),pw2=210;
-      doc.setFillColor(232,184,75);doc.rect(0,h-10,pw2,10,'F');
+      const h=doc.internal.pageSize.getHeight();
+      doc.setFillColor(232,184,75);doc.rect(0,h-10,pw,10,'F');
       doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(30,30,30);
-      doc.text(r.footerNote,pw2/2,h-4,{align:'center',maxWidth:pw2-28});
-    }else{
-      drawBankFooter(doc);
-    }
+      doc.text(r.footerNote,pw/2,h-4,{align:'center',maxWidth:pw-28});
+    }else{drawBankFooter(doc);}
   }
-  // letterhead mode — no footer (physical letterhead has its own)
+  // letterhead/legal: no digital footer — physical paper has its own
   doc.save('Agreement-'+r.num+'.pdf');
   toast('Agreement PDF downloaded ✓');
 }
