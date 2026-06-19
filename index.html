@@ -513,7 +513,6 @@ select option{background:var(--s2);}
         <button class="btn btn-gold btn-sm" style="padding:8px 16px;font-size:var(--fs-sm)" onclick="pdfExp()">⬇ Export PDF</button>
       </div>
       <div class="stats2">
-        <div class="stat"><div class="stat-lbl">Total Budget</div><div class="stat-val" id="exp-budget">0</div><div class="stat-unit">PKR</div></div>
         <div class="stat"><div class="stat-lbl">Total Spent</div><div class="stat-val" id="exp-spent">0</div><div class="stat-unit">PKR</div></div>
         <div class="stat"><div class="stat-lbl">Remaining</div><div class="stat-val" id="exp-rem">0</div><div class="stat-unit">PKR</div></div>
         <div class="stat"><div class="stat-lbl">Expenses</div><div class="stat-val" id="exp-count">0</div><div class="stat-unit">entries</div></div>
@@ -2403,7 +2402,7 @@ function pdfEst(id){
 
 function pdfAgr(id){
   const r=D.agreements.find(x=>x.id===id);if(!r)return;
-  const co2=co();const doc=bPDF();const pw=210;
+  const co2=D.company||{};const doc=bPDF();const pw=210;
   const style=r.printStyle||'digital';
 
   let y=20;
@@ -2490,10 +2489,10 @@ function pdfAgr(id){
 
 
   sec('Contractor / Service Provider',
-    (c.name||'[Contractor Name]')+'\n'+
-    (c.addr?c.addr+', ':'')+( c.city||'Islamabad')+', Pakistan'+
-    (c.phone?'\nPhone: '+c.phone:'')+
-    (c.ntn?'\nNTN: '+c.ntn:'')
+    (co2.name||'[Contractor Name]')+'\n'+
+    (co2.addr?co2.addr+', ':'')+( co2.city||'Islamabad')+', Pakistan'+
+    (co2.phone?'\nPhone: '+co2.phone:'')+
+    (co2.ntn?'\nNTN: '+co2.ntn:'')
   );
   sec('Client / Owner',
     r.clientName+
@@ -2574,8 +2573,8 @@ function pdfAgr(id){
   // 10. Bank/payment details — use footer note if set, else company bank details
   if(r.footerNote){
     sec('Payment Details',r.footerNote);
-  }else if(c.bank||c.acc){
-    sec('Payment Bank Account','Bank: '+(c.bank||'—')+'\nAccount No.: '+(c.acc||'—')+(c.accT?' | Account Title: '+c.accT:'')+(c.iban?'\nIBAN: '+c.iban:''));
+  }else if(co2.bank||co2.acc){
+    sec('Payment Bank Account','Bank: '+(co2.bank||'—')+'\nAccount No.: '+(co2.acc||'—')+(co2.accT?' | Account Title: '+co2.accT:'')+(co2.iban?'\nIBAN: '+co2.iban:''));
   }
 
   // Special conditions
@@ -2590,7 +2589,7 @@ function pdfAgr(id){
   doc.setFont('helvetica','bold');doc.setFontSize(9.5);doc.setTextColor(40,40,40);
   doc.text('Contractor / Service Provider',22,y+36);doc.text('Client / Owner',118,y+36);
   doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(120,115,108);
-  doc.text(c.name||'Company',22,y+42);doc.text(r.clientName,118,y+42);
+  doc.text(co2.name||'Company',22,y+42);doc.text(r.clientName,118,y+42);
   doc.text('Date: _______________',22,y+48);doc.text('Date: _______________',118,y+48);
   doc.setFontSize(8);doc.setTextColor(150,145,138);
   doc.text('Thumb Impression / Signature',22,y+53);doc.text('Thumb Impression / Signature',118,y+53);
