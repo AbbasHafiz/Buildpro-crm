@@ -2445,32 +2445,41 @@ function pdfAgr(id){
   function renderContent(content,startY){
     if(!content)return startY;
     if(hasUrdu(content)){
-      const scale=3;const maxWmm=182;const maxWpx=maxWmm*scale*1.18;
+      // Clean px-per-mm model so Urdu visually matches ~10.5pt English text
+      const pxPerMm=8;                    // resolution for crisp rendering
+      const maxWmm=178;                   // match English text width
+      const canvasWpx=Math.round(maxWmm*pxPerMm);
+      const fontMm=4.0;                   // ~11.3pt equivalent — readable Nastaliq size
+      const fontPx=Math.round(fontMm*pxPerMm);
+      const lineHmm=fontMm*1.65;          // proper line spacing for Urdu
+      const lineHpx=Math.round(lineHmm*pxPerMm);
+      const padPx=Math.round(2*pxPerMm);
+
       const canvas=document.createElement('canvas');
       const tempCtx=canvas.getContext('2d');
-      const fs=13*scale;
-      tempCtx.font=fs+'px "Noto Nastaliq Urdu","Urdu Typesetting","Times New Roman",serif';
+      tempCtx.font=fontPx+'px "Noto Nastaliq Urdu","Urdu Typesetting","Times New Roman",serif';
       // Word wrap
       const words=content.split(' ');let lines=[],cur='';
       words.forEach(w=>{
         const test=cur?cur+' '+w:w;
-        if(tempCtx.measureText(test).width>maxWpx&&cur){lines.push(cur);cur=w;}
+        if(tempCtx.measureText(test).width>canvasWpx-padPx*2&&cur){lines.push(cur);cur=w;}
         else cur=test;
       });
       if(cur)lines.push(cur);
-      const lh=fs*1.6;
-      canvas.width=Math.ceil(maxWpx);
-      canvas.height=Math.ceil(lines.length*lh+12);
+
+      canvas.width=canvasWpx;
+      canvas.height=Math.ceil(lines.length*lineHpx+padPx*2);
       const ctx=canvas.getContext('2d');
       ctx.fillStyle='#ffffff';ctx.fillRect(0,0,canvas.width,canvas.height);
-      ctx.font=fs+'px "Noto Nastaliq Urdu","Urdu Typesetting","Times New Roman",serif';
-      ctx.fillStyle='#1a1916';ctx.textAlign='right';ctx.direction='rtl';
-      lines.forEach((ln,i)=>{ctx.fillText(ln,canvas.width-4,lh*(i+1));});
-      const imgData=canvas.toDataURL('image/jpeg',0.92);
-      const imgHmm=(lines.length*lh+12)/scale/1.18*0.85;
+      ctx.font=fontPx+'px "Noto Nastaliq Urdu","Urdu Typesetting","Times New Roman",serif';
+      ctx.fillStyle='#1e1b18';ctx.textAlign='right';ctx.direction='rtl';
+      lines.forEach((ln,i)=>{ctx.fillText(ln,canvas.width-padPx,lineHpx*(i+1));});
+
+      const imgData=canvas.toDataURL('image/jpeg',0.95);
+      const imgHmm=canvas.height/pxPerMm;
       if(startY+imgHmm>252){doc.addPage();startY=20;}
       doc.addImage(imgData,'JPEG',14,startY,maxWmm,imgHmm);
-      return startY+imgHmm+4;
+      return startY+imgHmm+5;
     }else{
       if(startY>252){doc.addPage();startY=20;}
       doc.setFont('helvetica','normal');doc.setFontSize(10.5);doc.setTextColor(30,30,30);
