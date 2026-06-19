@@ -221,6 +221,7 @@ body{color:var(--txt);font-family:'Inter',sans-serif;overscroll-behavior:none;fo
 .fg:last-child{margin-bottom:0;}
 label{font-size:var(--fs-xs);color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.7px;}
 input,select,textarea{background:var(--bg);border:1px solid var(--bor);border-radius:10px;padding:13px 14px;color:var(--txt);font-size:var(--fs-md);font-family:'Inter',sans-serif;outline:none;transition:border-color .15s;width:100%;-webkit-appearance:none;appearance:none;}
+input[type="checkbox"],input[type="radio"]{-webkit-appearance:auto;appearance:auto;width:18px;height:18px;padding:0;border:none;background:none;flex-shrink:0;accent-color:var(--gold);cursor:pointer;}
 input:focus,select:focus,textarea:focus{border-color:var(--gold);}
 input::placeholder{color:var(--mut2);}
 textarea{resize:vertical;min-height:72px;}
@@ -2488,6 +2489,7 @@ function pdfAgr(id){
   };
 
 
+  const cli=D.clients.find(x=>x.id===r.clientId);
   sec('Contractor / Service Provider',
     (co2.name||'[Contractor Name]')+'\n'+
     (co2.addr?co2.addr+', ':'')+( co2.city||'Islamabad')+', Pakistan'+
