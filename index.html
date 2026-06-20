@@ -1707,7 +1707,7 @@ function iAgr(){
   const num=nxt('AGR',D.agreements);sv('a-num',num);sv('a-date',today());
   ['a-cli-t','a-cli-id','a-proj-t','a-proj-id','a-terms','a-scope','a-conditions',
    'a-s','a-e','a-val','a-rate','a-covered','a-dims','a-permit','a-arch','a-footer'].forEach(id=>sv(id,''));
-  const sd=e$('a-style-digital');if(sd)sd.checked=true;const hv=e$('a-hide-value');if(hv)hv.checked=false;toggleHideValue();toggleHideValue();
+  const sd=e$('a-style-digital');if(sd)sd.checked=true;const hv=e$('a-hide-value');if(hv)hv.checked=false;toggleHideValue();
   sv('a-st','draft');sv('a-type','labour');
   // Default general conditions — editable
   sv('a-general',
@@ -1768,7 +1768,7 @@ function eAgr(id){
   sv('a-permit',r.permit||'');sv('a-arch',r.arch||'');
   sv('a-rate',r.rate||r.labRate||r.matRate||'');
   sv('a-general',r.general||'');sv('a-footer',r.footerNote||'');
-  const style=r.printStyle||'digital';const sel=e$('a-style-'+style);if(sel)sel.checked=true;const hv2=e$('a-hide-value');if(hv2)hv2.checked=r.hideValue||false;toggleHideValue();toggleHideValue();
+  const style=r.printStyle||'digital';const sel=e$('a-style-'+style);if(sel)sel.checked=true;const hv2=e$('a-hide-value');if(hv2)hv2.checked=r.hideValue||false;toggleHideValue();
   const ts=e$('a-type');if(ts&&r.agrType)ts.value=r.agrType;
   const ps=e$('a-plot-size');if(ps&&r.plotSize)ps.value=r.plotSize;
   const ss=e$('a-storeys');if(ss&&r.storeys)ss.value=r.storeys;
@@ -2544,9 +2544,11 @@ function pdfAgr(id){
   let specs='Structure: '+(storeyMap[r.storeys]||r.storeys||'—');
   if(r.plotSize)specs+='\nPlot Size: '+r.plotSize;
   if(r.dims)specs+='\nPlot Dimensions: '+r.dims;
-  if(r.covered)specs+='\nTotal Covered Area: '+fmt(r.covered)+' sft';
-  if(r.gfArea)specs+='\nGround Floor: '+fmt(r.gfArea)+' sft';
-  if(r.ffArea)specs+='\nFirst Floor: '+fmt(r.ffArea)+' sft';
+  if(!r.hideValue){
+    if(r.covered)specs+='\nTotal Covered Area: '+fmt(r.covered)+' sft';
+    if(r.gfArea)specs+='\nGround Floor: '+fmt(r.gfArea)+' sft';
+    if(r.ffArea)specs+='\nFirst Floor: '+fmt(r.ffArea)+' sft';
+  }
   if(r.arch)specs+='\nArchitect/Engineer: '+r.arch;
   if(r.drawing)specs+='\nApproved Drawing No.: '+r.drawing;
   if(r.permit)specs+='\nCDA/Society Permit No.: '+r.permit;
@@ -2573,11 +2575,17 @@ function pdfAgr(id){
     }
     rateDetail+='\nContract Value: PKR '+fmt(r.value)+'\n('+nW(r.value)+' Pakistani Rupees Only)';
   }else{
-    // Hidden — show only scope, no amounts
-    const area=r.covered||(r.gfArea+r.ffArea)||0;
-    if(area)rateDetail+='Covered Area: '+fmt(area)+' sft\n';
-    if(r.agrType==='labour')rateDetail+='Construction Scope: '+(r.constType||'Grey Structure');
-    else if(r.agrType==='material'){if(r.matGrade)rateDetail+='Material Grade: '+r.matGrade+'\n';if(r.matSupply)rateDetail+='Material Supply: '+r.matSupply;}
+    // Hidden — show only labour rate, no covered area (area varies by shade-to-shade measurement)
+    if(r.agrType==='labour'&&r.labRate){
+      rateDetail+='Labour Rate: PKR '+fmt(r.labRate)+' per sft\n';
+      rateDetail+='Construction Scope: '+(r.constType||'Grey Structure')+'\n';
+      rateDetail+='\nNote: Final covered area will be measured shade-to-shade upon completion. Total amount payable will be calculated as per the above rate applied to the measured area.';
+    }else if(r.agrType==='material'&&r.matRate){
+      rateDetail+='Rate: PKR '+fmt(r.matRate)+' per sft (Labour + Material)\n';
+      if(r.matGrade)rateDetail+='Material Grade: '+r.matGrade+'\n';
+      if(r.matSupply)rateDetail+='Material Supply: '+r.matSupply+'\n';
+      rateDetail+='\nNote: Final covered area will be measured shade-to-shade upon completion. Total amount payable will be calculated as per the above rate applied to the measured area.';
+    }
   }
   sec(r.hideValue?'Agreement Type & Scope':'Contract Value & Rate Details',rateDetail);
 
