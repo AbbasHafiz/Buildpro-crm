@@ -960,12 +960,14 @@ select option{background:var(--s2);}
     <div class="fg"><label>Project / Property</label>
       <div class="ds-wrap"><input class="ds-inp" id="a-proj-t" placeholder="Select project" readonly onclick="oDs('ds-a-proj')"><div class="ds-list" id="ds-a-proj"></div><input type="hidden" id="a-proj-id"></div>
     </div>
-    <div class="f2">
-      <div class="fg"><label>Contract Value (PKR)</label><input type="number" id="a-val" placeholder="0"></div>
-      <div class="fg"><label>Status</label>
-        <select id="a-st"><option value="draft">Draft</option><option value="signed">Signed</option><option value="active">Active</option><option value="completed">Completed</option></select>
-      </div>
+    <div class="fg" id="agr-value-field"><label>Contract Value (PKR)</label><input type="number" id="a-val" placeholder="0"></div>
+    <div class="fg"><label>Status</label>
+      <select id="a-st"><option value="draft">Draft</option><option value="signed">Signed</option><option value="active">Active</option><option value="completed">Completed</option></select>
     </div>
+    <label style="display:flex;align-items:center;gap:11px;font-size:var(--fs-sm);color:var(--txt);text-transform:none;letter-spacing:0;font-weight:400;cursor:pointer;background:var(--bg);border:1px solid var(--bor);border-radius:8px;padding:11px 13px;margin-bottom:14px">
+      <input type="checkbox" id="a-hide-value" onchange="toggleHideValue()" style="width:18px;height:18px;accent-color:var(--gold);flex-shrink:0">
+      <div><div style="font-weight:600">🙈 Hide Contract Value in PDF</div><div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Simplifies this form to Labour Rate only; value still tracked internally, just hidden from printed agreement</div></div>
+    </label>
     <div class="f2">
       <div class="fg"><label>Start Date</label><input type="date" id="a-s"></div>
       <div class="fg"><label>Completion Date</label><input type="date" id="a-e"></div>
@@ -1005,16 +1007,14 @@ select option{background:var(--s2);}
     <div class="hdiv"></div>
 
     <!-- Agreement Type & Rate -->
-    <div class="f2">
-      <div class="fg"><label>Agreement Type</label>
-        <select id="a-type" onchange="calcAgr()">
-          <option value="labour">Labour Rate (per sft)</option>
-          <option value="material">Labour + Material (per sft)</option>
-          <option value="lump">Lump Sum (Fixed Price)</option>
-        </select>
-      </div>
-      <div class="fg"><label>Rate / Amount (PKR)</label><input type="number" id="a-rate" placeholder="e.g. 650 per sft" oninput="calcAgr()"></div>
+    <div class="fg" id="agr-type-field"><label>Agreement Type</label>
+      <select id="a-type" onchange="calcAgr()">
+        <option value="labour">Labour Rate (per sft)</option>
+        <option value="material">Labour + Material (per sft)</option>
+        <option value="lump">Lump Sum (Fixed Price)</option>
+      </select>
     </div>
+    <div class="fg"><label id="agr-rate-label">Rate / Amount (PKR)</label><input type="number" id="a-rate" placeholder="e.g. 650 per sft" oninput="calcAgr()"></div>
     <!-- Calculated value hint -->
     <div id="agr-calc-row" style="background:var(--s2);border-radius:9px;padding:11px 13px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
       <span style="font-size:var(--fs-xs);color:var(--mut)" id="agr-formula">Enter area × rate to auto-calculate</span>
@@ -1668,6 +1668,26 @@ function scrollToProjects(){
     const el=e$('proj-list');if(el)el.scrollIntoView({behavior:'smooth'});
   }
 }
+function toggleHideValue(){
+  const hv=e$('a-hide-value')?.checked||false;
+  const valField=e$('agr-value-field');
+  const typeField=e$('agr-type-field');
+  const calcRow=e$('agr-calc-row');
+  const rateLabel=e$('agr-rate-label');
+  if(hv){
+    if(valField)valField.style.display='none';
+    if(typeField)typeField.style.display='none';
+    if(calcRow)calcRow.style.display='none';
+    if(rateLabel)rateLabel.textContent='Labour Rate (PKR/sft)';
+    sv('a-type','labour');
+  }else{
+    if(valField)valField.style.display='flex';
+    if(typeField)typeField.style.display='flex';
+    if(calcRow)calcRow.style.display='flex';
+    if(rateLabel)rateLabel.textContent='Rate / Amount (PKR)';
+  }
+}
+
 function calcAgr(){
   const type=e$('a-type')?.value||'labour';
   const area=parseFloat(e$('a-covered')?.value)||0;
@@ -1687,7 +1707,7 @@ function iAgr(){
   const num=nxt('AGR',D.agreements);sv('a-num',num);sv('a-date',today());
   ['a-cli-t','a-cli-id','a-proj-t','a-proj-id','a-terms','a-scope','a-conditions',
    'a-s','a-e','a-val','a-rate','a-covered','a-dims','a-permit','a-arch','a-footer'].forEach(id=>sv(id,''));
-  const sd=e$('a-style-digital');if(sd)sd.checked=true;
+  const sd=e$('a-style-digital');if(sd)sd.checked=true;const hv=e$('a-hide-value');if(hv)hv.checked=false;toggleHideValue();toggleHideValue();
   sv('a-st','draft');sv('a-type','labour');
   // Default general conditions — editable
   sv('a-general',
@@ -1748,7 +1768,7 @@ function eAgr(id){
   sv('a-permit',r.permit||'');sv('a-arch',r.arch||'');
   sv('a-rate',r.rate||r.labRate||r.matRate||'');
   sv('a-general',r.general||'');sv('a-footer',r.footerNote||'');
-  const style=r.printStyle||'digital';const sel=e$('a-style-'+style);if(sel)sel.checked=true;
+  const style=r.printStyle||'digital';const sel=e$('a-style-'+style);if(sel)sel.checked=true;const hv2=e$('a-hide-value');if(hv2)hv2.checked=r.hideValue||false;toggleHideValue();toggleHideValue();
   const ts=e$('a-type');if(ts&&r.agrType)ts.value=r.agrType;
   const ps=e$('a-plot-size');if(ps&&r.plotSize)ps.value=r.plotSize;
   const ss=e$('a-storeys');if(ss&&r.storeys)ss.value=r.storeys;
@@ -1805,7 +1825,8 @@ function saveAgr(){
     conditions:e$('a-conditions').value,
     general:e$('a-general')?.value||'',
     footerNote:e$('a-footer')?.value||'',
-    printStyle:(document.querySelector('input[name="agr-print-style"]:checked')?.value)||'digital'
+    printStyle:(document.querySelector('input[name="agr-print-style"]:checked')?.value)||'digital',
+    hideValue:e$('a-hide-value')?.checked||false
   };
   if(!doc.clientName){toast('Select a client','err');return;}
   ups('agreements',doc);X('sh-agr');renderAgr();updateDots();renderDash();
@@ -2419,8 +2440,8 @@ function pdfAgr(id){
     doc.setDrawColor(200,195,188);doc.setLineWidth(.5);doc.line(14,33,pw-14,33);
     y=40;
   }else if(style==='letterhead'){
-    // ~20mm empty at top for letterhead, then title
-    y=22;
+    // 2.5 inch (63mm) empty at top for letterhead, then title
+    y=63;
     doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(140,135,125);
     doc.text('Ref: '+r.num,14,y);doc.text('Date: '+r.date,pw-14,y,{align:'right'});
     y+=7;
@@ -2534,23 +2555,31 @@ function pdfAgr(id){
   // 4. Agreement type & contract value
   const typeLabel={labour:'Labour Rate Contract',material:'Labour + Material Contract',lump:'Lump Sum Contract',phase:'Phase-wise Contract'};
   let rateDetail='Agreement Type: '+(typeLabel[r.agrType]||'Labour Rate Contract')+'\n';
-  if(r.agrType==='labour'&&r.labRate){
+  if(!r.hideValue){
+    if(r.agrType==='labour'&&r.labRate){
+      const area=r.covered||(r.gfArea+r.ffArea)||0;
+      rateDetail+='Labour Rate: PKR '+fmt(r.labRate)+' per sft\n';
+      if(area)rateDetail+='Covered Area: '+fmt(area)+' sft\n';
+      rateDetail+='Construction Scope: '+(r.constType||'Grey Structure');
+    }else if(r.agrType==='material'&&r.matRate){
+      const area=r.covered||(r.gfArea+r.ffArea)||0;
+      rateDetail+='Rate: PKR '+fmt(r.matRate)+' per sft (Labour + Material)\n';
+      if(area)rateDetail+='Covered Area: '+fmt(area)+' sft\n';
+      if(r.matGrade)rateDetail+='Material Grade: '+r.matGrade+'\n';
+      if(r.matSupply)rateDetail+='Material Supply: '+r.matSupply;
+    }else if(r.agrType==='phase'){
+      const phases=[['Foundation',r.ph1],['DPC/Plinth',r.ph2],['Structure/Slab',r.ph3],['Brickwork',r.ph4],['Plaster',r.ph5],['Finishing',r.ph6]];
+      phases.filter(([,v])=>v>0).forEach(([n,v])=>{rateDetail+=n+': PKR '+fmt(v)+'\n';});
+    }
+    rateDetail+='\nContract Value: PKR '+fmt(r.value)+'\n('+nW(r.value)+' Pakistani Rupees Only)';
+  }else{
+    // Hidden — show only scope, no amounts
     const area=r.covered||(r.gfArea+r.ffArea)||0;
-    rateDetail+='Labour Rate: PKR '+fmt(r.labRate)+' per sft\n';
     if(area)rateDetail+='Covered Area: '+fmt(area)+' sft\n';
-    rateDetail+='Construction Scope: '+(r.constType||'Grey Structure');
-  }else if(r.agrType==='material'&&r.matRate){
-    const area=r.covered||(r.gfArea+r.ffArea)||0;
-    rateDetail+='Rate: PKR '+fmt(r.matRate)+' per sft (Labour + Material)\n';
-    if(area)rateDetail+='Covered Area: '+fmt(area)+' sft\n';
-    if(r.matGrade)rateDetail+='Material Grade: '+r.matGrade+'\n';
-    if(r.matSupply)rateDetail+='Material Supply: '+r.matSupply;
-  }else if(r.agrType==='phase'){
-    const phases=[['Foundation',r.ph1],['DPC/Plinth',r.ph2],['Structure/Slab',r.ph3],['Brickwork',r.ph4],['Plaster',r.ph5],['Finishing',r.ph6]];
-    phases.filter(([,v])=>v>0).forEach(([n,v])=>{rateDetail+=n+': PKR '+fmt(v)+'\n';});
+    if(r.agrType==='labour')rateDetail+='Construction Scope: '+(r.constType||'Grey Structure');
+    else if(r.agrType==='material'){if(r.matGrade)rateDetail+='Material Grade: '+r.matGrade+'\n';if(r.matSupply)rateDetail+='Material Supply: '+r.matSupply;}
   }
-  rateDetail+='\nContract Value: PKR '+fmt(r.value)+'\n('+nW(r.value)+' Pakistani Rupees Only)';
-  sec('Contract Value & Rate Details',rateDetail);
+  sec(r.hideValue?'Agreement Type & Scope':'Contract Value & Rate Details',rateDetail);
 
   // 5. Duration
   sec('Contract Duration','Start Date: '+(r.start||'—')+'          Expected Completion: '+(r.end||'—'));
