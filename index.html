@@ -1015,6 +1015,17 @@ select option{background:var(--s2);}
       </select>
     </div>
     <div class="fg"><label id="agr-rate-label">Rate / Amount (PKR)</label><input type="number" id="a-rate" placeholder="e.g. 650 per sft" oninput="calcAgr()"></div>
+    <div class="fg"><label>Construction Scope</label>
+      <select id="a-const-type">
+        <option value="Grey Structure">Grey Structure</option>
+        <option value="Grey Structure + Finishing">Grey Structure + Finishing</option>
+        <option value="Turnkey / Complete">Turnkey / Complete</option>
+        <option value="Foundation Only">Foundation Only</option>
+        <option value="Foundation + Material">Foundation + Material</option>
+        <option value="Finishing Only">Finishing Only</option>
+        <option value="Custom">Custom (specify in Scope of Work)</option>
+      </select>
+    </div>
     <!-- Calculated value hint -->
     <div id="agr-calc-row" style="background:var(--s2);border-radius:9px;padding:11px 13px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
       <span style="font-size:var(--fs-xs);color:var(--mut)" id="agr-formula">Enter area × rate to auto-calculate</span>
@@ -1375,7 +1386,7 @@ async function loadSupaData(user){
     if(lo){
       try{
         const p=JSON.parse(lo);
-        const keys=['company','clients','projects','subcons','subpays','cpays','invoices','estimates','agreements','tasks','expenses','investors','banks'];
+        const keys=['company','clients','projects','subcons','subpays','cpays','invoices','estimates','agreements','tasks','expenses','investors','banks','subconContracts'];
         keys.forEach(k=>{if(p[k]!==undefined)D[k]=p[k];});
       }catch(e){}
     }
@@ -1383,7 +1394,7 @@ async function loadSupaData(user){
     const{data,error}=await supa.from('buildpro_data').select('data').eq('user_id',user.id).single();
     if(!error&&data?.data){
       const p=data.data;
-      const keys=['company','clients','projects','subcons','subpays','cpays','invoices','estimates','agreements','tasks','expenses'];
+      const keys=['company','clients','projects','subcons','subpays','cpays','invoices','estimates','agreements','tasks','expenses','investors','banks','subconContracts'];
       keys.forEach(k=>{if(p[k]!==undefined)D[k]=p[k];});
       // Restore logo from localStorage
 
@@ -1679,7 +1690,7 @@ function toggleHideValue(){
     if(typeField)typeField.style.display='none';
     if(calcRow)calcRow.style.display='none';
     if(rateLabel)rateLabel.textContent='Labour Rate (PKR/sft)';
-    sv('a-type','labour');
+    sv('a-type','labour');sv('a-const-type','Grey Structure');
   }else{
     if(valField)valField.style.display='flex';
     if(typeField)typeField.style.display='flex';
@@ -1769,7 +1780,7 @@ function eAgr(id){
   sv('a-rate',r.rate||r.labRate||r.matRate||'');
   sv('a-general',r.general||'');sv('a-footer',r.footerNote||'');
   const style=r.printStyle||'digital';const sel=e$('a-style-'+style);if(sel)sel.checked=true;const hv2=e$('a-hide-value');if(hv2)hv2.checked=r.hideValue||false;toggleHideValue();
-  const ts=e$('a-type');if(ts&&r.agrType)ts.value=r.agrType;
+  const ts=e$('a-type');if(ts&&r.agrType)ts.value=r.agrType;const ct=e$('a-const-type');if(ct&&r.constType)ct.value=r.constType;
   const ps=e$('a-plot-size');if(ps&&r.plotSize)ps.value=r.plotSize;
   const ss=e$('a-storeys');if(ss&&r.storeys)ss.value=r.storeys;
   calcAgr();O('sh-agr');
@@ -1813,6 +1824,7 @@ function saveAgr(){
     value:parseFloat(e$('a-val').value)||0,
     status:e$('a-st').value,start:e$('a-s').value,end:e$('a-e').value,
     agrType:e$('a-type')?.value||'labour',
+    constType:e$('a-const-type')?.value||'Grey Structure',
     rate:parseFloat(e$('a-rate')?.value)||0,
     covered:parseFloat(e$('a-covered')?.value)||0,
     dims:e$('a-dims')?.value||'',
@@ -3280,7 +3292,7 @@ async function importBk(){
           p.company.logo='__local__';
         }
         // Import EVERY key into D
-        const keys=['company','clients','projects','subcons','subpays','cpays','invoices','estimates','agreements','tasks','expenses'];
+        const keys=['company','clients','projects','subcons','subpays','cpays','invoices','estimates','agreements','tasks','expenses','investors','banks','subconContracts'];
         keys.forEach(k=>{if(p[k]!==undefined)D[k]=p[k];});
         // Ensure arrays
         keys.filter(k=>k!=='company').forEach(k=>{if(!Array.isArray(D[k]))D[k]=[];});
