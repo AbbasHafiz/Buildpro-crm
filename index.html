@@ -2558,14 +2558,14 @@ function pdfAgr(id){
   const typeLabel={labour:'Labour Rate Contract',material:'Labour + Material Contract',lump:'Lump Sum Contract',phase:'Phase-wise Contract'};
   let rateDetail='Agreement Type: '+(typeLabel[r.agrType]||'Labour Rate Contract')+'\n';
   if(!r.hideValue){
-    if(r.agrType==='labour'&&r.labRate){
+    if(r.agrType==='labour'&&r.rate){
       const area=r.covered||(r.gfArea+r.ffArea)||0;
-      rateDetail+='Labour Rate: PKR '+fmt(r.labRate)+' per sft\n';
+      rateDetail+='Labour Rate: PKR '+fmt(r.rate)+' per sft\n';
       if(area)rateDetail+='Covered Area: '+fmt(area)+' sft\n';
       rateDetail+='Construction Scope: '+(r.constType||'Grey Structure');
-    }else if(r.agrType==='material'&&r.matRate){
+    }else if(r.agrType==='material'&&r.rate){
       const area=r.covered||(r.gfArea+r.ffArea)||0;
-      rateDetail+='Rate: PKR '+fmt(r.matRate)+' per sft (Labour + Material)\n';
+      rateDetail+='Rate: PKR '+fmt(r.rate)+' per sft (Labour + Material)\n';
       if(area)rateDetail+='Covered Area: '+fmt(area)+' sft\n';
       if(r.matGrade)rateDetail+='Material Grade: '+r.matGrade+'\n';
       if(r.matSupply)rateDetail+='Material Supply: '+r.matSupply;
@@ -2576,12 +2576,12 @@ function pdfAgr(id){
     rateDetail+='\nContract Value: PKR '+fmt(r.value)+'\n('+nW(r.value)+' Pakistani Rupees Only)';
   }else{
     // Hidden — show only labour rate, no covered area (area varies by shade-to-shade measurement)
-    if(r.agrType==='labour'&&r.labRate){
-      rateDetail+='Labour Rate: PKR '+fmt(r.labRate)+' per sft\n';
+    if(r.agrType==='labour'&&r.rate){
+      rateDetail+='Labour Rate: PKR '+fmt(r.rate)+' per sft\n';
       rateDetail+='Construction Scope: '+(r.constType||'Grey Structure')+'\n';
       rateDetail+='\nNote: Final covered area will be measured shade-to-shade upon completion. Total amount payable will be calculated as per the above rate applied to the measured area.';
-    }else if(r.agrType==='material'&&r.matRate){
-      rateDetail+='Rate: PKR '+fmt(r.matRate)+' per sft (Labour + Material)\n';
+    }else if(r.agrType==='material'&&r.rate){
+      rateDetail+='Rate: PKR '+fmt(r.rate)+' per sft (Labour + Material)\n';
       if(r.matGrade)rateDetail+='Material Grade: '+r.matGrade+'\n';
       if(r.matSupply)rateDetail+='Material Supply: '+r.matSupply+'\n';
       rateDetail+='\nNote: Final covered area will be measured shade-to-shade upon completion. Total amount payable will be calculated as per the above rate applied to the measured area.';
