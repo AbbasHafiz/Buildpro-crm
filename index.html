@@ -473,12 +473,6 @@ select option{background:var(--s2);}
       <div id="list-proj"></div>
     </div>
 
-    <!-- INVESTORS PAGE -->
-    <div class="pg" id="pg-inv2"><div class="card-list" id="list-inv2"></div></div>
-
-    <!-- BANKS PAGE -->
-    <div class="pg" id="pg-banks"><div class="card-list" id="list-banks"></div></div>
-
     <!-- GENERAL LEDGER PAGE -->
     <div class="pg" id="pg-ledger">
       <div class="stats2" style="margin-bottom:14px">
@@ -1211,62 +1205,6 @@ select option{background:var(--s2);}
 </div></div>
 
 <!-- INVESTOR SHEET -->
-<div class="sh-ov" id="sh-inv2"><div class="sh">
-  <div class="sh-grip"></div>
-  <div class="sh-hd"><div class="sh-title" id="inv2-sh-t">New Investor</div><button class="sh-x" onclick="X('sh-inv2')">×</button></div>
-  <div class="sh-body">
-    <div class="edit-badge" id="inv2-eb">✏️ Editing investor</div>
-    <input type="hidden" id="inv2-eid">
-    <div class="fg"><label>Investor Name</label><input id="iv-name" placeholder="Full name"></div>
-    <div class="f2">
-      <div class="fg"><label>Phone</label><input id="iv-ph" type="tel" placeholder="03xx-xxxxxxx"></div>
-      <div class="fg"><label>CNIC</label><input id="iv-cnic" placeholder="xxxxx-xxxxxxx-x"></div>
-    </div>
-    <div class="fg"><label>Linked Project</label>
-      <div class="ds-wrap"><input class="ds-inp" id="iv-proj-t" placeholder="Select project" readonly onclick="oDs('ds-iv-proj')"><div class="ds-list" id="ds-iv-proj"></div><input type="hidden" id="iv-proj-id"></div>
-    </div>
-    <div class="f2">
-      <div class="fg"><label>Investment Amount (PKR)</label><input type="number" id="iv-amount" placeholder="0"></div>
-      <div class="fg"><label>Investment Type</label>
-        <select id="iv-type"><option>Silent Partner</option><option>Active Partner</option><option>Loan</option><option>Plot Share</option><option>Construction Share</option></select>
-      </div>
-    </div>
-    <div class="f2">
-      <div class="fg"><label>Profit Share %</label><input type="number" id="iv-share" placeholder="e.g. 25"></div>
-      <div class="fg"><label>Date</label><input type="date" id="iv-date"></div>
-    </div>
-    <div class="fg"><label>Notes</label><textarea id="iv-notes" placeholder="Agreement details, return terms…" style="min-height:56px"></textarea></div>
-  </div>
-  <div class="sh-ft"><button class="btn btn-grey" onclick="X('sh-inv2')">Cancel</button><button class="btn btn-gold" onclick="saveInv2()">💾 Save Investor</button></div>
-</div></div>
-
-<!-- BANK SHEET -->
-<div class="sh-ov" id="sh-bank"><div class="sh">
-  <div class="sh-grip"></div>
-  <div class="sh-hd"><div class="sh-title" id="bank-sh-t">Add Bank Account</div><button class="sh-x" onclick="X('sh-bank')">×</button></div>
-  <div class="sh-body">
-    <div class="edit-badge" id="bank-eb">✏️ Editing bank</div>
-    <input type="hidden" id="bank-eid">
-    <div class="fg"><label>Bank Name</label><input id="bk-name" placeholder="e.g. HBL, MCB, Meezan, UBL"></div>
-    <div class="fg"><label>Account Title</label><input id="bk-title" placeholder="Name on account"></div>
-    <div class="f2">
-      <div class="fg"><label>Account Number</label><input id="bk-acc" placeholder="Account number"></div>
-      <div class="fg"><label>Account Type</label>
-        <select id="bk-type"><option>Current</option><option>Savings</option><option>Islamic</option></select>
-      </div>
-    </div>
-    <div class="fg"><label>IBAN</label><input id="bk-iban" placeholder="PK00XXXX0000000000000000"></div>
-    <div class="f2">
-      <div class="fg"><label>Current Balance (PKR)</label><input type="number" id="bk-balance" placeholder="0"></div>
-      <div class="fg"><label>Branch</label><input id="bk-branch" placeholder="Branch name / code"></div>
-    </div>
-    <div class="fg"><label>Use on PDFs</label>
-      <select id="bk-default"><option value="0">No</option><option value="1">Yes — show on all PDFs</option></select>
-    </div>
-  </div>
-  <div class="sh-ft"><button class="btn btn-grey" onclick="X('sh-bank')">Cancel</button><button class="btn btn-gold" onclick="saveBank()">💾 Save Bank</button></div>
-</div></div>
-
 <!-- SUB-CON PROJECT CONTRACT EDITOR -->
 <div class="sh-ov" id="sh-spcon"><div class="sh">
   <div class="sh-grip"></div>
@@ -1460,8 +1398,8 @@ function goPage(p,el,title){
   if(p==='profile')refreshProfileUI();
   else renderPage(p);
 }
-function renderPage(p){if(p==='dash')renderDash();else if(p==='proj')renderProj();else if(p==='inv')renderInv();else if(p==='est')renderEst();else if(p==='pay')renderPay();else if(p==='sub')renderSub();else if(p==='agr')renderAgr();else if(p==='cli')renderCli();else if(p==='tasks')renderTasks();else if(p==='exp')renderExp();else if(p==='inv2')renderInv2();else if(p==='banks')renderBanks();else if(p==='ledger')renderLedger();}
-function renderAll(){renderDash();renderProj();renderInv();renderEst();renderPay();renderSub();renderAgr();renderCli();renderTasks();renderExp();renderInv2();renderBanks();renderLedger();updateDots();}
+function renderPage(p){if(p==='dash')renderDash();else if(p==='proj')renderProj();else if(p==='inv')renderInv();else if(p==='est')renderEst();else if(p==='pay')renderPay();else if(p==='sub')renderSub();else if(p==='agr')renderAgr();else if(p==='cli')renderCli();else if(p==='tasks')renderTasks();else if(p==='exp')renderExp();else if(p==='ledger')renderLedger();}
+function renderAll(){renderDash();renderProj();renderInv();renderEst();renderPay();renderSub();renderAgr();renderCli();renderTasks();renderExp();renderLedger();updateDots();}
 
 // ════ HELPERS ════
 const today=()=>new Date().toISOString().split('T')[0];
@@ -1501,7 +1439,6 @@ const DS={
   'ds-cp-inv':{t:'invoices',tx:'cp-inv-t',id:'cp-inv-id'},
   'ds-tk-proj':{t:'projects',tx:'tk-proj-t',id:'tk-proj-id'},
   'ds-ex-proj':{t:'projects',tx:'ex-proj-t',id:'ex-proj-id'},
-  'ds-iv-proj':{t:'projects',tx:'iv-proj-t',id:'iv-proj-id'},
 };
 function oDs(dsId){
   document.querySelectorAll('.ds-list').forEach(d=>d.classList.remove('on'));
@@ -1645,7 +1582,6 @@ function fabAction(){
     'est':   ()=>{iEst();O('sh-est');},
     'proj':  ()=>{O('sh-proj');iP();},
     'pay':   ()=>O('sh-pay-choose'),
-    'banks': ()=>{iBank();O('sh-bank');},
     'ledger':()=>O('sh-new'),
     'sub':   ()=>{iSub();O('sh-sub');},
     'agr':   ()=>{iAgr();O('sh-agr');},
@@ -1867,7 +1803,91 @@ function refreshProfileUI(){
 }
 
 // ════ DELETE ════
-function del(store,id){if(!confirm('Delete this record?'))return;D[store]=D[store].filter(x=>x.id!==id);sched();renderAll();toast('Deleted','info');}
+function del(store,id){
+  // ── PROJECTS: cascade with warning ──
+  if(store==='projects'){
+    const pid=id;
+    const counts={
+      invoices:D.invoices.filter(x=>x.projectId===pid).length,
+      estimates:D.estimates.filter(x=>x.projectId===pid).length,
+      agreements:D.agreements.filter(x=>x.projectId===pid).length,
+      tasks:(D.tasks||[]).filter(x=>x.projectId===pid).length,
+      expenses:(D.expenses||[]).filter(x=>x.projectId===pid).length,
+      'payments received':D.cpays.filter(x=>x.projectId===pid).length,
+      'sub-con payments':D.subpays.filter(x=>x.projectId===pid).length,
+      'sub-con contracts':(D.subconContracts||[]).filter(x=>x.projectId===pid).length
+    };
+    const total=Object.values(counts).reduce((a,b)=>a+b,0);
+    let msg='Delete this project?';
+    if(total>0){
+      const parts=Object.entries(counts).filter(([,v])=>v>0).map(([k,v])=>v+' '+k).join(', ');
+      msg='⚠️ This project has linked records: '+parts+'.\n\nDeleting will PERMANENTLY remove all of these too. This cannot be undone.\n\nContinue?';
+    }
+    if(!confirm(msg))return;
+    D.invoices=D.invoices.filter(x=>x.projectId!==pid);
+    D.estimates=D.estimates.filter(x=>x.projectId!==pid);
+    D.agreements=D.agreements.filter(x=>x.projectId!==pid);
+    if(D.tasks)D.tasks=D.tasks.filter(x=>x.projectId!==pid);
+    if(D.expenses)D.expenses=D.expenses.filter(x=>x.projectId!==pid);
+    D.cpays=D.cpays.filter(x=>x.projectId!==pid);
+    D.subpays=D.subpays.filter(x=>x.projectId!==pid);
+    if(D.subconContracts)D.subconContracts=D.subconContracts.filter(x=>x.projectId!==pid);
+    D.projects=D.projects.filter(x=>x.id!==pid);
+    sched();renderAll();
+    toast(total>0?'Project + '+total+' linked records deleted':'Project deleted','info');
+    return;
+  }
+  // ── CLIENTS: block if has projects, else cascade their own invoices/estimates/agreements ──
+  if(store==='clients'){
+    const cid=id;
+    const linkedProjects=D.projects.filter(x=>x.clientId===cid);
+    if(linkedProjects.length>0){
+      alert('⚠️ This client has '+linkedProjects.length+' project(s) linked to them.\n\nPlease delete or reassign those projects first before deleting this client.');
+      return;
+    }
+    const counts={
+      invoices:D.invoices.filter(x=>x.clientId===cid).length,
+      estimates:D.estimates.filter(x=>x.clientId===cid).length,
+      agreements:D.agreements.filter(x=>x.clientId===cid).length
+    };
+    const total=Object.values(counts).reduce((a,b)=>a+b,0);
+    let msg='Delete this client?';
+    if(total>0){
+      const parts=Object.entries(counts).filter(([,v])=>v>0).map(([k,v])=>v+' '+k).join(', ');
+      msg='⚠️ This client has linked records: '+parts+'.\n\nDeleting will PERMANENTLY remove these too. This cannot be undone.\n\nContinue?';
+    }
+    if(!confirm(msg))return;
+    D.invoices=D.invoices.filter(x=>x.clientId!==cid);
+    D.estimates=D.estimates.filter(x=>x.clientId!==cid);
+    D.agreements=D.agreements.filter(x=>x.clientId!==cid);
+    D.clients=D.clients.filter(x=>x.id!==cid);
+    sched();renderAll();
+    toast(total>0?'Client + '+total+' linked records deleted':'Client deleted','info');
+    return;
+  }
+  // ── SUB-CONTRACTORS: cascade payments + project contracts ──
+  if(store==='subcons'){
+    const sid=id;
+    const linkedPays=D.subpays.filter(x=>x.subconId===sid).length;
+    const linkedCons=(D.subconContracts||[]).filter(x=>x.subconId===sid).length;
+    const total=linkedPays+linkedCons;
+    let msg='Delete this sub-contractor?';
+    if(total>0){
+      msg='⚠️ This sub-contractor has '+linkedPays+' payment record(s) and '+linkedCons+' project contract(s).\n\nDeleting will PERMANENTLY remove these too. This cannot be undone.\n\nContinue?';
+    }
+    if(!confirm(msg))return;
+    D.subpays=D.subpays.filter(x=>x.subconId!==sid);
+    if(D.subconContracts)D.subconContracts=D.subconContracts.filter(x=>x.subconId!==sid);
+    D.subcons=D.subcons.filter(x=>x.id!==sid);
+    sched();renderAll();
+    toast(total>0?'Sub-contractor + '+total+' linked records deleted':'Sub-contractor deleted','info');
+    return;
+  }
+  // ── Default: simple delete for leaf records (invoices, payments, tasks, expenses, etc) ──
+  if(!confirm('Delete this record?'))return;
+  D[store]=D[store].filter(x=>x.id!==id);
+  sched();renderAll();toast('Deleted','info');
+}
 
 // ════ FILTER TABS ════
 let fInvF='all',fEstF='all',fPayF='all';
@@ -2312,7 +2332,7 @@ function renderCli(){
   </div>`).join('');
 }
 
-function updateDots(){[['inv',D.invoices],['est',D.estimates],['pay',[...D.cpays,...D.subpays]],['sub',D.subcons],['agr',D.agreements],['cli',D.clients],['tasks',D.tasks||[]],['exp',D.expenses||[]],['proj',D.projects],['inv2',D.investors||[]],['banks',D.banks||[]]].forEach(([k,arr])=>{const el=e$('bd-'+k);if(el)el.classList.toggle('on',arr.length>0);});}
+function updateDots(){[['inv',D.invoices],['est',D.estimates],['pay',[...D.cpays,...D.subpays]],['sub',D.subcons],['agr',D.agreements],['cli',D.clients],['tasks',D.tasks||[]],['exp',D.expenses||[]],['proj',D.projects]].forEach(([k,arr])=>{const el=e$('bd-'+k);if(el)el.classList.toggle('on',arr.length>0);});}
 
 // ════ PDF GENERATION — Advanced Construction ════
 const co=()=>D.company||{};
@@ -3195,61 +3215,6 @@ function renderProj(){
   }).join('');
 }
 
-// ════ INVESTORS ════
-function iInv2(){sv('inv2-eid','');const eb=e$('inv2-eb');if(eb)eb.classList.remove('on');const sh=e$('inv2-sh-t');if(sh)sh.textContent='New Investor';['iv-name','iv-ph','iv-cnic','iv-proj-t','iv-proj-id','iv-notes','iv-share'].forEach(id=>sv(id,''));sv('iv-amount','');sv('iv-date',today());sv('iv-type','Silent Partner');}
-function eInv2(id){const r=(D.investors||[]).find(x=>x.id===id);if(!r)return;sv('inv2-eid',id);const eb=e$('inv2-eb');if(eb)eb.classList.add('on');sv('iv-name',r.name);sv('iv-ph',r.phone||'');sv('iv-cnic',r.cnic||'');sv('iv-amount',r.amount);sv('iv-share',r.share||'');sv('iv-date',r.date||'');sv('iv-notes',r.notes||'');sv('iv-type',r.type||'Silent Partner');const p=D.projects.find(x=>x.id===r.projectId);sv('iv-proj-t',p?p.name:'');sv('iv-proj-id',r.projectId||'');O('sh-inv2');}
-function saveInv2(){const eid=e$('inv2-eid').value;const doc={id:eid||uid(),name:e$('iv-name').value,phone:e$('iv-ph').value,cnic:e$('iv-cnic').value,projectId:e$('iv-proj-id').value,projectName:e$('iv-proj-t').value,amount:parseFloat(e$('iv-amount').value)||0,type:e$('iv-type').value,share:parseFloat(e$('iv-share').value)||0,date:e$('iv-date').value||today(),notes:e$('iv-notes').value};if(!doc.name){toast('Enter investor name','err');return;}if(!D.investors)D.investors=[];ups('investors',doc);X('sh-inv2');renderInv2();updateDots();toast(eid?'Updated ✓':'Investor saved ✓');}
-function renderInv2(){
-  const el=e$('list-inv2');if(!el)return;
-  const investors=D.investors||[];
-  if(!investors.length){el.innerHTML='<div class="empty"><div class="empty-i">📈</div><div class="empty-t">No investors yet.<br>Tap + to add.</div></div>';return;}
-  const total=investors.reduce((s,i)=>s+i.amount,0);
-  el.innerHTML=`<div style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:14px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
-    <div><div style="font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:.8px">Total Investment</div><div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-xl);color:var(--gold);margin-top:4px">PKR ${fmt(total)}</div></div>
-    <div style="font-size:var(--fs-xs);color:var(--mut)">${investors.length} investors</div>
-  </div>`+
-  investors.map(r=>`<div class="card">
-    <div class="card-top">
-      <div><div class="card-nm">${r.name}</div><div class="card-sub">${r.phone||''} ${r.cnic?'· CNIC: '+r.cnic:''}</div><div style="margin-top:5px"><span class="b b-p">${r.type}</span></div></div>
-      <div style="text-align:right"><div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-lg);color:var(--gold)">${fmt(r.amount)}</div>${r.share?`<div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">${r.share}% profit share</div>`:''}</div>
-    </div>
-    ${r.projectName?`<div style="font-size:var(--fs-sm);color:var(--mut);margin-bottom:10px">📁 ${r.projectName}</div>`:''}
-    ${r.notes?`<div style="font-size:var(--fs-sm);color:var(--mut);margin-bottom:10px">${r.notes}</div>`:''}
-    <div class="card-acts">
-      <button class="ca blu" onclick="eInv2('${r.id}')">✏️ Edit</button>
-      <button class="ca red" onclick="del('investors','${r.id}')">🗑</button>
-    </div>
-  </div>`).join('');
-}
-
-// ════ BANKS ════
-function iBank(){sv('bank-eid','');const eb=e$('bank-eb');if(eb)eb.classList.remove('on');const sh=e$('bank-sh-t');if(sh)sh.textContent='Add Bank Account';['bk-name','bk-title','bk-acc','bk-iban','bk-branch'].forEach(id=>sv(id,''));sv('bk-balance','');sv('bk-type','Current');sv('bk-default','0');}
-function eBank(id){const r=(D.banks||[]).find(x=>x.id===id);if(!r)return;sv('bank-eid',id);const eb=e$('bank-eb');if(eb)eb.classList.add('on');sv('bk-name',r.name);sv('bk-title',r.title);sv('bk-acc',r.acc);sv('bk-type',r.type||'Current');sv('bk-iban',r.iban||'');sv('bk-balance',r.balance||'');sv('bk-branch',r.branch||'');sv('bk-default',r.isDefault?'1':'0');O('sh-bank');}
-function saveBank(){const eid=e$('bank-eid').value;const doc={id:eid||uid(),name:e$('bk-name').value,title:e$('bk-title').value,acc:e$('bk-acc').value,type:e$('bk-type').value,iban:e$('bk-iban').value,balance:parseFloat(e$('bk-balance').value)||0,branch:e$('bk-branch').value,isDefault:e$('bk-default').value==='1'};if(!doc.name||!doc.acc){toast('Enter bank name and account number','err');return;}if(!D.banks)D.banks=[];if(doc.isDefault)D.banks.forEach(b=>b.isDefault=false);ups('banks',doc);X('sh-bank');renderBanks();updateDots();toast(eid?'Updated ✓':'Bank saved ✓');}
-function renderBanks(){
-  const el=e$('list-banks');if(!el)return;
-  const banks=D.banks||[];
-  if(!banks.length){el.innerHTML='<div class="empty"><div class="empty-i">🏦</div><div class="empty-t">No bank accounts yet.<br>Tap + to add.</div></div>';return;}
-  const total=banks.reduce((s,b)=>s+b.balance,0);
-  el.innerHTML=`<div style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:14px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
-    <div><div style="font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:.8px">Total Balance</div><div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-xl);color:var(--grn);margin-top:4px">PKR ${fmt(total)}</div></div>
-    <div style="font-size:var(--fs-xs);color:var(--mut)">${banks.length} accounts</div>
-  </div>`+
-  banks.map(r=>`<div class="card" style="border-left:3px solid ${r.isDefault?'var(--gold)':'var(--bor)'}">
-    <div class="card-top">
-      <div><div class="card-nm">${r.name}${r.isDefault?' ⭐':''}</div><div class="card-sub">${r.title}</div><div style="margin-top:5px"><span class="b b-m">${r.type}</span></div></div>
-      <div style="text-align:right"><div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-lg);color:var(--grn)">${fmt(r.balance)}</div></div>
-    </div>
-    <div style="font-size:var(--fs-sm);color:var(--mut);margin-bottom:10px">
-      A/C: ${r.acc}${r.iban?'<br>IBAN: '+r.iban:''}${r.branch?'<br>Branch: '+r.branch:''}
-    </div>
-    <div class="card-acts">
-      <button class="ca blu" onclick="eBank('${r.id}')">✏️ Edit</button>
-      <button class="ca red" onclick="del('banks','${r.id}')">🗑</button>
-    </div>
-  </div>`).join('');
-}
-
 // ════ GENERAL LEDGER ════
 function renderLedger(){
   const el=e$('list-ledger');if(!el)return;
@@ -3310,11 +3275,7 @@ async function importBk(){
     rd.onload=async ev=>{
       try{
         const p=JSON.parse(ev.target.result);
-        // Store logo separately
-        if(p.company?.logo&&p.company.logo.length>100){
-          localStorage.setItem('bp5_logo',p.company.logo);
-          p.company.logo='__local__';
-        }
+        // Keep logo as-is — full logo now saves directly to Supabase
         // Import EVERY key into D
         const keys=['company','clients','projects','subcons','subpays','cpays','invoices','estimates','agreements','tasks','expenses','investors','banks','subconContracts'];
         keys.forEach(k=>{if(p[k]!==undefined)D[k]=p[k];});
