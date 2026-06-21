@@ -2775,6 +2775,15 @@ function eExp(id){const r=(D.expenses||[]).find(x=>x.id===id);if(!r)return;sv('e
 
 function saveExp(){const eid=e$('exp-eid').value;const doc={id:eid||uid(),desc:e$('ex-desc').value,projectId:e$('ex-proj-id').value,projectName:e$('ex-proj-t').value,cat:e$('ex-cat').value,date:e$('ex-date').value||today(),amount:parseFloat(e$('ex-amount').value)||0,paid:e$('ex-paid').value,notes:e$('ex-notes').value};doc.isPaid=e$('ex-ispaid')?.checked||false;if(!doc.desc||!doc.amount){toast('Enter description and amount','err');return;}if(!D.expenses)D.expenses=[];ups('expenses',doc);X('sh-exp');renderExp();updateDots();renderDash();toast(eid?'Expense updated ✓':'Expense saved ✓');}
 
+function updateCashInHand(projectId,value){
+  const proj=D.projects.find(x=>x.id===projectId);
+  if(!proj)return;
+  proj.cashInHand=parseFloat(value)||0;
+  sched();
+  renderExp();
+  toast('Cash in hand updated ✓');
+}
+
 function markExpPaid(id){
   const r=(D.expenses||[]).find(x=>x.id===id);if(!r)return;
   r.isPaid=!r.isPaid;sched();renderExp();renderLedger();renderDash();
@@ -2785,11 +2794,10 @@ function renderExp(){
   const el=e$('list-exp');if(!el)return;
   const exps=D.expenses||[];
   // Update stats
-  const totalBudget=D.projects.reduce((s,p)=>s+(p.budget||0),0);
   const totalSpent=exps.reduce((s,e)=>s+e.amount,0);
   const setV=(id,v)=>{const x=e$(id);if(x)x.textContent=fmt(v);};
-  setV('exp-budget',totalBudget);setV('exp-spent',totalSpent);
-  const rem=e$('exp-rem');if(rem){rem.textContent=fmt(Math.max(0,totalBudget-totalSpent));rem.style.color=totalBudget-totalSpent<0?'var(--red)':'var(--grn)';}
+  setV('exp-spent',totalSpent);
+  const rem=e$('exp-rem');if(rem){rem.textContent=fmt(Math.max(0,totalSpent));rem.style.color='var(--red)';}
   const ec=e$('exp-count');if(ec)ec.textContent=exps.length;
   let rows=expFilter==='all'?exps:expFilter==='unpaid'?exps.filter(r=>!r.isPaid):expFilter==='paid'?exps.filter(r=>r.isPaid):exps.filter(r=>r.cat===expFilter);
   if(!rows.length){el.innerHTML='<div class="empty"><div class="empty-i">💰</div><div class="empty-t">No expenses yet.<br>Tap + to add an expense.</div></div>';return;}
@@ -2799,23 +2807,39 @@ function renderExp(){
   el.innerHTML=projIds.map(pid=>{
     const proj=D.projects.find(x=>x.id===pid);
     const projName=proj?proj.name:(rows.find(r=>(r.projectId||'__none__')===pid)?.projectName||'No Project');
-    const projBudget=proj?.budget||0;
+    const cashInHand=proj?.cashInHand||0;
     const projRows=rows.filter(r=>(r.projectId||'__none__')===pid);
     const projSpent=projRows.reduce((s,r)=>s+r.amount,0);
-    const pct=projBudget>0?Math.min(100,Math.round(projSpent/projBudget*100)):0;
+    const balance=cashInHand-projSpent;
+    const pct=cashInHand>0?Math.min(100,Math.round(projSpent/cashInHand*100)):0;
     return`<div style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);overflow:hidden;margin-bottom:12px">
       <div style="padding:13px 14px;border-bottom:1px solid var(--bor)">
-        <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:11px">
           <div style="font-size:var(--fs-md);font-weight:700">📁 ${projName}</div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <button class="ca gold" style="flex:none;padding:6px 12px;font-size:var(--fs-xs)" onclick="pdfExpProject('${pid}','${esc(projName)}')">⬇ PDF</button>
-            <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-md);color:var(--red)">${fmt(projSpent)}</div>
+          <button class="ca gold" style="flex:none;padding:6px 12px;font-size:var(--fs-xs)" onclick="pdfExpProject('${pid}','${esc(projName)}')">⬇ PDF</button>
+        </div>
+        ${proj?`<div style="margin-bottom:10px">
+          <label style="font-size:var(--fs-xs);color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px">💵 Cash in Hand (Owner's Advance for Misc.)</label>
+          <input type="number" value="${cashInHand||''}" placeholder="0" data-pid="${pid}"
+            onblur="updateCashInHand('${pid}',this.value)"
+            onkeydown="if(event.key==='Enter')this.blur()"
+            style="background:var(--bg);border:1px solid var(--bor);border-radius:8px;padding:9px 11px;font-size:var(--fs-md);color:var(--gold);font-family:'JetBrains Mono',monospace;width:100%">
+        </div>`:''}
+        ${cashInHand>0?`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px">
+          <div style="background:var(--s2);border-radius:8px;padding:8px;text-align:center">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--gold)">${fmt(cashInHand)}</div>
+            <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">In Hand</div>
+          </div>
+          <div style="background:var(--s2);border-radius:8px;padding:8px;text-align:center">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--red)">${fmt(projSpent)}</div>
+            <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Spent</div>
+          </div>
+          <div style="background:var(--s2);border-radius:8px;padding:8px;text-align:center">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:${balance>=0?'var(--grn)':'var(--red)'}">${fmt(Math.abs(balance))}</div>
+            <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">${balance>=0?'Left':'Over'}</div>
           </div>
         </div>
-        ${projBudget>0?`<div style="margin-top:8px">
-          <div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--mut);margin-bottom:4px"><span>Budget: PKR ${fmt(projBudget)}</span><span style="color:${pct>90?'var(--red)':'var(--mut)'}">${pct}% used</span></div>
-          <div class="pbar-wrap"><div class="pbar" style="width:${pct}%;background:${pct>90?'var(--red)':pct>70?'var(--gold)':'var(--grn)'}"></div></div>
-        </div>`:''}
+        <div class="pbar-wrap" style="margin-top:8px"><div class="pbar" style="width:${pct}%;background:${pct>90?'var(--red)':pct>70?'var(--gold)':'var(--grn)'}"></div></div>`:''}
       </div>
       ${projRows.map(r=>`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:11px 14px;border-bottom:1px solid var(--bor)">
         <div>
