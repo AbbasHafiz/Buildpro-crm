@@ -358,65 +358,103 @@ select option{background:var(--s2);}
 
     <!-- DASHBOARD -->
     <div class="pg on" id="pg-dash">
-      <div class="stats2">
-        <div class="stat"><div class="stat-lbl">Total Invoiced</div><div class="stat-val" id="d-inv">0</div><div class="stat-unit">PKR</div></div>
-        <div class="stat"><div class="stat-lbl">Received</div><div class="stat-val" id="d-rec">0</div><div class="stat-unit">PKR</div></div>
-        <div class="stat"><div class="stat-lbl">Sub-Con Paid</div><div class="stat-val" id="d-sub">0</div><div class="stat-unit">PKR out</div></div>
-        <div class="stat"><div class="stat-lbl">Net Profit</div><div class="stat-val" id="d-pft">0</div><div class="stat-unit">PKR</div></div>
-      </div>
       <div class="sync-bar"><div class="sdot" id="sdot"></div><span id="sync-txt">Connecting…</span></div>
 
+      <!-- KPI Cards Row 1 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+        <div style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:14px">
+          <div style="font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:.7px;margin-bottom:5px">Total Receivable</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-xl);color:var(--gold);font-weight:700" id="d-receivable">0</div>
+          <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">Outstanding from clients</div>
+        </div>
+        <div style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:14px">
+          <div style="font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:.7px;margin-bottom:5px">Net Profit</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-xl);font-weight:700" id="d-pft">0</div>
+          <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">Received minus paid out</div>
+        </div>
+      </div>
+
+      <!-- KPI Cards Row 2 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
+        <div style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:11px 10px">
+          <div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:4px">Received</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-md);color:var(--grn);font-weight:700" id="d-rec">0</div>
+        </div>
+        <div style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:11px 10px">
+          <div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:4px">Sub-Con Paid</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-md);color:var(--red);font-weight:700" id="d-sub">0</div>
+        </div>
+        <div style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:11px 10px">
+          <div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:4px">Invoiced</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-md);color:var(--gold);font-weight:700" id="d-inv">0</div>
+        </div>
+      </div>
+
+      <!-- Project Status Bar -->
+      <div style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:13px 14px;margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div style="font-size:var(--fs-sm);font-weight:700">Projects</div>
+          <button onclick="navTo('proj','Projects')" style="font-size:var(--fs-xs);color:var(--gold);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif;font-weight:600">View All →</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px" id="d-proj-status"></div>
+      </div>
+
+      <!-- Outstanding Balances -->
+      <div style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:13px 14px;margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div style="font-size:var(--fs-sm);font-weight:700">🔴 Outstanding Balances</div>
+          <div style="font-size:var(--fs-xs);color:var(--mut)" id="d-outstanding-total"></div>
+        </div>
+        <div id="d-outstanding"></div>
+      </div>
+
       <!-- Quick Access Tiles -->
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px">
-        <div onclick="navTo('inv','Invoices')" style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:12px 8px;text-align:center;cursor:pointer;active:opacity:.7">
-          <div style="font-size:22px;margin-bottom:4px">🧾</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">
+        <div onclick="navTo('inv','Invoices')" style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:12px 8px;text-align:center;cursor:pointer">
+          <div style="font-size:20px;margin-bottom:3px">🧾</div>
           <div style="font-size:var(--fs-xs);color:var(--mut);font-weight:600">Invoices</div>
           <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--gold);margin-top:2px" id="qt-inv">0</div>
         </div>
         <div onclick="navTo('est','BOQ / Estimates')" style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:12px 8px;text-align:center;cursor:pointer">
-          <div style="font-size:22px;margin-bottom:4px">📊</div>
+          <div style="font-size:20px;margin-bottom:3px">📊</div>
           <div style="font-size:var(--fs-xs);color:var(--mut);font-weight:600">BOQ</div>
           <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--gold);margin-top:2px" id="qt-est">0</div>
         </div>
         <div onclick="navTo('sub','Sub-Contractors')" style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:12px 8px;text-align:center;cursor:pointer">
-          <div style="font-size:22px;margin-bottom:4px">👷</div>
+          <div style="font-size:20px;margin-bottom:3px">👷</div>
           <div style="font-size:var(--fs-xs);color:var(--mut);font-weight:600">Sub-Con</div>
           <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--gold);margin-top:2px" id="qt-sub">0</div>
         </div>
         <div onclick="navTo('pay','Payments')" style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:12px 8px;text-align:center;cursor:pointer">
-          <div style="font-size:22px;margin-bottom:4px">💳</div>
+          <div style="font-size:20px;margin-bottom:3px">💳</div>
           <div style="font-size:var(--fs-xs);color:var(--mut);font-weight:600">Payments</div>
           <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--gold);margin-top:2px" id="qt-pay">0</div>
         </div>
         <div onclick="navTo('agr','Agreements')" style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:12px 8px;text-align:center;cursor:pointer">
-          <div style="font-size:22px;margin-bottom:4px">✍️</div>
+          <div style="font-size:20px;margin-bottom:3px">✍️</div>
           <div style="font-size:var(--fs-xs);color:var(--mut);font-weight:600">Agree.</div>
           <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--gold);margin-top:2px" id="qt-agr">0</div>
         </div>
         <div onclick="navTo('cli','Clients')" style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:12px 8px;text-align:center;cursor:pointer">
-          <div style="font-size:22px;margin-bottom:4px">👤</div>
+          <div style="font-size:20px;margin-bottom:3px">👤</div>
           <div style="font-size:var(--fs-xs);color:var(--mut);font-weight:600">Clients</div>
           <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--gold);margin-top:2px" id="qt-cli">0</div>
         </div>
-        <div onclick="scrollToProjects()" style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:12px 8px;text-align:center;cursor:pointer">
-          <div style="font-size:22px;margin-bottom:4px">🏗</div>
-          <div style="font-size:var(--fs-xs);color:var(--mut);font-weight:600">Projects</div>
-          <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--gold);margin-top:2px" id="qt-proj">0</div>
+        <div onclick="navTo('exp','Expenses & Budget')" style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:12px 8px;text-align:center;cursor:pointer">
+          <div style="font-size:20px;margin-bottom:3px">💰</div>
+          <div style="font-size:var(--fs-xs);color:var(--mut);font-weight:600">Expenses</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--gold);margin-top:2px" id="qt-exp">0</div>
         </div>
-        <div onclick="navTo('profile','Company Profile')" style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:12px 8px;text-align:center;cursor:pointer">
-          <div style="font-size:22px;margin-bottom:4px">🏢</div>
-          <div style="font-size:var(--fs-xs);color:var(--mut);font-weight:600">Profile</div>
-          <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--mut);margin-top:2px">→</div>
+        <div onclick="navTo('tasks','Tasks & Schedule')" style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:12px 8px;text-align:center;cursor:pointer">
+          <div style="font-size:20px;margin-bottom:3px">📋</div>
+          <div style="font-size:var(--fs-xs);color:var(--mut);font-weight:600">Tasks</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--gold);margin-top:2px" id="qt-tasks">0</div>
         </div>
       </div>
-      <div class="sec"><div class="sec-t">Projects P&L</div><div class="sec-a" onclick="O('sh-proj');iP()">+ New</div></div>
-      <div id="proj-list"></div>
-      <div class="sec"><div class="sec-t">Outstanding Invoices</div></div>
-      <div id="out-list"></div>
+
+      <!-- Recent Activity -->
       <div class="sec"><div class="sec-t">Recent Activity</div></div>
       <div id="act-list"></div>
-      <div class="sec"><div class="sec-t">Agreements</div><div class="sec-a" onclick="goPage('agr',document.querySelector('.bi:nth-child(5)'),'Agreements')">View All →</div></div>
-      <div id="dash-agr-list"></div>
     </div>
 
     <!-- INVOICES -->
@@ -1897,138 +1935,95 @@ function fPay(f,el){fPayF=f;document.querySelectorAll('#pg-pay .ftab').forEach(t
 
 // ════ RENDER DASHBOARD ════
 function renderDash(){
-  const ti=D.invoices.reduce((s,i)=>s+i.total,0);
   const tr=D.cpays.reduce((s,p)=>s+p.amount,0);
   const ts=D.subpays.reduce((s,p)=>s+p.amount,0);
+  const ti=D.invoices.reduce((s,i)=>s+i.total,0);
   const pft=tr-ts;
-  e$('d-inv').textContent=fmt(ti);e$('d-rec').textContent=fmt(tr);e$('d-sub').textContent=fmt(ts);
-  e$('d-pft').textContent=fmt(Math.abs(pft));e$('d-pft').style.color=pft>=0?'var(--grn)':'var(--red)';
+
+  // Total receivable = sum of (contract value - received) for all active projects
+  const totalReceivable=D.projects.reduce((s,p)=>{
+    const rec=D.cpays.filter(x=>x.projectId===p.id).reduce((a,x)=>a+x.amount,0);
+    return s+Math.max(0,(p.value||0)-rec);
+  },0);
+
+  // KPI values
+  const sv2=(id,v,c)=>{const el=e$(id);if(el){el.textContent=fmt(v);if(c)el.style.color=c;}};
+  sv2('d-receivable',totalReceivable,'var(--gold)');
+  sv2('d-pft',Math.abs(pft),pft>=0?'var(--grn)':'var(--red)');
+  sv2('d-rec',tr,'var(--grn)');
+  sv2('d-sub',ts,'var(--red)');
+  sv2('d-inv',ti,'var(--gold)');
+
   // Quick tile counts
   const sq=(id,v)=>{const el=e$(id);if(el)el.textContent=v;};
   sq('qt-inv',D.invoices.length);sq('qt-est',D.estimates.length);
   sq('qt-sub',D.subcons.length);sq('qt-pay',D.cpays.length+D.subpays.length);
   sq('qt-agr',D.agreements.length);sq('qt-cli',D.clients.length);
-  sq('qt-proj',D.projects.length);
+  sq('qt-exp',(D.expenses||[]).length);sq('qt-tasks',(D.tasks||[]).length);
 
-  // Projects
-  const pl=e$('proj-list');
-  if(!D.projects.length){pl.innerHTML='<div class="empty"><div class="empty-i">🏗</div><div class="empty-t">No projects yet.<br>Tap + to add your first project.</div></div>';}
-  else pl.innerHTML=D.projects.map(p=>{
-    const cli=D.clients.find(c=>c.id===p.clientId);
+  // Project status breakdown
+  const ps=e$('d-proj-status');
+  if(ps){
+    const active=D.projects.filter(p=>!['Completed','Handover'].includes(p.phase));
+    const completed=D.projects.filter(p=>['Completed','Handover'].includes(p.phase));
+    const pendingTasks=(D.tasks||[]).filter(t=>t.status==='pending'||t.status==='inprogress').length;
+    const unpaidExp=(D.expenses||[]).filter(e=>!e.isPaid).length;
+    ps.innerHTML=[
+      {label:'Active',val:active.length,clr:'var(--grn)'},
+      {label:'Done',val:completed.length,clr:'var(--mut)'},
+      {label:'Pending Tasks',val:pendingTasks,clr:pendingTasks>0?'var(--gold)':'var(--mut)'},
+      {label:'Unpaid Expenses',val:unpaidExp,clr:unpaidExp>0?'var(--red)':'var(--mut)'},
+    ].map(s=>`<div style="background:var(--s2);border-radius:8px;padding:9px 6px;text-align:center">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-lg);font-weight:700;color:${s.clr}">${s.val}</div>
+      <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px;line-height:1.3">${s.label}</div>
+    </div>`).join('');
+  }
+
+  // Outstanding balances per project (receivable > 0)
+  const od=e$('d-outstanding');
+  const ot=e$('d-outstanding-total');
+  const outstanding=D.projects.filter(p=>{
     const rec=D.cpays.filter(x=>x.projectId===p.id).reduce((s,x)=>s+x.amount,0);
-    const sub=D.subpays.filter(x=>x.projectId===p.id).reduce((s,x)=>s+x.amount,0);
-    const inv=D.invoices.filter(x=>x.projectId===p.id).reduce((s,x)=>s+x.total,0);
-    const pft=rec-sub,pct=p.value>0?Math.min(100,Math.round(rec/p.value*100)):0;
-    const cpRows=D.cpays.filter(x=>x.projectId===p.id).slice(0,3);
+    return (p.value||0)-rec > 0;
+  }).map(p=>{
+    const rec=D.cpays.filter(x=>x.projectId===p.id).reduce((s,x)=>s+x.amount,0);
+    const bal=p.value-rec;
+    const pct=p.value>0?Math.round(rec/p.value*100):0;
+    const cli=D.clients.find(x=>x.id===p.clientId);
+    return{p,rec,bal,pct,cli};
+  }).sort((a,b)=>b.bal-a.bal);
 
-    // Group subcon payments by contractor for this project
-    const subconIds=[...new Set(D.subpays.filter(x=>x.projectId===p.id).map(x=>x.subconId))];
-    const subconBreakdown=subconIds.map(sid=>{
-      const sc=D.subcons.find(x=>x.id===sid);
-      const pays=D.subpays.filter(x=>x.projectId===p.id&&x.subconId===sid);
-      const total=pays.reduce((s,x)=>s+x.amount,0);
-      return{name:sc?sc.name:(pays[0]?.subconName||'Unknown'),trade:sc?.trade||'',total,pays};
-    });
-
-    return`<div class="proj-card">
-      <div class="proj-hd" onclick="this.nextElementSibling.classList.toggle('open')">
-        <div><div class="proj-nm">${p.name}</div><div class="proj-meta">${[p.loc,p.plot,cli?cli.name:''].filter(Boolean).join(' · ')}</div><div style="margin-top:6px"><span class="b b-b" style="font-size:10px">${p.phase||'—'}</span></div></div>
-        <div class="proj-r"><div class="proj-val">${fmt(p.value)}</div><div class="proj-pft" style="color:${pft>=0?'var(--grn)':'var(--red)'}">${pft>=0?'▲':'▼'} ${fmt(Math.abs(pft))}</div></div>
-      </div>
-      <div class="proj-exp">
-        <div class="proj-body">
-          <div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:8px">Collection Progress: ${pct}%</div>
-          <div class="pbar-wrap"><div class="pbar" style="width:${pct}%"></div></div>
-          <div class="pbar-lbl"><span>PKR 0</span><span>${fmt(p.value)}</span></div>
-          <div style="height:10px"></div>
-          <div class="prow"><span class="prow-lbl">Contract Value</span><span class="prow-val" style="color:var(--gold)">${fmt(p.value)}</span></div>
-          <div class="prow"><span class="prow-lbl">Total Invoiced</span><span class="prow-val">${fmt(inv)}</span></div>
-          <div class="prow"><span class="prow-lbl">Received from Client</span><span class="prow-val" style="color:var(--grn)">${fmt(rec)}</span></div>
-          <div class="prow"><span class="prow-lbl">Remaining to Collect</span><span class="prow-val" style="color:${p.value-rec>0?'var(--gold)':'var(--grn)'}">${fmt(Math.max(0,p.value-rec))}</span></div>
-          <div class="prow"><span class="prow-lbl">Sub-Contractor Paid</span><span class="prow-val" style="color:var(--red)">${fmt(sub)}</span></div>
-          <div class="prow" style="border-top:2px solid var(--bor2);margin-top:6px"><span class="prow-lbl" style="font-weight:700;color:var(--txt);font-size:var(--fs-md)">Net Profit</span><span class="prow-val" style="font-size:var(--fs-lg);font-weight:700;color:${pft>=0?'var(--grn)':'var(--red)'}">${fmt(pft)}</span></div>
-
-          ${subconBreakdown.length?`
-          <div style="margin-top:16px;background:var(--s2);border-radius:10px;overflow:hidden">
-            <div style="padding:10px 13px;font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:.8px;font-weight:700;border-bottom:1px solid var(--bor)">💸 Sub-Con Payment Breakdown</div>
-            ${subconBreakdown.map(sc=>`
-            <div style="padding:11px 13px;border-bottom:1px solid var(--bor)">
-              <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
-                <div>
-                  <div style="font-size:var(--fs-md);font-weight:700">${sc.name}</div>
-                  ${sc.trade?`<div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">${sc.trade}</div>`:''}
-                </div>
-                <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-md);color:var(--red);font-weight:700">PKR ${fmt(sc.total)}</div>
-              </div>
-              ${sc.pays.map(pay=>`
-              <div style="display:flex;justify-content:space-between;padding:6px 0;border-top:1px solid var(--bor);font-size:var(--fs-sm)">
-                <div>
-                  <span style="color:var(--txt)">${pay.date}</span>
-                  <span style="color:var(--mut);margin-left:8px">${pay.phase}</span>
-                  ${pay.desc?`<div style="color:var(--mut2);font-size:var(--fs-xs);margin-top:2px">${pay.desc}</div>`:''}
-                </div>
-                <div style="text-align:right">
-                  <div style="font-family:'JetBrains Mono',monospace;color:var(--red)">${fmt(pay.amount)}</div>
-                  <button style="font-size:var(--fs-xs);color:var(--blu);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="eSpay('${pay.id}')">Edit</button>
-                  <button style="font-size:var(--fs-xs);color:var(--red);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif;margin-left:6px" onclick="del('subpays','${pay.id}')">Del</button>
-                </div>
-              </div>`).join('')}
-            </div>`).join('')}
-            <div style="padding:10px 13px;display:flex;justify-content:space-between;font-size:var(--fs-sm);font-weight:700">
-              <span style="color:var(--mut)">Total Paid Out</span>
-              <span style="font-family:'JetBrains Mono',monospace;color:var(--red)">PKR ${fmt(sub)}</span>
-            </div>
-          </div>`:''}
-
-          ${cpRows.length?`
-          <div style="margin-top:12px;background:var(--s2);border-radius:10px;overflow:hidden">
-            <div style="padding:10px 13px;font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:.8px;font-weight:700;border-bottom:1px solid var(--bor)">💳 Client Payments Received</div>
-            ${cpRows.map(cp=>`<div style="display:flex;justify-content:space-between;padding:11px 13px;border-bottom:1px solid var(--bor);font-size:var(--fs-sm)">
-              <div><div style="font-weight:600">${cp.clientName||'—'}</div><div style="color:var(--mut);font-size:var(--fs-xs);margin-top:2px">${cp.milestone||''} · ${cp.date}</div></div>
-              <div style="text-align:right"><div style="font-family:'JetBrains Mono',monospace;color:var(--grn)">${fmt(cp.amount)}</div><button style="font-size:var(--fs-xs);color:var(--blu);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="eCpay('${cp.id}')">Edit</button></div>
-            </div>`).join('')}
-          </div>`:''}
-
-          <div style="display:flex;gap:8px;margin-top:12px">
-            <button class="ca blu" onclick="eP('${p.id}')">✏️ Edit</button>
-            <button class="ca gold" onclick="O('sh-spay');iSpay();sv('sp-proj-t','${esc(p.name)}');sv('sp-proj-id','${p.id}')">+ Pay Sub-Con</button>
-            <button class="ca red" onclick="del('projects','${p.id}')">🗑</button>
-          </div>
+  if(ot)ot.textContent=outstanding.length+' project'+(outstanding.length!==1?'s':'')+' · PKR '+fmt(totalReceivable)+' due';
+  if(od){
+    if(!outstanding.length){
+      od.innerHTML='<div style="font-size:var(--fs-sm);color:var(--grn);padding:6px 0 4px">✅ All projects fully collected</div>';
+    }else{
+      od.innerHTML=outstanding.map(({p,rec,bal,pct,cli})=>`
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--bor)" onclick="navTo('proj','Projects')" style="cursor:pointer">
+        <div style="flex:1;min-width:0;margin-right:12px">
+          <div style="font-size:var(--fs-sm);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}</div>
+          <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">${cli?cli.name:''} · ${pct}% collected</div>
+          <div class="pbar-wrap" style="margin-top:5px;height:3px"><div class="pbar" style="width:${pct}%;height:3px"></div></div>
         </div>
-      </div>
-    </div>`;}).join('');
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--red);font-weight:700">${fmt(bal)}</div>
+          <div style="font-size:var(--fs-xs);color:var(--mut)">remaining</div>
+        </div>
+      </div>`).join('');
+    }
+  }
 
-  // Outstanding
-  const outs=D.invoices.filter(i=>i.status==='pending'||i.status==='overdue');
-  const ol=e$('out-list');
-  if(!outs.length)ol.innerHTML='<div style="font-size:var(--fs-sm);color:var(--mut);padding:8px 0 12px">No outstanding invoices ✓</div>';
-  else ol.innerHTML=outs.map(i=>`<div class="out-item"><div><div class="out-nm">${i.clientName}</div><div class="out-sub">${i.num} · ${i.projectName||'—'}</div></div><div style="text-align:right"><div class="out-amt">${fmt(i.total)}</div><div class="out-due">Due: ${i.due||'—'}</div></div></div>`).join('');
-
-  // Activity
+  // Recent activity
   const acts=[
-    ...D.cpays.map(x=>({type:'💳 Received',name:x.clientName,sub:x.milestone||x.invoiceRef||x.projectName,amt:x.amount,date:x.date,clr:'var(--grn)'})),
-    ...D.subpays.map(x=>({type:'💸 Paid Out',name:x.subconName,sub:x.phase+' · '+(x.projectName||''),amt:x.amount,date:x.date,clr:'var(--red)'})),
-    ...D.invoices.slice(0,6).map(x=>({type:'🧾 '+((x.invType||'standard').charAt(0).toUpperCase()+(x.invType||'standard').slice(1)),name:x.clientName,sub:x.num,amt:x.total,date:x.date,clr:'var(--txt)'})),
-  ].sort((a,b)=>(b.date||'').localeCompare(a.date||'')).slice(0,10);
+    ...D.cpays.map(x=>({type:'💳 Received',name:x.clientName,sub:x.milestone||x.projectName||'',amt:x.amount,date:x.date,clr:'var(--grn)'})),
+    ...D.subpays.map(x=>({type:'💸 Paid Out',name:x.subconName,sub:(x.phase||'')+(x.projectName?' · '+x.projectName:''),amt:x.amount,date:x.date,clr:'var(--red)'})),
+    ...(D.expenses||[]).filter(e=>!e.isPaid).slice(0,5).map(x=>({type:'📦 Expense',name:x.desc,sub:x.projectName||'',amt:x.amount,date:x.date,clr:'var(--mut)'})),
+  ].sort((a,b)=>(b.date||'').localeCompare(a.date||'')).slice(0,8);
   const al=e$('act-list');
-  if(!acts.length){al.innerHTML='<div style="font-size:var(--fs-sm);color:var(--mut);padding:6px 0">No activity yet</div>';return;}
-  al.innerHTML='<div class="act-wrap">'+acts.map(a=>`<div class="act-row"><div><div class="act-type">${a.type}</div><div class="act-nm">${a.name||'—'}</div><div class="act-proj">${a.sub||''}</div></div><div><div class="act-amt" style="color:${a.clr}">${fmt(a.amt)}</div><div class="act-date">${a.date||'—'}</div></div></div>`).join('')+'</div>';
-
-  // Agreements mini-list on dashboard
-  const dal=e$('dash-agr-list');if(!dal)return;
-  if(!D.agreements.length){dal.innerHTML='<div style="font-size:var(--fs-sm);color:var(--mut);padding:6px 0 10px">No agreements yet. Tap + to create one.</div>';return;}
-  dal.innerHTML='<div class="act-wrap">'+D.agreements.slice(0,4).map(r=>`
-    <div class="act-row" style="cursor:pointer" onclick="eAgr('${r.id}')">
-      <div>
-        <div class="act-type">✍️ ${r.agrType==='labour'?'Labour Rate':r.agrType==='material'?'Labour+Material':'Lump Sum'}</div>
-        <div class="act-nm">${r.clientName}</div>
-        <div class="act-proj">${r.num} · ${r.projectName||'—'} · ${r.storeys==='double'?'Double Storey':r.storeys==='single'?'Single Storey':r.storeys||'—'}</div>
-      </div>
-      <div style="text-align:right">
-        <div class="act-amt" style="color:var(--gold)">${fmt(r.value)}</div>
-        <div>${bdg(r.status)}</div>
-      </div>
-    </div>`).join('')+'</div>';
+  if(al){
+    if(!acts.length){al.innerHTML='<div style="font-size:var(--fs-sm);color:var(--mut);padding:6px 0">No activity yet</div>';}
+    else al.innerHTML='<div class="act-wrap">'+acts.map(a=>`<div class="act-row"><div><div class="act-type">${a.type}</div><div class="act-nm">${a.name||'—'}</div>${a.sub?`<div class="act-proj">${a.sub}</div>`:''}</div><div><div class="act-amt" style="color:${a.clr}">${fmt(a.amt)}</div><div class="act-date">${a.date||'—'}</div></div></div>`).join('')+'</div>';
+  }
 }
 
 // ════ RENDER INVOICES ════
