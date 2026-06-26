@@ -2929,45 +2929,106 @@ function pdfExp(){
 }
 
 function pdfExpProject(pid,projName){
-  const c=co();const doc=bPDF();
-  const allExps=(D.expenses||[]).filter(r=>(r.projectId||'__none__')===pid);
-  const exps=allExps.filter(r=>!r.isPaid);
-  const paidExps=allExps.filter(r=>r.isPaid);
+  const c=co();const doc=bPDF();const pw=210;
+  const allExps=(D.expenses||[]).filter(r=>(r.projectId||'__none__')===pid)
+    .sort((a,b)=>(a.date||'').localeCompare(b.date||''));
   if(!allExps.length){toast('No expenses for this project','info');return;}
   const proj=D.projects.find(x=>x.id===pid);
-  const projSpent=exps.reduce((s,r)=>s+r.amount,0);
-  const paidTotal=paidExps.reduce((s,r)=>s+r.amount,0);
   const cli=proj?D.clients.find(x=>x.id===proj.clientId):null;
-  let y=drawHeader(doc,'PENDING EXPENSES',projName,today(),'','');
+  const cashInHand=proj?.cashInHand||0;
+  const totalSpent=allExps.reduce((s,r)=>s+r.amount,0);
+  const paidAmt=allExps.filter(r=>r.isPaid).reduce((s,r)=>s+r.amount,0);
+  const pendingAmt=allExps.filter(r=>!r.isPaid).reduce((s,r)=>s+r.amount,0);
+  const balance=cashInHand-totalSpent;
+
+  let y=drawHeader(doc,'EXPENSE REPORT',projName,today(),'','');
+
+  // Project info
   doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(30,30,30);
   doc.text(projName,14,y);
   doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(100,100,100);
   if(proj?.loc)doc.text('Location: '+proj.loc+(proj.plot?' · '+proj.plot:''),14,y+6);
-  if(cli)doc.text('Client: '+cli.name,14,y+12);
-  doc.setFillColor(248,246,242);doc.rect(14,y+18,182,16,'F');
-  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(30,30,30);
-  doc.text('Pending: PKR '+fmt(projSpent),16,y+25);
-  doc.text('Already Paid: PKR '+fmt(paidTotal),110,y+25);
-  y+=40;
-  if(!exps.length){
-    doc.setFont('helvetica','italic');doc.setFontSize(10);doc.setTextColor(82,181,106);
-    doc.text('All expenses have been paid for this project.',14,y);
-  }else{
-    doc.autoTable({
-      startY:y,
-      head:[['Date','Description','Category','Paid By','Amount (PKR)']],
-      body:exps.map(r=>[r.date||'--',r.desc,r.cat||'--',r.paid||'Cash',fmt(r.amount)]),
-      foot:[['','','','Total Pending','PKR '+fmt(projSpent)]],
-      styles:{fontSize:9.5,cellPadding:3.5,textColor:[30,30,30]},
-      headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8.5},
-      footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[224,85,85],fontSize:10},
-      columnStyles:{4:{halign:'right'}},
-      margin:{left:14,right:14}
-    });
+  if(cli)doc.text('Client: '+cli.name+(cli.phone?' · '+cli.phone:''),14,y+12);
+  y+=20;
+
+  // Summary box — 3 columns
+  doc.setFillColor(248,246,242);doc.rect(14,y,182,28,'F');
+  const colW=182/3;
+  [[cashInHand,'Cash in Hand','var(--gold)'],[totalSpent,'Total Spent'],[balance,'Balance']].forEach(([v,label],i)=>{
+    const cx=14+i*colW+colW/2;
+    doc.setFont('helvetica','bold');doc.setFontSize(11);
+    if(i===2)doc.setTextColor(balance>=0?50:200,balance>=0?150:50,balance>=0?50:50);
+    else if(i===1)doc.setTextColor(200,50,50);
+    else doc.setTextColor(201,123,58);
+    doc.text('PKR '+fmt(v),cx,y+11,{align:'center'});
+    doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(130,125,118);
+    doc.text(label,cx,y+18,{align:'center'});
+  });
+  // Paid vs Pending sub-row
+  doc.setFillColor(242,240,235);doc.rect(14,y+20,182,8,'F');
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(100,100,100);
+  doc.text('Paid: PKR '+fmt(paidAmt),20,y+25);
+  doc.text('Pending: PKR '+fmt(pendingAmt),pw/2,y+25,{align:'center'});
+  doc.text(allExps.length+' expense'+(allExps.length!==1?'s':''),pw-16,y+25,{align:'right'});
+  y+=36;
+
+  // Full expense table — ALL expenses with status column
+  doc.autoTable({
+    startY:y,
+    head:[['Date','Description','Category','Method','Status','Amount (PKR)']],
+    body:allExps.map(r=>[
+      r.date||'—',
+      r.desc+(r.notes?'\n'+r.notes:''),
+      (r.cat||'other').charAt(0).toUpperCase()+(r.cat||'other').slice(1),
+      r.paid||'Cash',
+      r.isPaid?'✅ Paid':'🔴 Pending',
+      fmt(r.amount)
+    ]),
+    foot:[
+      ['','','','Paid',fmt(paidAmt),''],
+      ['','','','Pending',fmt(pendingAmt),''],
+      ['','','','Total Spent','PKR '+fmt(totalSpent),'']
+    ],
+    styles:{fontSize:8.5,cellPadding:3,textColor:[30,30,30]},
+    headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
+    footStyles:{fontSize:8.5,fontStyle:'bold'},
+    columnStyles:{
+      0:{cellWidth:22},
+      1:{cellWidth:55},
+      4:{cellWidth:24},
+      5:{halign:'right',cellWidth:28}
+    },
+    didParseCell:data=>{
+      if(data.section==='body'&&data.column.index===4){
+        data.cell.styles.textColor=data.cell.raw.includes('✅')?[50,150,50]:[200,50,50];
+      }
+      if(data.section==='foot'&&data.row.index===2){
+        data.cell.styles.textColor=[201,123,58];
+        data.cell.styles.fontSize=10;
+      }
+    },
+    margin:{left:14,right:14}
+  });
+  y=doc.lastAutoTable.finalY+10;
+
+  // Balance summary footer box
+  if(cashInHand>0){
+    if(y>240){doc.addPage();y=20;}
+    const balColor=balance>=0?[82,181,106]:[224,85,85];
+    doc.setFillColor(...balColor);doc.rect(14,y,182,13,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(255,255,255);
+    doc.text(
+      balance>=0
+        ?'Cash Balance: PKR '+fmt(balance)+' remaining from PKR '+fmt(cashInHand)+' in hand'
+        :'Overspent by PKR '+fmt(Math.abs(balance))+' beyond PKR '+fmt(cashInHand)+' in hand',
+      pw/2,y+8,{align:'center'}
+    );
+    y+=18;
   }
+
   drawBankFooter(doc);
-  doc.save('PendingExpenses-'+projName.replace(/\s+/g,'-')+'-'+today()+'.pdf');
-  toast('Pending expenses PDF downloaded');
+  doc.save('Expenses-'+projName.replace(/\s+/g,'-')+'-'+today()+'.pdf');
+  toast('Expense PDF downloaded ✓');
 }
 
 
