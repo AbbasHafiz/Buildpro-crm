@@ -2939,7 +2939,8 @@ function pdfExpProject(pid,projName){
   const totalSpent=allExps.reduce((s,r)=>s+r.amount,0);
   const paidAmt=allExps.filter(r=>r.isPaid).reduce((s,r)=>s+r.amount,0);
   const pendingAmt=allExps.filter(r=>!r.isPaid).reduce((s,r)=>s+r.amount,0);
-  const balance=cashInHand-totalSpent;
+  // Header balance = Cash in Hand vs PENDING only (paid already done, not affecting balance)
+  const balance=cashInHand-pendingAmt;
 
   let y=drawHeader(doc,'EXPENSE REPORT',projName,today(),'','');
 
@@ -2954,7 +2955,7 @@ function pdfExpProject(pid,projName){
   // Summary box — 3 columns
   doc.setFillColor(248,246,242);doc.rect(14,y,182,28,'F');
   const colW=182/3;
-  [[cashInHand,'Cash in Hand','var(--gold)'],[totalSpent,'Total Spent'],[balance,'Balance']].forEach(([v,label],i)=>{
+  [[cashInHand,'Cash in Hand'],[pendingAmt,'Pending Payment'],[balance,'Available Balance']].forEach(([v,label],i)=>{
     const cx=14+i*colW+colW/2;
     doc.setFont('helvetica','bold');doc.setFontSize(11);
     if(i===2)doc.setTextColor(balance>=0?50:200,balance>=0?150:50,balance>=0?50:50);
