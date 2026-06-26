@@ -2341,8 +2341,11 @@ function compressLogo(logoData,maxSizePx){
     const size=Math.min(maxSizePx,img.width||maxSizePx);
     canvas.width=size;canvas.height=size;
     const ctx=canvas.getContext('2d');
+    // Keep transparent background
+    ctx.clearRect(0,0,size,size);
     ctx.drawImage(img,0,0,size,size);
-    return canvas.toDataURL('image/jpeg',0.75);
+    // Use PNG to preserve transparency — but compress dimensions
+    return canvas.toDataURL('image/png');
   }catch(e){return logoData;}
 }
 
@@ -2352,7 +2355,7 @@ function drawHeader(doc,title,ref,date,sub,subVal){
   doc.setFillColor(232,184,75);doc.rect(0,0,pw,7,'F');
   // Logo
   let contentX=14;
-  if(c.logo){try{const cl=compressLogo(c.logo,120);doc.addImage(cl,'JPEG',14,11,22,22);contentX=40;}catch(e){}}
+  if(c.logo){try{const cl=compressLogo(c.logo,120);doc.addImage(cl,'PNG',14,11,22,22);contentX=40;}catch(e){}}
   // Company name
   doc.setFont('helvetica','bold');doc.setFontSize(16);doc.setTextColor(30,30,30);
   doc.text(c.name||'BuildPro',contentX,20);
@@ -2472,7 +2475,7 @@ function pdfAgr(id){
   if(style==='digital'){
     // Gold bar + logo + company name at top
     doc.setFillColor(232,184,75);doc.rect(0,0,pw,7,'F');
-    if(co2.logo){try{const cl2=compressLogo(co2.logo,120);doc.addImage(cl2,'JPEG',14,11,20,20);}catch(e){}}
+    if(co2.logo){try{const cl2=compressLogo(co2.logo,120);doc.addImage(cl2,'PNG',14,11,20,20);}catch(e){}}
     doc.setFont('helvetica','bold');doc.setFontSize(18);doc.setTextColor(30,30,30);
     doc.text('CONSTRUCTION AGREEMENT',pw/2,22,{align:'center'});
     doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(140,135,125);
@@ -2492,7 +2495,7 @@ function pdfAgr(id){
   }else if(style==='legal'){
     // 127mm (5 inch) empty for stamp paper, then logo + title
     y=135;
-    if(co2.logo){try{const cl3=compressLogo(co2.logo,120);doc.addImage(cl3,'JPEG',pw/2-12,y,24,24);}catch(e){}}
+    if(co2.logo){try{const cl3=compressLogo(co2.logo,120);doc.addImage(cl3,'PNG',pw/2-12,y,24,24);}catch(e){}}
     y+=28;
     doc.setFont('helvetica','bold');doc.setFontSize(17);doc.setTextColor(30,30,30);
     doc.text('CONSTRUCTION AGREEMENT',pw/2,y,{align:'center'});
