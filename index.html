@@ -2981,7 +2981,7 @@ function pdfExpProject(pid,projName){
       r.desc+(r.notes?'\n'+r.notes:''),
       (r.cat||'other').charAt(0).toUpperCase()+(r.cat||'other').slice(1),
       r.paid||'Cash',
-      r.isPaid?'✅ Paid':'🔴 Pending',
+      r.isPaid?'PAID':'PENDING',
       fmt(r.amount)
     ]),
     foot:[
@@ -3000,7 +3000,7 @@ function pdfExpProject(pid,projName){
     },
     didParseCell:data=>{
       if(data.section==='body'&&data.column.index===4){
-        data.cell.styles.textColor=data.cell.raw.includes('✅')?[50,150,50]:[200,50,50];
+        data.cell.styles.textColor=data.cell.raw==='PAID'?[50,150,50]:[200,50,50];
       }
       if(data.section==='foot'&&data.row.index===2){
         data.cell.styles.textColor=[201,123,58];
