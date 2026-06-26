@@ -2333,13 +2333,26 @@ function updateDots(){[['inv',D.invoices],['est',D.estimates],['pay',[...D.cpays
 const co=()=>D.company||{};
 function bPDF(){const{jsPDF}=window.jspdf;return new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});}
 
+function compressLogo(logoData,maxSizePx){
+  if(!logoData||logoData==='__local__')return logoData;
+  try{
+    const img=new Image();img.src=logoData;
+    const canvas=document.createElement('canvas');
+    const size=Math.min(maxSizePx,img.width||maxSizePx);
+    canvas.width=size;canvas.height=size;
+    const ctx=canvas.getContext('2d');
+    ctx.drawImage(img,0,0,size,size);
+    return canvas.toDataURL('image/jpeg',0.75);
+  }catch(e){return logoData;}
+}
+
 function drawHeader(doc,title,ref,date,sub,subVal){
   const c=co();const pw=210;
   // Gold top bar
   doc.setFillColor(232,184,75);doc.rect(0,0,pw,7,'F');
   // Logo
   let contentX=14;
-  if(c.logo){try{doc.addImage(c.logo,'PNG',14,11,22,22);contentX=40;}catch(e){}}
+  if(c.logo){try{const cl=compressLogo(c.logo,120);doc.addImage(cl,'JPEG',14,11,22,22);contentX=40;}catch(e){}}
   // Company name
   doc.setFont('helvetica','bold');doc.setFontSize(16);doc.setTextColor(30,30,30);
   doc.text(c.name||'BuildPro',contentX,20);
@@ -2459,7 +2472,7 @@ function pdfAgr(id){
   if(style==='digital'){
     // Gold bar + logo + company name at top
     doc.setFillColor(232,184,75);doc.rect(0,0,pw,7,'F');
-    if(co2.logo){try{doc.addImage(co2.logo,'PNG',14,11,20,20);}catch(e){}}
+    if(co2.logo){try{const cl2=compressLogo(co2.logo,120);doc.addImage(cl2,'JPEG',14,11,20,20);}catch(e){}}
     doc.setFont('helvetica','bold');doc.setFontSize(18);doc.setTextColor(30,30,30);
     doc.text('CONSTRUCTION AGREEMENT',pw/2,22,{align:'center'});
     doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(140,135,125);
@@ -2479,7 +2492,7 @@ function pdfAgr(id){
   }else if(style==='legal'){
     // 127mm (5 inch) empty for stamp paper, then logo + title
     y=135;
-    if(co2.logo){try{doc.addImage(co2.logo,'PNG',pw/2-12,y,24,24);}catch(e){}}
+    if(co2.logo){try{const cl3=compressLogo(co2.logo,120);doc.addImage(cl3,'JPEG',pw/2-12,y,24,24);}catch(e){}}
     y+=28;
     doc.setFont('helvetica','bold');doc.setFontSize(17);doc.setTextColor(30,30,30);
     doc.text('CONSTRUCTION AGREEMENT',pw/2,y,{align:'center'});
@@ -2939,8 +2952,8 @@ function pdfExpProject(pid,projName){
   const totalSpent=allExps.reduce((s,r)=>s+r.amount,0);
   const paidAmt=allExps.filter(r=>r.isPaid).reduce((s,r)=>s+r.amount,0);
   const pendingAmt=allExps.filter(r=>!r.isPaid).reduce((s,r)=>s+r.amount,0);
-  // Header balance = Cash in Hand vs PENDING only (paid already done, not affecting balance)
-  const balance=cashInHand-pendingAmt;
+  // Balance = Cash in Hand minus PAID only (pending not deducted until marked paid)
+  const balance=cashInHand-paidAmt;
 
   let y=drawHeader(doc,'EXPENSE REPORT',projName,today(),'','');
 
@@ -2955,7 +2968,7 @@ function pdfExpProject(pid,projName){
   // Summary box — 3 columns
   doc.setFillColor(248,246,242);doc.rect(14,y,182,28,'F');
   const colW=182/3;
-  [[cashInHand,'Cash in Hand'],[pendingAmt,'Pending Payment'],[balance,'Available Balance']].forEach(([v,label],i)=>{
+  [[cashInHand,'Cash in Hand'],[paidAmt,'Paid Out'],[balance,'Remaining Balance']].forEach(([v,label],i)=>{
     const cx=14+i*colW+colW/2;
     doc.setFont('helvetica','bold');doc.setFontSize(11);
     if(i===2)doc.setTextColor(balance>=0?50:200,balance>=0?150:50,balance>=0?50:50);
