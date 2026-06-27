@@ -723,6 +723,7 @@ select option{background:var(--s2);}
         <div class="fg"><label>Partner Share %</label><input type="number" id="p-partner-share" placeholder="40" oninput="syncShares('partner')"></div>
       </div>
       <div style="background:var(--s2);border-radius:9px;padding:10px 13px;font-size:var(--fs-xs);color:var(--mut);margin-bottom:10px" id="p-share-preview">Enter shares — must total 100%</div>
+      <button type="button" class="btn btn-grey" style="color:var(--red);border-color:rgba(224,85,85,.3);margin-bottom:12px" onclick="removePartnership()">🗑 Remove Partnership</button>
     </div>
   </div>
   <div class="sh-ft"><button class="btn btn-grey" onclick="X('sh-proj')">Cancel</button><button class="btn btn-gold" onclick="saveP()">💾 Save Project</button></div>
@@ -1598,6 +1599,15 @@ function togglePartner(){
   const pf=e$('p-partner-fields');
   if(pf)pf.style.display=cb?.checked?'block':'none';
 }
+function removePartnership(){
+  if(!confirm('Remove partnership from this project?\nProject stays, only partner info is cleared.'))return;
+  const pip=e$('p-is-partner');if(pip)pip.checked=false;
+  ['p-partner-name','p-my-share','p-partner-share'].forEach(id=>sv(id,''));
+  const ppf=e$('p-partner-fields');if(ppf)ppf.style.display='none';
+  const prev=e$('p-share-preview');if(prev)prev.textContent='Enter shares — must total 100%';
+  toast('Partnership removed — save to confirm','info');
+}
+
 function syncShares(changed){
   const my=parseFloat(e$('p-my-share')?.value)||0;
   const partner=parseFloat(e$('p-partner-share')?.value)||0;
