@@ -712,6 +712,18 @@ select option{background:var(--s2);}
       <div class="fg"><label>Expected End</label><input type="date" id="p-end"></div>
     </div>
     <div class="fg"><label>Notes</label><textarea id="p-notes" placeholder="Extra details…"></textarea></div>
+    <label style="display:flex;align-items:center;gap:11px;font-size:var(--fs-sm);color:var(--txt);text-transform:none;letter-spacing:0;font-weight:400;cursor:pointer;background:var(--bg);border:1px solid var(--bor);border-radius:8px;padding:11px 13px;margin-bottom:10px">
+      <input type="checkbox" id="p-is-partner" onchange="togglePartner()" style="width:18px;height:18px;accent-color:var(--gold);flex-shrink:0">
+      <div><div style="font-weight:600">🤝 Partnership Project</div><div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Share profit/expense with a colleague or partner</div></div>
+    </label>
+    <div id="p-partner-fields" style="display:none">
+      <div class="fg"><label>Partner Name</label><input id="p-partner-name" placeholder="e.g. Colleague name"></div>
+      <div class="f2">
+        <div class="fg"><label>Your Share %</label><input type="number" id="p-my-share" placeholder="60" oninput="syncShares('my')"></div>
+        <div class="fg"><label>Partner Share %</label><input type="number" id="p-partner-share" placeholder="40" oninput="syncShares('partner')"></div>
+      </div>
+      <div style="background:var(--s2);border-radius:9px;padding:10px 13px;font-size:var(--fs-xs);color:var(--mut);margin-bottom:10px" id="p-share-preview">Enter shares — must total 100%</div>
+    </div>
   </div>
   <div class="sh-ft"><button class="btn btn-grey" onclick="X('sh-proj')">Cancel</button><button class="btn btn-gold" onclick="saveP()">💾 Save Project</button></div>
 </div></div>
@@ -1581,6 +1593,27 @@ function gLI(t){
 const totLI=items=>items.reduce((s,i)=>s+i.a,0);
 
 // ════ INIT FORMS ════
+function togglePartner(){
+  const cb=e$('p-is-partner');
+  const pf=e$('p-partner-fields');
+  if(pf)pf.style.display=cb?.checked?'block':'none';
+}
+function syncShares(changed){
+  const my=parseFloat(e$('p-my-share')?.value)||0;
+  const partner=parseFloat(e$('p-partner-share')?.value)||0;
+  const prev=e$('p-share-preview');
+  if(changed==='my'&&my>0){const ps=e$('p-partner-share');if(ps)ps.value=100-my;}
+  if(changed==='partner'&&partner>0){const ms=e$('p-my-share');if(ms)ms.value=100-partner;}
+  const total=(parseFloat(e$('p-my-share')?.value)||0)+(parseFloat(e$('p-partner-share')?.value)||0);
+  if(prev){
+    const name=e$('p-partner-name')?.value||'Partner';
+    const myS=parseFloat(e$('p-my-share')?.value)||0;
+    if(total===100)prev.textContent='You: '+myS+'% | '+name+': '+(100-myS)+'% — Total 100% ✓';
+    else prev.textContent='Total: '+total+'% — must equal 100%';
+    prev.style.color=total===100?'var(--grn)':'var(--red)';
+  }
+}
+
 function calcProjVal(){
   const area=parseFloat(e$('p-area')?.value)||0;
   const rate=parseFloat(e$('p-rate')?.value)||0;
@@ -1589,7 +1622,7 @@ function calcProjVal(){
   if(val>0){if(lbl)lbl.textContent=fmt(area)+' sft × PKR '+fmt(rate)+'/sft';if(cv)cv.textContent='PKR '+fmt(val);sv('p-val',val);}
   else{if(lbl)lbl.textContent='Enter area × rate to calculate';if(cv)cv.textContent='—';}
 }
-function iP(){sv('proj-eid','');e$('proj-eb').classList.remove('on');e$('proj-sh-t').textContent='New Project';['p-name','p-loc','p-plot','p-val','p-area','p-rate','p-notes','p-start','p-end','p-custom-stage'].forEach(id=>sv(id,''));sv('p-cli-t','');sv('p-cli-id','');sv('p-phase','Foundation');const lbl=e$('proj-calc-label');if(lbl)lbl.textContent='Enter area × rate to calculate';const cv=e$('proj-calc-val');if(cv)cv.textContent='—';}
+function iP(){sv('proj-eid','');e$('proj-eb').classList.remove('on');e$('proj-sh-t').textContent='New Project';['p-name','p-loc','p-plot','p-val','p-area','p-rate','p-notes','p-start','p-end','p-custom-stage','p-partner-name','p-my-share','p-partner-share'].forEach(id=>sv(id,''));const pip=e$('p-is-partner');if(pip)pip.checked=false;const ppf=e$('p-partner-fields');if(ppf)ppf.style.display='none';sv('p-cli-t','');sv('p-cli-id','');sv('p-phase','Foundation');const lbl=e$('proj-calc-label');if(lbl)lbl.textContent='Enter area × rate to calculate';const cv=e$('proj-calc-val');if(cv)cv.textContent='—';}
 function iCli(){sv('cli-eid','');e$('cli-eb').classList.remove('on');e$('cli-sh-t').textContent='New Client';['c-name','c-ph','c-cnic','c-city','c-email','c-addr'].forEach(id=>sv(id,''));}
 function iSub(){sv('sub-eid','');e$('sub-eb').classList.remove('on');e$('sub-sh-t').textContent='New Sub-Contractor';['s-name','s-ph','s-contract','s-notes','s-cnic'].forEach(id=>sv(id,''));sv('s-proj-t','');sv('s-proj-id','');}
 function iSpay(){sv('spay-eid','');e$('spay-eb').classList.remove('on');e$('spay-sh-t').textContent='Sub-Con Payment';['sp-sub-t','sp-sub-id','sp-proj-t','sp-proj-id','sp-desc','sp-custom-stage'].forEach(id=>sv(id,''));sv('sp-amt','');sv('sp-date',today());}
@@ -1710,7 +1743,7 @@ function iAgr(){
 }
 
 // ════ EDIT LOADERS ════
-function eP(id){const r=D.projects.find(x=>x.id===id);if(!r)return;sv('proj-eid',id);e$('proj-eb').classList.add('on');e$('proj-sh-t').textContent='Edit Project';sv('p-name',r.name);sv('p-loc',r.loc);sv('p-plot',r.plot);sv('p-val',r.value);sv('p-notes',r.notes);sv('p-phase',r.phase||'Foundation');sv('p-custom-stage',r.customStage||'');sv('p-area',r.area||'');sv('p-rate',r.rate||'');sv('p-start',r.start);sv('p-end',r.end);const c=D.clients.find(x=>x.id===r.clientId);sv('p-cli-t',c?c.name:'');sv('p-cli-id',r.clientId||'');O('sh-proj');}
+function eP(id){const r=D.projects.find(x=>x.id===id);if(!r)return;sv('proj-eid',id);e$('proj-eb').classList.add('on');e$('proj-sh-t').textContent='Edit Project';sv('p-name',r.name);sv('p-loc',r.loc);sv('p-plot',r.plot);sv('p-val',r.value);sv('p-notes',r.notes);sv('p-phase',r.phase||'Foundation');sv('p-custom-stage',r.customStage||'');sv('p-area',r.area||'');sv('p-rate',r.rate||'');sv('p-partner-name',r.partnerName||'');sv('p-my-share',r.myShare||'');sv('p-partner-share',r.partnerShare||'');const pip2=e$('p-is-partner');if(pip2)pip2.checked=r.isPartner||false;const ppf2=e$('p-partner-fields');if(ppf2)ppf2.style.display=r.isPartner?'block':'none';sv('p-start',r.start);sv('p-end',r.end);const c=D.clients.find(x=>x.id===r.clientId);sv('p-cli-t',c?c.name:'');sv('p-cli-id',r.clientId||'');O('sh-proj');}
 function eCli(id){const r=D.clients.find(x=>x.id===id);if(!r)return;sv('cli-eid',id);e$('cli-eb').classList.add('on');e$('cli-sh-t').textContent='Edit Client';sv('c-name',r.name);sv('c-ph',r.phone);sv('c-cnic',r.cnic);sv('c-city',r.city);sv('c-email',r.email);sv('c-addr',r.addr);O('sh-cli');}
 function eSub(id){const r=D.subcons.find(x=>x.id===id);if(!r)return;sv('sub-eid',id);e$('sub-eb').classList.add('on');e$('sub-sh-t').textContent='Edit Contractor';sv('s-name',r.name);sv('s-trade',r.trade);sv('s-ph',r.phone);sv('s-contract',r.contract);sv('s-ptype',r.ptype);sv('s-notes',r.notes);sv('s-cnic',r.cnic||'');const p=D.projects.find(x=>x.id===r.projectId);sv('s-proj-t',p?p.name:'');sv('s-proj-id',r.projectId||'');O('sh-sub');}
 function eSpay(id){const r=D.subpays.find(x=>x.id===id);if(!r)return;sv('spay-eid',id);e$('spay-eb').classList.add('on');e$('spay-sh-t').textContent='Edit Payment';const sc=D.subcons.find(x=>x.id===r.subconId);sv('sp-sub-t',sc?sc.name:r.subconName||'');sv('sp-sub-id',r.subconId||'');const p=D.projects.find(x=>x.id===r.projectId);sv('sp-proj-t',p?p.name:r.projectName||'');sv('sp-proj-id',r.projectId||'');sv('sp-date',r.date);sv('sp-amt',r.amount);sv('sp-proj-contract',r.projContract||'');sv('sp-phase',r.phase);sv('sp-custom-stage','');sv('sp-method',r.method);sv('sp-desc',r.desc);O('sh-spay');}
@@ -1764,7 +1797,7 @@ function eAgr(id){
 function ups(store,doc){const eid=doc.id&&D[store].find(x=>x.id===doc.id)?doc.id:null;if(eid){const idx=D[store].findIndex(x=>x.id===eid);D[store][idx]={...D[store][idx],...doc};}else{if(!doc.id)doc.id=uid();doc.createdAt=new Date().toISOString();D[store].unshift(doc);}sched();}
 
 // ════ SAVES ════
-function saveP(){const eid=e$('proj-eid').value;const customStage=e$('p-custom-stage')?.value||'';const doc={id:eid||uid(),name:e$('p-name').value,loc:e$('p-loc').value,plot:e$('p-plot').value,clientId:e$('p-cli-id').value,value:parseFloat(e$('p-val').value)||0,area:parseFloat(e$('p-area')?.value)||0,rate:parseFloat(e$('p-rate')?.value)||0,phase:customStage||e$('p-phase').value,customStage,start:e$('p-start').value,end:e$('p-end').value,notes:e$('p-notes').value};if(!doc.name){toast('Enter project name','err');return;}ups('projects',doc);X('sh-proj');renderAll();toast(eid?'Project updated ✓':'Project saved ✓');}
+function saveP(){const eid=e$('proj-eid').value;const customStage=e$('p-custom-stage')?.value||'';const doc={id:eid||uid(),name:e$('p-name').value,loc:e$('p-loc').value,plot:e$('p-plot').value,clientId:e$('p-cli-id').value,value:parseFloat(e$('p-val').value)||0,area:parseFloat(e$('p-area')?.value)||0,rate:parseFloat(e$('p-rate')?.value)||0,phase:customStage||e$('p-phase').value,customStage,start:e$('p-start').value,end:e$('p-end').value,notes:e$('p-notes').value,isPartner:e$('p-is-partner')?.checked||false,partnerName:e$('p-partner-name')?.value||'',myShare:parseFloat(e$('p-my-share')?.value)||100,partnerShare:parseFloat(e$('p-partner-share')?.value)||0};if(!doc.name){toast('Enter project name','err');return;}ups('projects',doc);X('sh-proj');renderAll();toast(eid?'Project updated ✓':'Project saved ✓');}
 function saveCli(){const eid=e$('cli-eid').value;const doc={id:eid||uid(),name:e$('c-name').value,phone:e$('c-ph').value,cnic:e$('c-cnic').value,city:e$('c-city').value,email:e$('c-email').value,addr:e$('c-addr').value};if(!doc.name){toast('Enter name','err');return;}ups('clients',doc);X('sh-cli');renderCli();renderDash();updateDots();toast(eid?'Client updated ✓':'Client added ✓');}
 function saveSub(){const eid=e$('sub-eid').value;const doc={id:eid||uid(),name:e$('s-name').value,trade:e$('s-trade').value,phone:e$('s-ph').value,cnic:e$('s-cnic').value,contract:parseFloat(e$('s-contract').value)||0,ptype:e$('s-ptype').value,projectId:e$('s-proj-id').value,notes:e$('s-notes').value};if(!doc.name){toast('Enter name','err');return;}ups('subcons',doc);X('sh-sub');renderSub();updateDots();toast(eid?'Updated ✓':'Saved ✓');}
 function saveSpay(){const eid=e$('spay-eid').value;const doc={id:eid||uid(),subconId:e$('sp-sub-id').value,subconName:e$('sp-sub-t').value,projectId:e$('sp-proj-id').value,projectName:e$('sp-proj-t').value,date:e$('sp-date').value||today(),amount:parseFloat(e$('sp-amt').value)||0,projContract:parseFloat(e$('sp-proj-contract')?.value)||0,phase:e$('sp-custom-stage')?.value||e$('sp-phase').value,method:e$('sp-method').value,desc:e$('sp-desc').value};if(!doc.subconId||!doc.amount){toast('Select contractor and enter amount','err');return;}ups('subpays',doc);X('sh-spay');renderAll();toast(eid?'Updated ✓':'PKR '+fmt(doc.amount)+' recorded ✓');}
@@ -1938,7 +1971,14 @@ function renderDash(){
   const tr=D.cpays.reduce((s,p)=>s+p.amount,0);
   const ts=D.subpays.reduce((s,p)=>s+p.amount,0);
   const ti=D.invoices.reduce((s,i)=>s+i.total,0);
-  const pft=tr-ts;
+  // Net profit = your share of each project's P&L
+  const pft=D.projects.reduce((net,p)=>{
+    const rec=D.cpays.filter(x=>x.projectId===p.id).reduce((s,x)=>s+x.amount,0);
+    const sub=D.subpays.filter(x=>x.projectId===p.id).reduce((s,x)=>s+x.amount,0);
+    const projNet=rec-sub;
+    const myShare=p.isPartner?(p.myShare||100)/100:1;
+    return net+Math.round(projNet*myShare);
+  },0);
 
   // Total receivable = sum of (contract value - received) for all active projects
   const totalReceivable=D.projects.reduce((s,p)=>{
@@ -3261,6 +3301,19 @@ function renderProj(){
         </div>
       </div>
       ${p.notes?`<div style="font-size:var(--fs-sm);color:var(--mut);margin-bottom:10px">${p.notes}</div>`:''}
+      ${p.isPartner?`<div style="background:rgba(232,184,75,.08);border:1px solid rgba(232,184,75,.2);border-radius:9px;padding:10px 13px;margin-bottom:10px">
+        <div style="font-size:var(--fs-xs);color:var(--gold);font-weight:700;margin-bottom:7px">🤝 PARTNERSHIP — ${p.partnerName||'Partner'}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px">
+          <div style="background:var(--bg);border-radius:7px;padding:8px;text-align:center">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-md);color:var(--grn)">${fmt(Math.round((rec-sub)*(p.myShare||100)/100))}</div>
+            <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Your Net (${p.myShare||100}%)</div>
+          </div>
+          <div style="background:var(--bg);border-radius:7px;padding:8px;text-align:center">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-md);color:var(--mut)">${fmt(Math.round((rec-sub)*(p.partnerShare||0)/100))}</div>
+            <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">${p.partnerName||'Partner'} (${p.partnerShare||0}%)</div>
+          </div>
+        </div>
+      </div>`:''}
       <div class="card-acts">
         <button class="ca blu" onclick="eP('${p.id}')">✏️ Edit</button>
         <button class="ca gold" onclick="pdfProjPayments('${p.id}')">⬇ PDF</button>
