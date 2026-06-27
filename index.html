@@ -2901,14 +2901,16 @@ function pdfExp(){
   let y=drawHeader(doc,'EXPENSE REPORT','ALL','Date: '+today(),'','');
   const exps=D.expenses||[];
   if(!exps.length){toast('No expenses to export','info');return;}
-  const totalBudget=D.projects.reduce((s,p)=>s+(p.budget||0),0);
   const totalSpent=exps.reduce((s,e)=>s+e.amount,0);
+  const totalCash=D.projects.reduce((s,p)=>s+(p.cashInHand||0),0);
+  const totalPaid=exps.filter(e=>e.isPaid).reduce((s,e)=>s+e.amount,0);
+  const totalPending=exps.filter(e=>!e.isPaid).reduce((s,e)=>s+e.amount,0);
   // Summary box
   doc.setFillColor(248,246,242);doc.rect(14,y,182,18,'F');
   doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(30,30,30);
-  doc.text('Total Budget: PKR '+fmt(totalBudget),16,y+7);
-  doc.text('Total Spent: PKR '+fmt(totalSpent),80,y+7);
-  doc.text('Remaining: PKR '+fmt(Math.max(0,totalBudget-totalSpent)),150,y+7);
+  doc.text('Total Cash in Hand: PKR '+fmt(totalCash),16,y+7);
+  doc.text('Paid: PKR '+fmt(totalPaid),100,y+7);
+  doc.text('Pending: PKR '+fmt(totalPending),160,y+7);
   y+=24;
   // Group by project
   const projIds=[...new Set(exps.map(r=>r.projectId||'__none__'))];
@@ -2917,24 +2919,28 @@ function pdfExp(){
     const projName=proj?proj.name:(exps.find(r=>(r.projectId||'__none__')===pid)?.projectName||'No Project');
     const projRows=exps.filter(r=>(r.projectId||'__none__')===pid);
     const projSpent=projRows.reduce((s,r)=>s+r.amount,0);
-    const projBudget=proj?.budget||0;
+    const projCash=proj?.cashInHand||0;
     if(y>240){doc.addPage();y=20;}
-    // Project header
+    // Project header — no emoji
     doc.setFillColor(242,240,235);doc.rect(14,y-3,182,9,'F');
     doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(30,30,30);
-    doc.text('📁 '+projName,16,y+3);
-    doc.text('Spent: PKR '+fmt(projSpent)+(projBudget>0?' / Budget: PKR '+fmt(projBudget):''),196,y+3,{align:'right'});
+    doc.text(projName,16,y+3);
+    doc.text('Spent: PKR '+fmt(projSpent)+(projCash>0?' / Cash in Hand: PKR '+fmt(projCash):''),196,y+3,{align:'right'});
     y+=12;
-    // Table for this project
     doc.autoTable({
       startY:y,
-      head:[['Date','Description','Category','Paid By','Amount (PKR)']],
-      body:projRows.map(r=>[r.date||'—',r.desc,r.cat||'—',r.paid||'Cash',fmt(r.amount)]),
-      foot:[['','','','Total',fmt(projSpent)]],
+      head:[['Date','Description','Category','Paid By','Status','Amount (PKR)']],
+      body:projRows.map(r=>[r.date||'—',r.desc,r.cat||'—',r.paid||'Cash',r.isPaid?'PAID':'PENDING',fmt(r.amount)]),
+      foot:[['','','','','Total PKR',fmt(projSpent)]],
       styles:{fontSize:9,cellPadding:3,textColor:[30,30,30]},
       headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
       footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[201,123,58],fontSize:9},
-      columnStyles:{4:{halign:'right'}},
+      columnStyles:{4:{cellWidth:22},5:{halign:'right',cellWidth:28}},
+      didParseCell:data=>{
+        if(data.section==='body'&&data.column.index===4){
+          data.cell.styles.textColor=data.cell.raw==='PAID'?[50,150,50]:[200,50,50];
+        }
+      },
       margin:{left:14,right:14}
     });
     y=doc.lastAutoTable.finalY+10;
