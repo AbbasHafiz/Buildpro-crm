@@ -3312,7 +3312,10 @@ function renderProj(){
       </div>
       ${p.notes?`<div style="font-size:var(--fs-sm);color:var(--mut);margin-bottom:10px">${p.notes}</div>`:''}
       ${p.isPartner?`<div style="background:rgba(232,184,75,.08);border:1px solid rgba(232,184,75,.2);border-radius:9px;padding:10px 13px;margin-bottom:10px">
-        <div style="font-size:var(--fs-xs);color:var(--gold);font-weight:700;margin-bottom:7px">🤝 PARTNERSHIP — ${p.partnerName||'Partner'}</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div style="font-size:var(--fs-xs);color:var(--gold);font-weight:700">🤝 PARTNERSHIP — ${p.partnerName||'Partner'}</div>
+          <button class="ca gold" style="padding:5px 10px;font-size:var(--fs-xs)" onclick="pdfPartnerSummary('${p.id}')">⬇ PDF</button>
+        </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px">
           <div style="background:var(--bg);border-radius:7px;padding:8px;text-align:center">
             <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-md);color:var(--grn)">${fmt(Math.round((rec-sub)*(p.myShare||100)/100))}</div>
@@ -3399,6 +3402,148 @@ function renderLedger(){
       </div>
     </div>`;
   }).join('');
+}
+
+// ════ PARTNERSHIP SUMMARY PDF ════
+function pdfPartnerSummary(pid){
+  const p=D.projects.find(x=>x.id===pid);
+  if(!p||!p.isPartner){toast('Not a partnership project','err');return;}
+  const c=co();const doc=bPDF();const pw=210;
+  const cli=D.clients.find(x=>x.id===p.clientId);
+  const cpays=D.cpays.filter(x=>x.projectId===pid).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  const spays=D.subpays.filter(x=>x.projectId===pid).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  const exps=(D.expenses||[]).filter(x=>x.projectId===pid);
+  const totalRec=cpays.reduce((s,x)=>s+x.amount,0);
+  const totalSub=spays.reduce((s,x)=>s+x.amount,0);
+  const totalExp=exps.reduce((s,x)=>s+x.amount,0);
+  const netProfit=totalRec-totalSub-totalExp;
+  const myAmt=Math.round(netProfit*(p.myShare||100)/100);
+  const partnerAmt=Math.round(netProfit*(p.partnerShare||0)/100);
+  const remaining=Math.max(0,(p.value||0)-totalRec);
+
+  let y=drawHeader(doc,'PARTNERSHIP SUMMARY',p.name,today(),'','');
+
+  // Partners info box
+  doc.setFillColor(248,246,242);doc.rect(14,y,182,22,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(130,125,118);
+  doc.text('PARTNER 1 (YOU)',16,y+6);doc.text('PARTNER 2',pw/2+4,y+6);
+  doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(30,30,30);
+  doc.text((c.name||'You')+' — '+( p.myShare||100)+'%',16,y+14);
+  doc.text((p.partnerName||'Partner')+' — '+(p.partnerShare||0)+'%',pw/2+4,y+14);
+  y+=28;
+
+  // Project summary
+  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(130,125,118);
+  doc.text('PROJECT',14,y);
+  doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(30,30,30);
+  doc.text(p.name,14,y+7);
+  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(100,100,100);
+  if(p.loc)doc.text('Location: '+p.loc+(p.plot?' · Plot '+p.plot:''),14,y+13);
+  if(cli)doc.text('Client: '+cli.name+(cli.phone?' · '+cli.phone:''),14,y+19);
+  y+=28;
+
+  // Main P&L summary — 3 columns
+  const cols=[
+    {label:'Contract Value',val:p.value||0,color:[30,30,30]},
+    {label:'Total Received',val:totalRec,color:[50,150,50]},
+    {label:'Still Receivable',val:remaining,color:remaining>0?[200,100,50]:[50,150,50]},
+    {label:'Sub-Con Paid',val:totalSub,color:[200,50,50]},
+    {label:'Expenses',val:totalExp,color:[200,50,50]},
+    {label:'Net Profit',val:netProfit,color:netProfit>=0?[50,150,50]:[200,50,50]},
+  ];
+  doc.setFillColor(242,240,235);doc.rect(14,y,182,52,'F');
+  cols.forEach((col,i)=>{
+    const row=Math.floor(i/3);const colIdx=i%3;
+    const cx=14+colIdx*61+30;const cy=y+8+row*26;
+    doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(130,125,118);
+    doc.text(col.label,cx,cy,{align:'center'});
+    doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(...col.color);
+    doc.text('PKR '+fmt(col.val),cx,cy+7,{align:'center'});
+  });
+  y+=58;
+
+  // Partner split box
+  doc.setFillColor(232,184,75,0.15);
+  doc.setFillColor(250,247,240);doc.rect(14,y,182,28,'F');
+  doc.setFillColor(232,184,75);doc.rect(14,y,3,28,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(30,30,30);
+  doc.text('PROFIT SPLIT',20,y+8);
+  doc.setFontSize(9);doc.setTextColor(130,125,118);
+  doc.text(p.myShare+'% — '+(c.name||'You'),20,y+16);
+  doc.text((p.partnerShare||0)+'% — '+(p.partnerName||'Partner'),pw/2+4,y+16);
+  doc.setFont('helvetica','bold');doc.setFontSize(13);
+  doc.setTextColor(50,150,50);doc.text('PKR '+fmt(myAmt),20,y+25);
+  doc.setTextColor(100,100,100);doc.text('PKR '+fmt(partnerAmt),pw/2+4,y+25);
+  y+=36;
+
+  // Client payments received
+  if(cpays.length){
+    if(y>210){doc.addPage();y=20;}
+    doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(130,125,118);
+    doc.text('CLIENT PAYMENTS RECEIVED',14,y);y+=6;
+    let runRec=0;
+    doc.autoTable({
+      startY:y,
+      head:[['#','Date','Milestone','Method','Amount','Cumulative']],
+      body:cpays.map((x,i)=>{runRec+=x.amount;return[i+1,x.date||'—',x.milestone||'—',x.method||'Cash',fmt(x.amount),fmt(runRec)];}),
+      foot:[['','','','Total Received','PKR '+fmt(totalRec),'']],
+      styles:{fontSize:8.5,cellPadding:2.5,textColor:[30,30,30]},
+      headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
+      footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[50,150,50]},
+      columnStyles:{4:{halign:'right'},5:{halign:'right',textColor:[50,150,50]}},
+      margin:{left:14,right:14}
+    });
+    y=doc.lastAutoTable.finalY+10;
+  }
+
+  // Sub-con payments
+  if(spays.length){
+    if(y>210){doc.addPage();y=20;}
+    doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(130,125,118);
+    doc.text('SUB-CONTRACTOR PAYMENTS',14,y);y+=6;
+    doc.autoTable({
+      startY:y,
+      head:[['Date','Sub-Contractor','Phase','Method','Amount (PKR)']],
+      body:spays.map(x=>[x.date||'—',x.subconName||'—',x.phase||'—',x.method||'Cash',fmt(x.amount)]),
+      foot:[['','','','Total Paid','PKR '+fmt(totalSub)]],
+      styles:{fontSize:8.5,cellPadding:2.5,textColor:[30,30,30]},
+      headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
+      footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[200,50,50]},
+      columnStyles:{4:{halign:'right'}},
+      margin:{left:14,right:14}
+    });
+    y=doc.lastAutoTable.finalY+10;
+  }
+
+  // Expenses
+  if(exps.length){
+    if(y>210){doc.addPage();y=20;}
+    doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(130,125,118);
+    doc.text('PROJECT EXPENSES',14,y);y+=6;
+    doc.autoTable({
+      startY:y,
+      head:[['Date','Description','Category','Status','Amount (PKR)']],
+      body:exps.map(x=>[x.date||'—',x.desc,x.cat||'—',x.isPaid?'PAID':'PENDING',fmt(x.amount)]),
+      foot:[['','','','Total','PKR '+fmt(totalExp)]],
+      styles:{fontSize:8.5,cellPadding:2.5,textColor:[30,30,30]},
+      headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
+      footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[200,50,50]},
+      columnStyles:{3:{cellWidth:20},4:{halign:'right'}},
+      didParseCell:data=>{if(data.section==='body'&&data.column.index===3)data.cell.styles.textColor=data.cell.raw==='PAID'?[50,150,50]:[200,50,50];},
+      margin:{left:14,right:14}
+    });
+    y=doc.lastAutoTable.finalY+10;
+  }
+
+  // Final split footer
+  if(y>240){doc.addPage();y=20;}
+  doc.setFillColor(232,184,75);doc.rect(14,y,182,16,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(30,30,30);
+  doc.text('NET PROFIT: PKR '+fmt(netProfit)+'  |  YOUR SHARE ('+p.myShare+'%): PKR '+fmt(myAmt)+'  |  '+p.partnerName+': PKR '+fmt(partnerAmt),pw/2,y+10,{align:'center'});
+
+  drawBankFooter(doc);
+  doc.save('Partnership-'+p.name.replace(/\s+/g,'-')+'-'+today()+'.pdf');
+  toast('Partnership summary PDF ✓');
 }
 
 // ════ BACKUP ════
