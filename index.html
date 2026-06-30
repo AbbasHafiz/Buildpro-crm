@@ -714,7 +714,7 @@ select option{background:var(--s2);}
     <div class="fg"><label>Notes</label><textarea id="p-notes" placeholder="Extra details…"></textarea></div>
     <label style="display:flex;align-items:center;gap:11px;font-size:var(--fs-sm);color:var(--txt);text-transform:none;letter-spacing:0;font-weight:400;cursor:pointer;background:var(--bg);border:1px solid var(--bor);border-radius:8px;padding:11px 13px;margin-bottom:10px">
       <input type="checkbox" id="p-lumpsum" style="width:18px;height:18px;accent-color:var(--gold);flex-shrink:0">
-      <div><div style="font-weight:600">🔒 Lump Sum Mode</div><div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Net profit = full amount received. Sub-con/expense payments tracked but not deducted from P&L</div></div>
+      <div><div style="font-weight:600">🧾 Owner Reimburses Expenses</div><div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Tick if owner pays material/labour separately. Leave UNCHECKED for fixed-price projects where you spend the contract amount yourself — internal payments will then reduce your net profit</div></div>
     </label>
     <label style="display:flex;align-items:center;gap:11px;font-size:var(--fs-sm);color:var(--txt);text-transform:none;letter-spacing:0;font-weight:400;cursor:pointer;background:var(--bg);border:1px solid var(--bor);border-radius:8px;padding:11px 13px;margin-bottom:10px">
       <input type="checkbox" id="p-is-partner" onchange="togglePartner()" style="width:18px;height:18px;accent-color:var(--gold);flex-shrink:0">
@@ -3346,7 +3346,7 @@ function renderProj(){
           <div class="card-nm">${p.name}</div>
           <div class="card-sub">${[p.loc,p.plot].filter(Boolean).join(' · ')}</div>
           ${cli?`<div class="card-sub">👤 ${cli.name}${cli.phone?' · '+cli.phone:''}</div>`:''}
-          <div style="margin-top:6px"><span class="b b-b">${p.phase||'—'}</span>${p.lumpSum?'<span class="b" style="background:rgba(232,184,75,.15);color:var(--gold);margin-left:4px;font-size:9px">🔒 Lump Sum</span>':''}${agr?` <span class="b b-g" style="font-size:9px">✍️ ${agr.status}</span>`:''}</div>
+          <div style="margin-top:6px"><span class="b b-b">${p.phase||'—'}</span>${p.lumpSum?'<span class="b" style="background:rgba(77,148,212,.15);color:#4D94D4;margin-left:4px;font-size:9px">🧾 Owner Reimburses</span>':''}${agr?` <span class="b b-g" style="font-size:9px">✍️ ${agr.status}</span>`:''}</div>
         </div>
         <div style="text-align:right">
           <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-md);color:var(--gold)">${fmt(p.value)}</div>
