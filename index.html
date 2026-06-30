@@ -2032,12 +2032,15 @@ function fPay(f,el){fPayF=f;document.querySelectorAll('#pg-pay .ftab').forEach(t
 function renderDash(){
   const tr=D.cpays.reduce((s,p)=>s+p.amount,0);
   const ts=D.subpays.reduce((s,p)=>s+p.amount,0);
+  const te=(D.expenses||[]).filter(e=>e.isPaid).reduce((s,e)=>s+e.amount,0);
   const ti=D.invoices.reduce((s,i)=>s+i.total,0);
   // Net profit = your share of each project's P&L
   const pft=D.projects.reduce((net,p)=>{
     const rec=D.cpays.filter(x=>x.projectId===p.id&&(x.payType||'contract')==='contract').reduce((s,x)=>s+x.amount,0);
     const sub=D.subpays.filter(x=>x.projectId===p.id).reduce((s,x)=>s+x.amount,0);
-    const projNet=p.lumpSum?rec:rec-sub;
+    const exp=(D.expenses||[]).filter(x=>x.projectId===p.id&&x.isPaid).reduce((s,x)=>s+x.amount,0);
+    const internal=sub+exp;
+    const projNet=p.lumpSum?rec:rec-internal;
     const myShare=p.isPartner?(p.myShare||100)/100:1;
     return net+Math.round(projNet*myShare);
   },0);
@@ -2053,7 +2056,7 @@ function renderDash(){
   sv2('d-receivable',totalReceivable,'var(--gold)');
   sv2('d-pft',Math.abs(pft),pft>=0?'var(--grn)':'var(--red)');
   sv2('d-rec',tr,'var(--grn)');
-  sv2('d-sub',ts,'var(--red)');
+  sv2('d-sub',ts+te,'var(--red)');
   sv2('d-inv',ti,'var(--gold)');
 
   // Quick tile counts
@@ -3328,7 +3331,10 @@ function renderProj(){
     const cli=D.clients.find(x=>x.id===p.clientId);
     // Only count contract payments toward received (not misc advances)
     const rec=D.cpays.filter(x=>x.projectId===p.id&&(x.payType||'contract')==='contract').reduce((s,x)=>s+x.amount,0);
-    const sub=D.subpays.filter(x=>x.projectId===p.id).reduce((s,x)=>s+x.amount,0);
+    const subOnly=D.subpays.filter(x=>x.projectId===p.id).reduce((s,x)=>s+x.amount,0);
+    // Internal = sub-con payments + PAID expenses (material/supplier/other). Pending expenses don't count yet.
+    const expPaid=(D.expenses||[]).filter(x=>x.projectId===p.id&&x.isPaid).reduce((s,x)=>s+x.amount,0);
+    const sub=subOnly+expPaid;
     const agr=D.agreements.find(x=>x.projectId===p.id);
     const inv=D.invoices.filter(x=>x.projectId===p.id).reduce((s,x)=>s+x.total,0);
     // Lump sum: net = full received, don't deduct sub/expenses
@@ -3357,11 +3363,11 @@ function renderProj(){
           <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Received</div>
         </div>
         <div style="background:var(--s2);border-radius:8px;padding:8px;text-align:center">
-          <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--red)">${fmt(sub)}</div>
-          <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Sub-Con</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--red)">${fmt(displaySub)}</div>
+          <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Internal Paid</div>
         </div>
         <div style="background:var(--s2);border-radius:8px;padding:8px;text-align:center">
-          <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:${rec-sub>=0?'var(--grn)':'var(--red)'}">${fmt(rec-sub)}</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:${rec-displaySub>=0?'var(--grn)':'var(--red)'}">${fmt(rec-displaySub)}</div>
           <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Net</div>
         </div>
       </div>
@@ -3373,11 +3379,11 @@ function renderProj(){
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px">
           <div style="background:var(--bg);border-radius:7px;padding:8px;text-align:center">
-            <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-md);color:var(--grn)">${fmt(Math.round((rec-sub)*(p.myShare||100)/100))}</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-md);color:var(--grn)">${fmt(Math.round((rec-displaySub)*(p.myShare||100)/100))}</div>
             <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Your Net (${p.myShare||100}%)</div>
           </div>
           <div style="background:var(--bg);border-radius:7px;padding:8px;text-align:center">
-            <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-md);color:var(--mut)">${fmt(Math.round((rec-sub)*(p.partnerShare||0)/100))}</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-md);color:var(--mut)">${fmt(Math.round((rec-displaySub)*(p.partnerShare||0)/100))}</div>
             <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">${p.partnerName||'Partner'} (${p.partnerShare||0}%)</div>
           </div>
         </div>
