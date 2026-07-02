@@ -1277,6 +1277,12 @@ select option{background:var(--s2);}
         </select>
       </div>
     </div>
+    <div class="fg"><label>Funded From</label>
+      <select id="ex-funded">
+        <option value="contract">💼 Contract / Fixed Price — deducts from your Net profit</option>
+        <option value="cashinhand">🪣 Owner's Cash in Hand — out of scope, tracked separately</option>
+      </select>
+    </div>
     <div class="fg"><label>Notes / Receipt Ref</label><input id="ex-notes" placeholder="Receipt no, supplier name…"></div>
     <label style="display:flex;align-items:center;gap:11px;font-size:var(--fs-sm);color:var(--txt);text-transform:none;letter-spacing:0;font-weight:400;cursor:pointer;background:var(--bg);border:1px solid var(--bor);border-radius:8px;padding:11px 13px"><input type="checkbox" id="ex-ispaid" style="width:16px;height:16px;accent-color:var(--grn);flex-shrink:0"> <div><div style="font-weight:600">✅ Mark as Paid</div><div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Paid expenses excluded from PDF report</div></div></label>
   </div>
@@ -1861,10 +1867,13 @@ function saveSpay(){const eid=e$('spay-eid').value;const doc={id:eid||uid(),subc
 function saveCpay(){
   const eid=e$('cpay-eid').value;const invId=e$('cp-inv-id').value;
   const doc={id:eid||uid(),clientId:e$('cp-cli-id').value,clientName:e$('cp-cli-t').value,projectId:e$('cp-proj-id').value,projectName:e$('cp-proj-t').value,date:e$('cp-date').value||today(),amount:parseFloat(e$('cp-amt').value)||0,invoiceId:invId,invoiceRef:e$('cp-inv-t').value,milestone:e$('cp-custom-stage')?.value||e$('cp-milestone').value,method:e$('cp-method').value,note:e$('cp-note').value,payType:e$('cp-pay-type')?.value||'contract'};
-  // If misc advance, add to project Cash in Hand
+  // If misc advance, update project Cash in Hand
   if(doc.payType==='misc'&&doc.projectId){
     const proj=D.projects.find(x=>x.id===doc.projectId);
-    if(proj){proj.cashInHand=(proj.cashInHand||0)+doc.amount;}
+    if(proj){
+      // Add to cashInHand when receiving misc advance
+      proj.cashInHand=(proj.cashInHand||0)+doc.amount;
+    }
   }
   if(!doc.amount){toast('Enter amount','err');return;}
   ups('cpays',doc);
@@ -2038,9 +2047,10 @@ function renderDash(){
   const pft=D.projects.reduce((net,p)=>{
     const rec=D.cpays.filter(x=>x.projectId===p.id&&(x.payType||'contract')==='contract').reduce((s,x)=>s+x.amount,0);
     const sub=D.subpays.filter(x=>x.projectId===p.id).reduce((s,x)=>s+x.amount,0);
-    const exp=(D.expenses||[]).filter(x=>x.projectId===p.id&&x.isPaid).reduce((s,x)=>s+x.amount,0);
+    const exp=(D.expenses||[]).filter(x=>x.projectId===p.id&&x.isPaid&&(x.fundedBy||'contract')==='contract').reduce((s,x)=>s+x.amount,0);
     const internal=sub+exp;
-    const projNet=p.lumpSum?rec:rec-internal;
+    const isReimbursedD=p.lumpSum;
+    const projNet=isReimbursedD?rec:rec-internal;
     const myShare=p.isPartner?(p.myShare||100)/100:1;
     return net+Math.round(projNet*myShare);
   },0);
@@ -2456,26 +2466,23 @@ function compressLogo(logoData,maxSizePx){
 
 function drawHeader(doc,title,ref,date,sub,subVal){
   const c=co();const pw=210;
-  // Gold top bar
   doc.setFillColor(232,184,75);doc.rect(0,0,pw,7,'F');
-  // Logo
   let contentX=14;
   if(c.logo){try{const cl=compressLogo(c.logo,120);doc.addImage(cl,'PNG',14,11,22,22);contentX=40;}catch(e){}}
-  // Company name
-  doc.setFont('helvetica','bold');doc.setFontSize(16);doc.setTextColor(30,30,30);
-  doc.text(c.name||'BuildPro',contentX,20);
-  doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(140,135,125);
-  const info=[(c.addr||''),(c.city||'Islamabad')+', Pakistan',(c.phone||''),(c.email||'')].filter(Boolean);
-  if(info.length)doc.text(info.join(' · '),contentX,26.5);
-  if(c.ntn)doc.text('NTN: '+c.ntn,contentX,31.5);
-  // Right: doc type
-  doc.setFont('helvetica','bold');doc.setFontSize(20);doc.setTextColor(30,30,30);
-  doc.text(title,pw-14,19,{align:'right'});
-  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(120,120,120);
+  // Company name — left side
+  doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(30,30,30);
+  doc.text(c.name||'BuildPro',contentX,18);
+  doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(140,135,125);
+  const info=[(c.addr||''),(c.city||'Islamabad')+', Pakistan',(c.phone||'')].filter(Boolean);
+  if(info.length)doc.text(info.join(' · '),contentX,24,{maxWidth:pw/2-4});
+  if(c.ntn)doc.text('NTN: '+c.ntn,contentX,30);
+  // Title — right side, smaller font to avoid overlap
+  doc.setFont('helvetica','bold');doc.setFontSize(15);doc.setTextColor(30,30,30);
+  doc.text(title,pw-14,18,{align:'right'});
+  doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(120,120,120);
   doc.text('# '+ref,pw-14,25,{align:'right'});
-  doc.text('Date: '+date,pw-14,30,{align:'right'});
-  if(subVal)doc.text(sub+': '+subVal,pw-14,35,{align:'right'});
-  // Divider
+  doc.text('Date: '+date,pw-14,31,{align:'right'});
+  if(subVal)doc.text(sub+': '+subVal,pw-14,37,{align:'right'});
   doc.setDrawColor(200,195,188);doc.setLineWidth(.5);doc.line(14,40,pw-14,40);
   return 46;
 }
@@ -2905,7 +2912,7 @@ function markDone(id){const r=(D.tasks||[]).find(x=>x.id===id);if(!r)return;r.st
 let expFilter='all';
 function fExp(f,el){expFilter=f;document.querySelectorAll('#pg-exp .ftab').forEach(t=>t.classList.remove('on'));el.classList.add('on');renderExp();}
 
-function iExp(){sv('exp-eid','');const eb=e$('exp-eb');if(eb)eb.classList.remove('on');const sh=e$('exp-sh-t');if(sh)sh.textContent='New Expense';['ex-desc','ex-paid-to','ex-proj-t','ex-proj-id','ex-notes','ex-budget'].forEach(id=>sv(id,''));sv('ex-amount','');sv('ex-date',today());sv('ex-cat','material');sv('ex-paid','Cash');const ip=e$('ex-ispaid');if(ip)ip.checked=false;}
+function iExp(){sv('exp-eid','');const eb=e$('exp-eb');if(eb)eb.classList.remove('on');const sh=e$('exp-sh-t');if(sh)sh.textContent='New Expense';['ex-desc','ex-paid-to','ex-proj-t','ex-proj-id','ex-notes','ex-budget'].forEach(id=>sv(id,''));sv('ex-amount','');sv('ex-date',today());sv('ex-cat','material');sv('ex-paid','Cash');sv('ex-funded','contract');const ip=e$('ex-ispaid');if(ip)ip.checked=false;}
 
 function eExp(id){const r=(D.expenses||[]).find(x=>x.id===id);if(!r)return;sv('exp-eid',id);const eb=e$('exp-eb');if(eb)eb.classList.add('on');const sh=e$('exp-sh-t');if(sh)sh.textContent='Edit Expense';sv('ex-desc',r.desc);sv('ex-paid-to',r.paidTo||'');sv('ex-amount',r.amount);sv('ex-date',r.date||'');sv('ex-cat',r.cat||'material');sv('ex-paid',r.paid||'Cash');sv('ex-notes',r.notes||'');;const p=D.projects.find(x=>x.id===r.projectId);sv('ex-proj-t',p?p.name:'');sv('ex-proj-id',r.projectId||'');O('sh-exp');}
 
@@ -2945,14 +2952,21 @@ function renderExp(){
     const projName=proj?proj.name:(rows.find(r=>(r.projectId||'__none__')===pid)?.projectName||'No Project');
     const cashInHand=proj?.cashInHand||0;
     const projRows=rows.filter(r=>(r.projectId||'__none__')===pid);
-    const projSpent=projRows.reduce((s,r)=>s+r.amount,0);
+    const cashRows=projRows.filter(r=>(r.fundedBy||'contract')==='cashinhand');
+    const contractRows=projRows.filter(r=>(r.fundedBy||'contract')==='contract');
+    const projSpent=cashRows.reduce((s,r)=>s+r.amount,0);// For Cash in Hand tracking
+    const contractSpent=contractRows.reduce((s,r)=>s+r.amount,0);// Fixed price internal
+    const totalDisplay=projRows.reduce((s,r)=>s+r.amount,0);
     const balance=cashInHand-projSpent;
     const pct=cashInHand>0?Math.min(100,Math.round(projSpent/cashInHand*100)):0;
     return`<div style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);overflow:hidden;margin-bottom:12px">
       <div style="padding:13px 14px;border-bottom:1px solid var(--bor)">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:11px">
           <div style="font-size:var(--fs-md);font-weight:700">📁 ${projName}</div>
-          <button class="ca gold" style="flex:none;padding:6px 12px;font-size:var(--fs-xs)" onclick="pdfExpProject('${pid}','${esc(projName)}')">⬇ PDF</button>
+          <div style="display:flex;gap:7px">
+            <button class="ca gold" style="flex:none;padding:6px 10px;font-size:var(--fs-xs)" onclick="pdfExpProject('${pid}','${esc(projName)}')">⬇ Full PDF</button>
+            ${cashInHand>0?`<button class="ca" style="flex:none;padding:6px 10px;font-size:var(--fs-xs);color:#4D94D4;border-color:rgba(77,148,212,.3);background:rgba(77,148,212,.06)" onclick="pdfReimbursement('${pid}','${esc(projName)}')">⬇ Reimburse PDF</button>`:''}
+          </div>
         </div>
         ${proj?`<div style="margin-bottom:10px">
           <label style="font-size:var(--fs-xs);color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px">💵 Cash in Hand (Owner's Advance for Misc.)</label>
@@ -2980,7 +2994,7 @@ function renderExp(){
       ${projRows.map(r=>`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:11px 14px;border-bottom:1px solid var(--bor)">
         <div>
           <div style="font-size:var(--fs-sm);font-weight:600">${catIcon[r.cat]||'📦'} ${r.desc} ${r.isPaid?'<span style="color:var(--grn);font-size:var(--fs-xs)">✅ Paid</span>':''}</div>
-          <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">${r.date} · ${r.paid} · <span class="b b-m" style="font-size:9px">${r.cat}</span></div>
+          <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">${r.date} · ${r.paid} · <span class="b b-m" style="font-size:9px">${r.cat}</span>${(r.fundedBy||'contract')==='cashinhand'?'<span class="b" style="font-size:9px;background:rgba(77,148,212,.15);color:#4D94D4;margin-left:4px">🪣 Cash in Hand</span>':'<span class="b" style="font-size:9px;background:rgba(201,123,58,.15);color:var(--gold);margin-left:4px">💼 Internal</span>'}</div>
           ${r.notes?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">${r.notes}</div>`:''}
         </div>
         <div style="text-align:right;flex-shrink:0;margin-left:12px">
@@ -2992,9 +3006,10 @@ function renderExp(){
           </div>
         </div>
       </div>`).join('')}
-      <div style="padding:10px 14px;display:flex;justify-content:space-between;font-size:var(--fs-sm);font-weight:600;background:var(--s2)">
-        <span style="color:var(--mut)">Total Spent</span>
-        <span style="font-family:'JetBrains Mono',monospace;color:var(--red)">PKR ${fmt(projSpent)}</span>
+      <div style="padding:10px 14px;background:var(--s2)">
+        ${contractSpent>0?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--mut);margin-bottom:3px"><span>Fixed Price Internal</span><span style="font-family:'JetBrains Mono',monospace;color:var(--red)">PKR ${fmt(contractSpent)}</span></div>`:''}
+        ${projSpent>0?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--mut);margin-bottom:3px"><span>Owner's Cash in Hand Spent</span><span style="font-family:'JetBrains Mono',monospace;color:var(--red)">PKR ${fmt(projSpent)}</span></div>`:''}
+        <div style="display:flex;justify-content:space-between;font-size:var(--fs-sm);font-weight:600;border-top:1px solid var(--bor);padding-top:6px;margin-top:3px"><span style="color:var(--mut)">Total Spent</span><span style="font-family:'JetBrains Mono',monospace;color:var(--red)">PKR ${fmt(totalDisplay)}</span></div>
       </div>
     </div>`;
   }).join('');
@@ -3333,12 +3348,13 @@ function renderProj(){
     const rec=D.cpays.filter(x=>x.projectId===p.id&&(x.payType||'contract')==='contract').reduce((s,x)=>s+x.amount,0);
     const subOnly=D.subpays.filter(x=>x.projectId===p.id).reduce((s,x)=>s+x.amount,0);
     // Internal = sub-con payments + PAID expenses (material/supplier/other). Pending expenses don't count yet.
-    const expPaid=(D.expenses||[]).filter(x=>x.projectId===p.id&&x.isPaid).reduce((s,x)=>s+x.amount,0);
+    const expPaid=(D.expenses||[]).filter(x=>x.projectId===p.id&&x.isPaid&&(x.fundedBy||'contract')==='contract').reduce((s,x)=>s+x.amount,0);
     const sub=subOnly+expPaid;
     const agr=D.agreements.find(x=>x.projectId===p.id);
     const inv=D.invoices.filter(x=>x.projectId===p.id).reduce((s,x)=>s+x.total,0);
     // Lump sum: net = full received, don't deduct sub/expenses
-    const displaySub=p.lumpSum?0:sub;
+    const isReimbursed=p.lumpSum;
+    const displaySub=isReimbursed?0:sub;
     const pct=p.value>0?Math.min(100,Math.round(rec/p.value*100)):0;
     return`<div class="card">
       <div class="card-top">
@@ -3619,14 +3635,16 @@ function pdfInternalSummary(pid){
   if(!spays.length&&!exps.length){toast('No internal payments for this project','info');return;}
 
   // Combine into one chronological list, grouped by "Paid To"
+  // Only show contract-funded expenses in internal summary (not owner's misc/cashinhand)
+  const contractExps=exps.filter(x=>(x.fundedBy||'contract')==='contract');
   const combined=[
     ...spays.map(x=>({date:x.date,paidTo:x.subconName||'—',type:'Sub-Contractor',desc:x.phase+(x.desc?' · '+x.desc:''),method:x.method||'Cash',amount:x.amount,isPaid:true})),
-    ...exps.map(x=>({date:x.date,paidTo:x.paidTo||'—',type:(x.cat||'other').charAt(0).toUpperCase()+(x.cat||'other').slice(1),desc:x.desc,method:x.paid||'Cash',amount:x.amount,isPaid:x.isPaid}))
+    ...contractExps.map(x=>({date:x.date,paidTo:x.paidTo||'—',type:(x.cat||'other').charAt(0).toUpperCase()+(x.cat||'other').slice(1),desc:x.desc,method:x.paid||'Cash',amount:x.amount,isPaid:x.isPaid}))
   ].sort((a,b)=>(a.date||'').localeCompare(b.date||''));
 
   const totalInternal=combined.reduce((s,x)=>s+x.amount,0);
   const totalSub=spays.reduce((s,x)=>s+x.amount,0);
-  const totalExp=exps.reduce((s,x)=>s+x.amount,0);
+  const totalExp=contractExps.reduce((s,x)=>s+x.amount,0);
 
   let y=drawHeader(doc,'INTERNAL PAYMENTS SUMMARY',p.name,today(),'','');
 
@@ -3686,6 +3704,103 @@ function pdfInternalSummary(pid){
   drawBankFooter(doc);
   doc.save('Internal-'+p.name.replace(/\s+/g,'-')+'-'+today()+'.pdf');
   toast('Internal payments PDF ✓');
+}
+
+// ════ REIMBURSEMENT REQUEST PDF ════
+function pdfReimbursement(pid,projName){
+  const p=D.projects.find(x=>x.id===pid);if(!p)return;
+  const c=co();const doc=bPDF();const pw=210;
+  const cli=D.clients.find(x=>x.id===p.clientId);
+  // Only cash-in-hand funded expenses
+  const exps=(D.expenses||[]).filter(x=>x.projectId===pid&&(x.fundedBy||'contract')==='cashinhand')
+    .sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  if(!exps.length){toast('No owner-funded expenses to reimburse','info');return;}
+  const cashInHand=p.cashInHand||0;
+  const totalPaid=exps.filter(r=>r.isPaid).reduce((s,r)=>s+r.amount,0);
+  const totalPending=exps.filter(r=>!r.isPaid).reduce((s,r)=>s+r.amount,0);
+  const totalAll=exps.reduce((s,r)=>s+r.amount,0);
+  const balance=cashInHand-totalPaid;
+
+  let y=drawHeader(doc,'EXPENSE REIMBURSEMENT REQUEST',p.name,today(),'','');
+
+  // To/From
+  doc.setFillColor(248,246,242);doc.rect(14,y,182,20,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(130,125,118);
+  doc.text('TO (OWNER / CLIENT)',16,y+6);doc.text('FROM (CONTRACTOR)',pw/2+4,y+6);
+  doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(30,30,30);
+  doc.text(cli?cli.name:'Owner',16,y+14);doc.text(c.name||'Contractor',pw/2+4,y+14);
+  doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(100,100,100);
+  if(cli?.phone)doc.text(cli.phone,16,y+20);
+  if(c.phone)doc.text(c.phone,pw/2+4,y+20);
+  y+=28;
+
+  // Cash in Hand summary
+  doc.setFillColor(232,184,75,0.1);doc.setFillColor(252,248,240);doc.rect(14,y,182,22,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(30,30,30);
+  doc.text('Cash Advanced by Owner: PKR '+fmt(cashInHand),16,y+8);
+  doc.text('Total Spent on Your Behalf: PKR '+fmt(totalAll),16,y+16);
+  doc.setTextColor(balance>=0?50:200,balance>=0?150:50,balance>=0?50:50);
+  const balMsg=balance>=0?'Balance Remaining with Contractor: PKR '+fmt(balance):'Additional Reimbursement Due: PKR '+fmt(Math.abs(balance));
+  doc.text(balMsg,pw-16,y+12,{align:'right'});
+  y+=30;
+
+  // Expense table
+  doc.autoTable({
+    startY:y,
+    head:[['Date','Description','Category','Paid By','Status','Amount (PKR)']],
+    body:exps.map(r=>[r.date||'—',r.desc+(r.paidTo?'\nPaid to: '+r.paidTo:''),
+      (r.cat||'other').charAt(0).toUpperCase()+(r.cat||'other').slice(1),
+      r.paid||'Cash',r.isPaid?'PAID':'PENDING',fmt(r.amount)]),
+    foot:[
+      ['','','','Paid','PKR '+fmt(totalPaid),''],
+      ['','','','Pending','PKR '+fmt(totalPending),''],
+      ['','','','TOTAL','PKR '+fmt(totalAll),'']
+    ],
+    styles:{fontSize:8.5,cellPadding:3,textColor:[30,30,30]},
+    headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
+    footStyles:{fontSize:8.5,fontStyle:'bold'},
+    columnStyles:{4:{cellWidth:22},5:{halign:'right',cellWidth:28}},
+    didParseCell:data=>{
+      if(data.section==='body'&&data.column.index===4)
+        data.cell.styles.textColor=data.cell.raw==='PAID'?[50,150,50]:[200,50,50];
+      if(data.section==='foot'&&data.row.index===2)
+        data.cell.styles.textColor=[201,123,58];
+    },
+    margin:{left:14,right:14}
+  });
+  y=doc.lastAutoTable.finalY+10;
+
+  // Final reimbursement request box
+  if(y>240){doc.addPage();y=20;}
+  if(balance<0){
+    // Owner owes more
+    doc.setFillColor(224,85,85);doc.rect(14,y,182,15,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(255,255,255);
+    doc.text('ADDITIONAL REIMBURSEMENT DUE: PKR '+fmt(Math.abs(balance)),pw/2,y+10,{align:'center'});
+  }else if(totalPending>0){
+    // Some expenses not yet paid by contractor — pending list
+    doc.setFillColor(245,243,239);doc.rect(14,y,182,15,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(30,30,30);
+    doc.text('Pending expenses (PKR '+fmt(totalPending)+') will be settled from remaining balance of PKR '+fmt(balance),pw/2,y+10,{align:'center',maxWidth:170});
+  }else{
+    doc.setFillColor(82,181,106);doc.rect(14,y,182,15,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(255,255,255);
+    doc.text('All expenses settled. Balance: PKR '+fmt(balance)+' to be returned to owner.',pw/2,y+10,{align:'center'});
+  }
+  y+=22;
+
+  // Bank details for payment
+  if(c.bank&&!balance>=0){
+    if(y>240){doc.addPage();y=20;}
+    doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(100,100,100);
+    doc.text('For reimbursement, please transfer to:',14,y);
+    doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(30,30,30);
+    doc.text(c.bank+(c.acc?' · A/C: '+c.acc:'')+(c.iban?' · IBAN: '+c.iban:''),14,y+6);
+  }
+
+  drawBankFooter(doc);
+  doc.save('Reimbursement-'+p.name.replace(/\s+/g,'-')+'-'+today()+'.pdf');
+  toast('Reimbursement request PDF ✓');
 }
 
 // ════ BACKUP ════
