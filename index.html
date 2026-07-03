@@ -2991,21 +2991,36 @@ function renderExp(){
         </div>
         <div class="pbar-wrap" style="margin-top:8px"><div class="pbar" style="width:${pct}%;background:${pct>90?'var(--red)':pct>70?'var(--gold)':'var(--grn)'}"></div></div>`:''}
       </div>
-      ${projRows.map(r=>`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:11px 14px;border-bottom:1px solid var(--bor)">
-        <div>
-          <div style="font-size:var(--fs-sm);font-weight:600">${catIcon[r.cat]||'📦'} ${r.desc} ${r.isPaid?'<span style="color:var(--grn);font-size:var(--fs-xs)">✅ Paid</span>':''}</div>
-          <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">${r.date} · ${r.paid} · <span class="b b-m" style="font-size:9px">${r.cat}</span>${(r.fundedBy||'contract')==='cashinhand'?'<span class="b" style="font-size:9px;background:rgba(77,148,212,.15);color:#4D94D4;margin-left:4px">🪣 Cash in Hand</span>':'<span class="b" style="font-size:9px;background:rgba(201,123,58,.15);color:var(--gold);margin-left:4px">💼 Internal</span>'}</div>
-          ${r.notes?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">${r.notes}</div>`:''}
-        </div>
-        <div style="text-align:right;flex-shrink:0;margin-left:12px">
-          <div style="font-family:'JetBrains Mono',monospace;color:var(--red);font-size:var(--fs-md)">${fmt(r.amount)}</div>
-          <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
-            <button style="font-size:var(--fs-xs);color:${r.isPaid?'var(--mut)':'var(--grn)'};background:none;border:none;cursor:pointer;font-family:Inter,sans-serif;font-weight:600" onclick="markExpPaid('${r.id}')">${r.isPaid?'↩ Unpaid':'✅ Paid'}</button>
-            <button style="font-size:var(--fs-xs);color:var(--blu);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="eExp('${r.id}')">Edit</button>
-            <button style="font-size:var(--fs-xs);color:var(--red);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="del('expenses','${r.id}')">Del</button>
+      ${(()=>{
+        const internalRows=projRows.filter(r=>(r.fundedBy||'contract')==='contract');
+        const ownerRows=projRows.filter(r=>(r.fundedBy||'contract')==='cashinhand');
+        const renderRow=r=>`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:11px 14px;border-bottom:1px solid var(--bor)">
+          <div>
+            <div style="font-size:var(--fs-sm);font-weight:600">${catIcon[r.cat]||'📦'} ${r.desc} ${r.isPaid?'<span style="color:var(--grn);font-size:var(--fs-xs)">✅ Paid</span>':''}</div>
+            <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">${r.date} · ${r.paid} · <span class="b b-m" style="font-size:9px">${r.cat}</span></div>
+            ${r.paidTo?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">To: ${r.paidTo}</div>`:''}
+            ${r.notes?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">${r.notes}</div>`:''}
           </div>
-        </div>
-      </div>`).join('')}
+          <div style="text-align:right;flex-shrink:0;margin-left:12px">
+            <div style="font-family:'JetBrains Mono',monospace;color:var(--red);font-size:var(--fs-md)">${fmt(r.amount)}</div>
+            <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
+              <button style="font-size:var(--fs-xs);color:${r.isPaid?'var(--mut)':'var(--grn)'};background:none;border:none;cursor:pointer;font-family:Inter,sans-serif;font-weight:600" onclick="markExpPaid('${r.id}')">${r.isPaid?'↩ Unpaid':'✅ Paid'}</button>
+              <button style="font-size:var(--fs-xs);color:var(--blu);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="eExp('${r.id}')">Edit</button>
+              <button style="font-size:var(--fs-xs);color:var(--red);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="del('expenses','${r.id}')">Del</button>
+            </div>
+          </div>
+        </div>`;
+        let html='';
+        if(internalRows.length){
+          html+=`<div style="padding:7px 14px;background:rgba(201,123,58,.08);border-bottom:1px solid var(--bor);font-size:var(--fs-xs);font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.5px">💼 Internal — Fixed Price</div>`;
+          html+=internalRows.map(renderRow).join('');
+        }
+        if(ownerRows.length){
+          html+=`<div style="padding:7px 14px;background:rgba(77,148,212,.08);border-bottom:1px solid var(--bor);font-size:var(--fs-xs);font-weight:700;color:#4D94D4;text-transform:uppercase;letter-spacing:.5px">🪣 Owner's Cash in Hand</div>`;
+          html+=ownerRows.map(renderRow).join('');
+        }
+        return html;
+      })()}
       <div style="padding:10px 14px;background:var(--s2)">
         ${contractSpent>0?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--mut);margin-bottom:3px"><span>Fixed Price Internal</span><span style="font-family:'JetBrains Mono',monospace;color:var(--red)">PKR ${fmt(contractSpent)}</span></div>`:''}
         ${projSpent>0?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--mut);margin-bottom:3px"><span>Owner's Cash in Hand Spent</span><span style="font-family:'JetBrains Mono',monospace;color:var(--red)">PKR ${fmt(projSpent)}</span></div>`:''}
