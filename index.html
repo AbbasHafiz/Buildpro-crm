@@ -543,7 +543,10 @@ select option{background:var(--s2);}
     <div class="pg" id="pg-exp">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
         <div></div>
-        <button class="btn btn-gold btn-sm" style="padding:8px 16px;font-size:var(--fs-sm)" onclick="pdfExp()">⬇ Export PDF</button>
+        <div style="display:flex;gap:8px">
+        <button class="btn btn-gold btn-sm" style="padding:8px 14px;font-size:var(--fs-sm)" onclick="pdfExp()">⬇ All Expenses</button>
+        <button class="btn btn-grey btn-sm" style="padding:8px 14px;font-size:var(--fs-sm);color:#4D94D4;border-color:rgba(77,148,212,.3)" onclick="pdfExpExternal()">⬇ Owner's Expenses</button>
+      </div>
       </div>
       <div class="stats2">
         <div class="stat"><div class="stat-lbl">Total Spent</div><div class="stat-val" id="exp-spent">0</div><div class="stat-unit">PKR</div></div>
@@ -3083,6 +3086,51 @@ function pdfExp(){
   drawBankFooter(doc);
   doc.save('Expenses-'+today()+'.pdf');
   toast('Expense PDF downloaded ✓');
+}
+
+function pdfExpExternal(){
+  const doc=bPDF();const pw=210;
+  let y=drawHeader(doc,'OWNER EXPENSE REPORT','ALL','Date: '+today(),'','');
+  const allExps=(D.expenses||[]).filter(r=>(r.fundedBy||'contract')==='cashinhand');
+  if(!allExps.length){toast('No owner-funded expenses found','info');return;}
+  const totalSpent=allExps.reduce((s,e)=>s+e.amount,0);
+  const paidAmt=allExps.filter(e=>e.isPaid).reduce((s,e)=>s+e.amount,0);
+  const pendingAmt=allExps.filter(e=>!e.isPaid).reduce((s,e)=>s+e.amount,0);
+  doc.setFillColor(248,246,242);doc.rect(14,y,182,16,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(30,30,30);
+  doc.text('Total Owner Advances Spent: PKR '+fmt(totalSpent),16,y+7);
+  doc.text('Pending Reimbursement: PKR '+fmt(pendingAmt),160,y+7,{align:'right'});
+  y+=24;
+  const projIds=[...new Set(allExps.map(r=>r.projectId||'__none__'))];
+  projIds.forEach(pid=>{
+    const proj=D.projects.find(x=>x.id===pid);
+    const projName=proj?proj.name:(allExps.find(r=>(r.projectId||'__none__')===pid)?.projectName||'No Project');
+    const projRows=allExps.filter(r=>(r.projectId||'__none__')===pid);
+    const projTotal=projRows.reduce((s,r)=>s+r.amount,0);
+    const cashInHand=proj?.cashInHand||0;
+    if(y>240){doc.addPage();y=20;}
+    doc.setFillColor(242,240,235);doc.rect(14,y-3,182,9,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(30,30,30);
+    doc.text(projName,16,y+3);
+    doc.text('Cash in Hand: PKR '+fmt(cashInHand)+'  Spent: PKR '+fmt(projTotal),196,y+3,{align:'right'});
+    y+=12;
+    doc.autoTable({
+      startY:y,
+      head:[['Date','Description','Category','Method','Status','Amount (PKR)']],
+      body:projRows.map(r=>[r.date||'—',r.desc+(r.paidTo?'\nTo: '+r.paidTo:''),r.cat||'—',r.paid||'Cash',r.isPaid?'PAID':'PENDING',fmt(r.amount)]),
+      foot:[['','','','','Total','PKR '+fmt(projTotal)]],
+      styles:{fontSize:8.5,cellPadding:2.5,textColor:[30,30,30]},
+      headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
+      footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[77,148,212]},
+      columnStyles:{4:{cellWidth:22},5:{halign:'right',cellWidth:28}},
+      didParseCell:data=>{if(data.section==='body'&&data.column.index===4)data.cell.styles.textColor=data.cell.raw==='PAID'?[50,150,50]:[200,50,50];},
+      margin:{left:14,right:14}
+    });
+    y=doc.lastAutoTable.finalY+10;
+  });
+  drawBankFooter(doc);
+  doc.save('OwnerExpenses-'+today()+'.pdf');
+  toast('Owner expenses PDF ✓');
 }
 
 function pdfExpProject(pid,projName){
