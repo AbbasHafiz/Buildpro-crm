@@ -541,18 +541,35 @@ select option{background:var(--s2);}
 
     <!-- EXPENSES / COST -->
     <div class="pg" id="pg-exp">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <div></div>
-        <div style="display:flex;gap:8px">
-        <button class="btn btn-gold btn-sm" style="padding:8px 14px;font-size:var(--fs-sm)" onclick="pdfExp()">⬇ All Expenses</button>
-        <button class="btn btn-grey btn-sm" style="padding:8px 14px;font-size:var(--fs-sm);color:#4D94D4;border-color:rgba(77,148,212,.3)" onclick="pdfExpExternal()">⬇ Owner's Expenses</button>
+      <!-- Main tab switcher: Builder vs Owner -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px">
+        <button id="exp-tab-builder" onclick="switchExpTab('builder')" style="padding:10px;border-radius:10px;font-size:var(--fs-sm);font-weight:700;cursor:pointer;background:var(--gold);color:#1a1916;border:none;font-family:Inter,sans-serif">💼 My Internal</button>
+        <button id="exp-tab-owner" onclick="switchExpTab('owner')" style="padding:10px;border-radius:10px;font-size:var(--fs-sm);font-weight:700;cursor:pointer;background:var(--s1);color:var(--mut);border:1px solid var(--bor);font-family:Inter,sans-serif">🪣 Owner's Cash</button>
       </div>
+
+      <!-- Builder stats -->
+      <div id="exp-stats-builder">
+        <div class="stats2" style="margin-bottom:8px">
+          <div class="stat"><div class="stat-lbl">Internal Spent</div><div class="stat-val" id="exp-int-spent">0</div><div class="stat-unit">PKR</div></div>
+          <div class="stat"><div class="stat-lbl">Entries</div><div class="stat-val" id="exp-int-count">0</div><div class="stat-unit">total</div></div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+          <button class="btn btn-gold btn-sm" style="padding:7px 14px;font-size:var(--fs-sm)" onclick="pdfExp()">⬇ Internal PDF</button>
+        </div>
       </div>
-      <div class="stats2">
-        <div class="stat"><div class="stat-lbl">Total Spent</div><div class="stat-val" id="exp-spent">0</div><div class="stat-unit">PKR</div></div>
-        <div class="stat"><div class="stat-lbl">Remaining</div><div class="stat-val" id="exp-rem">0</div><div class="stat-unit">PKR</div></div>
-        <div class="stat"><div class="stat-lbl">Expenses</div><div class="stat-val" id="exp-count">0</div><div class="stat-unit">entries</div></div>
+
+      <!-- Owner stats -->
+      <div id="exp-stats-owner" style="display:none">
+        <div class="stats2" style="margin-bottom:8px">
+          <div class="stat"><div class="stat-lbl">Total Cash Given</div><div class="stat-val" id="exp-own-hand">0</div><div class="stat-unit">PKR</div></div>
+          <div class="stat"><div class="stat-lbl">Spent</div><div class="stat-val" id="exp-own-spent">0</div><div class="stat-unit">PKR</div></div>
+          <div class="stat"><div class="stat-lbl">Remaining</div><div class="stat-val" id="exp-own-rem">0</div><div class="stat-unit">PKR</div></div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:8px">
+          <button class="btn btn-grey btn-sm" style="padding:7px 14px;font-size:var(--fs-sm);color:#4D94D4;border-color:rgba(77,148,212,.3)" onclick="pdfExpExternal()">⬇ Owner PDF</button>
+        </div>
       </div>
+
       <div class="ftabs">
         <div class="ftab on" onclick="fExp('all',this)">All</div>
         <div class="ftab" onclick="fExp('unpaid',this)">🔴 Unpaid</div>
@@ -2912,6 +2929,25 @@ function renderTasks(){
 function markDone(id){const r=(D.tasks||[]).find(x=>x.id===id);if(!r)return;r.status='done';sched();renderTasks();toast('Task marked done ✅');}
 
 // ════ EXPENSES ════
+
+let expTabMode='builder'; // 'builder' or 'owner'
+
+function switchExpTab(mode){
+  expTabMode=mode;
+  const b=e$('exp-tab-builder');const o=e$('exp-tab-owner');
+  const bs=e$('exp-stats-builder');const os=e$('exp-stats-owner');
+  if(mode==='builder'){
+    if(b){b.style.background='var(--gold)';b.style.color='#1a1916';b.style.border='none';}
+    if(o){o.style.background='var(--s1)';o.style.color='var(--mut)';o.style.border='1px solid var(--bor)';}
+    if(bs)bs.style.display='block';if(os)os.style.display='none';
+  }else{
+    if(o){o.style.background='#4D94D4';o.style.color='#fff';o.style.border='none';}
+    if(b){b.style.background='var(--s1)';b.style.color='var(--mut)';b.style.border='1px solid var(--bor)';}
+    if(bs)bs.style.display='none';if(os)os.style.display='block';
+  }
+  renderExp();
+}
+
 let expFilter='all';
 function fExp(f,el){expFilter=f;document.querySelectorAll('#pg-exp .ftab').forEach(t=>t.classList.remove('on'));el.classList.add('on');renderExp();}
 
@@ -2955,8 +2991,9 @@ function renderExp(){
     const projName=proj?proj.name:(rows.find(r=>(r.projectId||'__none__')===pid)?.projectName||'No Project');
     const cashInHand=proj?.cashInHand||0;
     const projRows=rows.filter(r=>(r.projectId||'__none__')===pid);
-    const cashRows=projRows.filter(r=>(r.fundedBy||'contract')==='cashinhand');
-    const contractRows=projRows.filter(r=>(r.fundedBy||'contract')==='contract');
+    const allProjExps=(D.expenses||[]).filter(r=>(r.projectId||'__none__')===pid);
+    const cashRows=allProjExps.filter(r=>(r.fundedBy||'contract')==='cashinhand');
+    const contractRows=allProjExps.filter(r=>(r.fundedBy||'contract')==='contract');
     const projSpent=cashRows.reduce((s,r)=>s+r.amount,0);// For Cash in Hand tracking
     const contractSpent=contractRows.reduce((s,r)=>s+r.amount,0);// Fixed price internal
     const totalDisplay=projRows.reduce((s,r)=>s+r.amount,0);
