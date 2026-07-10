@@ -2981,7 +2981,12 @@ function renderExp(){
   setV('exp-spent',totalSpent);
   const rem=e$('exp-rem');if(rem){rem.textContent=fmt(Math.max(0,totalSpent));rem.style.color='var(--red)';}
   const ec=e$('exp-count');if(ec)ec.textContent=exps.length;
-  let rows=expFilter==='all'?exps:expFilter==='unpaid'?exps.filter(r=>!r.isPaid):expFilter==='paid'?exps.filter(r=>r.isPaid):exps.filter(r=>r.cat===expFilter);
+  // Filter by tab mode first
+  const modeExps=(typeof expTabMode!=='undefined'&&expTabMode==='owner')
+    ?(D.expenses||[]).filter(e=>(e.fundedBy||'contract')==='cashinhand')
+    :(D.expenses||[]).filter(e=>(e.fundedBy||'contract')==='contract');
+  const expsFiltered=expFilter==='all'?modeExps:expFilter==='unpaid'?modeExps.filter(r=>!r.isPaid):expFilter==='paid'?modeExps.filter(r=>r.isPaid):modeExps.filter(r=>r.cat===expFilter);
+  let rows=expsFiltered;
   if(!rows.length){el.innerHTML='<div class="empty"><div class="empty-i">💰</div><div class="empty-t">No expenses yet.<br>Tap + to add an expense.</div></div>';return;}
   const catIcon={material:'🧱',labour:'👷',equipment:'🔧',transport:'🚚',utility:'💡',other:'📦'};
   // Group by project
