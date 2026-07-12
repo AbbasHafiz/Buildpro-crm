@@ -2974,17 +2974,26 @@ function markExpPaid(id){
 
 function renderExp(){
   const el=e$('list-exp');if(!el)return;
-  const exps=D.expenses||[];
-  // Update stats
-  const totalSpent=exps.reduce((s,e)=>s+e.amount,0);
+  const allExps=D.expenses||[];
+  const internalExps=allExps.filter(e=>(e.fundedBy||'contract')==='contract');
+  const ownerExps=allExps.filter(e=>(e.fundedBy||'contract')==='cashinhand');
   const setV=(id,v)=>{const x=e$(id);if(x)x.textContent=fmt(v);};
-  setV('exp-spent',totalSpent);
-  const rem=e$('exp-rem');if(rem){rem.textContent=fmt(Math.max(0,totalSpent));rem.style.color='var(--red)';}
-  const ec=e$('exp-count');if(ec)ec.textContent=exps.length;
-  // Filter by tab mode first
-  const modeExps=(typeof expTabMode!=='undefined'&&expTabMode==='owner')
-    ?(D.expenses||[]).filter(e=>(e.fundedBy||'contract')==='cashinhand')
-    :(D.expenses||[]).filter(e=>(e.fundedBy||'contract')==='contract');
+
+  // Update builder stats
+  setV('exp-int-spent',internalExps.reduce((s,e)=>s+e.amount,0));
+  const ic=e$('exp-int-count');if(ic)ic.textContent=internalExps.length;
+
+  // Update owner stats
+  const totalCash=D.projects.reduce((s,p)=>s+(p.cashInHand||0),0);
+  const ownerSpent=ownerExps.reduce((s,e)=>s+e.amount,0);
+  setV('exp-own-hand',totalCash);
+  setV('exp-own-spent',ownerSpent);
+  const or=e$('exp-own-rem');
+  if(or){or.textContent=fmt(Math.max(0,totalCash-ownerSpent));or.style.color=totalCash-ownerSpent<0?'var(--red)':'var(--grn)';}
+
+  // Filter by tab mode
+  const mode=(typeof expTabMode!=='undefined')?expTabMode:'builder';
+  const modeExps=mode==='owner'?ownerExps:internalExps;
   const expsFiltered=expFilter==='all'?modeExps:expFilter==='unpaid'?modeExps.filter(r=>!r.isPaid):expFilter==='paid'?modeExps.filter(r=>r.isPaid):modeExps.filter(r=>r.cat===expFilter);
   let rows=expsFiltered;
   if(!rows.length){el.innerHTML='<div class="empty"><div class="empty-i">💰</div><div class="empty-t">No expenses yet.<br>Tap + to add an expense.</div></div>';return;}
