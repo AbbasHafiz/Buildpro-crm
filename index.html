@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-07-13-v23">
+<meta name="app-version" content="2026-07-13-v24">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -3092,8 +3092,8 @@ async function pdfSubProjStatement(subconId,projectId){
         5:{halign:'right'},
         6:{halign:'right',textColor:[82,181,106]}
       },
-      showFoot:'lastPage',
-    margin:{left:14,right:14}
+      rowPageBreak:'avoid',showFoot:'lastPage',
+    margin:{left:14,right:14,bottom:16}
     });
   }else{
     doc.setFont('helvetica','italic');doc.setFontSize(10);doc.setTextColor(150,145,138);
@@ -3335,16 +3335,21 @@ function drawHeader(doc,title,ref,date,sub,subVal){
 
 function drawBankFooter(doc){
   const c=co();const h=doc.internal.pageSize.getHeight();const pw=210;
-  doc.setFillColor(232,184,75);doc.rect(0,h-10,pw,10,'F');
-  doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(30,30,30);
-  if(c.bank||c.acc){
-    doc.text('Bank: '+(c.bank||'—'),14,h-5);
-    if(c.acc)doc.text('A/C: '+c.acc+(c.accT?' | '+c.accT:''),75,h-5);
-    if(c.iban)doc.text('IBAN: '+c.iban,152,h-5,{align:'right'});
-  } else {
-    doc.text('Payment: Cash · Bank Transfer · JazzCash · EasyPaisa',14,h-5);
+  const pages=doc.internal.getNumberOfPages();
+  for(let p=1;p<=pages;p++){
+    doc.setPage(p);
+    doc.setFillColor(232,184,75);doc.rect(0,h-10,pw,10,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(30,30,30);
+    if(c.bank||c.acc){
+      doc.text('Bank: '+(c.bank||'—'),14,h-5);
+      if(c.acc)doc.text('A/C: '+c.acc+(c.accT?' | '+c.accT:''),75,h-5);
+      if(c.iban)doc.text('IBAN: '+c.iban,152,h-5,{align:'right'});
+    } else {
+      doc.text('Payment: Cash · Bank Transfer · JazzCash · EasyPaisa',14,h-5);
+    }
+    doc.text(c.name||'BuildPro',pw-14,h-5,{align:'right'});
   }
-  doc.text(c.name||'BuildPro',pw-14,h-5,{align:'right'});
+  doc.setPage(pages);
 }
 
 async function pdfInv(id){
@@ -3406,7 +3411,7 @@ async function pdfInv(id){
     colStyles={0:{cellWidth:72},3:{halign:'right'},4:{halign:'right'}};
     foot=[['','','','Total (PKR)',fmt(r.total)]];
   }
-  doc.autoTable({startY:y,head,body,foot,styles:{fontSize:9.5,cellPadding:3.5,textColor:[30,30,30]},headStyles:{fillColor:[242,240,235],textColor:[130,125,118],fontStyle:'bold',fontSize:8.5},footStyles:{fillColor:[248,246,242],fontStyle:'bold',textColor:[201,123,58],fontSize:11},columnStyles:colStyles,margin:{left:14,right:14}});
+  doc.autoTable({startY:y,head,body,foot,styles:{fontSize:9.5,cellPadding:3.5,textColor:[30,30,30]},headStyles:{fillColor:[242,240,235],textColor:[130,125,118],fontStyle:'bold',fontSize:8.5},footStyles:{fillColor:[248,246,242],fontStyle:'bold',textColor:[201,123,58],fontSize:11},columnStyles:colStyles,showFoot:'lastPage',rowPageBreak:'avoid',margin:{left:14,right:14,bottom:16}});
 
   // Notes
   if(r.notes){const fy=doc.lastAutoTable.finalY+8;doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(80,80,80);doc.text('Notes:',14,fy);doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(100,100,100);doc.text(r.notes,14,fy+6,{maxWidth:182});}
@@ -3423,8 +3428,8 @@ async function pdfEst(id){
   doc.setFontSize(8);doc.setTextColor(160,155,148);doc.text('PREPARED FOR',14,y);
   doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor(20,20,20);doc.text(r.clientName,14,y+7);
   doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(100,100,100);if(r.projectName)doc.text('Project: '+r.projectName,14,y+13);y+=22;
-  doc.autoTable({startY:y,head:[['Work Item / Description','Qty','Unit','Rate (PKR)','Amount (PKR)']],body:(r.items||[]).map(i=>[i.d,i.q,i.u||'—',fmt(i.r),fmt(i.a)]),foot:[['','','','Total (PKR)',fmt(r.total)]],styles:{fontSize:9.5,cellPadding:3.5,textColor:[30,30,30]},headStyles:{fillColor:[242,240,235],textColor:[130,125,118],fontStyle:'bold',fontSize:8.5},footStyles:{fillColor:[248,246,242],fontStyle:'bold',textColor:[201,123,58],fontSize:11},columnStyles:{0:{cellWidth:72},3:{halign:'right'},4:{halign:'right'}},showFoot:'lastPage',
-    margin:{left:14,right:14}});
+  doc.autoTable({startY:y,head:[['Work Item / Description','Qty','Unit','Rate (PKR)','Amount (PKR)']],body:(r.items||[]).map(i=>[i.d,i.q,i.u||'—',fmt(i.r),fmt(i.a)]),foot:[['','','','Total (PKR)',fmt(r.total)]],styles:{fontSize:9.5,cellPadding:3.5,textColor:[30,30,30]},headStyles:{fillColor:[242,240,235],textColor:[130,125,118],fontStyle:'bold',fontSize:8.5},footStyles:{fillColor:[248,246,242],fontStyle:'bold',textColor:[201,123,58],fontSize:11},columnStyles:{0:{cellWidth:72},3:{halign:'right'},4:{halign:'right'}},rowPageBreak:'avoid',showFoot:'lastPage',
+    margin:{left:14,right:14,bottom:16}});
   if(r.notes){const fy=doc.lastAutoTable.finalY+8;doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(80,80,80);doc.text('Notes / Scope:',14,fy);doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(100,100,100);doc.text(r.notes,14,fy+6,{maxWidth:182});}
   drawBankFooter(doc);doc.save('Estimate-'+r.num+'.pdf');toast('Estimate PDF ✓');
 }
@@ -3491,8 +3496,8 @@ async function pdfBoqVsActual(id){
       headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
       footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[30,30,30]},
       columnStyles:{1:{halign:'right'},2:{halign:'right'},3:{halign:'right'}},
-      showFoot:'lastPage',
-    margin:{left:14,right:14}
+      rowPageBreak:'avoid',showFoot:'lastPage',
+    margin:{left:14,right:14,bottom:16}
     });
     y=doc.lastAutoTable.finalY+8;
   }
@@ -4709,8 +4714,8 @@ function pdfDrawSpayTable(doc,y,spays,opts){
     headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
     footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[200,50,50],fontSize:8.5},
     columnStyles:{4:{halign:'right'}},
-    showFoot:'lastPage',
-    margin:{left:14,right:14}
+    rowPageBreak:'avoid',showFoot:'lastPage',
+    margin:{left:14,right:14,bottom:16}
   });
   return doc.lastAutoTable.finalY+(opts&&opts.gap!=null?opts.gap:10);
 }
@@ -4774,8 +4779,8 @@ async function pdfExp(){
         footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[201,123,58],fontSize:8.5},
         columnStyles:{3:{cellWidth:22},4:{halign:'right'}},
         didParseCell:data=>{if(data.section==='body'&&data.column.index===3)data.cell.styles.textColor=data.cell.raw==='PAID'?[50,150,50]:[200,50,50];},
-        showFoot:'lastPage',
-    margin:{left:14,right:14}
+        rowPageBreak:'avoid',showFoot:'lastPage',
+    margin:{left:14,right:14,bottom:16}
       });
       y=doc.lastAutoTable.finalY+10;
     }
@@ -4841,8 +4846,8 @@ async function pdfExpExternal(){
       footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[77,148,212]},
       columnStyles:{4:{cellWidth:24},5:{halign:'right',cellWidth:28}},
       didParseCell:data=>{if(data.section==='body'&&data.column.index===4)data.cell.styles.textColor=(data.cell.raw==='PAID')?[50,150,50]:(data.cell.raw==='PENDING')?[201,123,58]:[200,50,50];},
-      showFoot:'lastPage',
-    margin:{left:14,right:14}
+      rowPageBreak:'avoid',showFoot:'lastPage',
+    margin:{left:14,right:14,bottom:16}
     });
     y=doc.lastAutoTable.finalY+10;
   });
@@ -4901,8 +4906,8 @@ async function pdfExpProjectContractor(pid,projName){
       footStyles:{fontSize:9,fontStyle:'bold',textColor:[201,123,58]},
       columnStyles:{4:{cellWidth:24},5:{halign:'right',cellWidth:28}},
       didParseCell:data=>{if(data.section==='body'&&data.column.index===4)data.cell.styles.textColor=data.cell.raw==='PAID'?[50,150,50]:[200,50,50];},
-      showFoot:'lastPage',
-    margin:{left:14,right:14}
+      rowPageBreak:'avoid',showFoot:'lastPage',
+    margin:{left:14,right:14,bottom:16}
     });
     y=doc.lastAutoTable.finalY+10;
   }
@@ -4981,8 +4986,8 @@ async function pdfExpProjectOwner(pid,projName){
     footStyles:{fontSize:8.5,fontStyle:'bold',textColor:[77,148,212]},
     columnStyles:{4:{cellWidth:24},5:{halign:'right',cellWidth:28}},
     didParseCell:data=>{if(data.section==='body'&&data.column.index===4)data.cell.styles.textColor=(data.cell.raw==='PAID')?[50,150,50]:(data.cell.raw==='PENDING')?[201,123,58]:[200,50,50];},
-    showFoot:'lastPage',
-    margin:{left:14,right:14}
+    rowPageBreak:'avoid',showFoot:'lastPage',
+    margin:{left:14,right:14,bottom:16}
   });
   drawBankFooter(doc);
   doc.save('OwnerExpenses-'+projName.replace(/\s+/g,'-')+'-'+today()+'.pdf');
@@ -5048,8 +5053,8 @@ async function pdfCpayConfirm(id){
       headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
       footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[82,181,106],fontSize:9},
       columnStyles:{3:{halign:'right'}},
-      showFoot:'lastPage',
-    margin:{left:14,right:14}
+      rowPageBreak:'avoid',showFoot:'lastPage',
+    margin:{left:14,right:14,bottom:16}
     });
     y=doc.lastAutoTable.finalY+8;
   }
@@ -5115,8 +5120,8 @@ async function pdfSpayConfirm(id){
       headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
       footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[30,30,30],fontSize:9},
       columnStyles:{2:{halign:'right'}},
-      showFoot:'lastPage',
-    margin:{left:14,right:14}
+      rowPageBreak:'avoid',showFoot:'lastPage',
+    margin:{left:14,right:14,bottom:16}
     });
     y=doc.lastAutoTable.finalY+10;
   }
@@ -5148,8 +5153,8 @@ async function pdfSpayConfirm(id){
       headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:7.5},
       footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[77,148,212],fontSize:9},
       columnStyles:{1:{cellWidth:45},2:{cellWidth:50},4:{halign:'right'}},
-      showFoot:'lastPage',
-    margin:{left:14,right:14}
+      rowPageBreak:'avoid',showFoot:'lastPage',
+    margin:{left:14,right:14,bottom:16}
     });
     y=doc.lastAutoTable.finalY+8;
     if(sc2?.contract){const rem=sc2.contract-totalPaid;doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(rem>0?201:82,rem>0?123:181,rem>0?58:106);doc.text('Contract: PKR '+fmt(sc2.contract)+'   |   Total Paid: PKR '+fmt(totalPaid)+'   |   Remaining: PKR '+fmt(Math.max(0,rem)),14,y);}
@@ -5211,8 +5216,8 @@ async function pdfProjPayments(pid){
       headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
       footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[82,181,106],fontSize:9},
       columnStyles:{0:{cellWidth:8},4:{halign:'right'},5:{halign:'right',textColor:[82,181,106]}},
-      showFoot:'lastPage',
-    margin:{left:14,right:14}
+      rowPageBreak:'avoid',showFoot:'lastPage',
+    margin:{left:14,right:14,bottom:16}
     });
     y=doc.lastAutoTable.finalY+10;
   }else{
@@ -5244,8 +5249,8 @@ async function pdfProjPayments(pid){
       headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
       footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[77,148,212]},
       columnStyles:{3:{halign:'right'}},
-      showFoot:'lastPage',
-    margin:{left:14,right:14}
+      rowPageBreak:'avoid',showFoot:'lastPage',
+    margin:{left:14,right:14,bottom:16}
     });
     y=doc.lastAutoTable.finalY+8;
   }
@@ -5264,8 +5269,8 @@ async function pdfProjPayments(pid){
       footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[77,148,212]},
       columnStyles:{3:{cellWidth:24},4:{halign:'right',cellWidth:28}},
       didParseCell:data=>{if(data.section==='body'&&data.column.index===3)data.cell.styles.textColor=(data.cell.raw==='PAID')?[50,150,50]:(data.cell.raw==='PENDING')?[201,123,58]:[200,50,50];},
-      showFoot:'lastPage',
-    margin:{left:14,right:14}
+      rowPageBreak:'avoid',showFoot:'lastPage',
+    margin:{left:14,right:14,bottom:16}
     });
     y=doc.lastAutoTable.finalY+8;
   }else if(!miscPays.length){
@@ -5862,8 +5867,8 @@ async function pdfPartnerSummary(pid){
       headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
       footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[50,150,50]},
       columnStyles:{4:{halign:'right'},5:{halign:'right',textColor:[50,150,50]}},
-      showFoot:'lastPage',
-    margin:{left:14,right:14}
+      rowPageBreak:'avoid',showFoot:'lastPage',
+    margin:{left:14,right:14,bottom:16}
     });
     y=doc.lastAutoTable.finalY+10;
   }
@@ -5888,8 +5893,8 @@ async function pdfPartnerSummary(pid){
       footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[200,50,50]},
       columnStyles:{3:{cellWidth:20},4:{halign:'right'}},
       didParseCell:data=>{if(data.section==='body'&&data.column.index===3)data.cell.styles.textColor=data.cell.raw==='PAID'?[50,150,50]:[200,50,50];},
-      showFoot:'lastPage',
-    margin:{left:14,right:14}
+      rowPageBreak:'avoid',showFoot:'lastPage',
+    margin:{left:14,right:14,bottom:16}
     });
     y=doc.lastAutoTable.finalY+10;
   }
@@ -5917,30 +5922,10 @@ async function pdfInternalSummary(pid){
   if(!spays.length&&!exps.length){toast('No internal payments for this project','info');return;}
 
   // Combine into one chronological list, grouped by "Paid To".
-  // Sub-con breakdown (who they paid onward) is folded into the same rows — no repeat section.
+  // Payment totals only — person/trade breakdown stays on sub-con statement PDF.
   const contractExps=exps.filter(x=>(x.fundedBy||'contract')==='contract');
-  const spayRows=spays.flatMap(x=>{
-    const bd=x.breakdown||[];
-    if(!bd.length){
-      return[{date:x.date,paidTo:x.subconName||'—',type:'Sub-Contractor',desc:(x.phase||'')+(x.desc?' · '+x.desc:''),method:x.method||'Cash',amount:x.amount,isPaid:true}];
-    }
-    const rows=bd.map(b=>({
-      date:x.date,
-      paidTo:x.subconName||'—',
-      type:'Sub-Contractor',
-      desc:[b.trade||'Other',b.name].filter(Boolean).join(' · ')+(x.phase?' · '+x.phase:''),
-      method:x.method||'Cash',
-      amount:b.amount||0,
-      isPaid:true
-    }));
-    const rem=Math.round(((x.amount||0)-bd.reduce((s,b)=>s+(b.amount||0),0))*100)/100;
-    if(rem>0.01){
-      rows.push({date:x.date,paidTo:x.subconName||'—',type:'Sub-Contractor',desc:'(kept / not distributed)'+(x.phase?' · '+x.phase:''),method:x.method||'Cash',amount:rem,isPaid:true});
-    }
-    return rows;
-  });
   const combined=[
-    ...spayRows,
+    ...spays.map(x=>({date:x.date,paidTo:x.subconName||'—',type:'Sub-Contractor',desc:(x.phase||'')+(x.desc?' · '+x.desc:''),method:x.method||'Cash',amount:x.amount,isPaid:true})),
     ...contractExps.map(x=>({date:x.date,paidTo:x.paidTo||'—',type:(x.cat||'other').charAt(0).toUpperCase()+(x.cat||'other').slice(1),desc:x.desc,method:x.paid||'Cash',amount:x.amount,isPaid:x.isPaid}))
   ].sort((a,b)=>(a.date||'').localeCompare(b.date||''));
 
@@ -5988,12 +5973,13 @@ async function pdfInternalSummary(pid){
     y+=12;
     doc.autoTable({
       startY:y,
-      head:[['Date','Type','For / Description','Method','Amount (PKR)']],
+      head:[['Date','Type','Description','Method','Amount (PKR)']],
       body:rows.map(r=>[r.date||'—',r.type,r.desc||'—',r.method,fmt(r.amount)]),
       styles:{fontSize:8.5,cellPadding:2.5,textColor:[30,30,30]},
       headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:7.5},
       columnStyles:{4:{halign:'right'}},
-      margin:{left:14,right:14}
+      rowPageBreak:'avoid',
+      margin:{left:14,right:14,bottom:16}
     });
     y=doc.lastAutoTable.finalY+8;
   });
@@ -6079,8 +6065,8 @@ async function pdfReimbursement(pid,projName){
       if(data.section==='foot'&&data.row.index===2)
         data.cell.styles.textColor=[201,123,58];
     },
-    showFoot:'lastPage',
-    margin:{left:14,right:14}
+    rowPageBreak:'avoid',showFoot:'lastPage',
+    margin:{left:14,right:14,bottom:16}
   });
   y=doc.lastAutoTable.finalY+10;
 
@@ -6154,7 +6140,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-07-13-v23';
+const APP_VERSION='2026-07-13-v24';
 let _swRefreshing=false;
 
 async function wipeAppCaches(){
