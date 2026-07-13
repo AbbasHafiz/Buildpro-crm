@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-07-13-v9">
+<meta name="app-version" content="2026-07-13-v10">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -2664,6 +2664,30 @@ function drawBankFooter(doc){
   doc.text(c.name||'BuildPro',pw-14,h-5,{align:'right'});
 }
 
+// Crisp owner-expense totals box (avoids blurry autoTable foot on mobile PDF viewers)
+function drawOwnerExpTotals(doc,y,cashSpent,behalfSpent){
+  const pw=210;
+  const total=cashSpent+behalfSpent;
+  const boxH=28;
+  if(y+boxH>275){doc.addPage();y=20;}
+  doc.setFillColor(248,246,242);doc.rect(14,y,182,boxH,'F');
+  doc.setFillColor(201,123,58);doc.rect(14,y,3,boxH,'F');
+  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(90,85,80);
+  doc.text('Misc Cash Spent',20,y+8);
+  doc.setFont('helvetica','bold');doc.setTextColor(30,30,30);
+  doc.text('PKR '+fmt(cashSpent),190,y+8,{align:'right'});
+  doc.setFont('helvetica','normal');doc.setTextColor(90,85,80);
+  doc.text('On Behalf Spent',20,y+16);
+  doc.setFont('helvetica','bold');doc.setTextColor(30,30,30);
+  doc.text('PKR '+fmt(behalfSpent),190,y+16,{align:'right'});
+  doc.setDrawColor(220,215,208);doc.setLineWidth(0.3);doc.line(20,y+19.5,190,y+19.5);
+  doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(30,30,30);
+  doc.text('Owner-Side Total',20,y+25);
+  doc.setTextColor(201,123,58);
+  doc.text('PKR '+fmt(total),190,y+25,{align:'right'});
+  return y+boxH+8;
+}
+
 function pdfInv(id){
   const r=D.invoices.find(x=>x.id===id);if(!r)return;
   const doc=bPDF();const type=r.invType||'standard';
@@ -3410,19 +3434,13 @@ function pdfExpExternal(){
       startY:y,
       head:[['Date','Description','Funded','Category','Status','Amount (PKR)']],
       body:projRows.map(r=>[r.date||'—',r.desc+(r.paidTo?'\nTo: '+r.paidTo:''),fundLabel(r),r.cat||'—',statLabel(r),fmt(r.amount)]),
-      foot:[
-        ['','','','','Misc Cash Spent','PKR '+fmt(pCashSpent)],
-        ['','','','','On Behalf','PKR '+fmt(pBehalfSpent)],
-        ['','','','','Owner-Side Total','PKR '+fmt(pCashSpent+pBehalfSpent)]
-      ],
       styles:{fontSize:8.5,cellPadding:2.5,textColor:[30,30,30]},
       headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
-      footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[77,148,212]},
       columnStyles:{4:{cellWidth:24},5:{halign:'right',cellWidth:28}},
       didParseCell:data=>{if(data.section==='body'&&data.column.index===4)data.cell.styles.textColor=(data.cell.raw==='PAID')?[50,150,50]:(data.cell.raw==='PENDING')?[201,123,58]:[200,50,50];},
       margin:{left:14,right:14}
     });
-    y=doc.lastAutoTable.finalY+10;
+    y=drawOwnerExpTotals(doc,doc.lastAutoTable.finalY+6,pCashSpent,pBehalfSpent);
   });
   drawBankFooter(doc);
   doc.save('OwnerExpenses-'+today()+'.pdf');
@@ -3527,18 +3545,13 @@ function pdfExpProjectOwner(pid,projName){
     startY:y,
     head:[['Date','Description','Funded','Category','Status','Amount (PKR)']],
     body:allExps.map(r=>[r.date||'—',r.desc+(r.paidTo?'\nTo: '+r.paidTo:''),fundLabel(r),(r.cat||'other'),statLabel(r),fmt(r.amount)]),
-    foot:[
-      ['','','','','Misc Cash Spent','PKR '+fmt(cashSpent)],
-      ['','','','','On Behalf','PKR '+fmt(behalfSpent)],
-      ['','','','','Owner-Side Total','PKR '+fmt(cashSpent+behalfSpent)]
-    ],
     styles:{fontSize:8.5,cellPadding:3,textColor:[30,30,30]},
     headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
-    footStyles:{fontSize:8.5,fontStyle:'bold',textColor:[77,148,212]},
     columnStyles:{4:{cellWidth:24},5:{halign:'right',cellWidth:28}},
     didParseCell:data=>{if(data.section==='body'&&data.column.index===4)data.cell.styles.textColor=(data.cell.raw==='PAID')?[50,150,50]:(data.cell.raw==='PENDING')?[201,123,58]:[200,50,50];},
     margin:{left:14,right:14}
   });
+  drawOwnerExpTotals(doc,doc.lastAutoTable.finalY+6,cashSpent,behalfSpent);
   drawBankFooter(doc);
   doc.save('OwnerExpenses-'+projName.replace(/\s+/g,'-')+'-'+today()+'.pdf');
   toast('Owner expense PDF ✓');
@@ -3768,15 +3781,13 @@ function pdfProjPayments(pid){
       startY:y,
       head:[['Date','Description','Funded','Status','Amount (PKR)']],
       body:ownerExps.sort((a,b)=>(a.date||'').localeCompare(b.date||'')).map(r=>[r.date||'—',r.desc+(r.paidTo?'\nTo: '+r.paidTo:''),fundLabel(r),statLabel(r),fmt(r.amount)]),
-      foot:[['','','','Owner-Side Total','PKR '+fmt(cashSpent+behalfSpent)]],
       styles:{fontSize:8.5,cellPadding:2.5,textColor:[30,30,30]},
       headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
-      footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[77,148,212]},
       columnStyles:{3:{cellWidth:24},4:{halign:'right',cellWidth:28}},
       didParseCell:data=>{if(data.section==='body'&&data.column.index===3)data.cell.styles.textColor=(data.cell.raw==='PAID')?[50,150,50]:(data.cell.raw==='PENDING')?[201,123,58]:[200,50,50];},
       margin:{left:14,right:14}
     });
-    y=doc.lastAutoTable.finalY+8;
+    y=drawOwnerExpTotals(doc,doc.lastAutoTable.finalY+6,cashSpent,behalfSpent);
   }else if(!miscPays.length){
     doc.setFont('helvetica','italic');doc.setFontSize(9);doc.setTextColor(150,145,138);
     doc.text('No owner misc / on-behalf expenses recorded.',14,y);y+=12;
@@ -4308,7 +4319,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION — bump both on each release so deploys apply on open.
-const APP_VERSION='2026-07-13-v9';
+const APP_VERSION='2026-07-13-v10';
 let _swRefreshing=false;
 
 async function wipeAppCaches(){
