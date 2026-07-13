@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-07-13-v25">
+<meta name="app-version" content="2026-07-13-v26">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -3085,7 +3085,7 @@ async function pdfSubProjStatement(subconId,projectId){
       foot:[['','','','','Total Paid','PKR '+fmt(totalPaid),'']],
       styles:{fontSize:8.5,cellPadding:2.8,textColor:[30,30,30],valign:'top'},
       headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:7.5},
-      footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[77,148,212],fontSize:9},
+      footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[30,30,30],fontSize:9},
       columnStyles:{
         2:{cellWidth:42},
         3:{cellWidth:48},
@@ -3333,43 +3333,91 @@ function drawHeader(doc,title,ref,date,sub,subVal){
   return 46;
 }
 
-/** Gold bank bar on every page — crisp text, no overlapping lines. */
+/** Gold accent + crisp black footer text on white (text-on-yellow looks blurry on mobile PDF viewers). */
 function drawBankFooter(doc){
   const c=co();
-  const h=doc.internal.pageSize.getHeight();
+  const h=Math.round(doc.internal.pageSize.getHeight());
   const pw=210;
-  const barH=12;
+  const goldH=4;
+  const textBand=11;
   const pages=doc.internal.getNumberOfPages()||1;
   const company=(c.name||'BuildPro').trim();
   let detail='';
   if(c.bank||c.acc){
-    detail=['Bank: '+(c.bank||'-'),c.acc?('A/C: '+c.acc+(c.accT?' ('+c.accT+')':'')):'',c.iban?('IBAN: '+c.iban):''].filter(Boolean).join('   |   ');
+    detail=['Bank: '+(c.bank||'-'),c.acc?('A/C '+c.acc):'',c.iban?('IBAN '+c.iban):''].filter(Boolean).join('  |  ');
   }else{
     detail='Cash / Bank Transfer / JazzCash / EasyPaisa';
   }
   for(let p=1;p<=pages;p++){
     doc.setPage(p);
-    // Solid gold bar
+    const bandY=h-goldH-textBand;
+    // White band so glyphs stay sharp (not painted on yellow)
+    doc.setFillColor(255,255,255);
+    doc.rect(0,bandY,pw,textBand,'F');
+    // Thin gold line at the very bottom of every page (including last)
     doc.setFillColor(232,184,75);
-    doc.rect(0,h-barH,pw,barH,'F');
-    // Company on left (bold, integer pt size — avoids soft/blurry glyphs)
+    doc.rect(0,h-goldH,pw,goldH,'F');
+    // Crisp black text — integer positions only
+    doc.setTextColor(30,30,30);
     doc.setFont('helvetica','bold');
-    doc.setFontSize(8);
-    doc.setTextColor(26,25,22);
-    doc.text(company,14,h-barH+4.8);
-    // Payment / bank detail under company — clipped so it never overlaps page # 
+    doc.setFontSize(9);
+    doc.text(company,14,bandY+5);
     doc.setFont('helvetica','normal');
-    doc.setFontSize(7);
-    doc.setTextColor(40,38,34);
-    const detailLines=doc.splitTextToSize(detail,pw-50);
-    doc.text(detailLines[0]||'',14,h-barH+9.2);
-    // Page number on right
-    doc.setFont('helvetica','bold');
     doc.setFontSize(8);
-    doc.setTextColor(26,25,22);
-    doc.text(p+' / '+pages,pw-14,h-barH+7,{align:'right'});
+    const clipped=doc.splitTextToSize(detail,pw-48);
+    doc.text(clipped[0]||'',14,bandY+9);
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(9);
+    doc.text(p+' / '+pages,pw-14,bandY+7,{align:'right'});
   }
   doc.setPage(pages);
+}
+
+/** Crisp owner-expense totals box (avoids blurry blue autoTable foot on mobile PDF viewers). */
+function drawOwnerExpTotals(doc,y,cashSpent,behalfSpent){
+  const total=cashSpent+behalfSpent;
+  const boxH=28;
+  if(y+boxH>270){doc.addPage();y=20;}
+  doc.setFillColor(248,246,242);doc.rect(14,y,182,boxH,'F');
+  doc.setFillColor(201,123,58);doc.rect(14,y,3,boxH,'F');
+  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(90,85,80);
+  doc.text('Misc Cash Spent',20,y+8);
+  doc.setFont('helvetica','bold');doc.setTextColor(30,30,30);
+  doc.text('PKR '+fmt(cashSpent),190,y+8,{align:'right'});
+  doc.setFont('helvetica','normal');doc.setTextColor(90,85,80);
+  doc.text('On Behalf Spent',20,y+16);
+  doc.setFont('helvetica','bold');doc.setTextColor(30,30,30);
+  doc.text('PKR '+fmt(behalfSpent),190,y+16,{align:'right'});
+  doc.setDrawColor(220,215,208);doc.setLineWidth(0.3);doc.line(20,y+19.5,190,y+19.5);
+  doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(30,30,30);
+  doc.text('Owner-Side Total',20,y+25);
+  doc.setTextColor(201,123,58);
+  doc.text('PKR '+fmt(total),190,y+25,{align:'right'});
+  return y+boxH+8;
+}
+
+/** Crisp reimbursement / generic totals box. */
+function drawPdfTotalsBox(doc,y,rows){
+  // rows: [{label,value,emphasis?}]
+  const boxH=8+rows.length*8;
+  if(y+boxH>270){doc.addPage();y=20;}
+  doc.setFillColor(248,246,242);doc.rect(14,y,182,boxH,'F');
+  doc.setFillColor(201,123,58);doc.rect(14,y,3,boxH,'F');
+  rows.forEach((r,i)=>{
+    const yy=y+8+i*8;
+    const last=i===rows.length-1;
+    if(last&&rows.length>1){
+      doc.setDrawColor(220,215,208);doc.setLineWidth(0.3);doc.line(20,yy-4,190,yy-4);
+    }
+    doc.setFont('helvetica',last?'bold':'normal');
+    doc.setFontSize(last?10:9);
+    doc.setTextColor(last?201:90,last?123:85,last?58:80);
+    doc.text(r.label,20,yy);
+    doc.setFont('helvetica','bold');
+    doc.setTextColor(last?201:30,last?123:30,last?58:30);
+    doc.text(r.value,190,yy,{align:'right'});
+  });
+  return y+boxH+8;
 }
 
 async function pdfInv(id){
@@ -3763,13 +3811,14 @@ async function pdfAgr(id){
 
   if(style==='digital'){
     if(r.footerNote){
-      const h=doc.internal.pageSize.getHeight();
+      const h=Math.round(doc.internal.pageSize.getHeight());
       const pages=doc.internal.getNumberOfPages()||1;
       for(let p=1;p<=pages;p++){
         doc.setPage(p);
-        doc.setFillColor(232,184,75);doc.rect(0,h-12,pw,12,'F');
-        doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(26,25,22);
-        doc.text(r.footerNote,pw/2,h-5,{align:'center',maxWidth:pw-28});
+        doc.setFillColor(255,255,255);doc.rect(0,h-15,pw,11,'F');
+        doc.setFillColor(232,184,75);doc.rect(0,h-4,pw,4,'F');
+        doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(30,30,30);
+        doc.text(r.footerNote,pw/2,h-8,{align:'center',maxWidth:pw-28});
       }
       doc.setPage(pages);
     }else{drawBankFooter(doc);}
@@ -4861,20 +4910,14 @@ async function pdfExpExternal(){
       startY:y,
       head:[['Date','Description','Funded','Category','Status','Amount (PKR)']],
       body:projRows.map(r=>[r.date||'—',r.desc+(r.paidTo?'\nTo: '+r.paidTo:''),fundLabel(r),r.cat||'—',statLabel(r),fmt(r.amount)]),
-      foot:[
-        ['','','','','Misc Cash Spent','PKR '+fmt(pCashSpent)],
-        ['','','','','On Behalf','PKR '+fmt(pBehalfSpent)],
-        ['','','','','Owner-Side Total','PKR '+fmt(pCashSpent+pBehalfSpent)]
-      ],
       styles:{fontSize:8.5,cellPadding:2.5,textColor:[30,30,30]},
       headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
-      footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[77,148,212]},
       columnStyles:{4:{cellWidth:24},5:{halign:'right',cellWidth:28}},
       didParseCell:data=>{if(data.section==='body'&&data.column.index===4)data.cell.styles.textColor=(data.cell.raw==='PAID')?[50,150,50]:(data.cell.raw==='PENDING')?[201,123,58]:[200,50,50];},
-      rowPageBreak:'avoid',showFoot:'lastPage',
-    margin:{left:14,right:14,bottom:18}
+      rowPageBreak:'avoid',
+      margin:{left:14,right:14,bottom:18}
     });
-    y=doc.lastAutoTable.finalY+10;
+    y=drawOwnerExpTotals(doc,doc.lastAutoTable.finalY+6,pCashSpent,pBehalfSpent);
   });
   drawBankFooter(doc);
   doc.save('OwnerExpenses-'+today()+'.pdf');
@@ -5001,19 +5044,14 @@ async function pdfExpProjectOwner(pid,projName){
     startY:y,
     head:[['Date','Description','Funded','Category','Status','Amount (PKR)']],
     body:allExps.map(r=>[r.date||'—',r.desc+(r.paidTo?'\nTo: '+r.paidTo:''),fundLabel(r),(r.cat||'other'),statLabel(r),fmt(r.amount)]),
-    foot:[
-      ['','','','','Misc Cash Spent','PKR '+fmt(cashSpent)],
-      ['','','','','On Behalf','PKR '+fmt(behalfSpent)],
-      ['','','','','Owner-Side Total','PKR '+fmt(cashSpent+behalfSpent)]
-    ],
     styles:{fontSize:8.5,cellPadding:3,textColor:[30,30,30]},
     headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
-    footStyles:{fontSize:8.5,fontStyle:'bold',textColor:[77,148,212]},
     columnStyles:{4:{cellWidth:24},5:{halign:'right',cellWidth:28}},
     didParseCell:data=>{if(data.section==='body'&&data.column.index===4)data.cell.styles.textColor=(data.cell.raw==='PAID')?[50,150,50]:(data.cell.raw==='PENDING')?[201,123,58]:[200,50,50];},
-    rowPageBreak:'avoid',showFoot:'lastPage',
+    rowPageBreak:'avoid',
     margin:{left:14,right:14,bottom:18}
   });
+  drawOwnerExpTotals(doc,doc.lastAutoTable.finalY+6,cashSpent,behalfSpent);
   drawBankFooter(doc);
   doc.save('OwnerExpenses-'+projName.replace(/\s+/g,'-')+'-'+today()+'.pdf');
   toast('Owner expense PDF ✓');
@@ -5176,7 +5214,7 @@ async function pdfSpayConfirm(id){
       foot:[['','','','Total Paid',fmt(totalPaid)]],
       styles:{fontSize:8.5,cellPadding:2.8,textColor:[30,30,30],valign:'top'},
       headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:7.5},
-      footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[77,148,212],fontSize:9},
+      footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[30,30,30],fontSize:9},
       columnStyles:{1:{cellWidth:45},2:{cellWidth:50},4:{halign:'right'}},
       rowPageBreak:'avoid',showFoot:'lastPage',
     margin:{left:14,right:14,bottom:18}
@@ -5272,7 +5310,7 @@ async function pdfProjPayments(pid){
       foot:[['','','Total Misc','PKR '+fmt(totalMisc)]],
       styles:{fontSize:8.5,cellPadding:2.5,textColor:[30,30,30]},
       headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
-      footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[77,148,212]},
+      footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[30,30,30]},
       columnStyles:{3:{halign:'right'}},
       rowPageBreak:'avoid',showFoot:'lastPage',
     margin:{left:14,right:14,bottom:18}
@@ -5288,16 +5326,14 @@ async function pdfProjPayments(pid){
       startY:y,
       head:[['Date','Description','Funded','Status','Amount (PKR)']],
       body:ownerExps.sort((a,b)=>(a.date||'').localeCompare(b.date||'')).map(r=>[r.date||'—',r.desc+(r.paidTo?'\nTo: '+r.paidTo:''),fundLabel(r),statLabel(r),fmt(r.amount)]),
-      foot:[['','','','Owner-Side Total','PKR '+fmt(cashSpent+behalfSpent)]],
       styles:{fontSize:8.5,cellPadding:2.5,textColor:[30,30,30]},
       headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
-      footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[77,148,212]},
       columnStyles:{3:{cellWidth:24},4:{halign:'right',cellWidth:28}},
       didParseCell:data=>{if(data.section==='body'&&data.column.index===3)data.cell.styles.textColor=(data.cell.raw==='PAID')?[50,150,50]:(data.cell.raw==='PENDING')?[201,123,58]:[200,50,50];},
-      rowPageBreak:'avoid',showFoot:'lastPage',
-    margin:{left:14,right:14,bottom:18}
+      rowPageBreak:'avoid',
+      margin:{left:14,right:14,bottom:18}
     });
-    y=doc.lastAutoTable.finalY+8;
+    y=drawOwnerExpTotals(doc,doc.lastAutoTable.finalY+6,cashSpent,behalfSpent);
   }else if(!miscPays.length){
     doc.setFont('helvetica','italic');doc.setFontSize(9);doc.setTextColor(150,145,138);
     doc.text('No owner misc / on-behalf expenses recorded.',14,y);y+=12;
@@ -6075,25 +6111,21 @@ async function pdfReimbursement(pid,projName){
       fundLabel(r),
       (r.cat||'other').charAt(0).toUpperCase()+(r.cat||'other').slice(1),
       statLabel(r),fmt(r.amount)]),
-    foot:[
-      ['','','','','Cash-in-Hand Spent','PKR '+fmt(cashSpent)],
-      ['','','','','Reimbursable (Owed)','PKR '+fmt(behalfOwed)],
-      ['','','','','TOTAL','PKR '+fmt(totalAll)]
-    ],
     styles:{fontSize:8.5,cellPadding:3,textColor:[30,30,30]},
     headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
-    footStyles:{fontSize:8.5,fontStyle:'bold'},
     columnStyles:{4:{cellWidth:26},5:{halign:'right',cellWidth:28}},
     didParseCell:data=>{
       if(data.section==='body'&&data.column.index===4)
         data.cell.styles.textColor=(data.cell.raw==='PAID')?[50,150,50]:(data.cell.raw==='PENDING')?[201,123,58]:[200,50,50];
-      if(data.section==='foot'&&data.row.index===2)
-        data.cell.styles.textColor=[201,123,58];
     },
-    rowPageBreak:'avoid',showFoot:'lastPage',
+    rowPageBreak:'avoid',
     margin:{left:14,right:14,bottom:18}
   });
-  y=doc.lastAutoTable.finalY+10;
+  y=drawPdfTotalsBox(doc,doc.lastAutoTable.finalY+6,[
+    {label:'Cash-in-Hand Spent',value:'PKR '+fmt(cashSpent)},
+    {label:'Reimbursable (Owed)',value:'PKR '+fmt(behalfOwed)},
+    {label:'TOTAL',value:'PKR '+fmt(totalAll)}
+  ]);
 
   // Final reimbursement request box
   if(y>240){doc.addPage();y=20;}
@@ -6165,7 +6197,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-07-13-v25';
+const APP_VERSION='2026-07-13-v26';
 let _swRefreshing=false;
 
 async function wipeAppCaches(){
