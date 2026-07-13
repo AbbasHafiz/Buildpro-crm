@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-07-13-v20">
+<meta name="app-version" content="2026-07-13-v21">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -3062,15 +3062,36 @@ async function pdfSubProjStatement(subconId,projectId){
   y+=52;
   if(pays.length){
     let running=0;
+    const body=pays.map((p,i)=>{
+      running+=p.amount;
+      const phaseBits=[p.phase||'—'];
+      if(p.desc)phaseBits.push(p.desc);
+      const work=phaseBits.join('\n');
+      const bd=(p.breakdown||[]);
+      const bdTotal=bd.reduce((s,b)=>s+(Number(b.amount)||0),0);
+      let forWhom='—';
+      if(bd.length){
+        const lines=bd.map(b=>`${b.trade||'Other'}${b.name?' · '+b.name:''}: ${fmt(b.amount)}`);
+        const kept=Math.round(((Number(p.amount)||0)-bdTotal)*100)/100;
+        if(kept>0.01)lines.push(`(kept / not distributed): ${fmt(kept)}`);
+        forWhom=lines.join('\n');
+      }
+      return[i+1,p.date||'—',work,forWhom,p.method||'Cash',fmt(p.amount),fmt(running)];
+    });
     doc.autoTable({
       startY:y,
-      head:[['#','Date','Phase / Work','Method','Amount (PKR)','Cumulative']],
-      body:pays.map((p,i)=>{running+=p.amount;return[i+1,p.date||'—',p.phase||'—',p.method||'Cash',fmt(p.amount),fmt(running)];}),
-      foot:[['','','','Total Paid','PKR '+fmt(totalPaid),'']],
-      styles:{fontSize:9,cellPadding:3,textColor:[30,30,30]},
-      headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
+      head:[['#','Date','Phase / Work','For (Person / Trade)','Method','Amount','Cumulative']],
+      body,
+      foot:[['','','','','Total Paid','PKR '+fmt(totalPaid),'']],
+      styles:{fontSize:8.5,cellPadding:2.8,textColor:[30,30,30],valign:'top'},
+      headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:7.5},
       footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[77,148,212],fontSize:9},
-      columnStyles:{4:{halign:'right'},5:{halign:'right',textColor:[82,181,106]}},
+      columnStyles:{
+        2:{cellWidth:42},
+        3:{cellWidth:48},
+        5:{halign:'right'},
+        6:{halign:'right',textColor:[82,181,106]}
+      },
       margin:{left:14,right:14}
     });
   }else{
@@ -5130,20 +5151,34 @@ async function pdfSpayConfirm(id){
     });
     y=doc.lastAutoTable.finalY+10;
   }
-  // Payment history for this sub-con on this project
+  // Payment history for this sub-con on this project (with same breakdown as tracking tab)
   const history=D.subpays.filter(x=>x.subconId===r.subconId&&x.projectId===r.projectId).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
   if(history.length>0){
     const totalPaid=history.reduce((s,x)=>s+x.amount,0);
     const sc2=D.subcons.find(x=>x.id===r.subconId);
+    doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(130,125,118);
+    doc.text('PAYMENT HISTORY (this project)',14,y);y+=5;
     doc.autoTable({
       startY:y,
-      head:[['Date','Phase / Work','Method','Amount (PKR)']],
-      body:history.map(p=>[p.date||'—',p.phase+(p.desc?' · '+p.desc:''),p.method||'Cash',fmt(p.amount)+(p.id===id?' ◀':'')]),
-      foot:[['','','Total Paid',fmt(totalPaid)]],
-      styles:{fontSize:9,cellPadding:3,textColor:[30,30,30]},
-      headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
+      head:[['Date','Phase / Work','For (Person / Trade)','Method','Amount (PKR)']],
+      body:history.map(p=>{
+        const work=(p.phase||'—')+(p.desc?'\n'+p.desc:'')+(p.id===id?'  ◀':'');
+        const bd=p.breakdown||[];
+        let forWhom='—';
+        if(bd.length){
+          const bdTotal=bd.reduce((s,b)=>s+(Number(b.amount)||0),0);
+          const lines=bd.map(b=>`${b.trade||'Other'}${b.name?' · '+b.name:''}: ${fmt(b.amount)}`);
+          const kept=Math.round(((Number(p.amount)||0)-bdTotal)*100)/100;
+          if(kept>0.01)lines.push(`(kept / not distributed): ${fmt(kept)}`);
+          forWhom=lines.join('\n');
+        }
+        return[p.date||'—',work,forWhom,p.method||'Cash',fmt(p.amount)];
+      }),
+      foot:[['','','','Total Paid',fmt(totalPaid)]],
+      styles:{fontSize:8.5,cellPadding:2.8,textColor:[30,30,30],valign:'top'},
+      headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:7.5},
       footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[77,148,212],fontSize:9},
-      columnStyles:{3:{halign:'right'}},
+      columnStyles:{1:{cellWidth:45},2:{cellWidth:50},4:{halign:'right'}},
       margin:{left:14,right:14}
     });
     y=doc.lastAutoTable.finalY+8;
@@ -6143,7 +6178,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-07-13-v20';
+const APP_VERSION='2026-07-13-v21';
 let _swRefreshing=false;
 
 async function wipeAppCaches(){
