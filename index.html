@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-07-13-v12">
+<meta name="app-version" content="2026-07-13-v13">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -712,6 +712,7 @@ select option{background:var(--s2);}
     <button class="btn btn-grey" style="justify-content:flex-start;gap:15px;padding:14px" onclick="X('sh-new');O('sh-spay');iSpay()"><span style="font-size:22px">💸</span><div style="text-align:left"><div style="font-size:var(--fs-md)">Sub-Con Payment</div><div style="font-size:var(--fs-xs);color:var(--mut);font-weight:400;margin-top:2px">Pay contractor for work done</div></div></button>
     <button class="btn btn-grey" style="justify-content:flex-start;gap:15px;padding:14px" onclick="X('sh-new');O('sh-task');iTask()"><span style="font-size:22px">📋</span><div style="text-align:left"><div style="font-size:var(--fs-md)">New Task</div><div style="font-size:var(--fs-xs);color:var(--mut);font-weight:400;margin-top:2px">Schedule & progress tracking</div></div></button>
     <button class="btn btn-grey" style="justify-content:flex-start;gap:15px;padding:14px" onclick="X('sh-new');O('sh-exp');iExp()"><span style="font-size:22px">💰</span><div style="text-align:left"><div style="font-size:var(--fs-md)">New Expense</div><div style="font-size:var(--fs-xs);color:var(--mut);font-weight:400;margin-top:2px">Budget & cost tracking</div></div></button>
+    <button class="btn btn-grey" style="justify-content:flex-start;gap:15px;padding:14px" onclick="X('sh-new');O('sh-personal');iPersonal()"><span style="font-size:22px">📒</span><div style="text-align:left"><div style="font-size:var(--fs-md)">Personal Record</div><div style="font-size:var(--fs-xs);color:var(--mut);font-weight:400;margin-top:2px">Sub-con lent me / I took &amp; spent</div></div></button>
     <button class="btn btn-grey" style="justify-content:flex-start;gap:15px;padding:14px" onclick="X('sh-new');O('sh-cpay');iCpay()"><span style="font-size:22px">💳</span><div style="text-align:left"><div style="font-size:var(--fs-md)">Payment Received</div><div style="font-size:var(--fs-xs);color:var(--mut);font-weight:400;margin-top:2px">Record client payment</div></div></button>
   </div>
 </div></div>
@@ -1355,6 +1356,45 @@ select option{background:var(--s2);}
   <div class="sh-ft"><button class="btn btn-grey" onclick="X('sh-exp')">Cancel</button><button class="btn btn-gold" onclick="saveExp()">💾 Save Expense</button></div>
 </div></div>
 
+<!-- PERSONAL RECORD SHEET — sub-con lent me / I took & spent -->
+<div class="sh-ov" id="sh-personal"><div class="sh">
+  <div class="sh-grip"></div>
+  <div class="sh-hd"><div class="sh-title" id="pers-sh-t">Personal Record</div><button class="sh-x" onclick="X('sh-personal')">×</button></div>
+  <div class="sh-body">
+    <div class="edit-badge" id="pers-eb">✏️ Editing personal record</div>
+    <input type="hidden" id="pers-eid">
+    <div style="background:rgba(155,127,212,.08);border:1px solid rgba(155,127,212,.25);border-radius:10px;padding:10px 13px;margin-bottom:12px;font-size:var(--fs-xs);color:var(--mut)">Personal tracking only — does <b style="color:var(--txt)">not</b> change project profit, owner PDF, or contractor spending totals.</div>
+    <div class="fg"><label>Record Type</label>
+      <select id="pers-type" onchange="togglePersonalType()">
+        <option value="subloan">🤝 Sub-Con Lent Me — I owe them back</option>
+        <option value="draw">🙋 I Took &amp; Spent — personal draw / use</option>
+      </select>
+    </div>
+    <div class="fg" id="pers-sub-row"><label>Sub-Contractor</label>
+      <div class="ds-wrap"><input class="ds-inp" id="pers-sub-t" placeholder="Who lent you / related sub-con" readonly onclick="oDs('ds-pers-sub')"><div class="ds-list" id="ds-pers-sub"></div><input type="hidden" id="pers-sub-id"></div>
+    </div>
+    <div class="fg"><label>Project (optional)</label>
+      <div class="ds-wrap"><input class="ds-inp" id="pers-proj-t" placeholder="Link to a project (optional)" readonly onclick="oDs('ds-pers-proj')"><div class="ds-list" id="ds-pers-proj"></div><input type="hidden" id="pers-proj-id"></div>
+    </div>
+    <div class="f2">
+      <div class="fg"><label>Date</label><input type="date" id="pers-date"></div>
+      <div class="fg"><label>Amount (PKR)</label><input type="number" id="pers-amt" placeholder="0"></div>
+    </div>
+    <div class="fg" id="pers-spent-row" style="display:none"><label>Spent On / Used For</label><input id="pers-spent" placeholder="e.g. Personal expense, family, fuel…"></div>
+    <div class="fg"><label>Method</label>
+      <select id="pers-method"><option>Cash</option><option>Bank Transfer</option><option>JazzCash</option><option>EasyPaisa</option><option>Cheque</option></select>
+    </div>
+    <div class="fg" id="pers-status-row"><label>Loan Status</label>
+      <select id="pers-status">
+        <option value="open">🔴 Still Outstanding — I still owe</option>
+        <option value="repaid">✅ Repaid — settled with sub-con</option>
+      </select>
+    </div>
+    <div class="fg"><label>Notes</label><textarea id="pers-notes" placeholder="Optional details…" style="min-height:60px"></textarea></div>
+  </div>
+  <div class="sh-ft"><button class="btn btn-grey" onclick="X('sh-personal')">Cancel</button><button class="btn btn-gold" onclick="savePersonal()">💾 Save Record</button></div>
+</div></div>
+
 <!-- INVESTOR SHEET -->
 <!-- SUB-CON PROJECT CONTRACT EDITOR -->
 <div class="sh-ov" id="sh-spcon"><div class="sh">
@@ -1404,7 +1444,7 @@ const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 let supa=null,stmr=null;
 // Multi-device sync state
 let baseUpdatedAt=null,applyingRemote=false,rtChannel=null,curUid=null;
-const COLLECTIONS=['clients','projects','subcons','subpays','cpays','invoices','estimates','agreements','tasks','expenses','investors','banks','subconContracts'];
+const COLLECTIONS=['clients','projects','subcons','subpays','cpays','invoices','estimates','agreements','tasks','expenses','investors','banks','subconContracts','personals'];
 
 // ════ DATA ════
 let D={
@@ -1414,6 +1454,7 @@ let D={
   invoices:[],estimates:[],agreements:[],
   tasks:[],expenses:[],
   investors:[],banks:[],subconContracts:[],
+  personals:[],
   _tomb:[]
 };
 
@@ -1670,6 +1711,8 @@ const DS={
   'ds-cp-inv':{t:'invoices',tx:'cp-inv-t',id:'cp-inv-id'},
   'ds-tk-proj':{t:'projects',tx:'tk-proj-t',id:'tk-proj-id'},
   'ds-ex-proj':{t:'projects',tx:'ex-proj-t',id:'ex-proj-id'},
+  'ds-pers-sub':{t:'subcons',tx:'pers-sub-t',id:'pers-sub-id'},
+  'ds-pers-proj':{t:'projects',tx:'pers-proj-t',id:'pers-proj-id'},
 };
 function oDs(dsId){
   document.querySelectorAll('.ds-list').forEach(d=>d.classList.remove('on'));
@@ -3258,8 +3301,14 @@ function renderExp(){
   const showSubpays=!isOwnerMode&&(expFilter==='all'||expFilter==='paid'||expFilter==='labour');
   const subpaysFiltered=showSubpays?allSubpays:[];
   let rows=expsFiltered;
-  if(!rows.length&&!subpaysFiltered.length){el.innerHTML='<div class="empty"><div class="empty-i">💰</div><div class="empty-t">No '+(isOwnerMode?'owner':'contractor')+' spending yet.<br>Tap + to add an expense'+(isOwnerMode?'':', or record a sub-con payment')+'.</div></div>';return;}
   const catIcon={material:'🧱',labour:'👷',equipment:'🔧',transport:'🚚',utility:'💡',other:'📦'};
+  if(!rows.length&&!subpaysFiltered.length){
+    el.innerHTML=(isOwnerMode
+      ?'<div class="empty"><div class="empty-i">💰</div><div class="empty-t">No owner spending yet.<br>Tap + to add an expense.</div></div>'
+      :'<div class="empty"><div class="empty-i">💰</div><div class="empty-t">No contractor spending yet.<br>Tap + to add an expense, or record a sub-con payment.</div></div>')
+      +(!isOwnerMode?personalSectionHtml():'');
+    return;
+  }
   const projIds=[...new Set([
     ...rows.map(r=>r.projectId||'__none__'),
     ...subpaysFiltered.map(p=>p.projectId||'__none__')
@@ -3409,7 +3458,7 @@ function renderExp(){
         ${isOwnerMode?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-sm);font-weight:600;border-top:1px solid var(--bor);padding-top:6px;margin-top:3px"><span style="color:var(--mut)">Owner-Side Total</span><span style="font-family:'JetBrains Mono',monospace;color:var(--red)">PKR ${fmt(totalDisplay)}</span></div>`:''}
       </div>
     </div>`;
-  }).join('');
+  }).join('')+(!isOwnerMode?personalSectionHtml():'');
 }
 
 function setExpFunding(id,funded){
@@ -3422,6 +3471,139 @@ function setExpFunding(id,funded){
   r.updatedAt=new Date().toISOString();
   sched();renderExp();renderLedger();renderDash();
   toast(funded==='contract'?'Moved to Contractor Expenses':funded==='cashinhand'?'Moved to Owner Misc Cash':'Moved to On Behalf of Owner');
+}
+
+// ════ PERSONAL RECORDS (sub-con lent me / I took & spent) ════
+function togglePersonalType(){
+  const t=e$('pers-type')?.value||'subloan';
+  const subRow=e$('pers-sub-row');const spentRow=e$('pers-spent-row');const stRow=e$('pers-status-row');
+  if(t==='subloan'){
+    if(subRow)subRow.style.display='';
+    if(spentRow)spentRow.style.display='none';
+    if(stRow)stRow.style.display='';
+  }else{
+    if(subRow)subRow.style.display=''; // optional related sub-con
+    if(spentRow)spentRow.style.display='';
+    if(stRow)stRow.style.display='none';
+  }
+}
+function iPersonal(type){
+  sv('pers-eid','');const eb=e$('pers-eb');if(eb)eb.classList.remove('on');
+  const sh=e$('pers-sh-t');if(sh)sh.textContent='Personal Record';
+  ['pers-sub-t','pers-sub-id','pers-proj-t','pers-proj-id','pers-spent','pers-notes'].forEach(id=>sv(id,''));
+  sv('pers-amt','');sv('pers-date',today());sv('pers-type',type||'subloan');sv('pers-method','Cash');sv('pers-status','open');
+  togglePersonalType();
+}
+function ePersonal(id){
+  const r=(D.personals||[]).find(x=>x.id===id);if(!r)return;
+  sv('pers-eid',id);const eb=e$('pers-eb');if(eb)eb.classList.add('on');
+  const sh=e$('pers-sh-t');if(sh)sh.textContent='Edit Personal Record';
+  sv('pers-type',r.type||'subloan');sv('pers-date',r.date||today());sv('pers-amt',r.amount||'');
+  sv('pers-method',r.method||'Cash');sv('pers-status',r.status||'open');sv('pers-spent',r.spentOn||'');sv('pers-notes',r.notes||'');
+  const sc=D.subcons.find(x=>x.id===r.subconId);
+  sv('pers-sub-t',sc?sc.name:r.subconName||'');sv('pers-sub-id',r.subconId||'');
+  const p=D.projects.find(x=>x.id===r.projectId);
+  sv('pers-proj-t',p?p.name:r.projectName||'');sv('pers-proj-id',r.projectId||'');
+  togglePersonalType();O('sh-personal');
+}
+function savePersonal(){
+  const eid=e$('pers-eid').value;
+  const type=e$('pers-type')?.value||'subloan';
+  const amount=parseFloat(e$('pers-amt').value)||0;
+  const doc={
+    id:eid||uid(),
+    type,
+    date:e$('pers-date').value||today(),
+    amount,
+    method:e$('pers-method').value||'Cash',
+    subconId:e$('pers-sub-id').value,
+    subconName:e$('pers-sub-t').value,
+    projectId:e$('pers-proj-id').value,
+    projectName:e$('pers-proj-t').value,
+    spentOn:e$('pers-spent').value||'',
+    notes:e$('pers-notes').value||'',
+    status:type==='subloan'?(e$('pers-status')?.value||'open'):'n/a'
+  };
+  if(!doc.amount){toast('Enter amount','err');return;}
+  if(type==='subloan'&&!doc.subconId){toast('Select the sub-contractor who lent you','err');return;}
+  if(!D.personals)D.personals=[];
+  ups('personals',doc);X('sh-personal');renderExp();updateDots();
+  toast(eid?'Personal record updated ✓':(type==='subloan'?'Loan from sub-con recorded ✓':'Personal draw recorded ✓'));
+}
+function markPersonalRepaid(id){
+  const r=(D.personals||[]).find(x=>x.id===id);if(!r)return;
+  r.status=r.status==='repaid'?'open':'repaid';
+  r.updatedAt=new Date().toISOString();
+  sched();renderExp();
+  toast(r.status==='repaid'?'Marked repaid ✅':'Marked outstanding 🔴','info');
+}
+function personalSectionHtml(){
+  const rows=(D.personals||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const loans=rows.filter(r=>r.type==='subloan');
+  const draws=rows.filter(r=>r.type==='draw');
+  const owed=loans.filter(r=>(r.status||'open')!=='repaid').reduce((s,r)=>s+r.amount,0);
+  const loanTot=loans.reduce((s,r)=>s+r.amount,0);
+  const drawTot=draws.reduce((s,r)=>s+r.amount,0);
+  return`<div style="background:var(--s1);border:1px solid rgba(155,127,212,.35);border-radius:var(--r);overflow:hidden;margin-bottom:12px;margin-top:4px">
+    <div style="padding:13px 14px;border-bottom:1px solid var(--bor)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px">
+        <div>
+          <div style="font-size:var(--fs-md);font-weight:700;color:var(--pur)">📒 Personal Records</div>
+          <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">Sub-con lent me, or I took money &amp; spent it — not part of project profit</div>
+        </div>
+        <button class="ca" style="flex:none;padding:6px 10px;font-size:var(--fs-xs);color:var(--pur);border-color:rgba(155,127,212,.4);background:rgba(155,127,212,.08)" onclick="iPersonal();O('sh-personal')">+ Add</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px">
+        <div style="background:var(--s2);border-radius:8px;padding:8px;text-align:center">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--red)">${fmt(owed)}</div>
+          <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Still Owe</div>
+        </div>
+        <div style="background:var(--s2);border-radius:8px;padding:8px;text-align:center">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--pur)">${fmt(loanTot)}</div>
+          <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Loans Taken</div>
+        </div>
+        <div style="background:var(--s2);border-radius:8px;padding:8px;text-align:center">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--ora)">${fmt(drawTot)}</div>
+          <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">I Took &amp; Spent</div>
+        </div>
+      </div>
+    </div>
+    ${!rows.length?`<div style="padding:18px 14px;text-align:center;font-size:var(--fs-sm);color:var(--mut)">No personal records yet.<br>Track when a sub-con lends you money, or you take cash and spend it.</div>`:''}
+    ${loans.length?`<div style="padding:7px 14px;background:rgba(155,127,212,.08);border-bottom:1px solid var(--bor);font-size:var(--fs-xs);font-weight:700;color:var(--pur);text-transform:uppercase;letter-spacing:.5px">🤝 Sub-Con Lent Me</div>`:''}
+    ${loans.map(r=>{
+      const open=(r.status||'open')!=='repaid';
+      return`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:11px 14px;border-bottom:1px solid var(--bor)">
+        <div>
+          <div style="font-size:var(--fs-sm);font-weight:600">${r.subconName||'Sub-Con'} ${open?'<span style="color:var(--red);font-size:var(--fs-xs)">🔴 Outstanding</span>':'<span style="color:var(--grn);font-size:var(--fs-xs)">✅ Repaid</span>'}</div>
+          <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">${r.date||'—'} · ${r.method||'Cash'}${r.projectName?' · '+r.projectName:''}</div>
+          ${r.notes?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">${r.notes}</div>`:''}
+        </div>
+        <div style="text-align:right;flex-shrink:0;margin-left:12px">
+          <div style="font-family:'JetBrains Mono',monospace;color:var(--pur);font-size:var(--fs-md)">${fmt(r.amount)}</div>
+          <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;justify-content:flex-end">
+            <button style="font-size:var(--fs-xs);color:var(--gold);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif;font-weight:600" onclick="markPersonalRepaid('${r.id}')">${open?'✅ Repaid':'↩ Outstanding'}</button>
+            <button style="font-size:var(--fs-xs);color:var(--blu);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="ePersonal('${r.id}')">Edit</button>
+            <button style="font-size:var(--fs-xs);color:var(--red);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="del('personals','${r.id}')">Del</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('')}
+    ${draws.length?`<div style="padding:7px 14px;background:rgba(232,148,75,.08);border-bottom:1px solid var(--bor);font-size:var(--fs-xs);font-weight:700;color:var(--ora);text-transform:uppercase;letter-spacing:.5px">🙋 I Took &amp; Spent</div>`:''}
+    ${draws.map(r=>`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:11px 14px;border-bottom:1px solid var(--bor)">
+      <div>
+        <div style="font-size:var(--fs-sm);font-weight:600">${r.spentOn||'Personal use'}</div>
+        <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">${r.date||'—'} · ${r.method||'Cash'}${r.subconName?' · via '+r.subconName:''}${r.projectName?' · '+r.projectName:''}</div>
+        ${r.notes?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">${r.notes}</div>`:''}
+      </div>
+      <div style="text-align:right;flex-shrink:0;margin-left:12px">
+        <div style="font-family:'JetBrains Mono',monospace;color:var(--ora);font-size:var(--fs-md)">${fmt(r.amount)}</div>
+        <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;justify-content:flex-end">
+          <button style="font-size:var(--fs-xs);color:var(--blu);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="ePersonal('${r.id}')">Edit</button>
+          <button style="font-size:var(--fs-xs);color:var(--red);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="del('personals','${r.id}')">Del</button>
+        </div>
+      </div>
+    </div>`).join('')}
+  </div>`;
 }
 
 // ════ PDF EXPENSES ════
@@ -4542,7 +4724,7 @@ async function importBk(){
         const p=JSON.parse(ev.target.result);
         // Keep logo as-is — full logo now saves directly to Supabase
         // Import EVERY key into D
-        const keys=['company','clients','projects','subcons','subpays','cpays','invoices','estimates','agreements','tasks','expenses','investors','banks','subconContracts'];
+        const keys=['company','clients','projects','subcons','subpays','cpays','invoices','estimates','agreements','tasks','expenses','investors','banks','subconContracts','personals'];
         keys.forEach(k=>{if(p[k]!==undefined)D[k]=p[k];});
         // Ensure arrays
         keys.filter(k=>k!=='company').forEach(k=>{if(!Array.isArray(D[k]))D[k]=[];});
@@ -4565,7 +4747,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION — bump both on each release so deploys apply on open.
-const APP_VERSION='2026-07-13-v12';
+const APP_VERSION='2026-07-13-v13';
 let _swRefreshing=false;
 
 async function wipeAppCaches(){
