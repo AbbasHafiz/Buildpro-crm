@@ -351,6 +351,7 @@ select option{background:var(--s2);}
     <div class="um-i" onclick="syncNow();cMenu()">🔄 Sync Now</div>
     <div class="um-i" onclick="exportBk()">⬇ Export Backup</div>
     <div class="um-i" onclick="importBk()">⬆ Import Backup</div>
+    <div class="um-i" id="um-update" onclick="clearCacheUpdate()">🔄 Check for Updates<span id="um-update-badge" style="display:none;margin-left:6px;font-size:9px;background:var(--gold);color:#1a1916;border-radius:6px;padding:1px 6px;font-weight:700">NEW</span></div>
     <div class="um-i red" onclick="signOut()">Sign Out</div>
   </div>
 
@@ -1353,6 +1354,21 @@ select option{background:var(--s2);}
 function hasUrdu(text){
   if(!text)return false;
   return /[\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]/.test(text);
+}
+function pdfTextUrdu(doc,text,x,y,opts){
+  if(!text)return;
+  if(hasUrdu(text)){
+    // For Urdu text: split into lines, detect RTL
+    const maxW=opts?.maxWidth||180;
+    const lines=doc.splitTextToSize(text,maxW);
+    const pw=210;
+    lines.forEach((line,i)=>{
+      // Render Urdu RTL from right side
+      doc.text(line,pw-14,y+(i*5.5),{align:'right',...(opts||{})});
+    });
+  }else{
+    doc.text(text,x,y,opts||{});
+  }
 }
 // ════ SUPABASE CONFIG ════
 const SUPA_URL='https://lwjcnevludsiwoudzxcj.supabase.co';
@@ -4024,10 +4040,40 @@ async function importBk(){
 }
 
 // ════ SERVICE WORKER ════
+// Clears the app cache and reloads from the network so the latest version loads.
+// Saved data (localStorage / Supabase) is preserved.
+async function clearCacheUpdate(){
+  cMenu();
+  toast('Clearing cache & updating…','info');
+  try{
+    if('serviceWorker' in navigator){
+      const regs=await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r=>r.update().catch(()=>{})));
+    }
+    if('caches' in window){
+      const keys=await caches.keys();
+      await Promise.all(keys.map(k=>caches.delete(k)));
+    }
+  }catch(e){}
+  setTimeout(()=>location.reload(),500);
+}
+
 if('serviceWorker' in navigator){
   navigator.serviceWorker.register('./sw.js').then(reg => {
     reg.update();
+    // When a new version is detected, surface a badge + toast so the user can update.
+    reg.addEventListener('updatefound',()=>{
+      const nw=reg.installing;if(!nw)return;
+      nw.addEventListener('statechange',()=>{
+        if(nw.state==='installed'&&navigator.serviceWorker.controller){
+          const b=e$('um-update-badge');if(b)b.style.display='inline-block';
+          toast('Update available — open menu → Check for Updates','info');
+        }
+      });
+    });
   }).catch(()=>{});
+  // Periodically check for updates while the app is open.
+  setInterval(()=>{navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.update().catch(()=>{})));},5*60*1000);
 }
 
 // ════ BOOT ════
