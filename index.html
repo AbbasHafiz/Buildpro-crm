@@ -1636,7 +1636,8 @@ function cLI(t){
   rows.querySelectorAll('.li-row').forEach(row=>{
     const q=parseFloat(row.querySelector('.lq')?.value)||0;
     const r=parseFloat(row.querySelector('.lr')?.value)||0;
-    const amt=q*r;s+=amt;
+    // Progress rows: q is "% Done" (informational), r is the billed Amount PKR — do not multiply.
+    const amt=(t==='prg')?r:q*r;s+=amt;
     const la=row.querySelector('.la');if(la)la.value=fmt(amt);
   });
   const totEl=e$('li-'+t+'-tot');if(totEl)totEl.textContent=fmt(s);
@@ -1659,7 +1660,7 @@ function gLI(t){
     const q=parseFloat(row.querySelector('.lq')?.value)||0;
     const u=row.querySelector('.lu')?.value||'';
     const r=parseFloat(row.querySelector('.lr')?.value)||0;
-    if(d)items.push({d,q,u,r,a:q*r});
+    if(d)items.push({d,q,u,r,a:(t==='prg')?r:q*r});
   });return items;
 }
 const totLI=items=>items.reduce((s,i)=>s+i.a,0);
@@ -1895,6 +1896,16 @@ function eAgr(id){
 // ════ UPSERT ════
 function ups(store,doc){const eid=doc.id&&D[store].find(x=>x.id===doc.id)?doc.id:null;if(eid){const idx=D[store].findIndex(x=>x.id===eid);D[store][idx]={...D[store][idx],...doc};}else{if(!doc.id)doc.id=uid();doc.createdAt=new Date().toISOString();D[store].unshift(doc);}sched();}
 
+// Recompute an invoice's paid status from its linked CONTRACT payments only.
+// Marks paid when fully covered; reverts a stuck 'paid' invoice to 'pending' when payments drop below total.
+function recalcInvoiceStatus(invId){
+  if(!invId)return;
+  const inv=D.invoices.find(x=>x.id===invId);if(!inv)return;
+  const paid=D.cpays.filter(x=>x.invoiceId===invId&&(x.payType||'contract')==='contract').reduce((s,x)=>s+x.amount,0);
+  if(inv.total>0&&paid>=inv.total)inv.status='paid';
+  else if(inv.status==='paid')inv.status='pending';
+}
+
 // ════ SAVES ════
 function saveP(){const eid=e$('proj-eid').value;const customStage=e$('p-custom-stage')?.value||'';const doc={id:eid||uid(),name:e$('p-name').value,loc:e$('p-loc').value,plot:e$('p-plot').value,clientId:e$('p-cli-id').value,value:parseFloat(e$('p-val').value)||0,area:parseFloat(e$('p-area')?.value)||0,rate:parseFloat(e$('p-rate')?.value)||0,phase:customStage||e$('p-phase').value,customStage,start:e$('p-start').value,end:e$('p-end').value,notes:e$('p-notes').value,lumpSum:e$('p-lumpsum')?.checked||false,
     isPartner:e$('p-is-partner')?.checked||false,partnerName:e$('p-partner-name')?.value||'',myShare:parseFloat(e$('p-my-share')?.value)||100,partnerShare:parseFloat(e$('p-partner-share')?.value)||0};if(!doc.name){toast('Enter project name','err');return;}ups('projects',doc);X('sh-proj');renderAll();toast(eid?'Project updated ✓':'Project saved ✓');}
@@ -1904,17 +1915,17 @@ function saveSpay(){const eid=e$('spay-eid').value;const doc={id:eid||uid(),subc
 function saveCpay(){
   const eid=e$('cpay-eid').value;const invId=e$('cp-inv-id').value;
   const doc={id:eid||uid(),clientId:e$('cp-cli-id').value,clientName:e$('cp-cli-t').value,projectId:e$('cp-proj-id').value,projectName:e$('cp-proj-t').value,date:e$('cp-date').value||today(),amount:parseFloat(e$('cp-amt').value)||0,invoiceId:invId,invoiceRef:e$('cp-inv-t').value,milestone:e$('cp-custom-stage')?.value||e$('cp-milestone').value,method:e$('cp-method').value,note:e$('cp-note').value,payType:e$('cp-pay-type')?.value||'contract'};
-  // If misc advance, update project Cash in Hand
-  if(doc.payType==='misc'&&doc.projectId){
-    const proj=D.projects.find(x=>x.id===doc.projectId);
-    if(proj){
-      // Add to cashInHand when receiving misc advance
-      proj.cashInHand=(proj.cashInHand||0)+doc.amount;
-    }
-  }
   if(!doc.amount){toast('Enter amount','err');return;}
+  const old=eid?D.cpays.find(x=>x.id===eid):null;
+  // Cash in Hand (misc advances): reverse the previous contribution, then apply the new one.
+  // Delta-safe so editing/moving/changing a misc payment doesn't double-count.
+  if(old&&old.payType==='misc'&&old.projectId){const op=D.projects.find(x=>x.id===old.projectId);if(op)op.cashInHand=Math.max(0,(op.cashInHand||0)-(old.amount||0));}
+  if(doc.payType==='misc'&&doc.projectId){const np=D.projects.find(x=>x.id===doc.projectId);if(np)np.cashInHand=(np.cashInHand||0)+doc.amount;}
   ups('cpays',doc);
-  if(invId){const inv=D.invoices.find(x=>x.id===invId);if(inv){const tot=D.cpays.filter(x=>x.invoiceId===invId).reduce((s,x)=>s+(x.id===doc.id?0:x.amount),0)+doc.amount;if(tot>=inv.total){inv.status='paid';sched();}}}
+  // Recompute invoice paid status (contract payments only). Also refresh any invoice this payment moved away from.
+  recalcInvoiceStatus(doc.invoiceId);
+  if(old&&old.invoiceId&&old.invoiceId!==doc.invoiceId)recalcInvoiceStatus(old.invoiceId);
+  sched();
   X('sh-cpay');renderAll();toast(eid?'Updated ✓':'PKR '+fmt(doc.amount)+' received ✓');
 }
 function saveInv(){
@@ -2062,7 +2073,17 @@ function del(store,id){
     toast(total>0?'Sub-contractor + '+total+' linked records deleted':'Sub-contractor deleted','info');
     return;
   }
-  // ── Default: simple delete for leaf records (invoices, payments, tasks, expenses, etc) ──
+  // ── CLIENT PAYMENTS: reverse Cash in Hand (misc advances) + recompute invoice status ──
+  if(store==='cpays'){
+    if(!confirm('Delete this record?'))return;
+    const rec=D.cpays.find(x=>x.id===id);
+    D.cpays=D.cpays.filter(x=>x.id!==id);
+    if(rec&&rec.payType==='misc'&&rec.projectId){const op=D.projects.find(x=>x.id===rec.projectId);if(op)op.cashInHand=Math.max(0,(op.cashInHand||0)-(rec.amount||0));}
+    if(rec&&rec.invoiceId)recalcInvoiceStatus(rec.invoiceId);
+    sched();renderAll();toast('Deleted','info');
+    return;
+  }
+  // ── Default: simple delete for leaf records (invoices, tasks, expenses, etc) ──
   if(!confirm('Delete this record?'))return;
   D[store]=D[store].filter(x=>x.id!==id);
   sched();renderAll();toast('Deleted','info');
