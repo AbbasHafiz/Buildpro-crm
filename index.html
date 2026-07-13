@@ -389,12 +389,34 @@ select option{background:var(--s2);}
           <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-md);color:var(--grn);font-weight:700" id="d-rec">0</div>
         </div>
         <div style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:11px 10px">
-          <div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:4px">Sub-Con Paid</div>
+          <div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:4px">Total Spent</div>
           <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-md);color:var(--red);font-weight:700" id="d-sub">0</div>
         </div>
         <div style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:11px 10px">
           <div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:4px">Invoiced</div>
           <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-md);color:var(--gold);font-weight:700" id="d-inv">0</div>
+        </div>
+      </div>
+
+      <!-- Contractor spending snapshot (same math as Expenses → Contractor) -->
+      <div style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:13px 14px;margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div style="font-size:var(--fs-sm);font-weight:700">💼 Contractor Snapshot</div>
+          <button onclick="navTo('exp','Expenses & Budget')" style="font-size:var(--fs-xs);color:var(--gold);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif;font-weight:600">Expenses →</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px" id="d-contractor-snap">
+          <div style="background:var(--s2);border-radius:8px;padding:9px 6px;text-align:center">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--red);font-weight:700" id="d-snap-sub">0</div>
+            <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Sub-Con</div>
+          </div>
+          <div style="background:var(--s2);border-radius:8px;padding:9px 6px;text-align:center">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--ora);font-weight:700" id="d-snap-exp">0</div>
+            <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Expenses</div>
+          </div>
+          <div style="background:var(--s2);border-radius:8px;padding:9px 6px;text-align:center">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--gold);font-weight:700" id="d-snap-tot">0</div>
+            <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Total Spent</div>
+          </div>
         </div>
       </div>
 
@@ -414,6 +436,15 @@ select option{background:var(--s2);}
           <div style="font-size:var(--fs-xs);color:var(--mut)" id="d-outstanding-total"></div>
         </div>
         <div id="d-outstanding"></div>
+      </div>
+
+      <!-- Unpaid suppliers — who do I still owe? -->
+      <div style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:13px 14px;margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div style="font-size:var(--fs-sm);font-weight:700">🏪 Unpaid Suppliers</div>
+          <div style="font-size:var(--fs-xs);color:var(--mut)" id="d-unpaid-sup-total"></div>
+        </div>
+        <div id="d-unpaid-suppliers"></div>
       </div>
 
       <!-- Quick Access Tiles -->
@@ -521,6 +552,13 @@ select option{background:var(--s2);}
 
     <!-- GENERAL LEDGER PAGE -->
     <div class="pg" id="pg-ledger">
+      <div class="ftabs" style="margin-bottom:10px">
+        <div class="ftab on" onclick="fLed('all',this)">All</div>
+        <div class="ftab" onclick="fLed('contract',this)">Contract</div>
+        <div class="ftab" onclick="fLed('cashinhand',this)">Misc Cash</div>
+        <div class="ftab" onclick="fLed('onbehalf',this)">On Behalf</div>
+      </div>
+      <div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:10px;padding:0 2px" id="led-filter-hint">All funding sides combined</div>
       <div class="stats2" style="margin-bottom:14px">
         <div class="stat"><div class="stat-lbl">Total Income</div><div class="stat-val" id="led-in">0</div><div class="stat-unit">PKR</div></div>
         <div class="stat"><div class="stat-lbl">Total Expense</div><div class="stat-val" id="led-out">0</div><div class="stat-unit">PKR</div></div>
@@ -581,6 +619,7 @@ select option{background:var(--s2);}
           <div><div style="font-size:var(--fs-sm);font-weight:600;color:var(--txt)">🤝 On Behalf (Owner Owes You)</div><div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">You paid from your pocket for the owner — not from contract collection</div></div>
           <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-md);font-weight:700;color:var(--red)" id="exp-own-reimburse">PKR 0</div>
         </div>
+        <div id="exp-misc-recon" style="display:none;background:rgba(232,148,75,.1);border:1px solid rgba(232,148,75,.35);border-radius:10px;padding:10px 13px;margin-bottom:8px"></div>
         <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:8px">
           <button class="btn btn-grey btn-sm" style="padding:7px 14px;font-size:var(--fs-sm);color:#4D94D4;border-color:rgba(77,148,212,.3)" onclick="pdfExpExternal()">⬇ Owner PDF</button>
         </div>
@@ -848,6 +887,15 @@ select option{background:var(--s2);}
       </div>
     </div>
     <div class="fg"><label>Work Description (Kaam)</label><textarea id="sp-desc" placeholder="e.g. Foundation complete, 1st floor slab done, tiling 3 rooms…"></textarea></div>
+    <div id="sp-loan-row" style="display:none;margin-bottom:12px">
+      <label style="display:flex;align-items:flex-start;gap:11px;font-size:var(--fs-sm);color:var(--txt);text-transform:none;letter-spacing:0;font-weight:400;cursor:pointer;background:rgba(155,127,212,.08);border:1px solid rgba(155,127,212,.3);border-radius:8px;padding:11px 13px">
+        <input type="checkbox" id="sp-apply-loan" style="width:16px;height:16px;accent-color:var(--pur);flex-shrink:0;margin-top:2px">
+        <div>
+          <div style="font-weight:600;color:var(--pur)">Apply toward personal loan from this sub-con</div>
+          <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px" id="sp-loan-hint">You still owe this sub-con from a personal loan</div>
+        </div>
+      </label>
+    </div>
 
     <!-- Further payment breakdown — who the sub-con paid onward (partnership tracking) -->
     <div style="margin-top:6px;padding-top:12px;border-top:1px solid var(--bor)">
@@ -1395,6 +1443,28 @@ select option{background:var(--s2);}
   <div class="sh-ft"><button class="btn btn-grey" onclick="X('sh-personal')">Cancel</button><button class="btn btn-gold" onclick="savePersonal()">💾 Save Record</button></div>
 </div></div>
 
+<!-- PERSONAL LOAN REPAYMENT -->
+<div class="sh-ov" id="sh-pers-repay"><div class="sh">
+  <div class="sh-grip"></div>
+  <div class="sh-hd"><div class="sh-title">Record Repayment</div><button class="sh-x" onclick="X('sh-pers-repay')">×</button></div>
+  <div class="sh-body">
+    <input type="hidden" id="prep-pid">
+    <div style="background:var(--s2);border-radius:9px;padding:12px;margin-bottom:14px">
+      <div style="font-size:var(--fs-sm);font-weight:700" id="prep-who">—</div>
+      <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:4px">Loan <span id="prep-loan">0</span> · Paid <span id="prep-paid">0</span> · <b style="color:var(--red)">Balance <span id="prep-bal">0</span></b></div>
+    </div>
+    <div class="f2">
+      <div class="fg"><label>Date</label><input type="date" id="prep-date"></div>
+      <div class="fg"><label>Amount (PKR)</label><input type="number" id="prep-amt" placeholder="0"></div>
+    </div>
+    <div class="fg"><label>Method</label>
+      <select id="prep-method"><option>Cash</option><option>Bank Transfer</option><option>JazzCash</option><option>EasyPaisa</option><option>Cheque</option><option>Settled with work payment</option></select>
+    </div>
+    <div class="fg"><label>Note</label><input id="prep-note" placeholder="Optional"></div>
+  </div>
+  <div class="sh-ft"><button class="btn btn-grey" onclick="X('sh-pers-repay')">Cancel</button><button class="btn btn-gold" onclick="savePersRepay()">💾 Save Repayment</button></div>
+</div></div>
+
 <!-- INVESTOR SHEET -->
 <!-- SUB-CON PROJECT CONTRACT EDITOR -->
 <div class="sh-ov" id="sh-spcon"><div class="sh">
@@ -1736,7 +1806,7 @@ function oDs(dsId){
   if(cfg.t==='projects')html+=`<div class="ds-add" onclick="X(curSh());O('sh-proj');iP()">+ Add New Project</div>`;
   el.innerHTML=html;el.classList.add('on');
 }
-function selDs(dsId,val,label){e$(dsId).classList.remove('on');const cfg=DS[dsId];if(!cfg)return;sv(cfg.tx,label);sv(cfg.id,val);}
+function selDs(dsId,val,label){e$(dsId).classList.remove('on');const cfg=DS[dsId];if(!cfg)return;sv(cfg.tx,label);sv(cfg.id,val);if(dsId==='ds-sp-sub')refreshSpLoanRow();}
 const esc=s=>(s||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
 function curSh(){const op=document.querySelector('.sh-ov.on');return op?op.id:'';}
 
@@ -1877,7 +1947,18 @@ function calcProjVal(){
 function iP(){sv('proj-eid','');e$('proj-eb').classList.remove('on');e$('proj-sh-t').textContent='New Project';['p-name','p-loc','p-plot','p-val','p-area','p-rate','p-notes','p-start','p-end','p-custom-stage','p-partner-name','p-my-share','p-partner-share'].forEach(id=>sv(id,''));const pip=e$('p-is-partner');if(pip)pip.checked=false;const ppf=e$('p-partner-fields');if(ppf)ppf.style.display='none';const pls=e$('p-lumpsum');if(pls)pls.checked=false;sv('p-cli-t','');sv('p-cli-id','');sv('p-phase','Foundation');const lbl=e$('proj-calc-label');if(lbl)lbl.textContent='Enter area × rate to calculate';const cv=e$('proj-calc-val');if(cv)cv.textContent='—';}
 function iCli(){sv('cli-eid','');e$('cli-eb').classList.remove('on');e$('cli-sh-t').textContent='New Client';['c-name','c-ph','c-cnic','c-city','c-email','c-addr'].forEach(id=>sv(id,''));}
 function iSub(){sv('sub-eid','');e$('sub-eb').classList.remove('on');e$('sub-sh-t').textContent='New Sub-Contractor';['s-name','s-ph','s-contract','s-notes','s-cnic'].forEach(id=>sv(id,''));sv('s-proj-t','');sv('s-proj-id','');}
-function iSpay(){sv('spay-eid','');e$('spay-eb').classList.remove('on');e$('spay-sh-t').textContent='Sub-Con Payment';['sp-sub-t','sp-sub-id','sp-proj-t','sp-proj-id','sp-desc','sp-custom-stage','sp-proj-contract'].forEach(id=>sv(id,''));sv('sp-amt','');sv('sp-date',today());sv('sp-phase','Advance');sv('sp-method','Cash');clearSpBd();renderSpBdChips();}
+function iSpay(){sv('spay-eid','');e$('spay-eb').classList.remove('on');e$('spay-sh-t').textContent='Sub-Con Payment';['sp-sub-t','sp-sub-id','sp-proj-t','sp-proj-id','sp-desc','sp-custom-stage','sp-proj-contract'].forEach(id=>sv(id,''));sv('sp-amt','');sv('sp-date',today());sv('sp-phase','Advance');sv('sp-method','Cash');clearSpBd();renderSpBdChips();refreshSpLoanRow();}
+function refreshSpLoanRow(){
+  const row=e$('sp-loan-row');const cb=e$('sp-apply-loan');const hint=e$('sp-loan-hint');
+  if(!row)return;
+  const sid=e$('sp-sub-id')?.value||'';
+  const open=openPersLoansForSub(sid);
+  if(!sid||!open.length){row.style.display='none';if(cb)cb.checked=false;return;}
+  const bal=open.reduce((s,r)=>s+persBalance(r),0);
+  row.style.display='block';
+  if(hint)hint.textContent='Outstanding personal loan balance: PKR '+fmt(bal)+(open.length>1?' across '+open.length+' loans':'')+' — tick to record repayment against it';
+  if(cb)cb.checked=false;
+}
 function iCpay(){sv('cpay-eid','');e$('cpay-eb').classList.remove('on');e$('cpay-sh-t').textContent='Payment Received';['cp-cli-t','cp-cli-id','cp-proj-t','cp-proj-id','cp-inv-t','cp-inv-id','cp-note','cp-custom-stage'].forEach(id=>sv(id,''));sv('cp-amt','');sv('cp-date',today());sv('cp-pay-type','contract');}
 function iInv(type){
   sv('inv-eid','');e$('inv-eb').classList.remove('on');e$('inv-sh-t').textContent='New Invoice';
@@ -1998,7 +2079,7 @@ function iAgr(){
 function eP(id){const r=D.projects.find(x=>x.id===id);if(!r)return;sv('proj-eid',id);e$('proj-eb').classList.add('on');e$('proj-sh-t').textContent='Edit Project';sv('p-name',r.name);sv('p-loc',r.loc);sv('p-plot',r.plot);sv('p-val',r.value);sv('p-notes',r.notes);sv('p-phase',r.phase||'Foundation');sv('p-custom-stage',r.customStage||'');sv('p-area',r.area||'');sv('p-rate',r.rate||'');sv('p-partner-name',r.partnerName||'');sv('p-my-share',r.myShare||'');sv('p-partner-share',r.partnerShare||'');const pip2=e$('p-is-partner');if(pip2)pip2.checked=r.isPartner||false;const pls2=e$('p-lumpsum');if(pls2)pls2.checked=r.lumpSum||false;const ppf2=e$('p-partner-fields');if(ppf2)ppf2.style.display=r.isPartner?'block':'none';sv('p-start',r.start);sv('p-end',r.end);const c=D.clients.find(x=>x.id===r.clientId);sv('p-cli-t',c?c.name:'');sv('p-cli-id',r.clientId||'');O('sh-proj');}
 function eCli(id){const r=D.clients.find(x=>x.id===id);if(!r)return;sv('cli-eid',id);e$('cli-eb').classList.add('on');e$('cli-sh-t').textContent='Edit Client';sv('c-name',r.name);sv('c-ph',r.phone);sv('c-cnic',r.cnic);sv('c-city',r.city);sv('c-email',r.email);sv('c-addr',r.addr);O('sh-cli');}
 function eSub(id){const r=D.subcons.find(x=>x.id===id);if(!r)return;sv('sub-eid',id);e$('sub-eb').classList.add('on');e$('sub-sh-t').textContent='Edit Contractor';sv('s-name',r.name);sv('s-trade',r.trade);sv('s-ph',r.phone);sv('s-contract',r.contract);sv('s-ptype',r.ptype);sv('s-notes',r.notes);sv('s-cnic',r.cnic||'');const p=D.projects.find(x=>x.id===r.projectId);sv('s-proj-t',p?p.name:'');sv('s-proj-id',r.projectId||'');O('sh-sub');}
-function eSpay(id){const r=D.subpays.find(x=>x.id===id);if(!r)return;sv('spay-eid',id);e$('spay-eb').classList.add('on');e$('spay-sh-t').textContent='Edit Payment';const sc=D.subcons.find(x=>x.id===r.subconId);sv('sp-sub-t',sc?sc.name:r.subconName||'');sv('sp-sub-id',r.subconId||'');const p=D.projects.find(x=>x.id===r.projectId);sv('sp-proj-t',p?p.name:r.projectName||'');sv('sp-proj-id',r.projectId||'');sv('sp-date',r.date);sv('sp-amt',r.amount);sv('sp-proj-contract',r.projContract||'');sv('sp-phase',r.phase);sv('sp-custom-stage','');sv('sp-method',r.method);sv('sp-desc',r.desc);clearSpBd();renderSpBdChips();(r.breakdown||[]).forEach(b=>addSpBd(b));if(!(r.breakdown||[]).length)cSpBd();O('sh-spay');}
+function eSpay(id){const r=D.subpays.find(x=>x.id===id);if(!r)return;sv('spay-eid',id);e$('spay-eb').classList.add('on');e$('spay-sh-t').textContent='Edit Payment';const sc=D.subcons.find(x=>x.id===r.subconId);sv('sp-sub-t',sc?sc.name:r.subconName||'');sv('sp-sub-id',r.subconId||'');const p=D.projects.find(x=>x.id===r.projectId);sv('sp-proj-t',p?p.name:r.projectName||'');sv('sp-proj-id',r.projectId||'');sv('sp-date',r.date);sv('sp-amt',r.amount);sv('sp-proj-contract',r.projContract||'');sv('sp-phase',r.phase);sv('sp-custom-stage','');sv('sp-method',r.method);sv('sp-desc',r.desc);clearSpBd();renderSpBdChips();(r.breakdown||[]).forEach(b=>addSpBd(b));if(!(r.breakdown||[]).length)cSpBd();refreshSpLoanRow();O('sh-spay');}
 function eCpay(id){const r=D.cpays.find(x=>x.id===id);if(!r)return;sv('cpay-eid',id);e$('cpay-eb').classList.add('on');e$('cpay-sh-t').textContent='Edit Payment';const c=D.clients.find(x=>x.id===r.clientId);sv('cp-cli-t',c?c.name:'');sv('cp-cli-id',r.clientId||'');const p=D.projects.find(x=>x.id===r.projectId);sv('cp-proj-t',p?p.name:'');sv('cp-proj-id',r.projectId||'');sv('cp-date',r.date);sv('cp-amt',r.amount);sv('cp-custom-stage','');sv('cp-pay-type',r.payType||'contract');const inv=D.invoices.find(x=>x.id===r.invoiceId);sv('cp-inv-t',inv?inv.num:'');sv('cp-inv-id',r.invoiceId||'');sv('cp-method',r.method);sv('cp-note',r.note);sv('cp-milestone',r.milestone||'Other');O('sh-cpay');}
 function eInv(id){
   const r=D.invoices.find(x=>x.id===id);if(!r)return;
@@ -2064,7 +2145,7 @@ function saveP(){const eid=e$('proj-eid').value;const customStage=e$('p-custom-s
     isPartner:e$('p-is-partner')?.checked||false,partnerName:e$('p-partner-name')?.value||'',myShare:parseFloat(e$('p-my-share')?.value)||100,partnerShare:parseFloat(e$('p-partner-share')?.value)||0};if(!doc.name){toast('Enter project name','err');return;}ups('projects',doc);X('sh-proj');renderAll();toast(eid?'Project updated ✓':'Project saved ✓');}
 function saveCli(){const eid=e$('cli-eid').value;const doc={id:eid||uid(),name:e$('c-name').value,phone:e$('c-ph').value,cnic:e$('c-cnic').value,city:e$('c-city').value,email:e$('c-email').value,addr:e$('c-addr').value};if(!doc.name){toast('Enter name','err');return;}ups('clients',doc);X('sh-cli');renderCli();renderDash();updateDots();toast(eid?'Client updated ✓':'Client added ✓');}
 function saveSub(){const eid=e$('sub-eid').value;const doc={id:eid||uid(),name:e$('s-name').value,trade:e$('s-trade').value,phone:e$('s-ph').value,cnic:e$('s-cnic').value,contract:parseFloat(e$('s-contract').value)||0,ptype:e$('s-ptype').value,projectId:e$('s-proj-id').value,notes:e$('s-notes').value};if(!doc.name){toast('Enter name','err');return;}ups('subcons',doc);X('sh-sub');renderSub();updateDots();toast(eid?'Updated ✓':'Saved ✓');}
-function saveSpay(){const eid=e$('spay-eid').value;const breakdown=gSpBd();const doc={id:eid||uid(),subconId:e$('sp-sub-id').value,subconName:e$('sp-sub-t').value,projectId:e$('sp-proj-id').value,projectName:e$('sp-proj-t').value,date:e$('sp-date').value||today(),amount:parseFloat(e$('sp-amt').value)||0,projContract:parseFloat(e$('sp-proj-contract')?.value)||0,phase:e$('sp-custom-stage')?.value||e$('sp-phase').value,method:e$('sp-method').value,desc:e$('sp-desc').value,breakdown};if(!doc.subconId||!doc.amount){toast('Select contractor and enter amount','err');return;}if(breakdown.length){const bt=breakdown.reduce((s,b)=>s+b.amount,0);if(bt>doc.amount+0.01){toast('Breakdown (PKR '+fmt(bt)+') cannot exceed payment amount','err');return;}}ups('subpays',doc);X('sh-spay');renderAll();toast(eid?'Updated ✓':'PKR '+fmt(doc.amount)+' recorded ✓');}
+function saveSpay(){const eid=e$('spay-eid').value;const breakdown=gSpBd();const doc={id:eid||uid(),subconId:e$('sp-sub-id').value,subconName:e$('sp-sub-t').value,projectId:e$('sp-proj-id').value,projectName:e$('sp-proj-t').value,date:e$('sp-date').value||today(),amount:parseFloat(e$('sp-amt').value)||0,projContract:parseFloat(e$('sp-proj-contract')?.value)||0,phase:e$('sp-custom-stage')?.value||e$('sp-phase').value,method:e$('sp-method').value,desc:e$('sp-desc').value,breakdown};if(!doc.subconId||!doc.amount){toast('Select contractor and enter amount','err');return;}if(breakdown.length){const bt=breakdown.reduce((s,b)=>s+b.amount,0);if(bt>doc.amount+0.01){toast('Breakdown (PKR '+fmt(bt)+') cannot exceed payment amount','err');return;}}const applyLoan=!!e$('sp-apply-loan')?.checked;ups('subpays',doc);if(applyLoan)applySpayToPersLoan(doc);X('sh-spay');renderAll();toast(eid?'Updated ✓':'PKR '+fmt(doc.amount)+' recorded ✓'+(applyLoan?' + loan repayment':''));}
 
 // ════ SUB-CON PAYMENT BREAKDOWN (further payees) ════
 const SP_BD_TRADES=['Shuttering','Steel Binding','Brick / Chuuni Mason','Electrician','Plumber','Tile Fixer','Painter','Carpenter','Labour','Other'];
@@ -2320,7 +2401,9 @@ function renderDash(){
   // Received = contract payments only (misc owner advances are tracked separately, not contract collection)
   const tr=D.cpays.filter(p=>(p.payType||'contract')==='contract').reduce((s,p)=>s+p.amount,0);
   const ts=D.subpays.reduce((s,p)=>s+p.amount,0);
-  // Paid out = PAID contractor-side expenses only (owner-side/unpaid excluded)
+  // Contractor expenses = all contract-funded (paid + unpaid) to match Expenses → Contractor Total Spent
+  const teAll=(D.expenses||[]).filter(e=>(e.fundedBy||'contract')==='contract').reduce((s,e)=>s+e.amount,0);
+  // Paid out for profit = PAID contractor-side expenses only
   const te=(D.expenses||[]).filter(e=>e.isPaid&&(e.fundedBy||'contract')==='contract').reduce((s,e)=>s+e.amount,0);
   const ti=D.invoices.reduce((s,i)=>s+i.total,0);
   // Net profit = your share of each project's P&L
@@ -2341,13 +2424,17 @@ function renderDash(){
     return s+Math.max(0,(p.value||0)-rec);
   },0);
 
-  // KPI values
+  // KPI values — Total Spent = Sub-Con + Contractor Expenses (same as Expenses tab)
+  const totalSpent=ts+teAll;
   const sv2=(id,v,c)=>{const el=e$(id);if(el){el.textContent=fmt(v);if(c)el.style.color=c;}};
   sv2('d-receivable',totalReceivable,'var(--gold)');
   sv2('d-pft',Math.abs(pft),pft>=0?'var(--grn)':'var(--red)');
   sv2('d-rec',tr,'var(--grn)');
-  sv2('d-sub',ts+te,'var(--red)');
+  sv2('d-sub',totalSpent,'var(--red)');
   sv2('d-inv',ti,'var(--gold)');
+  sv2('d-snap-sub',ts,'var(--red)');
+  sv2('d-snap-exp',teAll,'var(--ora)');
+  sv2('d-snap-tot',totalSpent,'var(--gold)');
 
   // Quick tile counts
   const sq=(id,v)=>{const el=e$(id);if(el)el.textContent=v;};
@@ -2408,9 +2495,12 @@ function renderDash(){
     }
   }
 
+  // Unpaid suppliers — who do I still owe?
+  renderUnpaidSuppliers();
+
   // Recent activity
   const acts=[
-    ...D.cpays.map(x=>({type:'💳 Received',name:x.clientName,sub:x.milestone||x.projectName||'',amt:x.amount,date:x.date,clr:'var(--grn)'})),
+    ...D.cpays.map(x=>({type:'💳 Received',name:x.clientName,sub:x.projectName||'',amt:x.amount,date:x.date,clr:'var(--grn)'})),
     ...D.subpays.map(x=>({type:'💸 Paid Out',name:x.subconName,sub:(x.phase||'')+(x.projectName?' · '+x.projectName:''),amt:x.amount,date:x.date,clr:'var(--red)'})),
     ...(D.expenses||[]).filter(e=>!e.isPaid).slice(0,5).map(x=>({type:'📦 Expense',name:x.desc,sub:x.projectName||'',amt:x.amount,date:x.date,clr:'var(--mut)'})),
   ].sort((a,b)=>(b.date||'').localeCompare(a.date||'')).slice(0,8);
@@ -2419,6 +2509,35 @@ function renderDash(){
     if(!acts.length){al.innerHTML='<div style="font-size:var(--fs-sm);color:var(--mut);padding:6px 0">No activity yet</div>';}
     else al.innerHTML='<div class="act-wrap">'+acts.map(a=>`<div class="act-row"><div><div class="act-type">${a.type}</div><div class="act-nm">${a.name||'—'}</div>${a.sub?`<div class="act-proj">${a.sub}</div>`:''}</div><div><div class="act-amt" style="color:${a.clr}">${fmt(a.amt)}</div><div class="act-date">${a.date||'—'}</div></div></div>`).join('')+'</div>';
   }
+}
+
+function renderUnpaidSuppliers(){
+  const el=e$('d-unpaid-suppliers');const tot=e$('d-unpaid-sup-total');
+  if(!el)return;
+  const unpaid=(D.expenses||[]).filter(e=>e.fundedBy==='onbehalf'?rst(e)!=='paid':!e.isPaid);
+  // Prefer paidTo; fall back to description
+  const map={};
+  unpaid.forEach(e=>{
+    const key=(e.paidTo||'').trim()||'(No supplier name)';
+    if(!map[key])map[key]={name:key,amt:0,n:0,projects:new Set()};
+    map[key].amt+=e.amount||0;map[key].n++;
+    if(e.projectName)map[key].projects.add(e.projectName);
+  });
+  const rows=Object.values(map).sort((a,b)=>b.amt-a.amt);
+  const total=rows.reduce((s,r)=>s+r.amt,0);
+  if(tot)tot.textContent=rows.length?rows.length+' · PKR '+fmt(total)+' owed':'';
+  if(!rows.length){
+    el.innerHTML='<div style="font-size:var(--fs-sm);color:var(--grn);padding:6px 0 4px">✅ No unpaid supplier balances</div>';
+    return;
+  }
+  el.innerHTML=rows.slice(0,8).map(r=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--bor);cursor:pointer" onclick="navTo('exp','Expenses & Budget')">
+      <div style="flex:1;min-width:0;margin-right:12px">
+        <div style="font-size:var(--fs-sm);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.name}</div>
+        <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">${r.n} unpaid · ${[...r.projects].slice(0,2).join(', ')||'—'}</div>
+      </div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--red);font-weight:700;flex-shrink:0">${fmt(r.amt)}</div>
+    </div>`).join('')+(rows.length>8?`<div style="font-size:var(--fs-xs);color:var(--mut);padding-top:8px">+${rows.length-8} more — open Expenses</div>`:'');
 }
 
 // ════ RENDER INVOICES ════
@@ -2448,6 +2567,7 @@ function renderEst(){
     <div class="card-acts">
       <button class="ca blu" onclick="eEst('${r.id}')">✏️ Edit</button>
       <button class="ca gold" onclick="pdfEst('${r.id}')">⬇ PDF</button>
+      <button class="ca" style="color:var(--pur);border-color:rgba(155,127,212,.3);background:rgba(155,127,212,.08)" onclick="pdfBoqVsActual('${r.id}')">⚖ vs Actual</button>
       <button class="ca ora" onclick="est2inv('${r.id}')">→ Invoice</button>
       <button class="ca red" onclick="del('estimates','${r.id}')">🗑</button>
     </div></div>`).join('');
@@ -2473,7 +2593,10 @@ function renderPay(){
             <div style="font-size:var(--fs-md);font-weight:700">${p.name}</div>
             <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">${cli?cli.name:''} ${p.loc?'· '+p.loc:''}</div>
           </div>
-          <button class="ca gold" style="flex:none;padding:6px 12px;font-size:var(--fs-xs)" onclick="pdfProjPayments('${p.id}')">⬇ PDF</button>
+          <div style="display:flex;gap:6px;flex-shrink:0">
+            <button class="ca gold" style="flex:none;padding:6px 12px;font-size:var(--fs-xs)" onclick="pdfProjPayments('${p.id}')">⬇ PDF</button>
+            <button class="ca" style="flex:none;padding:6px 10px;font-size:var(--fs-xs);color:#25D366;border-color:rgba(37,211,102,.25);background:rgba(37,211,102,.06)" onclick="waOwnerStatement('${p.id}')">📤 WA</button>
+          </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
           <div style="background:var(--s2);border-radius:8px;padding:8px;text-align:center">
@@ -2516,6 +2639,7 @@ function renderPay(){
         <span class="pay-meta">${p.date||'—'} · ${p.method||'Cash'}${bd.length?' · '+bd.length+' further':''}</span>
         <div style="display:flex;gap:7px">
           <button class="ca gold" style="padding:5px 10px;font-size:var(--fs-xs);flex:none" onclick="${isIn?`pdfCpayConfirm('${p.id}')`:`pdfSpayConfirm('${p.id}')`}">⬇ PDF</button>
+          <button class="ca" style="padding:5px 10px;font-size:var(--fs-xs);flex:none;color:#25D366;border-color:rgba(37,211,102,.25);background:rgba(37,211,102,.06)" onclick="${isIn?`waCpay('${p.id}')`:`waSpay('${p.id}')`}">📤</button>
           <button class="ca blu" style="padding:5px 12px;font-size:var(--fs-xs)" onclick="${isIn?'eCpay':'eSpay'}('${p.id}')">✏️ Edit</button>
           <button class="ca red" style="padding:5px 12px;font-size:var(--fs-xs)" onclick="del('${isIn?'cpays':'subpays'}','${p.id}')">🗑</button>
         </div>
@@ -2863,6 +2987,83 @@ function pdfEst(id){
   drawBankFooter(doc);doc.save('Estimate-'+r.num+'.pdf');toast('Estimate PDF ✓');
 }
 
+// BOQ vs actual spend for the linked project (estimate lines matched to expenses / sub-pays)
+function pdfBoqVsActual(id){
+  const r=D.estimates.find(x=>x.id===id);if(!r)return;
+  const pid=r.projectId;
+  if(!pid){toast('Link this estimate to a project first','err');return;}
+  const norm=s=>(s||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+  const exps=(D.expenses||[]).filter(e=>e.projectId===pid&&(e.fundedBy||'contract')==='contract');
+  const spays=(D.subpays||[]).filter(p=>p.projectId===pid);
+  const actualTotal=exps.reduce((s,e)=>s+e.amount,0)+spays.reduce((s,p)=>s+p.amount,0);
+  const boqTotal=r.total||0;
+  const variance=actualTotal-boqTotal;
+  const used=new Set();
+  const matchAmt=(desc)=>{
+    const n=norm(desc);if(!n)return 0;
+    let sum=0;
+    exps.forEach((e,i)=>{
+      if(used.has('e'+i))return;
+      const d=norm(e.desc);
+      if(d===n||d.includes(n)||n.includes(d)){sum+=e.amount;used.add('e'+i);}
+    });
+    spays.forEach((p,i)=>{
+      if(used.has('s'+i))return;
+      const d=norm((p.phase||'')+' '+(p.desc||'')+' '+(p.subconName||''));
+      if(d.includes(n)||n.includes(norm(p.phase||''))){sum+=p.amount;used.add('s'+i);}
+    });
+    return sum;
+  };
+  const rows=(r.items||[]).map(i=>{
+    const act=matchAmt(i.d);
+    const est=i.a||0;
+    return{d:i.d,est,act,var:act-est};
+  });
+  const matchedEst=rows.reduce((s,x)=>s+x.est,0);
+  const matchedAct=rows.reduce((s,x)=>s+x.act,0);
+  const unmatchedAct=actualTotal-matchedAct;
+  const doc=bPDF();const pw=210;
+  let y=drawHeader(doc,'BOQ vs ACTUAL',r.num,today(),'','');
+  doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(30,30,30);
+  doc.text(r.projectName||'Project',14,y);
+  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(100,100,100);
+  doc.text('Estimate '+r.num+(r.clientName?' · '+r.clientName:''),14,y+7);
+  y+=16;
+  doc.setFillColor(248,246,242);doc.rect(14,y,182,22,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(30,30,30);
+  doc.text('BOQ Total: PKR '+fmt(boqTotal),16,y+8);
+  doc.text('Actual Spent: PKR '+fmt(actualTotal),95,y+8);
+  doc.setTextColor(variance>0?200:50,variance>0?50:150,variance>0?50:50);
+  doc.text((variance>=0?'Over':'Under')+': PKR '+fmt(Math.abs(variance)),16,y+16);
+  doc.setTextColor(100,100,100);doc.setFont('helvetica','normal');doc.setFontSize(8);
+  doc.text('Sub-Con '+fmt(spays.reduce((s,p)=>s+p.amount,0))+' + Expenses '+fmt(exps.reduce((s,e)=>s+e.amount,0)),95,y+16);
+  y+=28;
+  if(rows.length){
+    doc.autoTable({
+      startY:y,
+      head:[['BOQ Item','Estimate','Matched Actual','Variance']],
+      body:rows.map(x=>[x.d,fmt(x.est),fmt(x.act),(x.var>=0?'+':'')+fmt(x.var)]),
+      foot:[['Matched totals',fmt(matchedEst),fmt(matchedAct),(matchedAct-matchedEst>=0?'+':'')+fmt(matchedAct-matchedEst)]],
+      styles:{fontSize:8.5,cellPadding:2.5,textColor:[30,30,30]},
+      headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
+      footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[30,30,30]},
+      columnStyles:{1:{halign:'right'},2:{halign:'right'},3:{halign:'right'}},
+      margin:{left:14,right:14}
+    });
+    y=doc.lastAutoTable.finalY+8;
+  }
+  if(unmatchedAct>0.5){
+    doc.setFont('helvetica','italic');doc.setFontSize(8);doc.setTextColor(130,125,118);
+    doc.text('Unmatched actual spend (no close BOQ line): PKR '+fmt(unmatchedAct),14,y);
+    y+=8;
+  }
+  doc.setFont('helvetica','italic');doc.setFontSize(7.5);doc.setTextColor(150,145,138);
+  doc.text('Matching is by description/phase keywords. Review unmatched lines and rename for better alignment.',14,y);
+  drawBankFooter(doc);
+  doc.save('BOQ-vs-Actual-'+(r.num||'est')+'-'+today()+'.pdf');
+  toast('BOQ vs Actual PDF ✓');
+}
+
 function pdfAgr(id){
   const r=D.agreements.find(x=>x.id===id);if(!r)return;
   const co2=D.company||{};const doc=bPDF();const pw=210;
@@ -3153,6 +3354,66 @@ _${c.name||'BuildPro'} — Construction Management_`;
   window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
 }
 
+function waSpay(id){
+  const r=D.subpays.find(x=>x.id===id);if(!r)return;
+  const c=D.company||{};
+  const bd=(r.breakdown||[]).length?('\n🔀 *Further breakdown:*\n'+(r.breakdown.map(b=>`• ${b.trade||'Other'}${b.name?' · '+b.name:''}: PKR ${fmt(b.amount)}`).join('\n'))+'\n'):'';
+  const msg=
+`💸 *SUB-CONTRACTOR PAYMENT VOUCHER*
+━━━━━━━━━━━━━━━━━━━
+🏢 *${c.name||'BuildPro'}*
+${c.phone?'📞 '+c.phone:''}
+
+👷 *Paid to:* ${r.subconName||'—'}
+📋 *Project:* ${r.projectName||'—'}
+🏗 *Phase:* ${r.phase||'—'}
+📅 *Date:* ${r.date||'—'}
+💳 *Method:* ${r.method||'Cash'}
+${r.desc?'📝 '+r.desc:''}
+${bd}
+━━━━━━━━━━━━━━━━━━━
+💰 *Amount Paid: PKR ${fmt(r.amount)}*
+━━━━━━━━━━━━━━━━━━━
+_${c.name||'BuildPro'} — Construction Management_`;
+  window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
+}
+
+function waOwnerStatement(pid){
+  const proj=D.projects.find(x=>x.id===pid);if(!proj)return;
+  const c=D.company||{};
+  const cli=D.clients.find(x=>x.id===proj.clientId);
+  const contractPays=D.cpays.filter(x=>x.projectId===pid&&(x.payType||'contract')==='contract');
+  const totalContract=contractPays.reduce((s,p)=>s+p.amount,0);
+  const remaining=Math.max(0,(proj.value||0)-totalContract);
+  const cashInHand=proj.cashInHand||0;
+  const ownerExps=(D.expenses||[]).filter(x=>x.projectId===pid&&(x.fundedBy==='cashinhand'||x.fundedBy==='onbehalf'));
+  const cashSpent=ownerExps.filter(x=>x.fundedBy==='cashinhand').reduce((s,x)=>s+x.amount,0);
+  const behalfOwed=ownerExps.filter(x=>x.fundedBy==='onbehalf'&&rst(x)!=='paid').reduce((s,x)=>s+x.amount,0);
+  const lines=contractPays.slice().sort((a,b)=>(a.date||'').localeCompare(b.date||'')).map((p,i)=>`${i+1}. ${p.date||'—'} · ${p.milestone||p.invoiceRef||'Payment'} · PKR ${fmt(p.amount)}`).join('\n');
+  const msg=
+`📄 *OWNER STATEMENT*
+━━━━━━━━━━━━━━━━━━━
+🏢 *${c.name||'BuildPro'}*
+${c.phone?'📞 '+c.phone:''}
+
+👤 *Client:* ${cli?cli.name:proj.name}
+📋 *Project:* ${proj.name}${proj.loc?' · '+proj.loc:''}
+📅 *Date:* ${today()}
+
+*Contract value:* PKR ${fmt(proj.value||0)}
+*Received:* PKR ${fmt(totalContract)}
+*Still due:* PKR ${fmt(remaining)}
+
+*Misc cash given:* PKR ${fmt(cashInHand)}
+*Misc cash spent:* PKR ${fmt(cashSpent)}
+*Owner still owes (on behalf):* PKR ${fmt(behalfOwed)}
+
+${lines?`*Contract payments:*\n${lines}`:'No contract payments yet.'}
+
+_${c.name||'BuildPro'} — Construction Management_`;
+  window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
+}
+
 // ════ TASKS ════
 let taskFilter='all';
 function fTask(f,el){taskFilter=f;document.querySelectorAll('#pg-tasks .ftab').forEach(t=>t.classList.remove('on'));el.classList.add('on');renderTasks();}
@@ -3254,6 +3515,27 @@ function markExpPaid(id){
   toast(r.isPaid?'Marked as paid ✅':'Marked as unpaid','info');
 }
 
+function updateMiscReconBanner(){
+  const box=e$('exp-misc-recon');if(!box)return;
+  const issues=[];
+  D.projects.forEach(p=>{
+    const miscSum=(D.cpays||[]).filter(x=>x.projectId===p.id&&x.payType==='misc').reduce((s,x)=>s+x.amount,0);
+    const hand=p.cashInHand||0;
+    const spent=(D.expenses||[]).filter(e=>e.projectId===p.id&&e.fundedBy==='cashinhand').reduce((s,e)=>s+e.amount,0);
+    if(miscSum>0&&Math.abs(hand-miscSum)>0.5){
+      issues.push(`<b>${p.name}</b>: Misc advances recorded PKR ${fmt(miscSum)} but cash-in-hand is PKR ${fmt(hand)}`);
+    }
+    if(spent>hand+0.5){
+      issues.push(`<b>${p.name}</b>: Misc spent PKR ${fmt(spent)} exceeds cash given PKR ${fmt(hand)} (over by ${fmt(spent-hand)})`);
+    }
+  });
+  if(!issues.length){box.style.display='none';box.innerHTML='';return;}
+  box.style.display='block';
+  box.innerHTML=`<div style="font-size:var(--fs-sm);font-weight:700;color:var(--ora);margin-bottom:6px">⚠ Misc cash reconciliation</div>
+    <div style="font-size:var(--fs-xs);color:var(--mut);line-height:1.5">${issues.join('<br>')}</div>
+    <div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:6px">Fix by updating Cash in Hand on the project, or checking misc advance payments.</div>`;
+}
+
 // Cycle reimbursement status for on-behalf expenses: unpaid -> pending -> paid -> unpaid
 function cycleReimburse(id){
   const r=(D.expenses||[]).find(x=>x.id===id);if(!r)return;
@@ -3292,6 +3574,7 @@ function renderExp(){
   if(or){or.textContent=fmt(Math.max(0,totalCash-ownerSpent));or.style.color=totalCash-ownerSpent<0?'var(--red)':'var(--grn)';}
   const reimburseOwed=behalfExps.filter(e=>rst(e)!=='paid').reduce((s,e)=>s+e.amount,0);
   const rb=e$('exp-own-reimburse');if(rb)rb.textContent='PKR '+fmt(reimburseOwed);
+  updateMiscReconBanner();
 
   const mode=(typeof expTabMode!=='undefined')?expTabMode:'builder';
   const isOwnerMode=mode==='owner';
@@ -3510,6 +3793,14 @@ function savePersonal(){
   const eid=e$('pers-eid').value;
   const type=e$('pers-type')?.value||'subloan';
   const amount=parseFloat(e$('pers-amt').value)||0;
+  const old=eid?(D.personals||[]).find(x=>x.id===eid):null;
+  const repayments=old?(old.repayments||[]):[];
+  const repaidAmt=repayments.reduce((s,x)=>s+(x.amount||0),0);
+  let status=type==='subloan'?(e$('pers-status')?.value||'open'):'n/a';
+  if(type==='subloan'){
+    if(repaidAmt>=amount&&amount>0)status='repaid';
+    else if(status==='repaid'&&repaidAmt<amount){/* keep explicit repaid only if fully covered */}
+  }
   const doc={
     id:eid||uid(),
     type,
@@ -3522,7 +3813,8 @@ function savePersonal(){
     projectName:e$('pers-proj-t').value,
     spentOn:e$('pers-spent').value||'',
     notes:e$('pers-notes').value||'',
-    status:type==='subloan'?(e$('pers-status')?.value||'open'):'n/a'
+    status,
+    repayments
   };
   if(!doc.amount){toast('Enter amount','err');return;}
   if(type==='subloan'&&!doc.subconId){toast('Select the sub-contractor who lent you','err');return;}
@@ -3530,18 +3822,76 @@ function savePersonal(){
   ups('personals',doc);X('sh-personal');renderExp();updateDots();
   toast(eid?'Personal record updated ✓':(type==='subloan'?'Loan from sub-con recorded ✓':'Personal draw recorded ✓'));
 }
+function persRepaidAmt(r){return (r.repayments||[]).reduce((s,x)=>s+(x.amount||0),0);}
+function persBalance(r){
+  if((r.status||'open')==='repaid'&&!(r.repayments||[]).length)return 0; // legacy full-repaid
+  return Math.max(0,(r.amount||0)-persRepaidAmt(r));
+}
+function persIsOpen(r){return (r.type||'subloan')==='subloan'&&persBalance(r)>0;}
+function openPersLoansForSub(subconId){
+  if(!subconId)return[];
+  return (D.personals||[]).filter(r=>r.type==='subloan'&&r.subconId===subconId&&persIsOpen(r))
+    .sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+}
+function applySpayToPersLoan(spay){
+  let left=spay.amount||0;
+  const loans=openPersLoansForSub(spay.subconId);
+  if(!loans.length||left<=0)return;
+  loans.forEach(loan=>{
+    if(left<=0)return;
+    const bal=persBalance(loan);
+    if(bal<=0)return;
+    const take=Math.min(bal,left);
+    if(!loan.repayments)loan.repayments=[];
+    loan.repayments.push({id:uid(),date:spay.date||today(),amount:take,method:'Settled with work payment',note:'Linked to sub-con payment',linkedSpayId:spay.id});
+    left-=take;
+    loan.status=persBalance(loan)<=0?'repaid':'open';
+    loan.updatedAt=new Date().toISOString();
+  });
+  sched();
+}
+function iPersRepay(id){
+  const r=(D.personals||[]).find(x=>x.id===id);if(!r)return;
+  const bal=persBalance(r);
+  if(bal<=0){toast('Already fully repaid','info');return;}
+  sv('prep-pid',id);sv('prep-date',today());sv('prep-amt',bal);sv('prep-method','Cash');sv('prep-note','');
+  const who=e$('prep-who');if(who)who.textContent=(r.subconName||'Sub-Con')+(r.projectName?' · '+r.projectName:'');
+  const setT=(id2,v)=>{const el=e$(id2);if(el)el.textContent=fmt(v);};
+  setT('prep-loan',r.amount||0);setT('prep-paid',persRepaidAmt(r));setT('prep-bal',bal);
+  O('sh-pers-repay');
+}
+function savePersRepay(){
+  const id=e$('prep-pid').value;
+  const r=(D.personals||[]).find(x=>x.id===id);if(!r)return;
+  const amt=parseFloat(e$('prep-amt').value)||0;
+  const bal=persBalance(r);
+  if(amt<=0){toast('Enter repayment amount','err');return;}
+  if(amt>bal+0.01){toast('Amount exceeds balance PKR '+fmt(bal),'err');return;}
+  if(!r.repayments)r.repayments=[];
+  r.repayments.push({id:uid(),date:e$('prep-date').value||today(),amount:amt,method:e$('prep-method').value||'Cash',note:e$('prep-note').value||''});
+  r.status=persBalance(r)<=0?'repaid':'open';
+  r.updatedAt=new Date().toISOString();
+  sched();X('sh-pers-repay');renderExp();
+  toast(r.status==='repaid'?'Loan fully repaid ✅':'Repayment recorded · balance PKR '+fmt(persBalance(r)));
+}
 function markPersonalRepaid(id){
   const r=(D.personals||[]).find(x=>x.id===id);if(!r)return;
-  r.status=r.status==='repaid'?'open':'repaid';
-  r.updatedAt=new Date().toISOString();
-  sched();renderExp();
-  toast(r.status==='repaid'?'Marked repaid ✅':'Marked outstanding 🔴','info');
+  const bal=persBalance(r);
+  if(bal<=0){
+    // reopen: clear repayments so balance returns
+    r.repayments=[];r.status='open';r.updatedAt=new Date().toISOString();
+    sched();renderExp();toast('Marked outstanding 🔴','info');return;
+  }
+  if(!r.repayments)r.repayments=[];
+  r.repayments.push({id:uid(),date:today(),amount:bal,method:r.method||'Cash',note:'Full settlement'});
+  r.status='repaid';r.updatedAt=new Date().toISOString();
+  sched();renderExp();toast('Marked repaid ✅','info');
 }
 function personalSectionHtml(){
   const rows=(D.personals||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   const loans=rows.filter(r=>r.type==='subloan');
   const draws=rows.filter(r=>r.type==='draw');
-  const owed=loans.filter(r=>(r.status||'open')!=='repaid').reduce((s,r)=>s+r.amount,0);
+  const owed=loans.reduce((s,r)=>s+persBalance(r),0);
   const loanTot=loans.reduce((s,r)=>s+r.amount,0);
   const drawTot=draws.reduce((s,r)=>s+r.amount,0);
   return`<div style="background:var(--s1);border:1px solid rgba(155,127,212,.35);border-radius:var(--r);overflow:hidden;margin-bottom:12px;margin-top:4px">
@@ -3571,21 +3921,27 @@ function personalSectionHtml(){
     ${!rows.length?`<div style="padding:18px 14px;text-align:center;font-size:var(--fs-sm);color:var(--mut)">No personal records yet.<br>Track when a sub-con lends you money, or you take cash and spend it.</div>`:''}
     ${loans.length?`<div style="padding:7px 14px;background:rgba(155,127,212,.08);border-bottom:1px solid var(--bor);font-size:var(--fs-xs);font-weight:700;color:var(--pur);text-transform:uppercase;letter-spacing:.5px">🤝 Sub-Con Lent Me</div>`:''}
     ${loans.map(r=>{
-      const open=(r.status||'open')!=='repaid';
-      return`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:11px 14px;border-bottom:1px solid var(--bor)">
-        <div>
-          <div style="font-size:var(--fs-sm);font-weight:600">${r.subconName||'Sub-Con'} ${open?'<span style="color:var(--red);font-size:var(--fs-xs)">🔴 Outstanding</span>':'<span style="color:var(--grn);font-size:var(--fs-xs)">✅ Repaid</span>'}</div>
-          <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">${r.date||'—'} · ${r.method||'Cash'}${r.projectName?' · '+r.projectName:''}</div>
-          ${r.notes?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">${r.notes}</div>`:''}
-        </div>
-        <div style="text-align:right;flex-shrink:0;margin-left:12px">
-          <div style="font-family:'JetBrains Mono',monospace;color:var(--pur);font-size:var(--fs-md)">${fmt(r.amount)}</div>
-          <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;justify-content:flex-end">
-            <button style="font-size:var(--fs-xs);color:var(--gold);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif;font-weight:600" onclick="markPersonalRepaid('${r.id}')">${open?'✅ Repaid':'↩ Outstanding'}</button>
-            <button style="font-size:var(--fs-xs);color:var(--blu);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="ePersonal('${r.id}')">Edit</button>
-            <button style="font-size:var(--fs-xs);color:var(--red);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="del('personals','${r.id}')">Del</button>
+      const bal=persBalance(r);const paid=persRepaidAmt(r);const open=bal>0;
+      const reps=(r.repayments||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+      return`<div style="padding:11px 14px;border-bottom:1px solid var(--bor)">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div>
+            <div style="font-size:var(--fs-sm);font-weight:600">${r.subconName||'Sub-Con'} ${open?'<span style="color:var(--red);font-size:var(--fs-xs)">🔴 Outstanding</span>':'<span style="color:var(--grn);font-size:var(--fs-xs)">✅ Repaid</span>'}</div>
+            <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">${r.date||'—'} · ${r.method||'Cash'}${r.projectName?' · '+r.projectName:''}</div>
+            ${r.notes?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">${r.notes}</div>`:''}
+            <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:4px">Loan ${fmt(r.amount)}${paid?` · Paid ${fmt(paid)}`:''}${open?` · <b style="color:var(--red)">Bal ${fmt(bal)}</b>`:''}</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0;margin-left:12px">
+            <div style="font-family:'JetBrains Mono',monospace;color:var(--pur);font-size:var(--fs-md)">${fmt(open?bal:r.amount)}</div>
+            <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;justify-content:flex-end">
+              ${open?`<button style="font-size:var(--fs-xs);color:var(--grn);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif;font-weight:600" onclick="iPersRepay('${r.id}')">💰 Repay</button>`:''}
+              <button style="font-size:var(--fs-xs);color:var(--gold);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif;font-weight:600" onclick="markPersonalRepaid('${r.id}')">${open?'✅ Full':'↩ Reopen'}</button>
+              <button style="font-size:var(--fs-xs);color:var(--blu);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="ePersonal('${r.id}')">Edit</button>
+              <button style="font-size:var(--fs-xs);color:var(--red);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="del('personals','${r.id}')">Del</button>
+            </div>
           </div>
         </div>
+        ${reps.length?`<div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--bor)">${reps.map(p=>`<div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--mut);padding:2px 0"><span>${p.date||'—'} · ${p.method||'Cash'}${p.note?' · '+p.note:''}${p.linkedSpayId?' · via work pay':''}</span><span style="font-family:'JetBrains Mono',monospace;color:var(--grn)">-${fmt(p.amount)}</span></div>`).join('')}</div>`:''}
       </div>`;
     }).join('')}
     ${draws.length?`<div style="padding:7px 14px;background:rgba(232,148,75,.08);border-bottom:1px solid var(--bor);font-size:var(--fs-xs);font-weight:700;color:var(--ora);text-transform:uppercase;letter-spacing:.5px">🙋 I Took &amp; Spent</div>`:''}
@@ -3607,6 +3963,29 @@ function personalSectionHtml(){
 }
 
 // ════ PDF EXPENSES ════
+// Append further distribution rows from subpays[].breakdown (for contractor PDFs)
+function pdfAppendSpayBreakdown(doc,y,spays){
+  const bdRows=(spays||[]).flatMap(x=>(x.breakdown||[]).map(b=>({
+    date:x.date,via:x.subconName||'—',trade:b.trade||'Other',name:b.name||'—',amount:b.amount||0
+  })));
+  if(!bdRows.length)return y;
+  if(y>210){doc.addPage();y=20;}
+  const bdTotal=bdRows.reduce((s,b)=>s+b.amount,0);
+  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(130,125,118);
+  doc.text('FURTHER DISTRIBUTION (who sub-cons paid onward)',14,y);y+=6;
+  doc.autoTable({
+    startY:y,
+    head:[['Date','Via Sub-Con','Trade / Role','Person','Amount (PKR)']],
+    body:bdRows.map(b=>[b.date||'—',b.via,b.trade,b.name,fmt(b.amount)]),
+    foot:[['','','','Total Distributed','PKR '+fmt(bdTotal)]],
+    styles:{fontSize:8.5,cellPadding:2.5,textColor:[30,30,30]},
+    headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
+    footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[201,123,58]},
+    columnStyles:{4:{halign:'right'}},
+    margin:{left:14,right:14}
+  });
+  return doc.lastAutoTable.finalY+10;
+}
 // Contractor PDF — contract-funded expenses + sub-con payments (full spending)
 function pdfExp(){
   const doc=bPDF();const pw=210;
@@ -3662,6 +4041,7 @@ function pdfExp(){
         margin:{left:14,right:14}
       });
       y=doc.lastAutoTable.finalY+8;
+      y=pdfAppendSpayBreakdown(doc,y,projSpays);
     }
     if(projExps.length){
       if(y>240){doc.addPage();y=20;}
@@ -3798,6 +4178,7 @@ function pdfExpProjectContractor(pid,projName){
       margin:{left:14,right:14}
     });
     y=doc.lastAutoTable.finalY+10;
+    y=pdfAppendSpayBreakdown(doc,y,allSpays);
   }
   if(allExps.length){
     if(y>230){doc.addPage();y=20;}
@@ -4272,37 +4653,62 @@ function renderProj(){
 }
 
 // ════ GENERAL LEDGER ════
+let ledFilter='all';
+function fLed(f,el){ledFilter=f;document.querySelectorAll('#pg-ledger .ftab').forEach(t=>t.classList.remove('on'));if(el)el.classList.add('on');renderLedger();}
 function renderLedger(){
   const el=e$('list-ledger');if(!el)return;
-  // Cash book: only count expenses that have actually been paid out (isPaid); unpaid ones haven't left yet.
-  const paidExps=(D.expenses||[]).filter(e=>e.isPaid);
-  const totalIn=D.cpays.reduce((s,p)=>s+p.amount,0);
-  const totalOut=(D.subpays.reduce((s,p)=>s+p.amount,0))+paidExps.reduce((s,e)=>s+e.amount,0);
+  const side=ledFilter||'all';
+  const hints={all:'All funding sides combined',contract:'Contract receipts + sub-con + contract-funded expenses only',cashinhand:'Misc cash advances from owner + misc cash expenses only',onbehalf:'On-behalf spending (you paid, owner owes) — no contract mix'};
+  const hintEl=e$('led-filter-hint');if(hintEl)hintEl.textContent=hints[side]||hints.all;
+
+  // Income: contract vs misc advances kept separate by filter
+  const cpaysAll=D.cpays||[];
+  const income=side==='all'?cpaysAll
+    :side==='contract'?cpaysAll.filter(p=>(p.payType||'contract')==='contract')
+    :side==='cashinhand'?cpaysAll.filter(p=>p.payType==='misc')
+    :[]; // onbehalf has no income stream
+
+  // Outflows
+  const spays=side==='all'||side==='contract'?(D.subpays||[]):[];
+  const paidExps=(D.expenses||[]).filter(e=>{
+    const fb=e.fundedBy||'contract';
+    if(side==='contract'&&fb!=='contract')return false;
+    if(side==='cashinhand'&&fb!=='cashinhand')return false;
+    if(side==='onbehalf'&&fb!=='onbehalf')return false;
+    if(fb==='onbehalf')return rst(e)==='paid';
+    return !!e.isPaid;
+  });
+  const pendingBehalf=side==='all'||side==='onbehalf'
+    ?(D.expenses||[]).filter(e=>e.fundedBy==='onbehalf'&&rst(e)!=='paid'):[];
+
+  const totalIn=income.reduce((s,p)=>s+p.amount,0);
+  const totalOut=spays.reduce((s,p)=>s+p.amount,0)+paidExps.reduce((s,e)=>s+e.amount,0);
   const net=totalIn-totalOut;
-  const subTotal=D.subpays.reduce((s,p)=>s+p.amount,0);
+  const subTotal=spays.reduce((s,p)=>s+p.amount,0);
   const setV=(id,v,color)=>{const x=e$(id);if(x){x.textContent=fmt(v);if(color)x.style.color=color;}};
   setV('led-in',totalIn,'var(--grn)');setV('led-out',totalOut,'var(--red)');
   setV('led-net',Math.abs(net),net>=0?'var(--grn)':'var(--red)');setV('led-sub',subTotal,'var(--red)');
-  // All transactions combined sorted by date
+
+  const fundTag=fb=>fb==='cashinhand'?'Misc Cash':fb==='onbehalf'?'On Behalf':'Contract';
   const txns=[
-    ...D.cpays.map(p=>({date:p.date,type:'Receipt',desc:p.clientName+' — '+(p.milestone||p.projectName||''),ref:p.invoiceRef||'',amount:p.amount,dir:'in',project:p.projectName})),
-    ...D.subpays.map(p=>({date:p.date,type:'Sub-Con Payment',desc:p.subconName+' — '+p.phase,ref:'',amount:p.amount,dir:'out',project:p.projectName})),
-    ...paidExps.map(p=>({date:p.date,type:'Expense',desc:p.desc+' ('+p.cat+')',ref:'',amount:p.amount,dir:'out',project:p.projectName})),
+    ...income.map(p=>({date:p.date,type:p.payType==='misc'?'Misc Advance':'Receipt',desc:p.clientName+' — '+(p.milestone||p.projectName||''),amount:p.amount,dir:'in',project:p.projectName,side:p.payType==='misc'?'cashinhand':'contract'})),
+    ...spays.map(p=>({date:p.date,type:'Sub-Con Payment',desc:p.subconName+' — '+p.phase,amount:p.amount,dir:'out',project:p.projectName,side:'contract'})),
+    ...paidExps.map(p=>({date:p.date,type:'Expense · '+fundTag(p.fundedBy||'contract'),desc:p.desc+' ('+(p.cat||'other')+')'+(p.paidTo?' · '+p.paidTo:''),amount:p.amount,dir:'out',project:p.projectName,side:p.fundedBy||'contract'})),
+    ...pendingBehalf.map(p=>({date:p.date,type:'On Behalf (unpaid)',desc:p.desc+(p.paidTo?' · '+p.paidTo:''),amount:p.amount,dir:'out',project:p.projectName,side:'onbehalf',pending:true})),
   ].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
-  if(!txns.length){el.innerHTML='<div class="empty"><div class="empty-i">📒</div><div class="empty-t">No transactions yet</div></div>';return;}
-  let running=0;
-  // Group by project
+
+  if(!txns.length){el.innerHTML='<div class="empty"><div class="empty-i">📒</div><div class="empty-t">No transactions for this side yet</div></div>';return;}
   const projects=[...new Set(txns.map(t=>t.project||'General'))];
   el.innerHTML=projects.map(proj=>{
     const ptxns=txns.filter(t=>(t.project||'General')===proj);
     const pIn=ptxns.filter(t=>t.dir==='in').reduce((s,t)=>s+t.amount,0);
-    const pOut=ptxns.filter(t=>t.dir==='out').reduce((s,t)=>s+t.amount,0);
+    const pOut=ptxns.filter(t=>t.dir==='out'&&!t.pending).reduce((s,t)=>s+t.amount,0);
     return`<div style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);overflow:hidden;margin-bottom:12px">
       <div style="padding:12px 14px;border-bottom:1px solid var(--bor);display:flex;justify-content:space-between;align-items:center">
         <div style="font-size:var(--fs-md);font-weight:700">📁 ${proj}</div>
         <div style="text-align:right;font-size:var(--fs-xs)"><span style="color:var(--grn)">+${fmt(pIn)}</span> <span style="color:var(--mut)">|</span> <span style="color:var(--red)">-${fmt(pOut)}</span></div>
       </div>
-      ${ptxns.map(t=>`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:10px 14px;border-bottom:1px solid var(--bor)">
+      ${ptxns.map(t=>`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:10px 14px;border-bottom:1px solid var(--bor);opacity:${t.pending?'.75':'1'}">
         <div>
           <div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:2px">${t.date||'—'} · ${t.type}</div>
           <div style="font-size:var(--fs-sm);font-weight:600">${t.desc}</div>
@@ -4747,7 +5153,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION — bump both on each release so deploys apply on open.
-const APP_VERSION='2026-07-13-v13';
+const APP_VERSION='2026-07-13-v14';
 let _swRefreshing=false;
 
 async function wipeAppCaches(){
