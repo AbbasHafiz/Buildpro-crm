@@ -3131,6 +3131,20 @@ function markExpPaid(id){
   toast(r.isPaid?'Marked as paid ✅':'Marked as unpaid','info');
 }
 
+// Cycle an expense's funding side: Contractor -> Owner's Cash in Hand -> Paid on Behalf -> Contractor.
+// Lets you reclassify existing expenses so the Owner's Cash tab and "Spent" reflect owner-funded spending.
+function cycleFunded(id){
+  const r=(D.expenses||[]).find(x=>x.id===id);if(!r)return;
+  const order=['contract','cashinhand','onbehalf'];
+  const next=order[(order.indexOf(r.fundedBy||'contract')+1)%order.length];
+  r.fundedBy=next;
+  if(next==='onbehalf'&&!r.rstatus)r.rstatus=r.isPaid?'paid':'unpaid';
+  r.updatedAt=new Date().toISOString();
+  sched();renderExp();renderDash();renderLedger();
+  const lbl={contract:'Contractor Side',cashinhand:"Owner's Cash in Hand",onbehalf:'Paid on Behalf (reimbursable)'};
+  toast('Moved to '+lbl[next],'info');
+}
+
 // Cycle reimbursement status for on-behalf expenses: unpaid -> pending -> paid -> unpaid
 function cycleReimburse(id){
   const r=(D.expenses||[]).find(x=>x.id===id);if(!r)return;
@@ -3238,6 +3252,7 @@ function renderExp(){
             <div style="font-family:'JetBrains Mono',monospace;color:var(--red);font-size:var(--fs-md)">${fmt(r.amount)}</div>
             <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
               <button style="font-size:var(--fs-xs);color:${r.isPaid?'var(--mut)':'var(--grn)'};background:none;border:none;cursor:pointer;font-family:Inter,sans-serif;font-weight:600" onclick="markExpPaid('${r.id}')">${r.isPaid?'↩ Unpaid':'✅ Paid'}</button>
+              <button style="font-size:var(--fs-xs);color:#4D94D4;background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="cycleFunded('${r.id}')" title="Change funding side">⇄ ${({contract:'Owner Cash',cashinhand:'On Behalf',onbehalf:'Internal'})[r.fundedBy||'contract']}</button>
               <button style="font-size:var(--fs-xs);color:var(--blu);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="eExp('${r.id}')">Edit</button>
               <button style="font-size:var(--fs-xs);color:var(--red);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="del('expenses','${r.id}')">Del</button>
             </div>
@@ -3266,6 +3281,7 @@ function renderExp(){
             <div style="font-family:'JetBrains Mono',monospace;color:var(--red);font-size:var(--fs-md)">${fmt(r.amount)}</div>
             <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
               <button style="font-size:var(--fs-xs);color:var(--gold);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif;font-weight:600" onclick="cycleReimburse('${r.id}')">→ ${rNext[st]}</button>
+              <button style="font-size:var(--fs-xs);color:#4D94D4;background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="cycleFunded('${r.id}')" title="Change funding side">⇄ Internal</button>
               <button style="font-size:var(--fs-xs);color:var(--blu);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="eExp('${r.id}')">Edit</button>
               <button style="font-size:var(--fs-xs);color:var(--red);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="del('expenses','${r.id}')">Del</button>
             </div>
