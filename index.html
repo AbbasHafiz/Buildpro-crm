@@ -3092,7 +3092,8 @@ async function pdfSubProjStatement(subconId,projectId){
         5:{halign:'right'},
         6:{halign:'right',textColor:[82,181,106]}
       },
-      margin:{left:14,right:14}
+      showFoot:'lastPage',
+    margin:{left:14,right:14}
     });
   }else{
     doc.setFont('helvetica','italic');doc.setFontSize(10);doc.setTextColor(150,145,138);
@@ -3422,7 +3423,8 @@ async function pdfEst(id){
   doc.setFontSize(8);doc.setTextColor(160,155,148);doc.text('PREPARED FOR',14,y);
   doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor(20,20,20);doc.text(r.clientName,14,y+7);
   doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(100,100,100);if(r.projectName)doc.text('Project: '+r.projectName,14,y+13);y+=22;
-  doc.autoTable({startY:y,head:[['Work Item / Description','Qty','Unit','Rate (PKR)','Amount (PKR)']],body:(r.items||[]).map(i=>[i.d,i.q,i.u||'—',fmt(i.r),fmt(i.a)]),foot:[['','','','Total (PKR)',fmt(r.total)]],styles:{fontSize:9.5,cellPadding:3.5,textColor:[30,30,30]},headStyles:{fillColor:[242,240,235],textColor:[130,125,118],fontStyle:'bold',fontSize:8.5},footStyles:{fillColor:[248,246,242],fontStyle:'bold',textColor:[201,123,58],fontSize:11},columnStyles:{0:{cellWidth:72},3:{halign:'right'},4:{halign:'right'}},margin:{left:14,right:14}});
+  doc.autoTable({startY:y,head:[['Work Item / Description','Qty','Unit','Rate (PKR)','Amount (PKR)']],body:(r.items||[]).map(i=>[i.d,i.q,i.u||'—',fmt(i.r),fmt(i.a)]),foot:[['','','','Total (PKR)',fmt(r.total)]],styles:{fontSize:9.5,cellPadding:3.5,textColor:[30,30,30]},headStyles:{fillColor:[242,240,235],textColor:[130,125,118],fontStyle:'bold',fontSize:8.5},footStyles:{fillColor:[248,246,242],fontStyle:'bold',textColor:[201,123,58],fontSize:11},columnStyles:{0:{cellWidth:72},3:{halign:'right'},4:{halign:'right'}},showFoot:'lastPage',
+    margin:{left:14,right:14}});
   if(r.notes){const fy=doc.lastAutoTable.finalY+8;doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(80,80,80);doc.text('Notes / Scope:',14,fy);doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(100,100,100);doc.text(r.notes,14,fy+6,{maxWidth:182});}
   drawBankFooter(doc);doc.save('Estimate-'+r.num+'.pdf');toast('Estimate PDF ✓');
 }
@@ -3489,7 +3491,8 @@ async function pdfBoqVsActual(id){
       headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
       footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[30,30,30]},
       columnStyles:{1:{halign:'right'},2:{halign:'right'},3:{halign:'right'}},
-      margin:{left:14,right:14}
+      showFoot:'lastPage',
+    margin:{left:14,right:14}
     });
     y=doc.lastAutoTable.finalY+8;
   }
@@ -4706,6 +4709,7 @@ function pdfDrawSpayTable(doc,y,spays,opts){
     headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
     footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[200,50,50],fontSize:8.5},
     columnStyles:{4:{halign:'right'}},
+    showFoot:'lastPage',
     margin:{left:14,right:14}
   });
   return doc.lastAutoTable.finalY+(opts&&opts.gap!=null?opts.gap:10);
@@ -4770,7 +4774,8 @@ async function pdfExp(){
         footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[201,123,58],fontSize:8.5},
         columnStyles:{3:{cellWidth:22},4:{halign:'right'}},
         didParseCell:data=>{if(data.section==='body'&&data.column.index===3)data.cell.styles.textColor=data.cell.raw==='PAID'?[50,150,50]:[200,50,50];},
-        margin:{left:14,right:14}
+        showFoot:'lastPage',
+    margin:{left:14,right:14}
       });
       y=doc.lastAutoTable.finalY+10;
     }
@@ -4836,7 +4841,8 @@ async function pdfExpExternal(){
       footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[77,148,212]},
       columnStyles:{4:{cellWidth:24},5:{halign:'right',cellWidth:28}},
       didParseCell:data=>{if(data.section==='body'&&data.column.index===4)data.cell.styles.textColor=(data.cell.raw==='PAID')?[50,150,50]:(data.cell.raw==='PENDING')?[201,123,58]:[200,50,50];},
-      margin:{left:14,right:14}
+      showFoot:'lastPage',
+    margin:{left:14,right:14}
     });
     y=doc.lastAutoTable.finalY+10;
   });
@@ -4895,7 +4901,8 @@ async function pdfExpProjectContractor(pid,projName){
       footStyles:{fontSize:9,fontStyle:'bold',textColor:[201,123,58]},
       columnStyles:{4:{cellWidth:24},5:{halign:'right',cellWidth:28}},
       didParseCell:data=>{if(data.section==='body'&&data.column.index===4)data.cell.styles.textColor=data.cell.raw==='PAID'?[50,150,50]:[200,50,50];},
-      margin:{left:14,right:14}
+      showFoot:'lastPage',
+    margin:{left:14,right:14}
     });
     y=doc.lastAutoTable.finalY+10;
   }
@@ -4974,6 +4981,7 @@ async function pdfExpProjectOwner(pid,projName){
     footStyles:{fontSize:8.5,fontStyle:'bold',textColor:[77,148,212]},
     columnStyles:{4:{cellWidth:24},5:{halign:'right',cellWidth:28}},
     didParseCell:data=>{if(data.section==='body'&&data.column.index===4)data.cell.styles.textColor=(data.cell.raw==='PAID')?[50,150,50]:(data.cell.raw==='PENDING')?[201,123,58]:[200,50,50];},
+    showFoot:'lastPage',
     margin:{left:14,right:14}
   });
   drawBankFooter(doc);
@@ -5040,7 +5048,8 @@ async function pdfCpayConfirm(id){
       headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
       footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[82,181,106],fontSize:9},
       columnStyles:{3:{halign:'right'}},
-      margin:{left:14,right:14}
+      showFoot:'lastPage',
+    margin:{left:14,right:14}
     });
     y=doc.lastAutoTable.finalY+8;
   }
@@ -5106,7 +5115,8 @@ async function pdfSpayConfirm(id){
       headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
       footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[30,30,30],fontSize:9},
       columnStyles:{2:{halign:'right'}},
-      margin:{left:14,right:14}
+      showFoot:'lastPage',
+    margin:{left:14,right:14}
     });
     y=doc.lastAutoTable.finalY+10;
   }
@@ -5138,7 +5148,8 @@ async function pdfSpayConfirm(id){
       headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:7.5},
       footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[77,148,212],fontSize:9},
       columnStyles:{1:{cellWidth:45},2:{cellWidth:50},4:{halign:'right'}},
-      margin:{left:14,right:14}
+      showFoot:'lastPage',
+    margin:{left:14,right:14}
     });
     y=doc.lastAutoTable.finalY+8;
     if(sc2?.contract){const rem=sc2.contract-totalPaid;doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(rem>0?201:82,rem>0?123:181,rem>0?58:106);doc.text('Contract: PKR '+fmt(sc2.contract)+'   |   Total Paid: PKR '+fmt(totalPaid)+'   |   Remaining: PKR '+fmt(Math.max(0,rem)),14,y);}
@@ -5200,7 +5211,8 @@ async function pdfProjPayments(pid){
       headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
       footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[82,181,106],fontSize:9},
       columnStyles:{0:{cellWidth:8},4:{halign:'right'},5:{halign:'right',textColor:[82,181,106]}},
-      margin:{left:14,right:14}
+      showFoot:'lastPage',
+    margin:{left:14,right:14}
     });
     y=doc.lastAutoTable.finalY+10;
   }else{
@@ -5232,7 +5244,8 @@ async function pdfProjPayments(pid){
       headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
       footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[77,148,212]},
       columnStyles:{3:{halign:'right'}},
-      margin:{left:14,right:14}
+      showFoot:'lastPage',
+    margin:{left:14,right:14}
     });
     y=doc.lastAutoTable.finalY+8;
   }
@@ -5251,7 +5264,8 @@ async function pdfProjPayments(pid){
       footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[77,148,212]},
       columnStyles:{3:{cellWidth:24},4:{halign:'right',cellWidth:28}},
       didParseCell:data=>{if(data.section==='body'&&data.column.index===3)data.cell.styles.textColor=(data.cell.raw==='PAID')?[50,150,50]:(data.cell.raw==='PENDING')?[201,123,58]:[200,50,50];},
-      margin:{left:14,right:14}
+      showFoot:'lastPage',
+    margin:{left:14,right:14}
     });
     y=doc.lastAutoTable.finalY+8;
   }else if(!miscPays.length){
@@ -5848,7 +5862,8 @@ async function pdfPartnerSummary(pid){
       headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
       footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[50,150,50]},
       columnStyles:{4:{halign:'right'},5:{halign:'right',textColor:[50,150,50]}},
-      margin:{left:14,right:14}
+      showFoot:'lastPage',
+    margin:{left:14,right:14}
     });
     y=doc.lastAutoTable.finalY+10;
   }
@@ -5873,7 +5888,8 @@ async function pdfPartnerSummary(pid){
       footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[200,50,50]},
       columnStyles:{3:{cellWidth:20},4:{halign:'right'}},
       didParseCell:data=>{if(data.section==='body'&&data.column.index===3)data.cell.styles.textColor=data.cell.raw==='PAID'?[50,150,50]:[200,50,50];},
-      margin:{left:14,right:14}
+      showFoot:'lastPage',
+    margin:{left:14,right:14}
     });
     y=doc.lastAutoTable.finalY+10;
   }
@@ -6063,6 +6079,7 @@ async function pdfReimbursement(pid,projName){
       if(data.section==='foot'&&data.row.index===2)
         data.cell.styles.textColor=[201,123,58];
     },
+    showFoot:'lastPage',
     margin:{left:14,right:14}
   });
   y=doc.lastAutoTable.finalY+10;
