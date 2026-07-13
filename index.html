@@ -8,6 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
+<meta name="app-version" content="2026-07-13-v8">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -4168,41 +4169,109 @@ async function importBk(){
   inp.click();cMenu();
 }
 
-// ════ SERVICE WORKER ════
+// ════ SERVICE WORKER / AUTO-UPDATE ════
+// Keep in sync with sw.js APP_VERSION — bump both on each release so deploys apply on open.
+const APP_VERSION='2026-07-13-v8';
+let _swRefreshing=false;
+
+async function wipeAppCaches(){
+  if('caches' in window){
+    const keys=await caches.keys();
+    await Promise.all(keys.map(k=>caches.delete(k)));
+  }
+}
+
 // Clears the app cache and reloads from the network so the latest version loads.
 // Saved data (localStorage / Supabase) is preserved.
 async function clearCacheUpdate(){
   cMenu();
   toast('Clearing cache & updating…','info');
   try{
+    await wipeAppCaches();
     if('serviceWorker' in navigator){
       const regs=await navigator.serviceWorker.getRegistrations();
-      await Promise.all(regs.map(r=>r.update().catch(()=>{})));
-    }
-    if('caches' in window){
-      const keys=await caches.keys();
-      await Promise.all(keys.map(k=>caches.delete(k)));
+      await Promise.all(regs.map(async r=>{
+        try{await r.update();}catch(e){}
+        try{await r.unregister();}catch(e){}
+      }));
     }
   }catch(e){}
-  setTimeout(()=>location.reload(),500);
+  setTimeout(()=>location.reload(),400);
+}
+
+// If Wasmer has a newer index.html than last seen, reload automatically.
+// Fingerprint means future main deploys apply even when APP_VERSION wasn't bumped.
+let _verCheckBusy=false;
+async function checkAppVersion(){
+  if(_verCheckBusy)return;
+  _verCheckBusy=true;
+  try{
+    const r=await fetch('./index.html?_='+Date.now(),{cache:'no-store',headers:{'Cache-Control':'no-cache'}});
+    if(!r.ok)return;
+    const t=await r.text();
+    let h=2166136261;
+    for(let i=0;i<t.length;i++){h^=t.charCodeAt(i);h=Math.imul(h,16777619);}
+    const fp=t.length.toString(16)+'-'+(h>>>0).toString(16);
+    const prev=localStorage.getItem('bp-deploy-fp');
+    if(prev&&prev!==fp){
+      localStorage.setItem('bp-deploy-fp',fp);
+      await wipeAppCaches();
+      location.reload();
+      return;
+    }
+    localStorage.setItem('bp-deploy-fp',fp);
+    // Also honour explicit version meta when present (covers partial CDN mismatches).
+    const m=t.match(/name=["']app-version["']\s+content=["']([^"']+)["']/i)
+      ||t.match(/content=["']([^"']+)["']\s+name=["']app-version["']/i);
+    if(m&&m[1]&&m[1]!==APP_VERSION){
+      await wipeAppCaches();
+      location.reload();
+    }
+  }catch(e){}
+  finally{_verCheckBusy=false;}
+}
+
+function reloadForNewSW(){
+  if(_swRefreshing)return;
+  _swRefreshing=true;
+  location.reload();
 }
 
 if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('./sw.js').then(reg => {
-    reg.update();
-    // When a new version is detected, surface a badge + toast so the user can update.
+  // New SW took control → reload so the installed PWA shows the Wasmer deploy.
+  navigator.serviceWorker.addEventListener('controllerchange',reloadForNewSW);
+  navigator.serviceWorker.addEventListener('message',ev=>{
+    if(ev.data&&ev.data.type==='SW_ACTIVATED')reloadForNewSW();
+  });
+
+  navigator.serviceWorker.register('./sw.js').then(reg=>{
+    const askUpdate=()=>reg.update().catch(()=>{});
+    askUpdate();
+    checkAppVersion();
+
+    // Opening / focusing the installed app should pick up main-branch deploys.
+    document.addEventListener('visibilitychange',()=>{
+      if(document.visibilityState==='visible'){askUpdate();checkAppVersion();}
+    });
+    window.addEventListener('focus',()=>{askUpdate();checkAppVersion();});
+    window.addEventListener('pageshow',ev=>{askUpdate();if(ev.persisted)checkAppVersion();});
+
     reg.addEventListener('updatefound',()=>{
       const nw=reg.installing;if(!nw)return;
       nw.addEventListener('statechange',()=>{
         if(nw.state==='installed'&&navigator.serviceWorker.controller){
           const b=e$('um-update-badge');if(b)b.style.display='inline-block';
-          toast('Update available — open menu → Check for Updates','info');
+          toast('Updating to latest version…','info');
+          // skipWaiting in sw.js + controllerchange will reload; force if needed.
+          if(reg.waiting){
+            try{reg.waiting.postMessage({type:'SKIP_WAITING'});}catch(e){}
+          }
         }
       });
     });
+
+    setInterval(askUpdate,60*1000);
   }).catch(()=>{});
-  // Periodically check for updates while the app is open.
-  setInterval(()=>{navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.update().catch(()=>{})));},5*60*1000);
 }
 
 // ════ BOOT ════
