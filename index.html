@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-07-13-v13">
+<meta name="app-version" content="2026-07-13-v16">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -5543,8 +5543,8 @@ async function importBk(){
 }
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
-// Keep in sync with sw.js APP_VERSION — bump both on each release so deploys apply on open.
-const APP_VERSION='2026-07-13-v15';
+// Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
+const APP_VERSION='2026-07-13-v16';
 let _swRefreshing=false;
 
 async function wipeAppCaches(){
@@ -5552,6 +5552,17 @@ async function wipeAppCaches(){
     const keys=await caches.keys();
     await Promise.all(keys.map(k=>caches.delete(k)));
   }
+}
+
+// One auto-reload per reason per tab session — prevents infinite reload loops.
+function safeReload(reason){
+  try{
+    const key='bp-reloaded-'+reason;
+    if(sessionStorage.getItem(key))return false;
+    sessionStorage.setItem(key,'1');
+  }catch(e){}
+  location.reload();
+  return true;
 }
 
 // Clears the app cache and reloads from the network so the latest version loads.
@@ -5569,6 +5580,8 @@ async function clearCacheUpdate(){
       }));
     }
   }catch(e){}
+  // Manual update may reload more than once across sessions — clear guards.
+  try{Object.keys(sessionStorage).filter(k=>k.startsWith('bp-reloaded-')).forEach(k=>sessionStorage.removeItem(k));}catch(e){}
   setTimeout(()=>location.reload(),400);
 }
 
@@ -5579,26 +5592,45 @@ async function checkAppVersion(){
   if(_verCheckBusy)return;
   _verCheckBusy=true;
   try{
-    const r=await fetch('./index.html?_='+Date.now(),{cache:'no-store',headers:{'Cache-Control':'no-cache'}});
+    // Bypass SW HTML handler so we always fingerprint the real network file.
+    const r=await fetch('./index.html?_bpver='+Date.now(),{cache:'no-store',headers:{'Cache-Control':'no-cache'}});
     if(!r.ok)return;
     const t=await r.text();
     let h=2166136261;
     for(let i=0;i<t.length;i++){h^=t.charCodeAt(i);h=Math.imul(h,16777619);}
     const fp=t.length.toString(16)+'-'+(h>>>0).toString(16);
     const prev=localStorage.getItem('bp-deploy-fp');
-    if(prev&&prev!==fp){
-      localStorage.setItem('bp-deploy-fp',fp);
-      await wipeAppCaches();
-      location.reload();
+    localStorage.setItem('bp-deploy-fp',fp);
+
+    // Prefer the script constant in the fetched file (source of truth); fall back to meta.
+    const scriptVer=(t.match(/const\s+APP_VERSION\s*=\s*['"]([^'"]+)['"]/)||[])[1];
+    const metaVer=((t.match(/name=["']app-version["']\s+content=["']([^"']+)["']/i)
+      ||t.match(/content=["']([^"']+)["']\s+name=["']app-version["']/i)||[])[1]);
+    const netVer=scriptVer||metaVer||'';
+
+    // Already running the network version — nothing to do.
+    if(netVer&&netVer===APP_VERSION){
+      localStorage.setItem('bp-applied-ver',APP_VERSION);
       return;
     }
-    localStorage.setItem('bp-deploy-fp',fp);
-    // Also honour explicit version meta when present (covers partial CDN mismatches).
-    const m=t.match(/name=["']app-version["']\s+content=["']([^"']+)["']/i)
-      ||t.match(/content=["']([^"']+)["']\s+name=["']app-version["']/i);
-    if(m&&m[1]&&m[1]!==APP_VERSION){
+
+    // Network file changed (new deploy) — reload once for this fingerprint.
+    if(prev&&prev!==fp){
+      const appliedFp=localStorage.getItem('bp-applied-fp');
+      if(appliedFp===fp)return; // already reloaded for this deploy; don't loop
+      localStorage.setItem('bp-applied-fp',fp);
       await wipeAppCaches();
-      location.reload();
+      safeReload('deploy-fp');
+      return;
+    }
+
+    // Explicit version bump on server vs what this tab is running.
+    if(netVer&&netVer!==APP_VERSION){
+      const applied=localStorage.getItem('bp-applied-ver');
+      if(applied===netVer)return; // already tried loading this version
+      localStorage.setItem('bp-applied-ver',netVer);
+      await wipeAppCaches();
+      safeReload('app-ver');
     }
   }catch(e){}
   finally{_verCheckBusy=false;}
@@ -5607,14 +5639,17 @@ async function checkAppVersion(){
 function reloadForNewSW(){
   if(_swRefreshing)return;
   _swRefreshing=true;
-  location.reload();
+  safeReload('sw');
 }
 
 if('serviceWorker' in navigator){
-  // New SW took control → reload so the installed PWA shows the Wasmer deploy.
+  // New SW took control → reload once so the installed PWA shows the Wasmer deploy.
   navigator.serviceWorker.addEventListener('controllerchange',reloadForNewSW);
+  // Do NOT also reload on SW_ACTIVATED — that double-fired with controllerchange and caused loops.
   navigator.serviceWorker.addEventListener('message',ev=>{
-    if(ev.data&&ev.data.type==='SW_ACTIVATED')reloadForNewSW();
+    if(ev.data&&ev.data.type==='SW_ACTIVATED'&&ev.data.version&&ev.data.version!==APP_VERSION){
+      reloadForNewSW();
+    }
   });
 
   navigator.serviceWorker.register('./sw.js').then(reg=>{
@@ -5622,12 +5657,10 @@ if('serviceWorker' in navigator){
     askUpdate();
     checkAppVersion();
 
-    // Opening / focusing the installed app should pick up main-branch deploys.
+    // On return to the app, check for deploys (guarded — will not loop).
     document.addEventListener('visibilitychange',()=>{
       if(document.visibilityState==='visible'){askUpdate();checkAppVersion();}
     });
-    window.addEventListener('focus',()=>{askUpdate();checkAppVersion();});
-    window.addEventListener('pageshow',ev=>{askUpdate();if(ev.persisted)checkAppVersion();});
 
     reg.addEventListener('updatefound',()=>{
       const nw=reg.installing;if(!nw)return;
@@ -5635,7 +5668,6 @@ if('serviceWorker' in navigator){
         if(nw.state==='installed'&&navigator.serviceWorker.controller){
           const b=e$('um-update-badge');if(b)b.style.display='inline-block';
           toast('Updating to latest version…','info');
-          // skipWaiting in sw.js + controllerchange will reload; force if needed.
           if(reg.waiting){
             try{reg.waiting.postMessage({type:'SKIP_WAITING'});}catch(e){}
           }
@@ -5643,7 +5675,7 @@ if('serviceWorker' in navigator){
       });
     });
 
-    setInterval(askUpdate,60*1000);
+    setInterval(askUpdate,5*60*1000);
   }).catch(()=>{});
 }
 

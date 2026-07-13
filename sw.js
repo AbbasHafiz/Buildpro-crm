@@ -1,5 +1,5 @@
 // Bump APP_VERSION on every release so browsers detect a new service worker.
-const APP_VERSION = '2026-07-13-v15';
+const APP_VERSION = '2026-07-13-v16';
 const CACHE = 'buildpro-' + APP_VERSION;
 const CORE = ['/manifest.json', '/icon-192.png', '/icon-512.png'];
 
@@ -70,11 +70,13 @@ self.addEventListener('fetch', e => {
   }
 
   // HTML: network-first so Wasmer deploys show up on next open; cache only for offline.
+  // Version-check fetches (?_bpver=) go straight to network and are not written to Cache API.
   if (isHtmlRequest(e.request)) {
+    const isVerCheck = url.includes('_bpver=');
     e.respondWith(
       fetch(e.request, { cache: 'no-store' })
         .then(resp => {
-          if (resp && resp.ok) {
+          if (!isVerCheck && resp && resp.ok) {
             const clone = resp.clone();
             caches.open(CACHE).then(c => c.put('/index.html', clone));
           }
