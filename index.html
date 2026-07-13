@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-07-13-v19">
+<meta name="app-version" content="2026-07-13-v20">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -4667,29 +4667,71 @@ function personalSectionHtml(){
 }
 
 // ════ PDF EXPENSES ════
-// Append further distribution rows from subpays[].breakdown (for contractor PDFs)
-function pdfAppendSpayBreakdown(doc,y,spays){
-  const bdRows=(spays||[]).flatMap(x=>(x.breakdown||[]).map(b=>({
-    date:x.date,via:x.subconName||'—',trade:b.trade||'Other',name:b.name||'—',amount:b.amount||0
-  })));
-  if(!bdRows.length)return y;
-  if(y>210){doc.addPage();y=20;}
-  const bdTotal=bdRows.reduce((s,b)=>s+b.amount,0);
-  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(130,125,118);
-  doc.text('FURTHER DISTRIBUTION (who sub-cons paid onward)',14,y);y+=6;
+/** Flatten sub-con payments into one table: payment + who it was for (no duplicate further-distribution section). */
+function spayConsolidatedRows(spays){
+  const rows=[];
+  (spays||[]).forEach(p=>{
+    const bd=p.breakdown||[];
+    const bdTotal=bd.reduce((s,b)=>s+(Number(b.amount)||0),0);
+    if(bd.length){
+      bd.forEach(b=>{
+        const forWhom=[b.trade,b.name].filter(Boolean).join(' · ')||'—';
+        rows.push({
+          date:p.date||'—',
+          subcon:p.subconName||'—',
+          forWhom,
+          phase:p.phase||'—',
+          method:p.method||'Cash',
+          amount:Number(b.amount)||0
+        });
+      });
+      const rem=Math.round(((Number(p.amount)||0)-bdTotal)*100)/100;
+      if(rem>0.01){
+        rows.push({
+          date:p.date||'—',
+          subcon:p.subconName||'—',
+          forWhom:'(kept by sub-con / not distributed)',
+          phase:p.phase||'—',
+          method:p.method||'Cash',
+          amount:rem
+        });
+      }
+    }else{
+      rows.push({
+        date:p.date||'—',
+        subcon:p.subconName||'—',
+        forWhom:p.desc||'Direct to sub-con',
+        phase:p.phase||'—',
+        method:p.method||'Cash',
+        amount:Number(p.amount)||0
+      });
+    }
+  });
+  return rows;
+}
+function pdfDrawSpayTable(doc,y,spays,opts){
+  const rows=spayConsolidatedRows(spays);
+  if(!rows.length)return y;
+  const total=(spays||[]).reduce((s,p)=>s+(Number(p.amount)||0),0);
+  const title=(opts&&opts.title)||'SUB-CONTRACTOR PAYMENTS';
+  if(y>230){doc.addPage();y=20;}
+  doc.setFont('helvetica','bold');doc.setFontSize(opts&&opts.small?8:9);doc.setTextColor(130,125,118);
+  doc.text(title,opts&&opts.indent?16:14,y);y+=opts&&opts.small?3:5;
   doc.autoTable({
     startY:y,
-    head:[['Date','Via Sub-Con','Trade / Role','Person','Amount (PKR)']],
-    body:bdRows.map(b=>[b.date||'—',b.via,b.trade,b.name,fmt(b.amount)]),
-    foot:[['','','','Total Distributed','PKR '+fmt(bdTotal)]],
+    head:[['Date','Sub-Contractor','For (Person / Trade)','Phase','Method','Amount (PKR)']],
+    body:rows.map(r=>[r.date,r.subcon,r.forWhom,r.phase,r.method,fmt(r.amount)]),
+    foot:[['','','','','Sub-Con Total',(opts&&opts.footPrefix?'PKR ':'')+fmt(total)]],
     styles:{fontSize:8.5,cellPadding:2.5,textColor:[30,30,30]},
     headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
-    footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[201,123,58]},
-    columnStyles:{4:{halign:'right'}},
+    footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[200,50,50],fontSize:8.5},
+    columnStyles:{2:{cellWidth:48},5:{halign:'right'}},
     margin:{left:14,right:14}
   });
-  return doc.lastAutoTable.finalY+10;
+  return doc.lastAutoTable.finalY+(opts&&opts.gap!=null?opts.gap:10);
 }
+// Legacy name kept so older call sites stay safe — now a no-op (breakdown is in the main table).
+function pdfAppendSpayBreakdown(doc,y){return y;}
 // Contractor PDF — contract-funded expenses + sub-con payments (full spending)
 async function pdfExp(){
   await prepareCompanyLogo();
@@ -4732,21 +4774,7 @@ async function pdfExp(){
     doc.text('Total: PKR '+fmt(pExp+pSub),196,y+3,{align:'right'});
     y+=12;
     if(projSpays.length){
-      doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(130,125,118);
-      doc.text('Sub-Contractor Payments',16,y);y+=3;
-      doc.autoTable({
-        startY:y,
-        head:[['Date','Sub-Contractor','Phase','Method','Amount (PKR)']],
-        body:projSpays.map(r=>[r.date||'—',r.subconName||'—',r.phase||'—',r.method||'Cash',fmt(r.amount)]),
-        foot:[['','','','Sub-Con Total',fmt(pSub)]],
-        styles:{fontSize:8.5,cellPadding:2.5,textColor:[30,30,30]},
-        headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
-        footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[200,50,50],fontSize:8.5},
-        columnStyles:{4:{halign:'right'}},
-        margin:{left:14,right:14}
-      });
-      y=doc.lastAutoTable.finalY+8;
-      y=pdfAppendSpayBreakdown(doc,y,projSpays);
+      y=pdfDrawSpayTable(doc,y,projSpays,{title:'Sub-Contractor Payments',small:true,gap:8});
     }
     if(projExps.length){
       if(y>240){doc.addPage();y=20;}
@@ -4871,21 +4899,7 @@ async function pdfExpProjectContractor(pid,projName){
   doc.text('Paid: PKR '+fmt(paidAmt)+'   ·   Pending expenses: PKR '+fmt(pendingAmt),16,y+14);
   y+=24;
   if(allSpays.length){
-    doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(130,125,118);
-    doc.text('SUB-CONTRACTOR PAYMENTS',14,y);y+=5;
-    doc.autoTable({
-      startY:y,
-      head:[['Date','Sub-Contractor','Phase','Method','Amount (PKR)']],
-      body:allSpays.map(r=>[r.date||'—',r.subconName||'—',r.phase||'—',r.method||'Cash',fmt(r.amount)]),
-      foot:[['','','','Sub-Con Total','PKR '+fmt(subTotal)]],
-      styles:{fontSize:8.5,cellPadding:2.5,textColor:[30,30,30]},
-      headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
-      footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[200,50,50]},
-      columnStyles:{4:{halign:'right'}},
-      margin:{left:14,right:14}
-    });
-    y=doc.lastAutoTable.finalY+10;
-    y=pdfAppendSpayBreakdown(doc,y,allSpays);
+    y=pdfDrawSpayTable(doc,y,allSpays,{title:'SUB-CONTRACTOR PAYMENTS',footPrefix:true});
   }
   if(allExps.length){
     if(y>230){doc.addPage();y=20;}
@@ -5845,46 +5859,9 @@ async function pdfPartnerSummary(pid){
     y=doc.lastAutoTable.finalY+10;
   }
 
-  // Sub-con payments
+  // Sub-con payments (person/trade shown in same table — no separate further-distribution section)
   if(spays.length){
-    if(y>210){doc.addPage();y=20;}
-    doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(130,125,118);
-    doc.text('SUB-CONTRACTOR PAYMENTS',14,y);y+=6;
-    doc.autoTable({
-      startY:y,
-      head:[['Date','Sub-Contractor','Phase','Method','Amount (PKR)']],
-      body:spays.map(x=>[x.date||'—',x.subconName||'—',x.phase||'—',x.method||'Cash',fmt(x.amount)]),
-      foot:[['','','','Total Paid','PKR '+fmt(totalSub)]],
-      styles:{fontSize:8.5,cellPadding:2.5,textColor:[30,30,30]},
-      headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
-      footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[200,50,50]},
-      columnStyles:{4:{halign:'right'}},
-      margin:{left:14,right:14}
-    });
-    y=doc.lastAutoTable.finalY+10;
-  }
-
-  // Further distribution breakdowns (for partnership tracking)
-  const bdRows=spays.flatMap(x=>(x.breakdown||[]).map(b=>({
-    date:x.date,via:x.subconName||'—',trade:b.trade||'Other',name:b.name||'—',amount:b.amount||0
-  })));
-  if(bdRows.length){
-    if(y>210){doc.addPage();y=20;}
-    const bdTotal=bdRows.reduce((s,b)=>s+b.amount,0);
-    doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(130,125,118);
-    doc.text('FURTHER DISTRIBUTION (who sub-cons paid onward)',14,y);y+=6;
-    doc.autoTable({
-      startY:y,
-      head:[['Date','Via Sub-Con','Trade / Role','Person','Amount (PKR)']],
-      body:bdRows.map(b=>[b.date||'—',b.via,b.trade,b.name,fmt(b.amount)]),
-      foot:[['','','','Total Distributed','PKR '+fmt(bdTotal)]],
-      styles:{fontSize:8.5,cellPadding:2.5,textColor:[30,30,30]},
-      headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
-      footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[201,123,58]},
-      columnStyles:{4:{halign:'right'}},
-      margin:{left:14,right:14}
-    });
-    y=doc.lastAutoTable.finalY+10;
+    y=pdfDrawSpayTable(doc,y,spays,{title:'SUB-CONTRACTOR PAYMENTS',footPrefix:true});
   }
 
   // Expenses
@@ -5929,18 +5906,37 @@ async function pdfInternalSummary(pid){
 
   if(!spays.length&&!exps.length){toast('No internal payments for this project','info');return;}
 
-  // Combine into one chronological list, grouped by "Paid To"
-  // Only show contract-funded expenses in internal summary (not owner's misc/cashinhand)
+  // Combine into one chronological list, grouped by "Paid To".
+  // Sub-con breakdown (who they paid onward) is folded into the same rows — no repeat section.
   const contractExps=exps.filter(x=>(x.fundedBy||'contract')==='contract');
+  const spayRows=spays.flatMap(x=>{
+    const bd=x.breakdown||[];
+    if(!bd.length){
+      return[{date:x.date,paidTo:x.subconName||'—',type:'Sub-Contractor',desc:(x.phase||'')+(x.desc?' · '+x.desc:''),method:x.method||'Cash',amount:x.amount,isPaid:true}];
+    }
+    const rows=bd.map(b=>({
+      date:x.date,
+      paidTo:x.subconName||'—',
+      type:'Sub-Contractor',
+      desc:[b.trade||'Other',b.name].filter(Boolean).join(' · ')+(x.phase?' · '+x.phase:''),
+      method:x.method||'Cash',
+      amount:b.amount||0,
+      isPaid:true
+    }));
+    const rem=Math.round(((x.amount||0)-bd.reduce((s,b)=>s+(b.amount||0),0))*100)/100;
+    if(rem>0.01){
+      rows.push({date:x.date,paidTo:x.subconName||'—',type:'Sub-Contractor',desc:'(kept / not distributed)'+(x.phase?' · '+x.phase:''),method:x.method||'Cash',amount:rem,isPaid:true});
+    }
+    return rows;
+  });
   const combined=[
-    ...spays.map(x=>({date:x.date,paidTo:x.subconName||'—',type:'Sub-Contractor',desc:x.phase+(x.desc?' · '+x.desc:''),method:x.method||'Cash',amount:x.amount,isPaid:true,breakdown:x.breakdown||[]})),
-    ...contractExps.map(x=>({date:x.date,paidTo:x.paidTo||'—',type:(x.cat||'other').charAt(0).toUpperCase()+(x.cat||'other').slice(1),desc:x.desc,method:x.paid||'Cash',amount:x.amount,isPaid:x.isPaid,breakdown:[]}))
+    ...spayRows,
+    ...contractExps.map(x=>({date:x.date,paidTo:x.paidTo||'—',type:(x.cat||'other').charAt(0).toUpperCase()+(x.cat||'other').slice(1),desc:x.desc,method:x.paid||'Cash',amount:x.amount,isPaid:x.isPaid}))
   ].sort((a,b)=>(a.date||'').localeCompare(b.date||''));
 
-  const totalInternal=combined.reduce((s,x)=>s+x.amount,0);
+  const totalInternal=spays.reduce((s,x)=>s+x.amount,0)+contractExps.reduce((s,x)=>s+x.amount,0);
   const totalSub=spays.reduce((s,x)=>s+x.amount,0);
   const totalExp=contractExps.reduce((s,x)=>s+x.amount,0);
-  const allBd=spays.flatMap(x=>(x.breakdown||[]).map(b=>({...b,date:x.date,via:x.subconName||'—'})));
 
   let y=drawHeader(doc,'INTERNAL PAYMENTS SUMMARY',p.name,today(),'','');
 
@@ -5972,6 +5968,7 @@ async function pdfInternalSummary(pid){
   });
 
   Object.entries(byPerson).forEach(([person,rows])=>{
+    // Header total = original payment/expense sums for this person (not expanded line count)
     const personTotal=rows.reduce((s,r)=>s+r.amount,0);
     if(y>245){doc.addPage();y=20;}
     doc.setFillColor(242,240,235);doc.rect(14,y-3,182,9,'F');
@@ -5981,53 +5978,15 @@ async function pdfInternalSummary(pid){
     y+=12;
     doc.autoTable({
       startY:y,
-      head:[['Date','Type','Description','Method','Amount (PKR)']],
+      head:[['Date','Type','For / Description','Method','Amount (PKR)']],
       body:rows.map(r=>[r.date||'—',r.type,r.desc||'—',r.method,fmt(r.amount)]),
       styles:{fontSize:8.5,cellPadding:2.5,textColor:[30,30,30]},
       headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:7.5},
       columnStyles:{4:{halign:'right'}},
       margin:{left:14,right:14}
     });
-    y=doc.lastAutoTable.finalY+6;
-    // Nested further breakdown under this person's payments
-    const nested=rows.flatMap(r=>(r.breakdown||[]).map(b=>[r.date||'—',b.trade||'Other',b.name||'—',fmt(b.amount)]));
-    if(nested.length){
-      doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(130,125,118);
-      doc.text('Further paid onward:',16,y);y+=3;
-      doc.autoTable({
-        startY:y,
-        head:[['Date','Trade','Person','Amount']],
-        body:nested,
-        styles:{fontSize:8,cellPadding:2,textColor:[30,30,30]},
-        headStyles:{fillColor:[250,248,244],textColor:[130,125,118],fontStyle:'bold',fontSize:7},
-        columnStyles:{3:{halign:'right'}},
-        margin:{left:20,right:14}
-      });
-      y=doc.lastAutoTable.finalY+8;
-    }else{
-      y+=4;
-    }
+    y=doc.lastAutoTable.finalY+8;
   });
-
-  // Project-wide further distribution rollup
-  if(allBd.length){
-    if(y>230){doc.addPage();y=20;}
-    const bdTotal=allBd.reduce((s,b)=>s+(b.amount||0),0);
-    doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(130,125,118);
-    doc.text('ALL FURTHER DISTRIBUTIONS (partnership tracking)',14,y);y+=5;
-    doc.autoTable({
-      startY:y,
-      head:[['Date','Via','Trade / Role','Person','Amount (PKR)']],
-      body:allBd.map(b=>[b.date||'—',b.via,b.trade||'Other',b.name||'—',fmt(b.amount||0)]),
-      foot:[['','','','Total','PKR '+fmt(bdTotal)]],
-      styles:{fontSize:8.5,cellPadding:2.5,textColor:[30,30,30]},
-      headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
-      footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[201,123,58]},
-      columnStyles:{4:{halign:'right'}},
-      margin:{left:14,right:14}
-    });
-    y=doc.lastAutoTable.finalY+10;
-  }
 
   // Grand total footer
   if(y>240){doc.addPage();y=20;}
@@ -6184,7 +6143,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-07-13-v19';
+const APP_VERSION='2026-07-13-v20';
 let _swRefreshing=false;
 
 async function wipeAppCaches(){
