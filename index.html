@@ -109,6 +109,15 @@ body{color:var(--txt);font-family:'Inter',sans-serif;overscroll-behavior:none;fo
 .proj-pft{font-size:var(--fs-sm);margin-top:3px;}
 .proj-exp{max-height:0;overflow:hidden;transition:max-height .32s ease;}
 .proj-exp.open{max-height:1200px;}
+.chk-item{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--bor);}
+.chk-item input{width:18px;height:18px;accent-color:var(--grn);flex-shrink:0;margin-top:1px;cursor:pointer;}
+.chk-item.done .chk-txt{text-decoration:line-through;color:var(--mut);}
+.chk-stage-tab{flex:none;padding:7px 12px;border-radius:8px;font-size:var(--fs-xs);font-weight:700;cursor:pointer;border:1px solid var(--bor);background:var(--s2);color:var(--mut);font-family:Inter,sans-serif;white-space:nowrap;}
+.chk-stage-tab.on{background:var(--gold);color:#1a1916;border-color:var(--gold);}
+.ochg-card{background:var(--s2);border:1px solid var(--bor);border-radius:9px;padding:11px 12px;margin-bottom:8px;}
+.ochg-card.pending{border-left:3px solid var(--red);}
+.ochg-card.told{border-left:3px solid var(--gold);}
+.ochg-card.done{border-left:3px solid var(--grn);}
 .proj-body{border-top:1px solid var(--bor);padding:15px 16px;}
 .prow{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--bor);font-size:var(--fs-md);align-items:center;}
 .prow:last-child{border-bottom:none;}
@@ -1483,6 +1492,71 @@ select option{background:var(--s2);}
   <div class="sh-ft"><button class="btn btn-grey" onclick="X('sh-spcon')">Cancel</button><button class="btn btn-gold" onclick="saveSpCon()">💾 Save Contract</button></div>
 </div></div>
 
+<!-- PROJECT STAGE CHECKLIST + OWNER CHANGES -->
+<div class="sh-ov" id="sh-proj-check"><div class="sh" style="max-height:92vh">
+  <div class="sh-grip"></div>
+  <div class="sh-hd"><div class="sh-title" id="pchk-title">Project Checklist</div><button class="sh-x" onclick="X('sh-proj-check')">×</button></div>
+  <div class="sh-body">
+    <input type="hidden" id="pchk-pid">
+    <div style="background:rgba(232,184,75,.08);border:1px solid rgba(232,184,75,.25);border-radius:10px;padding:10px 13px;margin-bottom:12px;font-size:var(--fs-xs);color:var(--mut)">Tick each check before work moves on — catches mistakes like walls in the wrong place. Record owner changes (door / room size) so you remember to tell the sub-con.</div>
+    <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;margin-bottom:10px;-webkit-overflow-scrolling:touch" id="pchk-stage-tabs"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div style="font-size:var(--fs-sm);font-weight:700" id="pchk-stage-label">Layout</div>
+      <div style="font-size:var(--fs-xs);color:var(--mut)" id="pchk-progress">0 / 0</div>
+    </div>
+    <div class="pbar-wrap" style="margin-bottom:12px;height:5px"><div class="pbar" id="pchk-bar" style="width:0%;height:5px"></div></div>
+    <div id="pchk-list"></div>
+    <div style="display:flex;gap:8px;margin:12px 0 18px">
+      <input id="pchk-new-txt" placeholder="Add custom check for this stage…" style="flex:1">
+      <button class="btn btn-grey" style="flex:none;padding:10px 14px" type="button" onclick="addProjCheckItem()">+ Add</button>
+    </div>
+    <div style="border-top:1px solid var(--bor);padding-top:14px;margin-top:4px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div>
+          <div style="font-size:var(--fs-md);font-weight:700;color:var(--ora)">📢 Owner Changes</div>
+          <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Door moved, room size changed — tell sub-con before they build wrong</div>
+        </div>
+        <button class="ca" style="flex:none;padding:6px 10px;font-size:var(--fs-xs);color:var(--ora);border-color:rgba(232,148,75,.4);background:rgba(232,148,75,.08)" onclick="iOwnerChange()">+ Change</button>
+      </div>
+      <div id="pchk-pending-banner" style="display:none;background:rgba(224,85,85,.1);border:1px solid rgba(224,85,85,.3);border-radius:9px;padding:9px 12px;margin-bottom:10px;font-size:var(--fs-xs);color:var(--red);font-weight:600"></div>
+      <div id="pchk-changes"></div>
+    </div>
+  </div>
+  <div class="sh-ft"><button class="btn btn-grey" onclick="X('sh-proj-check')" style="flex:1">Close</button></div>
+</div></div>
+
+<!-- OWNER CHANGE FORM -->
+<div class="sh-ov" id="sh-owner-chg"><div class="sh">
+  <div class="sh-grip"></div>
+  <div class="sh-hd"><div class="sh-title" id="ochg-sh-t">Owner Change Request</div><button class="sh-x" onclick="X('sh-owner-chg')">×</button></div>
+  <div class="sh-body">
+    <input type="hidden" id="ochg-pid">
+    <input type="hidden" id="ochg-eid">
+    <div class="fg"><label>What changed?</label><input id="ochg-title" placeholder="e.g. Move bedroom door 2ft left"></div>
+    <div class="fg"><label>Details / New instruction</label><textarea id="ochg-detail" placeholder="Old: door on left wall. New: door on front wall, 3ft from corner…" style="min-height:70px"></textarea></div>
+    <div class="f2">
+      <div class="fg"><label>Date</label><input type="date" id="ochg-date"></div>
+      <div class="fg"><label>Affects Stage</label>
+        <select id="ochg-stage">
+          <option>Layout</option><option>Foundation</option><option>DPC Level</option><option>Structure</option><option>Lintel Level</option><option>Roof Slab</option><option>Brickwork</option><option>Plaster</option><option>Finishing</option><option>Handover</option><option>Other</option>
+        </select>
+      </div>
+    </div>
+    <div class="fg"><label>Tell this Sub-Con (optional)</label>
+      <div class="ds-wrap"><input class="ds-inp" id="ochg-sub-t" placeholder="Who must be told" readonly onclick="oDs('ds-ochg-sub')"><div class="ds-list" id="ds-ochg-sub"></div><input type="hidden" id="ochg-sub-id"></div>
+    </div>
+    <div class="fg"><label>Status</label>
+      <select id="ochg-status">
+        <option value="pending">🔴 Pending — not told yet</option>
+        <option value="told">🟡 Told sub-con — waiting on site</option>
+        <option value="done">✅ Done on site</option>
+      </select>
+    </div>
+    <div class="fg"><label>Notes</label><textarea id="ochg-notes" placeholder="Optional" style="min-height:50px"></textarea></div>
+  </div>
+  <div class="sh-ft"><button class="btn btn-grey" onclick="X('sh-owner-chg')">Cancel</button><button class="btn btn-gold" onclick="saveOwnerChange()">💾 Save Change</button></div>
+</div></div>
+
 <div class="toast" id="toast"><div class="td" id="tdot"></div><span id="tmsg">Saved</span></div>
 
 <script>
@@ -1783,6 +1857,7 @@ const DS={
   'ds-ex-proj':{t:'projects',tx:'ex-proj-t',id:'ex-proj-id'},
   'ds-pers-sub':{t:'subcons',tx:'pers-sub-t',id:'pers-sub-id'},
   'ds-pers-proj':{t:'projects',tx:'pers-proj-t',id:'pers-proj-id'},
+  'ds-ochg-sub':{t:'subcons',tx:'ochg-sub-t',id:'ochg-sub-id'},
 };
 function oDs(dsId){
   document.querySelectorAll('.ds-list').forEach(d=>d.classList.remove('on'));
@@ -4551,7 +4626,313 @@ function pdfProjPayments(pid){
 
 // ════ PROJECTS PAGE ════
 let projFilter='all';
+let pchkStage='Layout';
+const CHECK_STAGES=['Layout','Foundation','DPC Level','Structure','Lintel Level','Roof Slab','Brickwork','Plaster','Finishing','Handover'];
+const DEFAULT_STAGE_CHECKS={
+  'Layout':[
+    'Plot boundaries match approved drawing / site plan',
+    'Front face / road side orientation confirmed',
+    'All outer walls marked from drawing — measure twice before digging',
+    'Setbacks / open spaces match bylaws (CDA / local)',
+    'Room sizes match drawing (length × width)',
+    'Door & window opening positions marked correctly',
+    'Kitchen / bath / shaft locations confirmed',
+    'Owner walked markings and approved before work'
+  ],
+  'Foundation':[
+    'Excavation depth & width as per drawing',
+    'Column / footing positions match layout marks (not shifted)',
+    'Steel placement, cover & lap lengths checked',
+    'Level / plumb of foundation trenches verified',
+    'Owner / engineer inspected before concrete pour'
+  ],
+  'DPC Level':[
+    'Plinth / DPC level matches drawing height',
+    'Wall lines still match approved layout (no drift)',
+    'Door opening positions still correct at DPC',
+    'Damp-proof course continuous with no gaps'
+  ],
+  'Structure':[
+    'Column positions & sizes match structural drawing',
+    'Beam levels / spans correct before shuttering',
+    'Any owner layout changes already told to steel / shuttering team',
+    'Verticality (plumb) of columns checked'
+  ],
+  'Lintel Level':[
+    'Door & window lintel heights match drawing / owner changes',
+    'Opening widths correct (not wall in wrong place)',
+    'Electrical chase / box positions noted if needed'
+  ],
+  'Roof Slab':[
+    'Slab thickness / level as per drawing',
+    'Openings for stairs / shafts in correct place',
+    'Electrical / plumbing sleeves placed before pour',
+    'Shuttering lines square — check diagonals'
+  ],
+  'Brickwork':[
+    'Walls follow marked lines — no wrong-place walls',
+    'Door / window openings left exactly as approved (or latest owner change)',
+    'Room internal sizes still match drawing after brickwork',
+    'Junctions / corners square and plumb'
+  ],
+  'Plaster':[
+    'All openings still correct before plaster closes mistakes',
+    'Wall thickness / reveals OK for doors & windows',
+    'Any pending owner changes already done before plaster'
+  ],
+  'Finishing':[
+    'Door frames / locations match latest owner instruction',
+    'Floor levels & tile layout approved',
+    'Paint / fixtures as per owner list',
+    'Snag list started for handover'
+  ],
+  'Handover':[
+    'Final walkthrough with owner completed',
+    'All owner change items marked done',
+    'Keys / documents handed over',
+    'Snags closed or listed with dates'
+  ]
+};
+
 function fProj(f,el){projFilter=f;document.querySelectorAll('#pg-proj .ftab').forEach(t=>t.classList.remove('on'));el.classList.add('on');renderProj();}
+
+function mapPhaseToCheckStage(phase){
+  const p=(phase||'').toLowerCase();
+  if(p.includes('layout')||p.includes('mark'))return 'Layout';
+  if(p.includes('foundation'))return 'Foundation';
+  if(p.includes('dpc')||p.includes('plinth'))return 'DPC Level';
+  if(p.includes('lintel'))return 'Lintel Level';
+  if(p.includes('roof')||p.includes('slab'))return 'Roof Slab';
+  if(p.includes('brick'))return 'Brickwork';
+  if(p.includes('plaster'))return 'Plaster';
+  if(p.includes('finish'))return 'Finishing';
+  if(p.includes('handover')||p.includes('complet'))return 'Handover';
+  if(p.includes('structure')||p.includes('column')||p.includes('beam'))return 'Structure';
+  return 'Layout';
+}
+
+function ensureProjChecks(p){
+  if(!p.stageChecks)p.stageChecks={};
+  CHECK_STAGES.forEach(stage=>{
+    if(!p.stageChecks[stage]||!p.stageChecks[stage].length){
+      p.stageChecks[stage]=(DEFAULT_STAGE_CHECKS[stage]||[]).map(text=>({id:uid(),text,done:false}));
+    }
+  });
+  if(!p.ownerChanges)p.ownerChanges=[];
+  return p;
+}
+
+function projCheckSummary(p){
+  ensureProjChecks(p);
+  let done=0,total=0;
+  CHECK_STAGES.forEach(s=>{(p.stageChecks[s]||[]).forEach(i=>{total++;if(i.done)done++;});});
+  const pending=(p.ownerChanges||[]).filter(c=>(c.status||'pending')==='pending').length;
+  return{done,total,pct:total?Math.round(done/total*100):0,pending};
+}
+
+function openProjCheck(pid){
+  const p=D.projects.find(x=>x.id===pid);if(!p)return;
+  ensureProjChecks(p);
+  sv('pchk-pid',pid);
+  const t=e$('pchk-title');if(t)t.textContent='☑ '+p.name;
+  pchkStage=mapPhaseToCheckStage(p.phase);
+  renderProjCheckSheet();
+  O('sh-proj-check');
+}
+
+function setPchkStage(stage){
+  pchkStage=stage;
+  renderProjCheckSheet();
+}
+
+function renderProjCheckSheet(){
+  const pid=e$('pchk-pid')?.value;const p=D.projects.find(x=>x.id===pid);if(!p)return;
+  ensureProjChecks(p);
+  const tabs=e$('pchk-stage-tabs');
+  if(tabs){
+    tabs.innerHTML=CHECK_STAGES.map(s=>{
+      const items=p.stageChecks[s]||[];
+      const d=items.filter(i=>i.done).length;
+      const mark=items.length&&d===items.length?'✓ ':''
+      return`<button type="button" class="chk-stage-tab ${s===pchkStage?'on':''}" onclick="setPchkStage('${s}')">${mark}${s}${items.length?` (${d}/${items.length})`:''}</button>`;
+    }).join('');
+  }
+  const items=p.stageChecks[pchkStage]||[];
+  const done=items.filter(i=>i.done).length;
+  const lbl=e$('pchk-stage-label');if(lbl)lbl.textContent=pchkStage+' checks';
+  const prog=e$('pchk-progress');if(prog)prog.textContent=done+' / '+items.length+' done';
+  const bar=e$('pchk-bar');if(bar)bar.style.width=(items.length?Math.round(done/items.length*100):0)+'%';
+  const list=e$('pchk-list');
+  if(list){
+    if(!items.length)list.innerHTML='<div style="font-size:var(--fs-sm);color:var(--mut);padding:8px 0">No checks yet — add custom items below.</div>';
+    else list.innerHTML=items.map(i=>`<div class="chk-item ${i.done?'done':''}">
+      <input type="checkbox" ${i.done?'checked':''} onchange="toggleProjCheck('${pid}','${pchkStage}','${i.id}')">
+      <div style="flex:1;min-width:0">
+        <div class="chk-txt" style="font-size:var(--fs-sm);font-weight:600;line-height:1.35">${i.text}</div>
+        ${i.doneAt?`<div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">Checked ${i.doneAt}</div>`:''}
+      </div>
+      <button style="font-size:var(--fs-xs);color:var(--red);background:none;border:none;cursor:pointer;flex-shrink:0" onclick="delProjCheckItem('${pid}','${pchkStage}','${i.id}')">×</button>
+    </div>`).join('');
+  }
+  renderOwnerChangesList(p);
+}
+
+function toggleProjCheck(pid,stage,itemId){
+  const p=D.projects.find(x=>x.id===pid);if(!p)return;
+  ensureProjChecks(p);
+  const item=(p.stageChecks[stage]||[]).find(x=>x.id===itemId);if(!item)return;
+  item.done=!item.done;
+  item.doneAt=item.done?today():'';
+  p.updatedAt=new Date().toISOString();
+  sched();renderProjCheckSheet();renderProj();
+}
+
+function addProjCheckItem(){
+  const pid=e$('pchk-pid')?.value;const p=D.projects.find(x=>x.id===pid);if(!p)return;
+  const text=(e$('pchk-new-txt')?.value||'').trim();
+  if(!text){toast('Enter a check item','err');return;}
+  ensureProjChecks(p);
+  if(!p.stageChecks[pchkStage])p.stageChecks[pchkStage]=[];
+  p.stageChecks[pchkStage].push({id:uid(),text,done:false});
+  p.updatedAt=new Date().toISOString();
+  sv('pchk-new-txt','');
+  sched();renderProjCheckSheet();renderProj();
+  toast('Check added ✓');
+}
+
+function delProjCheckItem(pid,stage,itemId){
+  const p=D.projects.find(x=>x.id===pid);if(!p)return;
+  ensureProjChecks(p);
+  p.stageChecks[stage]=(p.stageChecks[stage]||[]).filter(x=>x.id!==itemId);
+  p.updatedAt=new Date().toISOString();
+  sched();renderProjCheckSheet();renderProj();
+}
+
+function renderOwnerChangesList(p){
+  const el=e$('pchk-changes');const ban=e$('pchk-pending-banner');if(!el)return;
+  const rows=(p.ownerChanges||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const pending=rows.filter(c=>(c.status||'pending')==='pending');
+  if(ban){
+    if(pending.length){ban.style.display='block';ban.textContent='⚠ '+pending.length+' owner change'+(pending.length>1?'s':'')+' not told to sub-con yet';}
+    else ban.style.display='none';
+  }
+  if(!rows.length){
+    el.innerHTML='<div style="font-size:var(--fs-sm);color:var(--mut);padding:8px 0">No owner changes recorded. When owner asks to move a door or change room size, add it here.</div>';
+    return;
+  }
+  const stLabel={pending:'🔴 Pending',told:'🟡 Told',done:'✅ Done'};
+  el.innerHTML=rows.map(c=>`<div class="ochg-card ${c.status||'pending'}">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+      <div style="min-width:0">
+        <div style="font-size:var(--fs-sm);font-weight:700">${c.title||'Change'}</div>
+        <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">${c.date||'—'} · ${c.stage||'—'} · ${stLabel[c.status||'pending']||c.status}</div>
+        ${c.detail?`<div style="font-size:var(--fs-xs);color:var(--txt);margin-top:6px;line-height:1.4">${c.detail}</div>`:''}
+        ${c.subconName?`<div style="font-size:var(--fs-xs);color:var(--blu);margin-top:5px">Tell: ${c.subconName}</div>`:''}
+        ${c.notes?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:4px">${c.notes}</div>`:''}
+      </div>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:9px">
+      ${(c.status||'pending')==='pending'?`<button class="ca gold" style="padding:5px 10px;font-size:var(--fs-xs);flex:none" onclick="markOwnerChangeStatus('${p.id}','${c.id}','told')">Mark Told</button>`:''}
+      ${(c.status||'')!=='done'?`<button class="ca grn" style="padding:5px 10px;font-size:var(--fs-xs);flex:none" onclick="markOwnerChangeStatus('${p.id}','${c.id}','done')">Mark Done</button>`:''}
+      <button class="ca" style="padding:5px 10px;font-size:var(--fs-xs);flex:none;color:#25D366;border-color:rgba(37,211,102,.25);background:rgba(37,211,102,.06)" onclick="waOwnerChange('${p.id}','${c.id}')">📤 WA</button>
+      <button class="ca blu" style="padding:5px 10px;font-size:var(--fs-xs);flex:none" onclick="eOwnerChange('${p.id}','${c.id}')">Edit</button>
+      <button class="ca red" style="padding:5px 10px;font-size:var(--fs-xs);flex:none" onclick="delOwnerChange('${p.id}','${c.id}')">Del</button>
+    </div>
+  </div>`).join('');
+}
+
+function iOwnerChange(){
+  const pid=e$('pchk-pid')?.value;if(!pid)return;
+  sv('ochg-pid',pid);sv('ochg-eid','');
+  sv('ochg-title','');sv('ochg-detail','');sv('ochg-notes','');
+  sv('ochg-date',today());sv('ochg-stage',pchkStage||'Layout');sv('ochg-status','pending');
+  sv('ochg-sub-t','');sv('ochg-sub-id','');
+  const sh=e$('ochg-sh-t');if(sh)sh.textContent='Owner Change Request';
+  O('sh-owner-chg');
+}
+
+function eOwnerChange(pid,cid){
+  const p=D.projects.find(x=>x.id===pid);if(!p)return;
+  const c=(p.ownerChanges||[]).find(x=>x.id===cid);if(!c)return;
+  sv('ochg-pid',pid);sv('ochg-eid',cid);
+  sv('ochg-title',c.title||'');sv('ochg-detail',c.detail||'');sv('ochg-notes',c.notes||'');
+  sv('ochg-date',c.date||today());sv('ochg-stage',c.stage||'Layout');sv('ochg-status',c.status||'pending');
+  sv('ochg-sub-t',c.subconName||'');sv('ochg-sub-id',c.subconId||'');
+  const sh=e$('ochg-sh-t');if(sh)sh.textContent='Edit Owner Change';
+  O('sh-owner-chg');
+}
+
+function saveOwnerChange(){
+  const pid=e$('ochg-pid')?.value;const p=D.projects.find(x=>x.id===pid);if(!p)return;
+  ensureProjChecks(p);
+  const eid=e$('ochg-eid')?.value;
+  const title=(e$('ochg-title')?.value||'').trim();
+  if(!title){toast('Enter what changed','err');return;}
+  const doc={
+    id:eid||uid(),
+    title,
+    detail:e$('ochg-detail')?.value||'',
+    date:e$('ochg-date')?.value||today(),
+    stage:e$('ochg-stage')?.value||'Layout',
+    status:e$('ochg-status')?.value||'pending',
+    subconId:e$('ochg-sub-id')?.value||'',
+    subconName:e$('ochg-sub-t')?.value||'',
+    notes:e$('ochg-notes')?.value||''
+  };
+  if(!p.ownerChanges)p.ownerChanges=[];
+  const idx=p.ownerChanges.findIndex(x=>x.id===doc.id);
+  if(idx>=0)p.ownerChanges[idx]={...p.ownerChanges[idx],...doc};
+  else p.ownerChanges.unshift(doc);
+  p.updatedAt=new Date().toISOString();
+  sched();X('sh-owner-chg');renderProjCheckSheet();renderProj();
+  toast(eid?'Change updated ✓':'Owner change saved — tell sub-con ✓');
+}
+
+function markOwnerChangeStatus(pid,cid,status){
+  const p=D.projects.find(x=>x.id===pid);if(!p)return;
+  const c=(p.ownerChanges||[]).find(x=>x.id===cid);if(!c)return;
+  c.status=status;c.updatedAt=new Date().toISOString();
+  if(status==='told')c.toldAt=today();
+  if(status==='done')c.doneAt=today();
+  p.updatedAt=new Date().toISOString();
+  sched();renderProjCheckSheet();renderProj();
+  toast(status==='told'?'Marked told to sub-con ✓':'Marked done on site ✓');
+}
+
+function delOwnerChange(pid,cid){
+  const p=D.projects.find(x=>x.id===pid);if(!p)return;
+  p.ownerChanges=(p.ownerChanges||[]).filter(x=>x.id!==cid);
+  p.updatedAt=new Date().toISOString();
+  sched();renderProjCheckSheet();renderProj();
+}
+
+function waOwnerChange(pid,cid){
+  const p=D.projects.find(x=>x.id===pid);if(!p)return;
+  const c=(p.ownerChanges||[]).find(x=>x.id===cid);if(!c)return;
+  const company=D.company||{};
+  const sc=D.subcons.find(x=>x.id===c.subconId);
+  const phone=(sc?.phone||'').replace(/\D/g,'');
+  const msg=
+`📢 *OWNER CHANGE — PLEASE NOTE*
+━━━━━━━━━━━━━━━━━━━
+🏗 *Project:* ${p.name}
+${p.loc?'📍 '+p.loc:''}
+📅 *Date:* ${c.date||today()}
+🔧 *Stage:* ${c.stage||'—'}
+
+⚠️ *Change:* ${c.title}
+${c.detail?'\n'+c.detail:''}
+${c.notes?'\n📝 '+c.notes:''}
+
+Please confirm you received this before continuing work.
+_${company.name||'BuildPro'}_`;
+  const url=phone
+    ?('https://wa.me/'+(phone.startsWith('92')?phone:phone.replace(/^0/,'92'))+'?text='+encodeURIComponent(msg))
+    :('https://wa.me/?text='+encodeURIComponent(msg));
+  window.open(url,'_blank');
+  if((c.status||'pending')==='pending')markOwnerChangeStatus(pid,cid,'told');
+}
+
 function renderProj(){
   const el=e$('list-proj');if(!el)return;
   let rows=projFilter==='all'?D.projects:D.projects.filter(r=>r.phase===projFilter);
@@ -4570,13 +4951,14 @@ function renderProj(){
     const isReimbursed=p.lumpSum;
     const displaySub=isReimbursed?0:sub;
     const pct=p.value>0?Math.min(100,Math.round(rec/p.value*100)):0;
+    const chk=projCheckSummary(p);
     return`<div class="card">
       <div class="card-top">
         <div>
           <div class="card-nm">${p.name}</div>
           <div class="card-sub">${[p.loc,p.plot].filter(Boolean).join(' · ')}</div>
           ${cli?`<div class="card-sub">👤 ${cli.name}${cli.phone?' · '+cli.phone:''}</div>`:''}
-          <div style="margin-top:6px"><span class="b b-b">${p.phase||'—'}</span>${p.lumpSum?'<span class="b" style="background:rgba(77,148,212,.15);color:#4D94D4;margin-left:4px;font-size:9px">🧾 Owner Reimburses</span>':''}${agr?` <span class="b b-g" style="font-size:9px">✍️ ${agr.status}</span>`:''}</div>
+          <div style="margin-top:6px"><span class="b b-b">${p.phase||'—'}</span>${p.lumpSum?'<span class="b" style="background:rgba(77,148,212,.15);color:#4D94D4;margin-left:4px;font-size:9px">🧾 Owner Reimburses</span>':''}${agr?` <span class="b b-g" style="font-size:9px">✍️ ${agr.status}</span>`:''}${chk.pending?` <span class="b" style="background:rgba(224,85,85,.15);color:var(--red);margin-left:4px;font-size:9px">⚠ ${chk.pending} change${chk.pending>1?'s':''}</span>`:''}</div>
         </div>
         <div style="text-align:right">
           <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-md);color:var(--gold)">${fmt(p.value)}</div>
@@ -4586,6 +4968,14 @@ function renderProj(){
       <div style="margin-bottom:10px">
         <div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--mut);margin-bottom:4px"><span>Collection ${pct}%</span><span>PKR ${fmt(rec)} / ${fmt(p.value)}</span></div>
         <div class="pbar-wrap"><div class="pbar" style="width:${pct}%"></div></div>
+      </div>
+      <div style="background:var(--s2);border-radius:9px;padding:10px 12px;margin-bottom:11px;cursor:pointer" onclick="openProjCheck('${p.id}')">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <div style="font-size:var(--fs-xs);font-weight:700;color:var(--txt)">☑ Stage Checklist</div>
+          <div style="font-size:var(--fs-xs);color:var(--mut)">${chk.done}/${chk.total} · ${chk.pct}%</div>
+        </div>
+        <div class="pbar-wrap" style="height:4px"><div class="pbar" style="width:${chk.pct}%;height:4px;background:${chk.pct===100?'var(--grn)':'var(--gold)'}"></div></div>
+        ${chk.pending?`<div style="font-size:var(--fs-xs);color:var(--red);margin-top:6px;font-weight:600">⚠ ${chk.pending} owner change${chk.pending>1?'s':''} not told to sub-con</div>`:`<div style="font-size:var(--fs-xs);color:var(--mut);margin-top:6px">Tap to check layout / stage items &amp; owner changes</div>`}
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:11px">
         <div style="background:var(--s2);border-radius:8px;padding:8px;text-align:center">
@@ -4619,6 +5009,7 @@ function renderProj(){
         </div>
       </div>`:''}
       <div class="card-acts">
+        <button class="ca" style="color:var(--gold);border-color:rgba(232,184,75,.35);background:rgba(232,184,75,.08)" onclick="openProjCheck('${p.id}')">☑ Checklist</button>
         <button class="ca blu" onclick="eP('${p.id}')">✏️ Edit</button>
         <button class="ca gold" onclick="pdfProjPayments('${p.id}')">⬇ Owner PDF</button>
         <button class="ca ora" onclick="O('sh-pay-internal');sv('pi-proj-t','${esc(p.name)}');sv('pi-proj-id','${p.id}');e$('pi-proj-label').textContent='${esc(p.name)}'">+ Pay Internal</button>
@@ -5153,7 +5544,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION — bump both on each release so deploys apply on open.
-const APP_VERSION='2026-07-13-v14';
+const APP_VERSION='2026-07-13-v15';
 let _swRefreshing=false;
 
 async function wipeAppCaches(){
