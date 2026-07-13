@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-07-13-v24">
+<meta name="app-version" content="2026-07-13-v25">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -3333,21 +3333,41 @@ function drawHeader(doc,title,ref,date,sub,subVal){
   return 46;
 }
 
+/** Gold bank bar on every page — crisp text, no overlapping lines. */
 function drawBankFooter(doc){
-  const c=co();const h=doc.internal.pageSize.getHeight();const pw=210;
-  const pages=doc.internal.getNumberOfPages();
+  const c=co();
+  const h=doc.internal.pageSize.getHeight();
+  const pw=210;
+  const barH=12;
+  const pages=doc.internal.getNumberOfPages()||1;
+  const company=(c.name||'BuildPro').trim();
+  let detail='';
+  if(c.bank||c.acc){
+    detail=['Bank: '+(c.bank||'-'),c.acc?('A/C: '+c.acc+(c.accT?' ('+c.accT+')':'')):'',c.iban?('IBAN: '+c.iban):''].filter(Boolean).join('   |   ');
+  }else{
+    detail='Cash / Bank Transfer / JazzCash / EasyPaisa';
+  }
   for(let p=1;p<=pages;p++){
     doc.setPage(p);
-    doc.setFillColor(232,184,75);doc.rect(0,h-10,pw,10,'F');
-    doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(30,30,30);
-    if(c.bank||c.acc){
-      doc.text('Bank: '+(c.bank||'—'),14,h-5);
-      if(c.acc)doc.text('A/C: '+c.acc+(c.accT?' | '+c.accT:''),75,h-5);
-      if(c.iban)doc.text('IBAN: '+c.iban,152,h-5,{align:'right'});
-    } else {
-      doc.text('Payment: Cash · Bank Transfer · JazzCash · EasyPaisa',14,h-5);
-    }
-    doc.text(c.name||'BuildPro',pw-14,h-5,{align:'right'});
+    // Solid gold bar
+    doc.setFillColor(232,184,75);
+    doc.rect(0,h-barH,pw,barH,'F');
+    // Company on left (bold, integer pt size — avoids soft/blurry glyphs)
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(8);
+    doc.setTextColor(26,25,22);
+    doc.text(company,14,h-barH+4.8);
+    // Payment / bank detail under company — clipped so it never overlaps page # 
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(7);
+    doc.setTextColor(40,38,34);
+    const detailLines=doc.splitTextToSize(detail,pw-50);
+    doc.text(detailLines[0]||'',14,h-barH+9.2);
+    // Page number on right
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(8);
+    doc.setTextColor(26,25,22);
+    doc.text(p+' / '+pages,pw-14,h-barH+7,{align:'right'});
   }
   doc.setPage(pages);
 }
@@ -3744,9 +3764,14 @@ async function pdfAgr(id){
   if(style==='digital'){
     if(r.footerNote){
       const h=doc.internal.pageSize.getHeight();
-      doc.setFillColor(232,184,75);doc.rect(0,h-10,pw,10,'F');
-      doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(30,30,30);
-      doc.text(r.footerNote,pw/2,h-4,{align:'center',maxWidth:pw-28});
+      const pages=doc.internal.getNumberOfPages()||1;
+      for(let p=1;p<=pages;p++){
+        doc.setPage(p);
+        doc.setFillColor(232,184,75);doc.rect(0,h-12,pw,12,'F');
+        doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(26,25,22);
+        doc.text(r.footerNote,pw/2,h-5,{align:'center',maxWidth:pw-28});
+      }
+      doc.setPage(pages);
     }else{drawBankFooter(doc);}
   }
   // letterhead/legal: no digital footer — physical paper has its own
@@ -6140,7 +6165,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-07-13-v24';
+const APP_VERSION='2026-07-13-v25';
 let _swRefreshing=false;
 
 async function wipeAppCaches(){
