@@ -1374,6 +1374,9 @@ function pdfTextUrdu(doc,text,x,y,opts){
 const SUPA_URL='https://lwjcnevludsiwoudzxcj.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3amNuZXZsdWRzaXdvdWR6eGNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExNDQ0NjAsImV4cCI6MjA5NjcyMDQ2MH0.-6O4Z6OCUqjm3B1wSqtQv5uH7QuWTTkHdximiJB2PKE';
 let supa=null,stmr=null;
+// Multi-device sync state
+let baseUpdatedAt=null,applyingRemote=false,rtChannel=null,curUid=null;
+const COLLECTIONS=['clients','projects','subcons','subpays','cpays','invoices','estimates','agreements','tasks','expenses','investors','banks','subconContracts'];
 
 // ════ DATA ════
 let D={
@@ -1382,8 +1385,47 @@ let D={
   subpays:[],cpays:[],
   invoices:[],estimates:[],agreements:[],
   tasks:[],expenses:[],
-  investors:[],banks:[],subconContracts:[]
+  investors:[],banks:[],subconContracts:[],
+  _tomb:[]
 };
+
+// ════ MULTI-DEVICE MERGE ════
+// Merge two data snapshots without losing records:
+//  - collections are unioned by id; on the same id the record with the newer updatedAt wins (last-write-wins per record)
+//  - deletions propagate via tombstones (_tomb) so a deleted record is not resurrected by the other device
+//  - company profile keeps whichever copy was edited most recently (_u timestamp)
+function mergeData(mine,theirs){
+  mine=mine||{};theirs=theirs||{};
+  const out={};
+  const cutoff=new Date(Date.now()-30*86400000).toISOString(); // prune tombstones older than 30 days
+  const tombs={};
+  [...(mine._tomb||[]),...(theirs._tomb||[])].forEach(t=>{if(t&&t.id&&t.ts>cutoff){if(!tombs[t.id]||t.ts>tombs[t.id])tombs[t.id]=t.ts;}});
+  COLLECTIONS.forEach(k=>{
+    const byId={};
+    const add=r=>{
+      if(!r||r.id==null||tombs[r.id])return;
+      const ex=byId[r.id];
+      if(!ex){byId[r.id]=r;return;}
+      const ra=r.updatedAt||r.createdAt||'';
+      const ea=ex.updatedAt||ex.createdAt||'';
+      if(ra>=ea)byId[r.id]=r;
+    };
+    (mine[k]||[]).forEach(add);
+    (theirs[k]||[]).forEach(add);
+    out[k]=Object.values(byId);
+  });
+  const mc=mine.company||{},tc=theirs.company||{};
+  out.company=((tc._u||'')>(mc._u||''))?tc:(Object.keys(mc).length?mc:tc);
+  out._tomb=Object.entries(tombs).map(([id,ts])=>({id,ts}));
+  return out;
+}
+
+// Record deleted ids as tombstones so the deletion syncs to other devices.
+function recordTomb(ids){
+  if(!Array.isArray(D._tomb))D._tomb=[];
+  const ts=new Date().toISOString();
+  (ids||[]).filter(Boolean).forEach(id=>D._tomb.push({id,ts}));
+}
 
 // ════ SUPABASE AUTH & STORAGE ════
 function initSupa(){
@@ -1440,24 +1482,19 @@ function updateUserUI(user){
 
 async function loadSupaData(user){
   setSync('loading');
+  curUid=user.id;
+  const keys=['company',...COLLECTIONS,'_tomb'];
   try{
     // Load localStorage first (instant display)
     const lo=localStorage.getItem('bp5');
     if(lo){
-      try{
-        const p=JSON.parse(lo);
-        const keys=['company','clients','projects','subcons','subpays','cpays','invoices','estimates','agreements','tasks','expenses','investors','banks','subconContracts'];
-        keys.forEach(k=>{if(p[k]!==undefined)D[k]=p[k];});
-      }catch(e){}
+      try{const p=JSON.parse(lo);keys.forEach(k=>{if(p[k]!==undefined)D[k]=p[k];});}catch(e){}
     }
-    // Then load from Supabase (authoritative)
-    const{data,error}=await supa.from('buildpro_data').select('data').eq('user_id',user.id).single();
+    // Then load from Supabase (authoritative on first load), merging any unsynced local changes so they aren't lost
+    const{data,error}=await supa.from('buildpro_data').select('data,updated_at').eq('user_id',user.id).single();
     if(!error&&data?.data){
-      const p=data.data;
-      const keys=['company','clients','projects','subcons','subpays','cpays','invoices','estimates','agreements','tasks','expenses','investors','banks','subconContracts'];
-      keys.forEach(k=>{if(p[k]!==undefined)D[k]=p[k];});
-      // Restore logo from localStorage
-
+      D=mergeData(D,data.data);
+      baseUpdatedAt=data.updated_at||null;
       localStorage.setItem('bp5',JSON.stringify(D));
     }
     setSync('synced');
@@ -1470,15 +1507,53 @@ async function writeSupabase(){
   if(!session){localStorage.setItem('bp5',JSON.stringify(D));setSync('pending');return;}
   try{
     localStorage.setItem('bp5',JSON.stringify(D));
-    // Save full data including logo to Supabase
+    // Conflict guard: if another device wrote since we last synced, merge first so nothing is clobbered.
+    const{data:srv}=await supa.from('buildpro_data').select('data,updated_at').eq('user_id',session.user.id).single();
+    if(srv&&srv.updated_at&&baseUpdatedAt&&srv.updated_at!==baseUpdatedAt&&srv.data){
+      D=mergeData(D,srv.data);
+      if(!applyingRemote){applyingRemote=true;try{renderAll();refreshProfileUI();}catch(e){}applyingRemote=false;}
+    }
+    const nowTs=new Date().toISOString();
     const{error}=await supa.from('buildpro_data').upsert({
       user_id:session.user.id,
       data:D,
-      updated_at:new Date().toISOString()
+      updated_at:nowTs
     },{onConflict:'user_id'});
     if(error)throw error;
+    baseUpdatedAt=nowTs;
+    localStorage.setItem('bp5',JSON.stringify(D));
     setSync('synced');
   }catch(e){localStorage.setItem('bp5',JSON.stringify(D));setSync('pending');}
+}
+
+// Pull the latest server data into the running app (merge, don't clobber local edits).
+async function pullRemote(){
+  if(!supa||applyingRemote)return;
+  try{
+    const{data:{session}}=await supa.auth.getSession();
+    if(!session)return;
+    const{data:srv}=await supa.from('buildpro_data').select('data,updated_at').eq('user_id',session.user.id).single();
+    if(srv&&srv.updated_at&&srv.updated_at!==baseUpdatedAt&&srv.data){
+      applyingRemote=true;
+      D=mergeData(D,srv.data);
+      baseUpdatedAt=srv.updated_at;
+      localStorage.setItem('bp5',JSON.stringify(D));
+      try{renderAll();refreshProfileUI();}catch(e){}
+      applyingRemote=false;
+      setSync('synced');
+    }
+  }catch(e){applyingRemote=false;}
+}
+
+// Live updates from other devices via Supabase realtime (best effort; polling/focus cover the fallback).
+function startRealtime(){
+  if(!supa||!curUid)return;
+  try{
+    if(rtChannel){supa.removeChannel(rtChannel);rtChannel=null;}
+    rtChannel=supa.channel('bp-'+curUid)
+      .on('postgres_changes',{event:'*',schema:'public',table:'buildpro_data',filter:'user_id=eq.'+curUid},()=>{pullRemote();})
+      .subscribe();
+  }catch(e){}
 }
 
 function sched(){
@@ -1505,7 +1580,13 @@ function setSync(s){
 function launchApp(){
   document.getElementById('login').style.display='none';
   document.getElementById('app').classList.add('on');
-  setInterval(()=>writeSupabase(),5*60*1000);
+  if(!window.__bpHooks){
+    window.__bpHooks=true;
+    setInterval(()=>writeSupabase(),5*60*1000);         // periodic push
+    setInterval(()=>pullRemote(),30*1000);              // periodic pull (freshness across devices)
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden)pullRemote();}); // pull when tab refocused
+  }
+  startRealtime();
   renderAll();refreshProfileUI();
 }
 
@@ -1895,7 +1976,7 @@ function eAgr(id){
 }
 
 // ════ UPSERT ════
-function ups(store,doc){const eid=doc.id&&D[store].find(x=>x.id===doc.id)?doc.id:null;if(eid){const idx=D[store].findIndex(x=>x.id===eid);D[store][idx]={...D[store][idx],...doc};}else{if(!doc.id)doc.id=uid();doc.createdAt=new Date().toISOString();D[store].unshift(doc);}sched();}
+function ups(store,doc){doc.updatedAt=new Date().toISOString();const eid=doc.id&&D[store].find(x=>x.id===doc.id)?doc.id:null;if(eid){const idx=D[store].findIndex(x=>x.id===eid);D[store][idx]={...D[store][idx],...doc};}else{if(!doc.id)doc.id=uid();doc.createdAt=new Date().toISOString();D[store].unshift(doc);}sched();}
 
 // Recompute an invoice's paid status from its linked CONTRACT payments only.
 // Marks paid when fully covered; reverts a stuck 'paid' invoice to 'pending' when payments drop below total.
@@ -1920,8 +2001,8 @@ function saveCpay(){
   const old=eid?D.cpays.find(x=>x.id===eid):null;
   // Cash in Hand (misc advances): reverse the previous contribution, then apply the new one.
   // Delta-safe so editing/moving/changing a misc payment doesn't double-count.
-  if(old&&old.payType==='misc'&&old.projectId){const op=D.projects.find(x=>x.id===old.projectId);if(op)op.cashInHand=Math.max(0,(op.cashInHand||0)-(old.amount||0));}
-  if(doc.payType==='misc'&&doc.projectId){const np=D.projects.find(x=>x.id===doc.projectId);if(np)np.cashInHand=(np.cashInHand||0)+doc.amount;}
+  if(old&&old.payType==='misc'&&old.projectId){const op=D.projects.find(x=>x.id===old.projectId);if(op){op.cashInHand=Math.max(0,(op.cashInHand||0)-(old.amount||0));op.updatedAt=new Date().toISOString();}}
+  if(doc.payType==='misc'&&doc.projectId){const np=D.projects.find(x=>x.id===doc.projectId);if(np){np.cashInHand=(np.cashInHand||0)+doc.amount;np.updatedAt=new Date().toISOString();}}
   ups('cpays',doc);
   // Recompute invoice paid status (contract payments only). Also refresh any invoice this payment moved away from.
   recalcInvoiceStatus(doc.invoiceId);
@@ -1979,7 +2060,7 @@ function est2inv(id){const r=D.estimates.find(x=>x.id===id);if(!r)return;iInv('s
 // ════ COMPANY PROFILE ════
 function handleLogo(inp){const f=inp.files[0];if(!f)return;const rd=new FileReader();rd.onload=ev=>{D.company.logo=ev.target.result;sched();const img=e$('logo-img');img.src=D.company.logo;img.classList.add('on');e$('logo-ph').style.display='none';};rd.readAsDataURL(f);}
 function openProfileSheet(){const c=D.company;sv('co-name',c.name);sv('co-ph',c.phone);sv('co-email',c.email);sv('co-addr',c.addr);sv('co-city',c.city);sv('co-ntn',c.ntn);sv('co-bank',c.bank);sv('co-acc',c.acc);sv('co-acc-t',c.accT);sv('co-iban',c.iban);const img=e$('logo-img');if(c.logo){img.src=c.logo;img.classList.add('on');if(e$('logo-ph'))e$('logo-ph').style.display='none';}}
-function saveProfile(){D.company={...D.company,name:e$('co-name').value||'Your Company',phone:e$('co-ph').value,email:e$('co-email').value,addr:e$('co-addr').value,city:e$('co-city').value,ntn:e$('co-ntn').value,bank:e$('co-bank').value,acc:e$('co-acc').value,accT:e$('co-acc-t').value,iban:e$('co-iban').value};sched();X('sh-profile');refreshProfileUI();toast('Company profile saved ✓');}
+function saveProfile(){D.company={...D.company,name:e$('co-name').value||'Your Company',phone:e$('co-ph').value,email:e$('co-email').value,addr:e$('co-addr').value,city:e$('co-city').value,ntn:e$('co-ntn').value,bank:e$('co-bank').value,acc:e$('co-acc').value,accT:e$('co-acc-t').value,iban:e$('co-iban').value,_u:new Date().toISOString()};sched();X('sh-profile');refreshProfileUI();toast('Company profile saved ✓');}
 function refreshProfileUI(){
   const c=D.company;
   const set=(id,v)=>{const el=e$(id);if(el)el.textContent=v||'—';};
@@ -2015,6 +2096,15 @@ function del(store,id){
       msg='⚠️ This project has linked records: '+parts+'.\n\nDeleting will PERMANENTLY remove all of these too. This cannot be undone.\n\nContinue?';
     }
     if(!confirm(msg))return;
+    recordTomb([pid,
+      ...D.invoices.filter(x=>x.projectId===pid).map(x=>x.id),
+      ...D.estimates.filter(x=>x.projectId===pid).map(x=>x.id),
+      ...D.agreements.filter(x=>x.projectId===pid).map(x=>x.id),
+      ...(D.tasks||[]).filter(x=>x.projectId===pid).map(x=>x.id),
+      ...(D.expenses||[]).filter(x=>x.projectId===pid).map(x=>x.id),
+      ...D.cpays.filter(x=>x.projectId===pid).map(x=>x.id),
+      ...D.subpays.filter(x=>x.projectId===pid).map(x=>x.id),
+      ...(D.subconContracts||[]).filter(x=>x.projectId===pid).map(x=>x.id)]);
     D.invoices=D.invoices.filter(x=>x.projectId!==pid);
     D.estimates=D.estimates.filter(x=>x.projectId!==pid);
     D.agreements=D.agreements.filter(x=>x.projectId!==pid);
@@ -2048,6 +2138,10 @@ function del(store,id){
       msg='⚠️ This client has linked records: '+parts+'.\n\nDeleting will PERMANENTLY remove these too. This cannot be undone.\n\nContinue?';
     }
     if(!confirm(msg))return;
+    recordTomb([cid,
+      ...D.invoices.filter(x=>x.clientId===cid).map(x=>x.id),
+      ...D.estimates.filter(x=>x.clientId===cid).map(x=>x.id),
+      ...D.agreements.filter(x=>x.clientId===cid).map(x=>x.id)]);
     D.invoices=D.invoices.filter(x=>x.clientId!==cid);
     D.estimates=D.estimates.filter(x=>x.clientId!==cid);
     D.agreements=D.agreements.filter(x=>x.clientId!==cid);
@@ -2067,6 +2161,9 @@ function del(store,id){
       msg='⚠️ This sub-contractor has '+linkedPays+' payment record(s) and '+linkedCons+' project contract(s).\n\nDeleting will PERMANENTLY remove these too. This cannot be undone.\n\nContinue?';
     }
     if(!confirm(msg))return;
+    recordTomb([sid,
+      ...D.subpays.filter(x=>x.subconId===sid).map(x=>x.id),
+      ...(D.subconContracts||[]).filter(x=>x.subconId===sid).map(x=>x.id)]);
     D.subpays=D.subpays.filter(x=>x.subconId!==sid);
     if(D.subconContracts)D.subconContracts=D.subconContracts.filter(x=>x.subconId!==sid);
     D.subcons=D.subcons.filter(x=>x.id!==sid);
@@ -2078,14 +2175,16 @@ function del(store,id){
   if(store==='cpays'){
     if(!confirm('Delete this record?'))return;
     const rec=D.cpays.find(x=>x.id===id);
+    recordTomb([id]);
     D.cpays=D.cpays.filter(x=>x.id!==id);
-    if(rec&&rec.payType==='misc'&&rec.projectId){const op=D.projects.find(x=>x.id===rec.projectId);if(op)op.cashInHand=Math.max(0,(op.cashInHand||0)-(rec.amount||0));}
+    if(rec&&rec.payType==='misc'&&rec.projectId){const op=D.projects.find(x=>x.id===rec.projectId);if(op){op.cashInHand=Math.max(0,(op.cashInHand||0)-(rec.amount||0));op.updatedAt=new Date().toISOString();}}
     if(rec&&rec.invoiceId)recalcInvoiceStatus(rec.invoiceId);
     sched();renderAll();toast('Deleted','info');
     return;
   }
   // ── Default: simple delete for leaf records (invoices, tasks, expenses, etc) ──
   if(!confirm('Delete this record?'))return;
+  recordTomb([id]);
   D[store]=D[store].filter(x=>x.id!==id);
   sched();renderAll();toast('Deleted','info');
 }
@@ -3020,7 +3119,7 @@ function saveExp(){const eid=e$('exp-eid').value;const funded=e$('ex-funded')?.v
 function updateCashInHand(projectId,value){
   const proj=D.projects.find(x=>x.id===projectId);
   if(!proj)return;
-  proj.cashInHand=parseFloat(value)||0;
+  proj.cashInHand=parseFloat(value)||0;proj.updatedAt=new Date().toISOString();
   sched();
   renderExp();
   toast('Cash in hand updated ✓');
@@ -3028,7 +3127,7 @@ function updateCashInHand(projectId,value){
 
 function markExpPaid(id){
   const r=(D.expenses||[]).find(x=>x.id===id);if(!r)return;
-  r.isPaid=!r.isPaid;sched();renderExp();renderLedger();renderDash();
+  r.isPaid=!r.isPaid;r.updatedAt=new Date().toISOString();sched();renderExp();renderLedger();renderDash();
   toast(r.isPaid?'Marked as paid ✅':'Marked as unpaid','info');
 }
 
@@ -3037,7 +3136,7 @@ function cycleReimburse(id){
   const r=(D.expenses||[]).find(x=>x.id===id);if(!r)return;
   const order=['unpaid','pending','paid'];
   const next=order[(order.indexOf(rst(r))+1)%order.length];
-  r.rstatus=next;r.isPaid=next==='paid';sched();renderExp();renderLedger();renderDash();
+  r.rstatus=next;r.isPaid=next==='paid';r.updatedAt=new Date().toISOString();sched();renderExp();renderLedger();renderDash();
   toast(next==='paid'?'Owner reimbursed ✅':next==='pending'?'Reimbursement pending 🟡':'Marked unpaid 🔴','info');
 }
 
