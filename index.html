@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-07-13-v11">
+<meta name="app-version" content="2026-07-13-v12">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -555,14 +555,16 @@ select option{background:var(--s2);}
         <button id="exp-tab-owner" onclick="switchExpTab('owner')" style="padding:10px;border-radius:10px;font-size:var(--fs-sm);font-weight:700;cursor:pointer;background:var(--s1);color:var(--mut);border:1px solid var(--bor);font-family:Inter,sans-serif">🪣 Owner Expenses</button>
       </div>
 
-      <!-- Contractor stats — your own cost from contract money; never shown on Owner PDF -->
+      <!-- Contractor stats — expenses + sub-con payments in one place -->
       <div id="exp-stats-builder">
-        <div style="background:rgba(232,184,75,.07);border:1px solid rgba(232,184,75,.22);border-radius:10px;padding:10px 13px;margin-bottom:8px;font-size:var(--fs-xs);color:var(--mut)">Your own project costs (from contractor/contract funds). These do <b style="color:var(--txt)">not</b> appear on the Owner PDF and are separate from contract payments received.</div>
-        <div class="stats2" style="margin-bottom:8px">
-          <div class="stat"><div class="stat-lbl">Contractor Spent</div><div class="stat-val" id="exp-int-spent">0</div><div class="stat-unit">PKR</div></div>
-          <div class="stat"><div class="stat-lbl">Entries</div><div class="stat-val" id="exp-int-count">0</div><div class="stat-unit">total</div></div>
+        <div style="background:rgba(232,184,75,.07);border:1px solid rgba(232,184,75,.22);border-radius:10px;padding:10px 13px;margin-bottom:8px;font-size:var(--fs-xs);color:var(--mut)">Full contractor-side spending in one place: your contract-funded expenses <b style="color:var(--txt)">plus</b> payments to sub-contractors. Not shown on Owner PDF.</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">
+          <div class="stat"><div class="stat-lbl">Total Spent</div><div class="stat-val" id="exp-int-spent" style="font-size:24px">0</div><div class="stat-unit">PKR</div></div>
+          <div class="stat"><div class="stat-lbl">Sub-Con Paid</div><div class="stat-val" id="exp-int-sub" style="font-size:24px;color:var(--red)">0</div><div class="stat-unit">PKR</div></div>
+          <div class="stat"><div class="stat-lbl">Expenses</div><div class="stat-val" id="exp-int-exp" style="font-size:24px;color:var(--ora)">0</div><div class="stat-unit">PKR</div></div>
         </div>
-        <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div style="font-size:var(--fs-xs);color:var(--mut)"><span id="exp-int-count">0</span> entries</div>
           <button class="btn btn-gold btn-sm" style="padding:7px 14px;font-size:var(--fs-sm)" onclick="pdfExp()">⬇ Contractor PDF</button>
         </div>
       </div>
@@ -3221,6 +3223,7 @@ function cycleReimburse(id){
 function renderExp(){
   const el=e$('list-exp');if(!el)return;
   const allExps=D.expenses||[];
+  const allSubpays=D.subpays||[];
   const internalExps=allExps.filter(e=>(e.fundedBy||'contract')==='contract');
   const cashExps=allExps.filter(e=>e.fundedBy==='cashinhand');
   const behalfExps=allExps.filter(e=>e.fundedBy==='onbehalf');
@@ -3229,9 +3232,13 @@ function renderExp(){
   const ownerExps=cashExps.concat(behalfExps);
   const setV=(id,v)=>{const x=e$(id);if(x)x.textContent=fmt(v);};
 
-  // Update contractor stats
-  setV('exp-int-spent',internalExps.reduce((s,e)=>s+e.amount,0));
-  const ic=e$('exp-int-count');if(ic)ic.textContent=internalExps.length;
+  // Contractor stats = expenses + sub-con payments (full spending in one place)
+  const subTotalAll=allSubpays.reduce((s,p)=>s+p.amount,0);
+  const expTotalAll=internalExps.reduce((s,e)=>s+e.amount,0);
+  setV('exp-int-spent',expTotalAll+subTotalAll);
+  setV('exp-int-sub',subTotalAll);
+  setV('exp-int-exp',expTotalAll);
+  const ic=e$('exp-int-count');if(ic)ic.textContent=internalExps.length+allSubpays.length;
 
   // Update owner stats (misc cash only — not contract receipts)
   const totalCash=D.projects.reduce((s,p)=>s+(p.cashInHand||0),0);
@@ -3247,15 +3254,23 @@ function renderExp(){
   const isOwnerMode=mode==='owner';
   const modeExps=isOwnerMode?ownerExps:internalExps;
   const expsFiltered=expFilter==='all'?modeExps:expFilter==='unpaid'?modeExps.filter(r=>isOwnerMode&&r.fundedBy==='onbehalf'?rst(r)!=='paid':!r.isPaid):expFilter==='paid'?modeExps.filter(r=>isOwnerMode&&r.fundedBy==='onbehalf'?rst(r)==='paid':!!r.isPaid):modeExps.filter(r=>r.cat===expFilter);
+  // Sub-con payments show on contractor tab for All / Paid (always paid). Hide on category filters except labour.
+  const showSubpays=!isOwnerMode&&(expFilter==='all'||expFilter==='paid'||expFilter==='labour');
+  const subpaysFiltered=showSubpays?allSubpays:[];
   let rows=expsFiltered;
-  if(!rows.length){el.innerHTML='<div class="empty"><div class="empty-i">💰</div><div class="empty-t">No '+(isOwnerMode?'owner':'contractor')+' expenses yet.<br>Tap + to add an expense.</div></div>';return;}
+  if(!rows.length&&!subpaysFiltered.length){el.innerHTML='<div class="empty"><div class="empty-i">💰</div><div class="empty-t">No '+(isOwnerMode?'owner':'contractor')+' spending yet.<br>Tap + to add an expense'+(isOwnerMode?'':', or record a sub-con payment')+'.</div></div>';return;}
   const catIcon={material:'🧱',labour:'👷',equipment:'🔧',transport:'🚚',utility:'💡',other:'📦'};
-  const projIds=[...new Set(rows.map(r=>r.projectId||'__none__'))];
+  const projIds=[...new Set([
+    ...rows.map(r=>r.projectId||'__none__'),
+    ...subpaysFiltered.map(p=>p.projectId||'__none__')
+  ])];
   el.innerHTML=projIds.map(pid=>{
     const proj=D.projects.find(x=>x.id===pid);
-    const projName=proj?proj.name:(rows.find(r=>(r.projectId||'__none__')===pid)?.projectName||'No Project');
+    const projName=proj?proj.name:(rows.find(r=>(r.projectId||'__none__')===pid)?.projectName||subpaysFiltered.find(p=>(p.projectId||'__none__')===pid)?.projectName||'No Project');
     const cashInHand=proj?.cashInHand||0;
     const projRows=rows.filter(r=>(r.projectId||'__none__')===pid);
+    const projSubpays=subpaysFiltered.filter(p=>(p.projectId||'__none__')===pid)
+      .slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
     const allProjExps=(D.expenses||[]).filter(r=>(r.projectId||'__none__')===pid);
     const cashRows=allProjExps.filter(r=>r.fundedBy==='cashinhand');
     const contractRows=allProjExps.filter(r=>(r.fundedBy||'contract')==='contract');
@@ -3264,7 +3279,9 @@ function renderExp(){
     const contractSpent=contractRows.reduce((s,r)=>s+r.amount,0);
     const behalfSpent=behalfRows.reduce((s,r)=>s+r.amount,0);
     const behalfOwed=behalfRows.filter(r=>rst(r)!=='paid').reduce((s,r)=>s+r.amount,0);
-    const totalDisplay=projRows.reduce((s,r)=>s+r.amount,0);
+    const subSpent=projSubpays.reduce((s,p)=>s+p.amount,0);
+    const expSpentDisplay=projRows.reduce((s,r)=>s+r.amount,0);
+    const totalDisplay=isOwnerMode?expSpentDisplay:(expSpentDisplay+subSpent);
     const balance=cashInHand-projSpent;
     const pct=cashInHand>0?Math.min(100,Math.round(projSpent/cashInHand*100)):0;
     return`<div style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);overflow:hidden;margin-bottom:12px">
@@ -3327,8 +3344,26 @@ function renderExp(){
           </div>
         </div>`;
         let html='';
+        if(!isOwnerMode&&projSubpays.length){
+          html+=`<div style="padding:7px 14px;background:rgba(224,85,85,.08);border-bottom:1px solid var(--bor);font-size:var(--fs-xs);font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.5px">👷 Sub-Contractor Payments</div>`;
+          html+=projSubpays.map(p=>`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:11px 14px;border-bottom:1px solid var(--bor)">
+            <div>
+              <div style="font-size:var(--fs-sm);font-weight:600">💸 ${p.subconName||'Sub-Con'} <span style="color:var(--grn);font-size:var(--fs-xs)">✅ Paid</span></div>
+              <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">${p.date||'—'} · ${p.method||'Cash'} · <span class="b b-m" style="font-size:9px">${p.phase||'—'}</span></div>
+              ${p.desc?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">${p.desc}</div>`:''}
+              ${(p.breakdown||[]).length?`<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">${p.breakdown.map(b=>`<span style="font-size:9px;padding:2px 6px;border-radius:5px;background:var(--bg);border:1px solid var(--bor);color:var(--mut)">${b.trade||'Other'}${b.name?' · '+b.name:''}: <b style="color:var(--txt)">${fmt(b.amount)}</b></span>`).join('')}</div>`:''}
+            </div>
+            <div style="text-align:right;flex-shrink:0;margin-left:12px">
+              <div style="font-family:'JetBrains Mono',monospace;color:var(--red);font-size:var(--fs-md)">${fmt(p.amount)}</div>
+              <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;justify-content:flex-end">
+                <button style="font-size:var(--fs-xs);color:var(--blu);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="eSpay('${p.id}')">Edit</button>
+                <button style="font-size:var(--fs-xs);color:var(--red);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="del('subpays','${p.id}')">Del</button>
+              </div>
+            </div>
+          </div>`).join('');
+        }
         if(internalRows.length){
-          html+=`<div style="padding:7px 14px;background:rgba(201,123,58,.08);border-bottom:1px solid var(--bor);font-size:var(--fs-xs);font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.5px">💼 Contractor Expenses — from your contract funds</div>`;
+          html+=`<div style="padding:7px 14px;background:rgba(201,123,58,.08);border-bottom:1px solid var(--bor);font-size:var(--fs-xs);font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.5px">💼 Contractor Expenses — material / supplier / other</div>`;
           html+=internalRows.map(renderRow).join('');
         }
         if(ownerRows.length){
@@ -3365,7 +3400,9 @@ function renderExp(){
         return html;
       })()}
       <div style="padding:10px 14px;background:var(--s2)">
-        ${!isOwnerMode&&contractSpent>0?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-sm);font-weight:600"><span style="color:var(--mut)">Contractor Spent</span><span style="font-family:'JetBrains Mono',monospace;color:var(--red)">PKR ${fmt(totalDisplay)}</span></div>`:''}
+        ${!isOwnerMode&&subSpent>0?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--mut);margin-bottom:3px"><span>Sub-Con Paid</span><span style="font-family:'JetBrains Mono',monospace;color:var(--red)">PKR ${fmt(subSpent)}</span></div>`:''}
+        ${!isOwnerMode&&expSpentDisplay>0?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--mut);margin-bottom:3px"><span>Contractor Expenses</span><span style="font-family:'JetBrains Mono',monospace;color:var(--red)">PKR ${fmt(expSpentDisplay)}</span></div>`:''}
+        ${!isOwnerMode?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-sm);font-weight:600;border-top:1px solid var(--bor);padding-top:6px;margin-top:3px"><span style="color:var(--mut)">Total Contractor Spent</span><span style="font-family:'JetBrains Mono',monospace;color:var(--red)">PKR ${fmt(totalDisplay)}</span></div>`:''}
         ${isOwnerMode&&projSpent>0?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--mut);margin-bottom:3px"><span>Owner Misc Cash Spent</span><span style="font-family:'JetBrains Mono',monospace;color:var(--red)">PKR ${fmt(projSpent)}</span></div>`:''}
         ${isOwnerMode&&behalfSpent>0?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--mut);margin-bottom:3px"><span>On Behalf (Reimbursable)</span><span style="font-family:'JetBrains Mono',monospace;color:var(--red)">PKR ${fmt(behalfSpent)}</span></div>`:''}
         ${isOwnerMode&&behalfOwed>0?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--red);margin-bottom:3px"><span>↳ Owner still owes you</span><span style="font-family:'JetBrains Mono',monospace;color:var(--red);font-weight:700">PKR ${fmt(behalfOwed)}</span></div>`:''}
@@ -3388,56 +3425,84 @@ function setExpFunding(id,funded){
 }
 
 // ════ PDF EXPENSES ════
-// Contractor PDF — only contractor-funded expenses (never owner misc / on-behalf / contract receipts)
+// Contractor PDF — contract-funded expenses + sub-con payments (full spending)
 function pdfExp(){
-  const c=co();const doc=bPDF();const pw=210;
-  let y=drawHeader(doc,'CONTRACTOR EXPENSE REPORT','ALL','Date: '+today(),'','');
+  const doc=bPDF();const pw=210;
+  let y=drawHeader(doc,'CONTRACTOR SPENDING REPORT','ALL','Date: '+today(),'','');
   const exps=(D.expenses||[]).filter(e=>(e.fundedBy||'contract')==='contract');
-  if(!exps.length){toast('No contractor expenses to export','info');return;}
-  const totalSpent=exps.reduce((s,e)=>s+e.amount,0);
-  const totalPaid=exps.filter(e=>e.isPaid).reduce((s,e)=>s+e.amount,0);
+  const spays=D.subpays||[];
+  if(!exps.length&&!spays.length){toast('No contractor spending to export','info');return;}
+  const expTotal=exps.reduce((s,e)=>s+e.amount,0);
+  const subTotal=spays.reduce((s,p)=>s+p.amount,0);
+  const totalSpent=expTotal+subTotal;
+  const totalPaid=exps.filter(e=>e.isPaid).reduce((s,e)=>s+e.amount,0)+subTotal;
   const totalPending=exps.filter(e=>!e.isPaid).reduce((s,e)=>s+e.amount,0);
-  doc.setFillColor(248,246,242);doc.rect(14,y,182,18,'F');
+  doc.setFillColor(248,246,242);doc.rect(14,y,182,22,'F');
   doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(30,30,30);
-  doc.text('Contractor Spent: PKR '+fmt(totalSpent),16,y+7);
-  doc.text('Paid: PKR '+fmt(totalPaid),100,y+7);
-  doc.text('Pending: PKR '+fmt(totalPending),160,y+7);
+  doc.text('Total Spent: PKR '+fmt(totalSpent),16,y+7);
+  doc.text('Sub-Con: PKR '+fmt(subTotal),95,y+7);
+  doc.text('Expenses: PKR '+fmt(expTotal),155,y+7);
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(100,100,100);
+  doc.text('Paid: PKR '+fmt(totalPaid)+'   ·   Pending expenses: PKR '+fmt(totalPending),16,y+15);
+  y+=28;
   doc.setFont('helvetica','italic');doc.setFontSize(7.5);doc.setTextColor(130,125,118);
-  doc.text('Internal contractor costs only — excludes owner misc advances, on-behalf spend, and contract payments received.',16,y+14);
-  y+=24;
-  const projIds=[...new Set(exps.map(r=>r.projectId||'__none__'))];
+  doc.text('Full contractor-side spending: sub-con payments + contract-funded expenses. Excludes owner misc / on-behalf.',14,y);
+  y+=8;
+  const projIds=[...new Set([
+    ...exps.map(r=>r.projectId||'__none__'),
+    ...spays.map(r=>r.projectId||'__none__')
+  ])];
   projIds.forEach(pid=>{
     const proj=D.projects.find(x=>x.id===pid);
-    const projName=proj?proj.name:(exps.find(r=>(r.projectId||'__none__')===pid)?.projectName||'No Project');
-    const projRows=exps.filter(r=>(r.projectId||'__none__')===pid);
-    const projSpent=projRows.reduce((s,r)=>s+r.amount,0);
+    const projName=proj?proj.name:(exps.find(r=>(r.projectId||'__none__')===pid)?.projectName||spays.find(r=>(r.projectId||'__none__')===pid)?.projectName||'No Project');
+    const projExps=exps.filter(r=>(r.projectId||'__none__')===pid);
+    const projSpays=spays.filter(r=>(r.projectId||'__none__')===pid).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+    const pExp=projExps.reduce((s,r)=>s+r.amount,0);
+    const pSub=projSpays.reduce((s,r)=>s+r.amount,0);
     if(y>240){doc.addPage();y=20;}
     doc.setFillColor(242,240,235);doc.rect(14,y-3,182,9,'F');
     doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(30,30,30);
     doc.text(projName,16,y+3);
-    doc.text('Spent: PKR '+fmt(projSpent),196,y+3,{align:'right'});
+    doc.text('Total: PKR '+fmt(pExp+pSub),196,y+3,{align:'right'});
     y+=12;
-    doc.autoTable({
-      startY:y,
-      head:[['Date','Description','Category','Paid By','Status','Amount (PKR)']],
-      body:projRows.map(r=>[r.date||'—',r.desc,r.cat||'—',r.paid||'Cash',r.isPaid?'PAID':'PENDING',fmt(r.amount)]),
-      foot:[['','','','','Total PKR',fmt(projSpent)]],
-      styles:{fontSize:9,cellPadding:3,textColor:[30,30,30]},
-      headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
-      footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[201,123,58],fontSize:9},
-      columnStyles:{4:{cellWidth:22},5:{halign:'right',cellWidth:28}},
-      didParseCell:data=>{
-        if(data.section==='body'&&data.column.index===4){
-          data.cell.styles.textColor=data.cell.raw==='PAID'?[50,150,50]:[200,50,50];
-        }
-      },
-      margin:{left:14,right:14}
-    });
-    y=doc.lastAutoTable.finalY+10;
+    if(projSpays.length){
+      doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(130,125,118);
+      doc.text('Sub-Contractor Payments',16,y);y+=3;
+      doc.autoTable({
+        startY:y,
+        head:[['Date','Sub-Contractor','Phase','Method','Amount (PKR)']],
+        body:projSpays.map(r=>[r.date||'—',r.subconName||'—',r.phase||'—',r.method||'Cash',fmt(r.amount)]),
+        foot:[['','','','Sub-Con Total',fmt(pSub)]],
+        styles:{fontSize:8.5,cellPadding:2.5,textColor:[30,30,30]},
+        headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
+        footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[200,50,50],fontSize:8.5},
+        columnStyles:{4:{halign:'right'}},
+        margin:{left:14,right:14}
+      });
+      y=doc.lastAutoTable.finalY+8;
+    }
+    if(projExps.length){
+      if(y>240){doc.addPage();y=20;}
+      doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(130,125,118);
+      doc.text('Contractor Expenses',16,y);y+=3;
+      doc.autoTable({
+        startY:y,
+        head:[['Date','Description','Category','Status','Amount (PKR)']],
+        body:projExps.map(r=>[r.date||'—',r.desc,r.cat||'—',r.isPaid?'PAID':'PENDING',fmt(r.amount)]),
+        foot:[['','','','Expenses Total',fmt(pExp)]],
+        styles:{fontSize:8.5,cellPadding:2.5,textColor:[30,30,30]},
+        headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
+        footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[201,123,58],fontSize:8.5},
+        columnStyles:{3:{cellWidth:22},4:{halign:'right'}},
+        didParseCell:data=>{if(data.section==='body'&&data.column.index===3)data.cell.styles.textColor=data.cell.raw==='PAID'?[50,150,50]:[200,50,50];},
+        margin:{left:14,right:14}
+      });
+      y=doc.lastAutoTable.finalY+10;
+    }
   });
   drawBankFooter(doc);
-  doc.save('ContractorExpenses-'+today()+'.pdf');
-  toast('Contractor expense PDF downloaded ✓');
+  doc.save('ContractorSpending-'+today()+'.pdf');
+  toast('Contractor spending PDF downloaded ✓');
 }
 
 // Owner PDF — ONLY misc cash-in-hand spend + on-behalf.
@@ -3504,47 +3569,79 @@ function pdfExpExternal(){
   toast('Owner expenses PDF ✓');
 }
 
-// Per-project contractor expense PDF
+// Per-project contractor spending PDF (expenses + sub-con payments)
 function pdfExpProjectContractor(pid,projName){
   const doc=bPDF();const pw=210;
   const allExps=(D.expenses||[]).filter(r=>(r.projectId||'__none__')===pid&&(r.fundedBy||'contract')==='contract')
     .sort((a,b)=>(a.date||'').localeCompare(b.date||''));
-  if(!allExps.length){toast('No contractor expenses for this project','info');return;}
+  const allSpays=(D.subpays||[]).filter(r=>(r.projectId||'__none__')===pid)
+    .sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  if(!allExps.length&&!allSpays.length){toast('No contractor spending for this project','info');return;}
   const proj=D.projects.find(x=>x.id===pid);
   const cli=proj?D.clients.find(x=>x.id===proj.clientId):null;
-  const totalSpent=allExps.reduce((s,r)=>s+r.amount,0);
-  const paidAmt=allExps.filter(r=>r.isPaid).reduce((s,r)=>s+r.amount,0);
+  const expTotal=allExps.reduce((s,r)=>s+r.amount,0);
+  const subTotal=allSpays.reduce((s,r)=>s+r.amount,0);
+  const totalSpent=expTotal+subTotal;
+  const paidAmt=allExps.filter(r=>r.isPaid).reduce((s,r)=>s+r.amount,0)+subTotal;
   const pendingAmt=allExps.filter(r=>!r.isPaid).reduce((s,r)=>s+r.amount,0);
-  let y=drawHeader(doc,'CONTRACTOR EXPENSE REPORT',projName,today(),'','');
+  let y=drawHeader(doc,'CONTRACTOR SPENDING REPORT',projName,today(),'','');
   doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(30,30,30);
   doc.text(projName,14,y);
   doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(100,100,100);
   if(proj?.loc)doc.text('Location: '+proj.loc+(proj.plot?' · '+proj.plot:''),14,y+6);
   if(cli)doc.text('Client: '+cli.name+(cli.phone?' · '+cli.phone:''),14,y+12);
   doc.setFont('helvetica','italic');doc.setFontSize(8);doc.setTextColor(150,145,138);
-  doc.text('Contractor costs only — not shown as owner spending. Separate from contract payments received.',14,y+18);
+  doc.text('Sub-con payments + contractor expenses in one place. Not owner spending.',14,y+18);
   y+=26;
-  doc.setFillColor(248,246,242);doc.rect(14,y,182,16,'F');
+  doc.setFillColor(248,246,242);doc.rect(14,y,182,18,'F');
   doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(30,30,30);
   doc.text('Total: PKR '+fmt(totalSpent),16,y+7);
-  doc.text('Paid: PKR '+fmt(paidAmt),90,y+7);
-  doc.text('Pending: PKR '+fmt(pendingAmt),150,y+7);
-  y+=22;
-  doc.autoTable({
-    startY:y,
-    head:[['Date','Description','Category','Method','Status','Amount (PKR)']],
-    body:allExps.map(r=>[r.date||'—',r.desc+(r.notes?'\n'+r.notes:''),(r.cat||'other'),r.paid||'Cash',r.isPaid?'PAID':'PENDING',fmt(r.amount)]),
-    foot:[['','','','','Total','PKR '+fmt(totalSpent)]],
-    styles:{fontSize:8.5,cellPadding:3,textColor:[30,30,30]},
-    headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
-    footStyles:{fontSize:9,fontStyle:'bold',textColor:[201,123,58]},
-    columnStyles:{4:{cellWidth:24},5:{halign:'right',cellWidth:28}},
-    didParseCell:data=>{if(data.section==='body'&&data.column.index===4)data.cell.styles.textColor=data.cell.raw==='PAID'?[50,150,50]:[200,50,50];},
-    margin:{left:14,right:14}
-  });
+  doc.text('Sub-Con: PKR '+fmt(subTotal),75,y+7);
+  doc.text('Expenses: PKR '+fmt(expTotal),140,y+7);
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(100,100,100);
+  doc.text('Paid: PKR '+fmt(paidAmt)+'   ·   Pending expenses: PKR '+fmt(pendingAmt),16,y+14);
+  y+=24;
+  if(allSpays.length){
+    doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(130,125,118);
+    doc.text('SUB-CONTRACTOR PAYMENTS',14,y);y+=5;
+    doc.autoTable({
+      startY:y,
+      head:[['Date','Sub-Contractor','Phase','Method','Amount (PKR)']],
+      body:allSpays.map(r=>[r.date||'—',r.subconName||'—',r.phase||'—',r.method||'Cash',fmt(r.amount)]),
+      foot:[['','','','Sub-Con Total','PKR '+fmt(subTotal)]],
+      styles:{fontSize:8.5,cellPadding:2.5,textColor:[30,30,30]},
+      headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
+      footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[200,50,50]},
+      columnStyles:{4:{halign:'right'}},
+      margin:{left:14,right:14}
+    });
+    y=doc.lastAutoTable.finalY+10;
+  }
+  if(allExps.length){
+    if(y>230){doc.addPage();y=20;}
+    doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(130,125,118);
+    doc.text('CONTRACTOR EXPENSES',14,y);y+=5;
+    doc.autoTable({
+      startY:y,
+      head:[['Date','Description','Category','Method','Status','Amount (PKR)']],
+      body:allExps.map(r=>[r.date||'—',r.desc+(r.notes?'\n'+r.notes:''),(r.cat||'other'),r.paid||'Cash',r.isPaid?'PAID':'PENDING',fmt(r.amount)]),
+      foot:[['','','','','Expenses Total','PKR '+fmt(expTotal)]],
+      styles:{fontSize:8.5,cellPadding:3,textColor:[30,30,30]},
+      headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
+      footStyles:{fontSize:9,fontStyle:'bold',textColor:[201,123,58]},
+      columnStyles:{4:{cellWidth:24},5:{halign:'right',cellWidth:28}},
+      didParseCell:data=>{if(data.section==='body'&&data.column.index===4)data.cell.styles.textColor=data.cell.raw==='PAID'?[50,150,50]:[200,50,50];},
+      margin:{left:14,right:14}
+    });
+    y=doc.lastAutoTable.finalY+10;
+  }
+  if(y>250){doc.addPage();y=20;}
+  doc.setFillColor(201,123,58);doc.rect(14,y,182,12,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(255,255,255);
+  doc.text('TOTAL CONTRACTOR SPENT: PKR '+fmt(totalSpent),pw/2,y+8,{align:'center'});
   drawBankFooter(doc);
-  doc.save('ContractorExpenses-'+projName.replace(/\s+/g,'-')+'-'+today()+'.pdf');
-  toast('Contractor expense PDF ✓');
+  doc.save('ContractorSpending-'+projName.replace(/\s+/g,'-')+'-'+today()+'.pdf');
+  toast('Contractor spending PDF ✓');
 }
 
 // Per-project owner expense PDF — misc cash + on behalf only (no contractor spend, no contract receipts)
@@ -4468,7 +4565,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION — bump both on each release so deploys apply on open.
-const APP_VERSION='2026-07-13-v11';
+const APP_VERSION='2026-07-13-v12';
 let _swRefreshing=false;
 
 async function wipeAppCaches(){
