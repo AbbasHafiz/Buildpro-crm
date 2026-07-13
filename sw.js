@@ -1,5 +1,5 @@
 // Bump APP_VERSION on every release so browsers detect a new service worker.
-const APP_VERSION = '2026-07-13-v16';
+const APP_VERSION = '2026-07-13-v17';
 const CACHE = 'buildpro-' + APP_VERSION;
 const CORE = ['/manifest.json', '/icon-192.png', '/icon-512.png'];
 

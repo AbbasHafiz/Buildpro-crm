@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-07-13-v16">
+<meta name="app-version" content="2026-07-13-v17">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -347,7 +347,7 @@ select option{background:var(--s2);}
 <div id="app">
   <div class="topbar">
     <div class="tb-l">
-      <div class="tb-logo">BP</div>
+      <div class="tb-logo" id="tb-logo">BP</div>
       <div class="tb-pg" id="tb-pg">Dashboard</div>
     </div>
     <div class="tb-r">
@@ -1259,7 +1259,7 @@ select option{background:var(--s2);}
       </div>
       <div class="logo-hint">
         <strong>Company Logo</strong>
-        <span>Tap to upload PNG or JPG<br>Will appear on all PDF documents</span>
+        <span>Tap to upload PNG or JPG<br>Shows on invoices, receipts, statements &amp; all PDFs</span>
       </div>
     </div>
     <input type="file" id="logo-file" accept="image/*" style="display:none" onchange="handleLogo(this)">
@@ -1628,7 +1628,17 @@ function mergeData(mine,theirs){
     out[k]=Object.values(byId);
   });
   const mc=mine.company||{},tc=theirs.company||{};
-  out.company=((tc._u||'')>(mc._u||''))?tc:(Object.keys(mc).length?mc:tc);
+  let company=((tc._u||'')>(mc._u||''))?{...tc}:{...(Object.keys(mc).length?mc:tc)};
+  // Never drop a real logo during merge if the "winning" profile has none
+  const pickLogo=(a,b)=>{
+    const al=a&&a.logo&&a.logo!=='__local__'?a.logo:'';
+    const bl=b&&b.logo&&b.logo!=='__local__'?b.logo:'';
+    if(company.logo&&company.logo!=='__local__')return{logo:company.logo,logoPdf:company.logoPdf||'',logoPdfFormat:company.logoPdfFormat||''};
+    if(al)return{logo:al,logoPdf:a.logoPdf||'',logoPdfFormat:a.logoPdfFormat||''};
+    if(bl)return{logo:bl,logoPdf:b.logoPdf||'',logoPdfFormat:b.logoPdfFormat||''};
+    return{};
+  };
+  out.company={...company,...pickLogo(mc,tc)};
   out._tomb=Object.entries(tombs).map(([id,ts])=>({id,ts}));
   return out;
 }
@@ -1709,6 +1719,7 @@ async function loadSupaData(user){
       D=mergeData(D,data.data);
       baseUpdatedAt=data.updated_at||null;
       localStorage.setItem('bp5',JSON.stringify(D));
+      prepareCompanyLogo(); // ensure PDF-ready logo after sync
     }
     setSync('synced');
   }catch(e){setSync('error');toast('Offline — showing cached data','info');}
@@ -1801,6 +1812,7 @@ function launchApp(){
   }
   startRealtime();
   renderAll();refreshProfileUI();
+  prepareCompanyLogo().then(()=>{try{refreshProfileUI();}catch(e){}});
 }
 
 // ════ NAVIGATION ════
@@ -2334,18 +2346,74 @@ function saveAgr(){
 function est2inv(id){const r=D.estimates.find(x=>x.id===id);if(!r)return;iInv('standard');sv('i-cli-t',r.clientName);sv('i-cli-id',r.clientId||'');sv('i-proj-t',r.projectName||'');sv('i-proj-id',r.projectId||'');e$('li-i').innerHTML='';(r.items||[]).forEach(item=>addLIData('i','std',item));if(!r.items||!r.items.length)addLI('i','std');X('sh-est');O('sh-inv');toast('Estimate loaded into Invoice ✓','info');}
 
 // ════ COMPANY PROFILE ════
-function handleLogo(inp){const f=inp.files[0];if(!f)return;const rd=new FileReader();rd.onload=ev=>{D.company.logo=ev.target.result;sched();const img=e$('logo-img');img.src=D.company.logo;img.classList.add('on');e$('logo-ph').style.display='none';};rd.readAsDataURL(f);}
-function openProfileSheet(){const c=D.company;sv('co-name',c.name);sv('co-ph',c.phone);sv('co-email',c.email);sv('co-addr',c.addr);sv('co-city',c.city);sv('co-ntn',c.ntn);sv('co-bank',c.bank);sv('co-acc',c.acc);sv('co-acc-t',c.accT);sv('co-iban',c.iban);const img=e$('logo-img');if(c.logo){img.src=c.logo;img.classList.add('on');if(e$('logo-ph'))e$('logo-ph').style.display='none';}}
-function saveProfile(){D.company={...D.company,name:e$('co-name').value||'Your Company',phone:e$('co-ph').value,email:e$('co-email').value,addr:e$('co-addr').value,city:e$('co-city').value,ntn:e$('co-ntn').value,bank:e$('co-bank').value,acc:e$('co-acc').value,accT:e$('co-acc-t').value,iban:e$('co-iban').value,_u:new Date().toISOString()};sched();X('sh-profile');refreshProfileUI();toast('Company profile saved ✓');}
+function handleLogo(inp){
+  const f=inp.files[0];if(!f)return;
+  if(f.size>8*1024*1024){toast('Logo too large — use under 8MB','err');return;}
+  const rd=new FileReader();
+  rd.onload=ev=>{
+    if(!D.company)D.company={};
+    D.company.logo=ev.target.result;
+    D.company.logoPdf='';D.company.logoPdfFormat='';
+    D.company._u=new Date().toISOString();
+    const img=e$('logo-img');if(img){img.src=D.company.logo;img.classList.add('on');}
+    const ph=e$('logo-ph');if(ph)ph.style.display='none';
+    prepareCompanyLogo().then(()=>{sched();refreshProfileUI();toast('Logo saved ✓');});
+  };
+  rd.readAsDataURL(f);
+}
+function openProfileSheet(){
+  const c=D.company||{};
+  sv('co-name',c.name);sv('co-ph',c.phone);sv('co-email',c.email);sv('co-addr',c.addr);sv('co-city',c.city);sv('co-ntn',c.ntn);sv('co-bank',c.bank);sv('co-acc',c.acc);sv('co-acc-t',c.accT);sv('co-iban',c.iban);
+  const img=e$('logo-img');const ph=e$('logo-ph');
+  if(c.logo&&c.logo!=='__local__'){
+    if(img){img.src=c.logo;img.classList.add('on');}
+    if(ph)ph.style.display='none';
+  }else{
+    if(img){img.removeAttribute('src');img.classList.remove('on');}
+    if(ph)ph.style.display='';
+  }
+}
+function saveProfile(){
+  D.company={
+    ...D.company,
+    name:e$('co-name').value||'Your Company',
+    phone:e$('co-ph').value,
+    email:e$('co-email').value,
+    addr:e$('co-addr').value,
+    city:e$('co-city').value,
+    ntn:e$('co-ntn').value,
+    bank:e$('co-bank').value,
+    acc:e$('co-acc').value,
+    accT:e$('co-acc-t').value,
+    iban:e$('co-iban').value,
+    _u:new Date().toISOString()
+  };
+  sched();X('sh-profile');refreshProfileUI();
+  prepareCompanyLogo().then(()=>sched());
+  toast('Company profile saved ✓');
+}
+function companyShortName(name){
+  const n=(name||'').trim();
+  if(!n||n==='Your Company')return 'BP';
+  const parts=n.split(/\s+/).filter(Boolean);
+  if(parts.length===1)return parts[0].slice(0,3).toUpperCase();
+  return (parts[0][0]+(parts[1][0]||'')).toUpperCase();
+}
 function refreshProfileUI(){
-  const c=D.company;
+  const c=D.company||{};
   const set=(id,v)=>{const el=e$(id);if(el)el.textContent=v||'—';};
-  // Header
   if(e$('cp-nm'))e$('cp-nm').textContent=c.name||'Your Company';
   if(e$('cp-city-txt'))e$('cp-city-txt').textContent=(c.city||'Islamabad')+', Pakistan';
   if(e$('cp-ntn-txt'))e$('cp-ntn-txt').textContent=c.ntn?'NTN: '+c.ntn:'';
-  const logoImg=e$('cp-logo-img');if(logoImg&&c.logo){logoImg.src=c.logo;logoImg.classList.add('on');if(e$('cp-logo-ph'))e$('cp-logo-ph').style.display='none';}
-  // Details
+  const tb=e$('tb-logo');if(tb)tb.textContent=companyShortName(c.name);
+  const logoImg=e$('cp-logo-img');const logoPh=e$('cp-logo-ph');
+  if(logoImg&&c.logo&&c.logo!=='__local__'){
+    logoImg.src=c.logo;logoImg.classList.add('on');
+    if(logoPh)logoPh.style.display='none';
+  }else if(logoImg){
+    logoImg.removeAttribute('src');logoImg.classList.remove('on');
+    if(logoPh)logoPh.style.display='';
+  }
   set('ps-ph',c.phone);set('ps-em',c.email);set('ps-addr',c.addr);set('ps-ntn',c.ntn);
   set('ps-bank',c.bank);set('ps-acc',c.acc);set('ps-acc-t',c.accT);set('ps-iban',c.iban);
 }
@@ -2745,7 +2813,8 @@ function saveSpCon(){
   sched();X('sh-spcon');renderSub();toast('Contract value saved ✓');
 }
 
-function pdfSubProjStatement(subconId,projectId){
+async function pdfSubProjStatement(subconId,projectId){
+  await prepareCompanyLogo();
   const sc=D.subcons.find(x=>x.id===subconId);
   const pr=D.projects.find(x=>x.id===projectId);
   const pays=D.subpays.filter(x=>x.subconId===subconId&&x.projectId===projectId).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
@@ -2930,27 +2999,79 @@ function updateDots(){[['inv',D.invoices],['est',D.estimates],['pay',[...D.cpays
 const co=()=>D.company||{};
 function bPDF(){const{jsPDF}=window.jspdf;return new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});}
 
+function detectLogoFormat(data){
+  if(!data||typeof data!=='string')return 'PNG';
+  if(/^data:image\/jpe?g/i.test(data))return 'JPEG';
+  if(/^data:image\/png/i.test(data))return 'PNG';
+  if(/^data:image\/webp/i.test(data))return 'PNG';
+  return 'PNG';
+}
+
+// Build a small PDF-ready logo (async). Cached on D.company.logoPdf for sync PDF draws.
+function prepareCompanyLogo(){
+  return new Promise(resolve=>{
+    const c=D.company;if(!c){resolve(null);return;}
+    const src=c.logo;
+    if(!src||src==='__local__'){c.logoPdf='';c.logoPdfFormat='';resolve(null);return;}
+    // Already prepared for this exact source
+    if(c.logoPdf&&c._logoSrc===src){resolve({data:c.logoPdf,format:c.logoPdfFormat||detectLogoFormat(c.logoPdf)});return;}
+    const img=new Image();
+    img.onload=()=>{
+      try{
+        const max=160;
+        const w=img.naturalWidth||img.width||max;
+        const h=img.naturalHeight||img.height||max;
+        const scale=Math.min(1,max/Math.max(w,h,1));
+        const canvas=document.createElement('canvas');
+        canvas.width=Math.max(1,Math.round(w*scale));
+        canvas.height=Math.max(1,Math.round(h*scale));
+        const ctx=canvas.getContext('2d');
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        ctx.drawImage(img,0,0,canvas.width,canvas.height);
+        const fmt=detectLogoFormat(src);
+        const data=fmt==='JPEG'?canvas.toDataURL('image/jpeg',0.92):canvas.toDataURL('image/png');
+        c.logoPdf=data;c.logoPdfFormat=fmt;c._logoSrc=src;
+        resolve({data,format:fmt});
+      }catch(e){
+        c.logoPdf=src;c.logoPdfFormat=detectLogoFormat(src);c._logoSrc=src;
+        resolve({data:c.logoPdf,format:c.logoPdfFormat});
+      }
+    };
+    img.onerror=()=>{
+      c.logoPdf=src;c.logoPdfFormat=detectLogoFormat(src);c._logoSrc=src;
+      resolve({data:c.logoPdf,format:c.logoPdfFormat});
+    };
+    img.src=src;
+  });
+}
+
+function pdfLogo(){
+  const c=co();
+  const data=(c.logoPdf&&c.logoPdf!=='__local__')?c.logoPdf:((c.logo&&c.logo!=='__local__')?c.logo:'');
+  if(!data)return null;
+  return{data,format:c.logoPdfFormat||detectLogoFormat(data)};
+}
+
+function addPdfLogo(doc,x,y,w,h){
+  const L=pdfLogo();if(!L)return false;
+  try{doc.addImage(L.data,L.format,x,y,w,h);return true;}catch(e){
+    try{doc.addImage(L.data,L.format==='JPEG'?'PNG':'JPEG',x,y,w,h);return true;}catch(e2){return false;}
+  }
+}
+
+// Legacy sync helper — prefers precomputed logoPdf; falls back to raw data URL.
 function compressLogo(logoData,maxSizePx){
+  const c=co();
+  if(c.logoPdf&&(logoData===c.logo||logoData===c.logoPdf))return c.logoPdf;
   if(!logoData||logoData==='__local__')return logoData;
-  try{
-    const img=new Image();img.src=logoData;
-    const canvas=document.createElement('canvas');
-    const size=Math.min(maxSizePx,img.width||maxSizePx);
-    canvas.width=size;canvas.height=size;
-    const ctx=canvas.getContext('2d');
-    // Keep transparent background
-    ctx.clearRect(0,0,size,size);
-    ctx.drawImage(img,0,0,size,size);
-    // Use PNG to preserve transparency — but compress dimensions
-    return canvas.toDataURL('image/png');
-  }catch(e){return logoData;}
+  return logoData;
 }
 
 function drawHeader(doc,title,ref,date,sub,subVal){
   const c=co();const pw=210;
   doc.setFillColor(232,184,75);doc.rect(0,0,pw,7,'F');
   let contentX=14;
-  if(c.logo){try{const cl=compressLogo(c.logo,120);doc.addImage(cl,'PNG',14,11,22,22);contentX=40;}catch(e){}}
+  if(addPdfLogo(doc,14,11,22,22))contentX=40;
   // Company name — left side
   doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(30,30,30);
   doc.text(c.name||'BuildPro',contentX,18);
@@ -2983,7 +3104,8 @@ function drawBankFooter(doc){
   doc.text(c.name||'BuildPro',pw-14,h-5,{align:'right'});
 }
 
-function pdfInv(id){
+async function pdfInv(id){
+  await prepareCompanyLogo();
   const r=D.invoices.find(x=>x.id===id);if(!r)return;
   const doc=bPDF();const type=r.invType||'standard';
   const typeLabels={standard:'INVOICE',labour:'LABOUR PAYMENT INVOICE',progress:'PROGRESS BILLING INVOICE',material:'MATERIAL INVOICE'};
@@ -3051,7 +3173,8 @@ function pdfInv(id){
   toast(type==='labour'?'Labour Invoice PDF ✓':'Invoice PDF ✓');
 }
 
-function pdfEst(id){
+async function pdfEst(id){
+  await prepareCompanyLogo();
   const r=D.estimates.find(x=>x.id===id);if(!r)return;
   const doc=bPDF();let y=drawHeader(doc,'ESTIMATE / BOQ',r.num,r.date,'Valid Until',r.valid);
   doc.setFontSize(8);doc.setTextColor(160,155,148);doc.text('PREPARED FOR',14,y);
@@ -3063,7 +3186,8 @@ function pdfEst(id){
 }
 
 // BOQ vs actual spend for the linked project (estimate lines matched to expenses / sub-pays)
-function pdfBoqVsActual(id){
+async function pdfBoqVsActual(id){
+  await prepareCompanyLogo();
   const r=D.estimates.find(x=>x.id===id);if(!r)return;
   const pid=r.projectId;
   if(!pid){toast('Link this estimate to a project first','err');return;}
@@ -3139,7 +3263,8 @@ function pdfBoqVsActual(id){
   toast('BOQ vs Actual PDF ✓');
 }
 
-function pdfAgr(id){
+async function pdfAgr(id){
+  await prepareCompanyLogo();
   const r=D.agreements.find(x=>x.id===id);if(!r)return;
   const co2=D.company||{};const doc=bPDF();const pw=210;
   const style=r.printStyle||'digital';
@@ -3149,11 +3274,16 @@ function pdfAgr(id){
   if(style==='digital'){
     // Gold bar + logo + company name at top
     doc.setFillColor(232,184,75);doc.rect(0,0,pw,7,'F');
-    if(co2.logo){try{const cl2=compressLogo(co2.logo,120);doc.addImage(cl2,'PNG',14,11,20,20);}catch(e){}}
-    doc.setFont('helvetica','bold');doc.setFontSize(18);doc.setTextColor(30,30,30);
-    doc.text('CONSTRUCTION AGREEMENT',pw/2,22,{align:'center'});
+    const hasLogo=addPdfLogo(doc,14,11,20,20);
+    doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(30,30,30);
+    doc.text(co2.name||'BuildPro',hasLogo?40:14,18);
+    doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(140,135,125);
+    const cInfo=[co2.phone,co2.city].filter(Boolean).join(' · ');
+    if(cInfo)doc.text(cInfo,hasLogo?40:14,24);
+    doc.setFont('helvetica','bold');doc.setFontSize(16);doc.setTextColor(30,30,30);
+    doc.text('CONSTRUCTION AGREEMENT',pw-14,18,{align:'right'});
     doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(140,135,125);
-    doc.text(r.num+' · Date: '+r.date,pw/2,29,{align:'center'});
+    doc.text(r.num+' · Date: '+r.date,pw-14,25,{align:'right'});
     doc.setDrawColor(200,195,188);doc.setLineWidth(.5);doc.line(14,33,pw-14,33);
     y=40;
   }else if(style==='letterhead'){
@@ -3167,10 +3297,12 @@ function pdfAgr(id){
     doc.setDrawColor(200,195,188);doc.setLineWidth(.5);doc.line(14,y+5,pw-14,y+5);
     y+=12;
   }else if(style==='legal'){
-    // 127mm (5 inch) empty for stamp paper, then logo + title
+    // 127mm (5 inch) empty for stamp paper, then logo + company + title
     y=135;
-    if(co2.logo){try{const cl3=compressLogo(co2.logo,120);doc.addImage(cl3,'PNG',pw/2-12,y,24,24);}catch(e){}}
-    y+=28;
+    if(addPdfLogo(doc,pw/2-12,y,24,24))y+=28;
+    doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(30,30,30);
+    doc.text(co2.name||'BuildPro',pw/2,y,{align:'center'});
+    y+=8;
     doc.setFont('helvetica','bold');doc.setFontSize(17);doc.setTextColor(30,30,30);
     doc.text('CONSTRUCTION AGREEMENT',pw/2,y,{align:'center'});
     doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(140,135,125);
@@ -4062,7 +4194,8 @@ function pdfAppendSpayBreakdown(doc,y,spays){
   return doc.lastAutoTable.finalY+10;
 }
 // Contractor PDF — contract-funded expenses + sub-con payments (full spending)
-function pdfExp(){
+async function pdfExp(){
+  await prepareCompanyLogo();
   const doc=bPDF();const pw=210;
   let y=drawHeader(doc,'CONTRACTOR SPENDING REPORT','ALL','Date: '+today(),'','');
   const exps=(D.expenses||[]).filter(e=>(e.fundedBy||'contract')==='contract');
@@ -4144,7 +4277,8 @@ function pdfExp(){
 
 // Owner PDF — ONLY misc cash-in-hand spend + on-behalf.
 // Never includes contractor expenses or project contract payments received.
-function pdfExpExternal(){
+async function pdfExpExternal(){
+  await prepareCompanyLogo();
   const doc=bPDF();const pw=210;
   let y=drawHeader(doc,'OWNER EXPENSE REPORT','ALL','Date: '+today(),'','');
   const fundLabel=r=>r.fundedBy==='onbehalf'?'On Behalf':'Misc Cash';
@@ -4207,7 +4341,8 @@ function pdfExpExternal(){
 }
 
 // Per-project contractor spending PDF (expenses + sub-con payments)
-function pdfExpProjectContractor(pid,projName){
+async function pdfExpProjectContractor(pid,projName){
+  await prepareCompanyLogo();
   const doc=bPDF();const pw=210;
   const allExps=(D.expenses||[]).filter(r=>(r.projectId||'__none__')===pid&&(r.fundedBy||'contract')==='contract')
     .sort((a,b)=>(a.date||'').localeCompare(b.date||''));
@@ -4283,7 +4418,8 @@ function pdfExpProjectContractor(pid,projName){
 }
 
 // Per-project owner expense PDF — misc cash + on behalf only (no contractor spend, no contract receipts)
-function pdfExpProjectOwner(pid,projName){
+async function pdfExpProjectOwner(pid,projName){
+  await prepareCompanyLogo();
   const doc=bPDF();const pw=210;
   const allExps=(D.expenses||[]).filter(r=>(r.projectId||'__none__')===pid&&(r.fundedBy==='cashinhand'||r.fundedBy==='onbehalf'))
     .sort((a,b)=>(a.date||'').localeCompare(b.date||''));
@@ -4362,7 +4498,8 @@ function pdfExpProject(pid,projName){
 
 
 // ════ PAYMENT CONFIRMATION PDFs ════
-function pdfCpayConfirm(id){
+async function pdfCpayConfirm(id){
+  await prepareCompanyLogo();
   const r=D.cpays.find(x=>x.id===id);if(!r)return;
   const c=co();const doc=bPDF();const pw=210;
   let y=drawHeader(doc,'PAYMENT RECEIPT',r.invoiceRef||r.id,r.date,'','');
@@ -4421,7 +4558,8 @@ function pdfCpayConfirm(id){
   toast('Payment receipt PDF ✓');
 }
 
-function pdfSpayConfirm(id){
+async function pdfSpayConfirm(id){
+  await prepareCompanyLogo();
   const r=D.subpays.find(x=>x.id===id);if(!r)return;
   const c=co();const doc=bPDF();const pw=210;
   let y=drawHeader(doc,'PAYMENT VOUCHER',r.id.slice(-6).toUpperCase(),r.date,'','');
@@ -4505,7 +4643,8 @@ function pdfSpayConfirm(id){
   toast('Payment voucher PDF ✓');
 }
 
-function pdfProjPayments(pid){
+async function pdfProjPayments(pid){
+  await prepareCompanyLogo();
   const proj=D.projects.find(x=>x.id===pid);if(!proj)return;
   const c=co();const doc=bPDF();const pw=210;
   // Keep contract instalments and misc expense advances fully separate
@@ -5115,7 +5254,8 @@ function renderLedger(){
 }
 
 // ════ PARTNERSHIP SUMMARY PDF ════
-function pdfPartnerSummary(pid){
+async function pdfPartnerSummary(pid){
+  await prepareCompanyLogo();
   const p=D.projects.find(x=>x.id===pid);
   if(!p||!p.isPartner){toast('Not a partnership project','err');return;}
   const c=co();const doc=bPDF();const pw=210;
@@ -5281,7 +5421,8 @@ function pdfPartnerSummary(pid){
 }
 
 // ════ INTERNAL PAYMENTS SUMMARY PDF ════
-function pdfInternalSummary(pid){
+async function pdfInternalSummary(pid){
+  await prepareCompanyLogo();
   const p=D.projects.find(x=>x.id===pid);if(!p)return;
   const c=co();const doc=bPDF();const pw=210;
   const cli=D.clients.find(x=>x.id===p.clientId);
@@ -5402,7 +5543,8 @@ function pdfInternalSummary(pid){
 }
 
 // ════ REIMBURSEMENT REQUEST PDF ════
-function pdfReimbursement(pid,projName){
+async function pdfReimbursement(pid,projName){
+  await prepareCompanyLogo();
   const p=D.projects.find(x=>x.id===pid);if(!p)return;
   const c=co();const doc=bPDF();const pw=210;
   const cli=D.clients.find(x=>x.id===p.clientId);
@@ -5544,7 +5686,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-07-13-v16';
+const APP_VERSION='2026-07-13-v17';
 let _swRefreshing=false;
 
 async function wipeAppCaches(){
