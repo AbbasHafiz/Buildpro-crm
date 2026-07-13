@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-07-13-v9">
+<meta name="app-version" content="2026-07-13-v11">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -263,6 +263,12 @@ select option{background:var(--s2);}
 /* Progress invoice line items */
 .li-prg .li-hd{grid-template-columns:1fr 80px 70px 28px;}
 .li-prg .li-row{grid-template-columns:1fr 80px 70px 28px;}
+/* Sub-con payment further breakdown */
+.li-spbd .li-hd{grid-template-columns:1fr 1fr 80px 28px;}
+.li-spbd .li-row{grid-template-columns:1fr 1fr 80px 28px;}
+.spbd-chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px;}
+.spbd-chip{font-size:var(--fs-xs);padding:6px 10px;border-radius:8px;border:1px solid var(--bor);background:var(--s2);color:var(--mut);cursor:pointer;font-family:Inter,sans-serif;font-weight:600;}
+.spbd-chip:active{border-color:var(--gold);color:var(--gold);}
 
 /* INVOICE TYPE TABS */
 .inv-type-tabs{display:flex;gap:7px;margin-bottom:16px;}
@@ -826,7 +832,7 @@ select option{background:var(--s2);}
     </div>
     <div class="f2">
       <div class="fg"><label>Date</label><input type="date" id="sp-date"></div>
-      <div class="fg"><label>Amount (PKR)</label><input type="number" id="sp-amt" placeholder="0"></div>
+      <div class="fg"><label>Amount (PKR)</label><input type="number" id="sp-amt" placeholder="0" oninput="cSpBd()"></div>
     </div>
     <div class="fg"><label>Contract Value for This Project (PKR)</label><input type="number" id="sp-proj-contract" placeholder="Total agreed for this project"></div>
     <div class="f2">
@@ -839,6 +845,23 @@ select option{background:var(--s2);}
       </div>
     </div>
     <div class="fg"><label>Work Description (Kaam)</label><textarea id="sp-desc" placeholder="e.g. Foundation complete, 1st floor slab done, tiling 3 rooms…"></textarea></div>
+
+    <!-- Further payment breakdown — who the sub-con paid onward (partnership tracking) -->
+    <div style="margin-top:6px;padding-top:12px;border-top:1px solid var(--bor)">
+      <div style="font-size:var(--fs-sm);font-weight:700;color:var(--txt);margin-bottom:4px">🔀 Further Payment Breakdown</div>
+      <div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:10px">Optional — if this 1 payment was split onward (shuttering wala, steel binder, mason, electrician…). Useful for partnership tracking.</div>
+      <div class="spbd-chips" id="sp-bd-chips"></div>
+      <div class="li-wrap li-spbd">
+        <div class="li-hd"><span>Trade / Role</span><span>Person Name</span><span>Amount</span><span></span></div>
+        <div id="li-spbd"></div>
+        <button class="btn btn-grey" style="width:100%;padding:11px;margin-bottom:4px" type="button" onclick="addSpBd()">+ Add Person</button>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 4px 0;font-size:var(--fs-xs)">
+          <span style="color:var(--mut)">Breakdown total</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--gold)" id="li-spbd-tot">PKR 0</span>
+        </div>
+        <div id="sp-bd-hint" style="font-size:var(--fs-xs);color:var(--mut);margin-top:4px;display:none"></div>
+      </div>
+    </div>
   </div>
   <div class="sh-ft"><button class="btn btn-grey" onclick="X('sh-spay')">Cancel</button><button class="btn btn-gold" onclick="saveSpay()">💸 Save Payment</button></div>
 </div></div>
@@ -1809,7 +1832,7 @@ function calcProjVal(){
 function iP(){sv('proj-eid','');e$('proj-eb').classList.remove('on');e$('proj-sh-t').textContent='New Project';['p-name','p-loc','p-plot','p-val','p-area','p-rate','p-notes','p-start','p-end','p-custom-stage','p-partner-name','p-my-share','p-partner-share'].forEach(id=>sv(id,''));const pip=e$('p-is-partner');if(pip)pip.checked=false;const ppf=e$('p-partner-fields');if(ppf)ppf.style.display='none';const pls=e$('p-lumpsum');if(pls)pls.checked=false;sv('p-cli-t','');sv('p-cli-id','');sv('p-phase','Foundation');const lbl=e$('proj-calc-label');if(lbl)lbl.textContent='Enter area × rate to calculate';const cv=e$('proj-calc-val');if(cv)cv.textContent='—';}
 function iCli(){sv('cli-eid','');e$('cli-eb').classList.remove('on');e$('cli-sh-t').textContent='New Client';['c-name','c-ph','c-cnic','c-city','c-email','c-addr'].forEach(id=>sv(id,''));}
 function iSub(){sv('sub-eid','');e$('sub-eb').classList.remove('on');e$('sub-sh-t').textContent='New Sub-Contractor';['s-name','s-ph','s-contract','s-notes','s-cnic'].forEach(id=>sv(id,''));sv('s-proj-t','');sv('s-proj-id','');}
-function iSpay(){sv('spay-eid','');e$('spay-eb').classList.remove('on');e$('spay-sh-t').textContent='Sub-Con Payment';['sp-sub-t','sp-sub-id','sp-proj-t','sp-proj-id','sp-desc','sp-custom-stage'].forEach(id=>sv(id,''));sv('sp-amt','');sv('sp-date',today());}
+function iSpay(){sv('spay-eid','');e$('spay-eb').classList.remove('on');e$('spay-sh-t').textContent='Sub-Con Payment';['sp-sub-t','sp-sub-id','sp-proj-t','sp-proj-id','sp-desc','sp-custom-stage','sp-proj-contract'].forEach(id=>sv(id,''));sv('sp-amt','');sv('sp-date',today());sv('sp-phase','Advance');sv('sp-method','Cash');clearSpBd();renderSpBdChips();}
 function iCpay(){sv('cpay-eid','');e$('cpay-eb').classList.remove('on');e$('cpay-sh-t').textContent='Payment Received';['cp-cli-t','cp-cli-id','cp-proj-t','cp-proj-id','cp-inv-t','cp-inv-id','cp-note','cp-custom-stage'].forEach(id=>sv(id,''));sv('cp-amt','');sv('cp-date',today());sv('cp-pay-type','contract');}
 function iInv(type){
   sv('inv-eid','');e$('inv-eb').classList.remove('on');e$('inv-sh-t').textContent='New Invoice';
@@ -1930,7 +1953,7 @@ function iAgr(){
 function eP(id){const r=D.projects.find(x=>x.id===id);if(!r)return;sv('proj-eid',id);e$('proj-eb').classList.add('on');e$('proj-sh-t').textContent='Edit Project';sv('p-name',r.name);sv('p-loc',r.loc);sv('p-plot',r.plot);sv('p-val',r.value);sv('p-notes',r.notes);sv('p-phase',r.phase||'Foundation');sv('p-custom-stage',r.customStage||'');sv('p-area',r.area||'');sv('p-rate',r.rate||'');sv('p-partner-name',r.partnerName||'');sv('p-my-share',r.myShare||'');sv('p-partner-share',r.partnerShare||'');const pip2=e$('p-is-partner');if(pip2)pip2.checked=r.isPartner||false;const pls2=e$('p-lumpsum');if(pls2)pls2.checked=r.lumpSum||false;const ppf2=e$('p-partner-fields');if(ppf2)ppf2.style.display=r.isPartner?'block':'none';sv('p-start',r.start);sv('p-end',r.end);const c=D.clients.find(x=>x.id===r.clientId);sv('p-cli-t',c?c.name:'');sv('p-cli-id',r.clientId||'');O('sh-proj');}
 function eCli(id){const r=D.clients.find(x=>x.id===id);if(!r)return;sv('cli-eid',id);e$('cli-eb').classList.add('on');e$('cli-sh-t').textContent='Edit Client';sv('c-name',r.name);sv('c-ph',r.phone);sv('c-cnic',r.cnic);sv('c-city',r.city);sv('c-email',r.email);sv('c-addr',r.addr);O('sh-cli');}
 function eSub(id){const r=D.subcons.find(x=>x.id===id);if(!r)return;sv('sub-eid',id);e$('sub-eb').classList.add('on');e$('sub-sh-t').textContent='Edit Contractor';sv('s-name',r.name);sv('s-trade',r.trade);sv('s-ph',r.phone);sv('s-contract',r.contract);sv('s-ptype',r.ptype);sv('s-notes',r.notes);sv('s-cnic',r.cnic||'');const p=D.projects.find(x=>x.id===r.projectId);sv('s-proj-t',p?p.name:'');sv('s-proj-id',r.projectId||'');O('sh-sub');}
-function eSpay(id){const r=D.subpays.find(x=>x.id===id);if(!r)return;sv('spay-eid',id);e$('spay-eb').classList.add('on');e$('spay-sh-t').textContent='Edit Payment';const sc=D.subcons.find(x=>x.id===r.subconId);sv('sp-sub-t',sc?sc.name:r.subconName||'');sv('sp-sub-id',r.subconId||'');const p=D.projects.find(x=>x.id===r.projectId);sv('sp-proj-t',p?p.name:r.projectName||'');sv('sp-proj-id',r.projectId||'');sv('sp-date',r.date);sv('sp-amt',r.amount);sv('sp-proj-contract',r.projContract||'');sv('sp-phase',r.phase);sv('sp-custom-stage','');sv('sp-method',r.method);sv('sp-desc',r.desc);O('sh-spay');}
+function eSpay(id){const r=D.subpays.find(x=>x.id===id);if(!r)return;sv('spay-eid',id);e$('spay-eb').classList.add('on');e$('spay-sh-t').textContent='Edit Payment';const sc=D.subcons.find(x=>x.id===r.subconId);sv('sp-sub-t',sc?sc.name:r.subconName||'');sv('sp-sub-id',r.subconId||'');const p=D.projects.find(x=>x.id===r.projectId);sv('sp-proj-t',p?p.name:r.projectName||'');sv('sp-proj-id',r.projectId||'');sv('sp-date',r.date);sv('sp-amt',r.amount);sv('sp-proj-contract',r.projContract||'');sv('sp-phase',r.phase);sv('sp-custom-stage','');sv('sp-method',r.method);sv('sp-desc',r.desc);clearSpBd();renderSpBdChips();(r.breakdown||[]).forEach(b=>addSpBd(b));if(!(r.breakdown||[]).length)cSpBd();O('sh-spay');}
 function eCpay(id){const r=D.cpays.find(x=>x.id===id);if(!r)return;sv('cpay-eid',id);e$('cpay-eb').classList.add('on');e$('cpay-sh-t').textContent='Edit Payment';const c=D.clients.find(x=>x.id===r.clientId);sv('cp-cli-t',c?c.name:'');sv('cp-cli-id',r.clientId||'');const p=D.projects.find(x=>x.id===r.projectId);sv('cp-proj-t',p?p.name:'');sv('cp-proj-id',r.projectId||'');sv('cp-date',r.date);sv('cp-amt',r.amount);sv('cp-custom-stage','');sv('cp-pay-type',r.payType||'contract');const inv=D.invoices.find(x=>x.id===r.invoiceId);sv('cp-inv-t',inv?inv.num:'');sv('cp-inv-id',r.invoiceId||'');sv('cp-method',r.method);sv('cp-note',r.note);sv('cp-milestone',r.milestone||'Other');O('sh-cpay');}
 function eInv(id){
   const r=D.invoices.find(x=>x.id===id);if(!r)return;
@@ -1996,7 +2019,56 @@ function saveP(){const eid=e$('proj-eid').value;const customStage=e$('p-custom-s
     isPartner:e$('p-is-partner')?.checked||false,partnerName:e$('p-partner-name')?.value||'',myShare:parseFloat(e$('p-my-share')?.value)||100,partnerShare:parseFloat(e$('p-partner-share')?.value)||0};if(!doc.name){toast('Enter project name','err');return;}ups('projects',doc);X('sh-proj');renderAll();toast(eid?'Project updated ✓':'Project saved ✓');}
 function saveCli(){const eid=e$('cli-eid').value;const doc={id:eid||uid(),name:e$('c-name').value,phone:e$('c-ph').value,cnic:e$('c-cnic').value,city:e$('c-city').value,email:e$('c-email').value,addr:e$('c-addr').value};if(!doc.name){toast('Enter name','err');return;}ups('clients',doc);X('sh-cli');renderCli();renderDash();updateDots();toast(eid?'Client updated ✓':'Client added ✓');}
 function saveSub(){const eid=e$('sub-eid').value;const doc={id:eid||uid(),name:e$('s-name').value,trade:e$('s-trade').value,phone:e$('s-ph').value,cnic:e$('s-cnic').value,contract:parseFloat(e$('s-contract').value)||0,ptype:e$('s-ptype').value,projectId:e$('s-proj-id').value,notes:e$('s-notes').value};if(!doc.name){toast('Enter name','err');return;}ups('subcons',doc);X('sh-sub');renderSub();updateDots();toast(eid?'Updated ✓':'Saved ✓');}
-function saveSpay(){const eid=e$('spay-eid').value;const doc={id:eid||uid(),subconId:e$('sp-sub-id').value,subconName:e$('sp-sub-t').value,projectId:e$('sp-proj-id').value,projectName:e$('sp-proj-t').value,date:e$('sp-date').value||today(),amount:parseFloat(e$('sp-amt').value)||0,projContract:parseFloat(e$('sp-proj-contract')?.value)||0,phase:e$('sp-custom-stage')?.value||e$('sp-phase').value,method:e$('sp-method').value,desc:e$('sp-desc').value};if(!doc.subconId||!doc.amount){toast('Select contractor and enter amount','err');return;}ups('subpays',doc);X('sh-spay');renderAll();toast(eid?'Updated ✓':'PKR '+fmt(doc.amount)+' recorded ✓');}
+function saveSpay(){const eid=e$('spay-eid').value;const breakdown=gSpBd();const doc={id:eid||uid(),subconId:e$('sp-sub-id').value,subconName:e$('sp-sub-t').value,projectId:e$('sp-proj-id').value,projectName:e$('sp-proj-t').value,date:e$('sp-date').value||today(),amount:parseFloat(e$('sp-amt').value)||0,projContract:parseFloat(e$('sp-proj-contract')?.value)||0,phase:e$('sp-custom-stage')?.value||e$('sp-phase').value,method:e$('sp-method').value,desc:e$('sp-desc').value,breakdown};if(!doc.subconId||!doc.amount){toast('Select contractor and enter amount','err');return;}if(breakdown.length){const bt=breakdown.reduce((s,b)=>s+b.amount,0);if(bt>doc.amount+0.01){toast('Breakdown (PKR '+fmt(bt)+') cannot exceed payment amount','err');return;}}ups('subpays',doc);X('sh-spay');renderAll();toast(eid?'Updated ✓':'PKR '+fmt(doc.amount)+' recorded ✓');}
+
+// ════ SUB-CON PAYMENT BREAKDOWN (further payees) ════
+const SP_BD_TRADES=['Shuttering','Steel Binding','Brick / Chuuni Mason','Electrician','Plumber','Tile Fixer','Painter','Carpenter','Labour','Other'];
+function renderSpBdChips(){
+  const el=e$('sp-bd-chips');if(!el)return;
+  el.innerHTML=SP_BD_TRADES.map(t=>`<button type="button" class="spbd-chip" onclick="addSpBd({trade:'${t.replace(/'/g,"\\'")}'})">+ ${t}</button>`).join('');
+}
+function clearSpBd(){const el=e$('li-spbd');if(el)el.innerHTML='';const tot=e$('li-spbd-tot');if(tot)tot.textContent='PKR 0';const h=e$('sp-bd-hint');if(h)h.style.display='none';}
+function addSpBd(item){
+  const el=e$('li-spbd');if(!el)return;
+  const div=document.createElement('div');div.className='li-row';
+  div.innerHTML=`<input class="bd-trade" placeholder="e.g. Shuttering" oninput="cSpBd()"><input class="bd-name" placeholder="Person name" oninput="cSpBd()"><input class="bd-amt" type="number" placeholder="0" oninput="cSpBd()"><button class="li-del" type="button" onclick="this.parentElement.remove();cSpBd()">×</button>`;
+  if(item){
+    const t=div.querySelector('.bd-trade');if(t)t.value=item.trade||'';
+    const n=div.querySelector('.bd-name');if(n)n.value=item.name||'';
+    const a=div.querySelector('.bd-amt');if(a&&item.amount)a.value=item.amount;
+  }
+  el.appendChild(div);cSpBd();
+}
+function gSpBd(){
+  const el=e$('li-spbd');if(!el)return[];
+  const items=[];
+  el.querySelectorAll('.li-row').forEach(row=>{
+    const trade=(row.querySelector('.bd-trade')?.value||'').trim();
+    const name=(row.querySelector('.bd-name')?.value||'').trim();
+    const amount=parseFloat(row.querySelector('.bd-amt')?.value)||0;
+    if((trade||name)&&amount>0)items.push({trade,name,amount});
+  });
+  return items;
+}
+function cSpBd(){
+  const items=gSpBd();
+  const total=items.reduce((s,b)=>s+b.amount,0);
+  const tot=e$('li-spbd-tot');if(tot)tot.textContent='PKR '+fmt(total);
+  const payAmt=parseFloat(e$('sp-amt')?.value)||0;
+  const hint=e$('sp-bd-hint');
+  if(!hint)return;
+  if(!items.length){hint.style.display='none';return;}
+  hint.style.display='block';
+  if(!payAmt){hint.style.color='var(--mut)';hint.textContent='Enter the main payment amount above.';return;}
+  const rem=payAmt-total;
+  if(Math.abs(rem)<0.01){hint.style.color='var(--grn)';hint.textContent='✓ Breakdown matches full payment.';}
+  else if(rem>0){hint.style.color='var(--mut)';hint.textContent='Unallocated / kept by main sub-con: PKR '+fmt(rem);}
+  else{hint.style.color='var(--red)';hint.textContent='Breakdown exceeds payment by PKR '+fmt(Math.abs(rem));}
+}
+function fmtSpBd(list){
+  if(!list||!list.length)return '';
+  return list.map(b=>`${b.trade||'Other'}${b.name?' — '+b.name:''}: PKR ${fmt(b.amount)}`).join(' · ');
+}
 function saveCpay(){
   const eid=e$('cpay-eid').value;const invId=e$('cp-inv-id').value;
   const doc={id:eid||uid(),clientId:e$('cp-cli-id').value,clientName:e$('cp-cli-t').value,projectId:e$('cp-proj-id').value,projectName:e$('cp-proj-t').value,date:e$('cp-date').value||today(),amount:parseFloat(e$('cp-amt').value)||0,invoiceId:invId,invoiceRef:e$('cp-inv-t').value,milestone:e$('cp-custom-stage')?.value||e$('cp-milestone').value,method:e$('cp-method').value,note:e$('cp-note').value,payType:e$('cp-pay-type')?.value||'contract'};
@@ -2384,17 +2456,19 @@ function renderPay(){
   if(!rows.length){el.innerHTML='<div class="empty"><div class="empty-i">💳</div><div class="empty-t">No payments yet</div></div>';return;}
   el.innerHTML=rows.map(p=>{
     const isIn=p.dir==='in';
+    const bd=(!isIn&&p.breakdown&&p.breakdown.length)?p.breakdown:[];
     return`<div class="pay-card">
       <div style="display:flex;justify-content:space-between;align-items:flex-start">
         <div>
           <div class="pay-type" style="color:${isIn?'var(--grn)':'var(--red)'}">${isIn?'💳 Received from Client':'💸 Paid to Sub-Con'}</div>
           <div class="pay-nm">${isIn?(p.clientName||'—'):(p.subconName||'—')}</div>
           <div class="pay-sub">${isIn?(p.milestone||p.invoiceRef||p.projectName||'—'):(p.phase+' · '+(p.projectName||'—'))}</div>
+          ${bd.length?`<div style="margin-top:7px;display:flex;flex-wrap:wrap;gap:5px">${bd.map(b=>`<span style="font-size:9px;padding:3px 7px;border-radius:6px;background:var(--s2);border:1px solid var(--bor);color:var(--mut)">${b.trade||'Other'}${b.name?' · '+b.name:''} · <b style="color:var(--txt)">${fmt(b.amount)}</b></span>`).join('')}</div>`:''}
         </div>
         <div class="pay-amt" style="color:${isIn?'var(--grn)':'var(--red)'}">${isIn?'+':'-'}${fmt(p.amount)}</div>
       </div>
       <div class="pay-bot">
-        <span class="pay-meta">${p.date||'—'} · ${p.method||'Cash'}</span>
+        <span class="pay-meta">${p.date||'—'} · ${p.method||'Cash'}${bd.length?' · '+bd.length+' further':''}</span>
         <div style="display:flex;gap:7px">
           <button class="ca gold" style="padding:5px 10px;font-size:var(--fs-xs);flex:none" onclick="${isIn?`pdfCpayConfirm('${p.id}')`:`pdfSpayConfirm('${p.id}')`}">⬇ PDF</button>
           <button class="ca blu" style="padding:5px 12px;font-size:var(--fs-xs)" onclick="${isIn?'eCpay':'eSpay'}('${p.id}')">✏️ Edit</button>
@@ -2544,6 +2618,7 @@ function renderSub(){
               <div style="font-size:var(--fs-sm);font-weight:600">${p.phase}</div>
               <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">${p.date} · ${p.method||'Cash'}</div>
               ${p.desc?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">${p.desc}</div>`:''}
+              ${(p.breakdown||[]).length?`<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">${p.breakdown.map(b=>`<span style="font-size:9px;padding:2px 6px;border-radius:5px;background:var(--bg);border:1px solid var(--bor);color:var(--mut)">${b.trade||'Other'}${b.name?' · '+b.name:''}: <b style="color:var(--txt)">${fmt(b.amount)}</b></span>`).join('')}</div>`:''}
             </div>
             <div style="text-align:right;flex-shrink:0;margin-left:12px">
               <div style="font-family:'JetBrains Mono',monospace;color:var(--red)">${fmt(p.amount)}</div>
@@ -3648,6 +3723,29 @@ function pdfSpayConfirm(id){
   doc.setFontSize(18);doc.text('PKR',pw-47,y+22,{align:'center'});
   doc.setFontSize(14);doc.text(fmt(r.amount),pw-47,y+33,{align:'center'});
   y+=52;
+  // Further payment breakdown (who the sub-con paid onward)
+  if(r.breakdown&&r.breakdown.length){
+    if(y>230){doc.addPage();y=20;}
+    doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(130,125,118);
+    doc.text('FURTHER PAYMENT BREAKDOWN',14,y);y+=5;
+    const bdTotal=r.breakdown.reduce((s,b)=>s+b.amount,0);
+    const kept=Math.max(0,(r.amount||0)-bdTotal);
+    doc.autoTable({
+      startY:y,
+      head:[['Trade / Role','Person Name','Amount (PKR)']],
+      body:r.breakdown.map(b=>[b.trade||'Other',b.name||'—',fmt(b.amount)]),
+      foot:[
+        ['','Breakdown Total','PKR '+fmt(bdTotal)],
+        ...(kept>0?[['','Kept by main sub-con','PKR '+fmt(kept)]]:[['','','Matches full payment']])
+      ],
+      styles:{fontSize:9,cellPadding:3,textColor:[30,30,30]},
+      headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
+      footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[30,30,30],fontSize:9},
+      columnStyles:{2:{halign:'right'}},
+      margin:{left:14,right:14}
+    });
+    y=doc.lastAutoTable.finalY+10;
+  }
   // Payment history for this sub-con on this project
   const history=D.subpays.filter(x=>x.subconId===r.subconId&&x.projectId===r.projectId).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
   if(history.length>0){
@@ -4052,6 +4150,29 @@ function pdfPartnerSummary(pid){
     y=doc.lastAutoTable.finalY+10;
   }
 
+  // Further distribution breakdowns (for partnership tracking)
+  const bdRows=spays.flatMap(x=>(x.breakdown||[]).map(b=>({
+    date:x.date,via:x.subconName||'—',trade:b.trade||'Other',name:b.name||'—',amount:b.amount||0
+  })));
+  if(bdRows.length){
+    if(y>210){doc.addPage();y=20;}
+    const bdTotal=bdRows.reduce((s,b)=>s+b.amount,0);
+    doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(130,125,118);
+    doc.text('FURTHER DISTRIBUTION (who sub-cons paid onward)',14,y);y+=6;
+    doc.autoTable({
+      startY:y,
+      head:[['Date','Via Sub-Con','Trade / Role','Person','Amount (PKR)']],
+      body:bdRows.map(b=>[b.date||'—',b.via,b.trade,b.name,fmt(b.amount)]),
+      foot:[['','','','Total Distributed','PKR '+fmt(bdTotal)]],
+      styles:{fontSize:8.5,cellPadding:2.5,textColor:[30,30,30]},
+      headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
+      footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[201,123,58]},
+      columnStyles:{4:{halign:'right'}},
+      margin:{left:14,right:14}
+    });
+    y=doc.lastAutoTable.finalY+10;
+  }
+
   // Expenses
   if(exps.length){
     if(y>210){doc.addPage();y=20;}
@@ -4097,13 +4218,14 @@ function pdfInternalSummary(pid){
   // Only show contract-funded expenses in internal summary (not owner's misc/cashinhand)
   const contractExps=exps.filter(x=>(x.fundedBy||'contract')==='contract');
   const combined=[
-    ...spays.map(x=>({date:x.date,paidTo:x.subconName||'—',type:'Sub-Contractor',desc:x.phase+(x.desc?' · '+x.desc:''),method:x.method||'Cash',amount:x.amount,isPaid:true})),
-    ...contractExps.map(x=>({date:x.date,paidTo:x.paidTo||'—',type:(x.cat||'other').charAt(0).toUpperCase()+(x.cat||'other').slice(1),desc:x.desc,method:x.paid||'Cash',amount:x.amount,isPaid:x.isPaid}))
+    ...spays.map(x=>({date:x.date,paidTo:x.subconName||'—',type:'Sub-Contractor',desc:x.phase+(x.desc?' · '+x.desc:''),method:x.method||'Cash',amount:x.amount,isPaid:true,breakdown:x.breakdown||[]})),
+    ...contractExps.map(x=>({date:x.date,paidTo:x.paidTo||'—',type:(x.cat||'other').charAt(0).toUpperCase()+(x.cat||'other').slice(1),desc:x.desc,method:x.paid||'Cash',amount:x.amount,isPaid:x.isPaid,breakdown:[]}))
   ].sort((a,b)=>(a.date||'').localeCompare(b.date||''));
 
   const totalInternal=combined.reduce((s,x)=>s+x.amount,0);
   const totalSub=spays.reduce((s,x)=>s+x.amount,0);
   const totalExp=contractExps.reduce((s,x)=>s+x.amount,0);
+  const allBd=spays.flatMap(x=>(x.breakdown||[]).map(b=>({...b,date:x.date,via:x.subconName||'—'})));
 
   let y=drawHeader(doc,'INTERNAL PAYMENTS SUMMARY',p.name,today(),'','');
 
@@ -4151,8 +4273,46 @@ function pdfInternalSummary(pid){
       columnStyles:{4:{halign:'right'}},
       margin:{left:14,right:14}
     });
-    y=doc.lastAutoTable.finalY+8;
+    y=doc.lastAutoTable.finalY+6;
+    // Nested further breakdown under this person's payments
+    const nested=rows.flatMap(r=>(r.breakdown||[]).map(b=>[r.date||'—',b.trade||'Other',b.name||'—',fmt(b.amount)]));
+    if(nested.length){
+      doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(130,125,118);
+      doc.text('Further paid onward:',16,y);y+=3;
+      doc.autoTable({
+        startY:y,
+        head:[['Date','Trade','Person','Amount']],
+        body:nested,
+        styles:{fontSize:8,cellPadding:2,textColor:[30,30,30]},
+        headStyles:{fillColor:[250,248,244],textColor:[130,125,118],fontStyle:'bold',fontSize:7},
+        columnStyles:{3:{halign:'right'}},
+        margin:{left:20,right:14}
+      });
+      y=doc.lastAutoTable.finalY+8;
+    }else{
+      y+=4;
+    }
   });
+
+  // Project-wide further distribution rollup
+  if(allBd.length){
+    if(y>230){doc.addPage();y=20;}
+    const bdTotal=allBd.reduce((s,b)=>s+(b.amount||0),0);
+    doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(130,125,118);
+    doc.text('ALL FURTHER DISTRIBUTIONS (partnership tracking)',14,y);y+=5;
+    doc.autoTable({
+      startY:y,
+      head:[['Date','Via','Trade / Role','Person','Amount (PKR)']],
+      body:allBd.map(b=>[b.date||'—',b.via,b.trade||'Other',b.name||'—',fmt(b.amount||0)]),
+      foot:[['','','','Total','PKR '+fmt(bdTotal)]],
+      styles:{fontSize:8.5,cellPadding:2.5,textColor:[30,30,30]},
+      headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
+      footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[201,123,58]},
+      columnStyles:{4:{halign:'right'}},
+      margin:{left:14,right:14}
+    });
+    y=doc.lastAutoTable.finalY+10;
+  }
 
   // Grand total footer
   if(y>240){doc.addPage();y=20;}
@@ -4308,7 +4468,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION — bump both on each release so deploys apply on open.
-const APP_VERSION='2026-07-13-v9';
+const APP_VERSION='2026-07-13-v11';
 let _swRefreshing=false;
 
 async function wipeAppCaches(){
