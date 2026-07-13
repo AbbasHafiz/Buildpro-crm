@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-07-13-v17">
+<meta name="app-version" content="2026-07-13-v18">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -583,15 +583,34 @@ select option{background:var(--s2);}
     <!-- CLIENTS -->
     <div class="pg" id="pg-cli"><div class="card-list" id="list-cli"></div></div>
 
-    <!-- TASKS / SCHEDULE -->
+    <!-- TASKS / WORKER JOBS -->
     <div class="pg" id="pg-tasks">
-      <div class="ftabs">
-        <div class="ftab on" onclick="fTask('all',this)">All</div>
-        <div class="ftab" onclick="fTask('pending',this)">Pending</div>
-        <div class="ftab" onclick="fTask('inprogress',this)">In Progress</div>
-        <div class="ftab" onclick="fTask('done',this)">Done</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px">
+        <button id="tasks-tab-site" onclick="switchTasksTab('site')" style="padding:10px;border-radius:10px;font-size:var(--fs-sm);font-weight:700;cursor:pointer;background:var(--gold);color:#1a1916;border:none;font-family:Inter,sans-serif">📋 Site Tasks</button>
+        <button id="tasks-tab-jobs" onclick="switchTasksTab('jobs')" style="padding:10px;border-radius:10px;font-size:var(--fs-sm);font-weight:700;cursor:pointer;background:var(--s1);color:var(--mut);border:1px solid var(--bor);font-family:Inter,sans-serif">👷 Worker Jobs</button>
       </div>
-      <div id="list-tasks"></div>
+      <div id="tasks-pane-site">
+        <div class="ftabs">
+          <div class="ftab on" onclick="fTask('all',this)">All</div>
+          <div class="ftab" onclick="fTask('pending',this)">Pending</div>
+          <div class="ftab" onclick="fTask('inprogress',this)">In Progress</div>
+          <div class="ftab" onclick="fTask('done',this)">Done</div>
+        </div>
+        <div id="list-tasks"></div>
+      </div>
+      <div id="tasks-pane-jobs" style="display:none">
+        <div style="background:rgba(77,148,212,.07);border:1px solid rgba(77,148,212,.22);border-radius:10px;padding:10px 13px;margin-bottom:10px;font-size:var(--fs-xs);color:var(--mut)">Assign clear work instructions to layout, mason, steel binder, shuttering, electrician, plumber… Share a PDF so they know exactly what to do and what changed.</div>
+        <div class="ftabs">
+          <div class="ftab on" onclick="fWorkOrder('all',this)">All</div>
+          <div class="ftab" onclick="fWorkOrder('assigned',this)">Assigned</div>
+          <div class="ftab" onclick="fWorkOrder('inprogress',this)">In Progress</div>
+          <div class="ftab" onclick="fWorkOrder('done',this)">Done</div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+          <button class="btn btn-gold btn-sm" style="padding:7px 14px;font-size:var(--fs-sm)" onclick="iWorkOrder();O('sh-workorder')">+ Assign Job</button>
+        </div>
+        <div id="list-workorders"></div>
+      </div>
     </div>
 
     <!-- EXPENSES / COST -->
@@ -759,6 +778,7 @@ select option{background:var(--s2);}
     <button class="btn btn-grey" style="justify-content:flex-start;gap:15px;padding:14px" onclick="X('sh-new');O('sh-agr');iAgr()"><span style="font-size:22px">✍️</span><div style="text-align:left"><div style="font-size:var(--fs-md)">New Agreement</div><div style="font-size:var(--fs-xs);color:var(--mut);font-weight:400;margin-top:2px">Construction contract</div></div></button>
     <button class="btn btn-grey" style="justify-content:flex-start;gap:15px;padding:14px" onclick="X('sh-new');O('sh-spay');iSpay()"><span style="font-size:22px">💸</span><div style="text-align:left"><div style="font-size:var(--fs-md)">Sub-Con Payment</div><div style="font-size:var(--fs-xs);color:var(--mut);font-weight:400;margin-top:2px">Pay contractor for work done</div></div></button>
     <button class="btn btn-grey" style="justify-content:flex-start;gap:15px;padding:14px" onclick="X('sh-new');O('sh-task');iTask()"><span style="font-size:22px">📋</span><div style="text-align:left"><div style="font-size:var(--fs-md)">New Task</div><div style="font-size:var(--fs-xs);color:var(--mut);font-weight:400;margin-top:2px">Schedule & progress tracking</div></div></button>
+    <button class="btn btn-grey" style="justify-content:flex-start;gap:15px;padding:14px" onclick="X('sh-new');iWorkOrder();O('sh-workorder')"><span style="font-size:22px">👷</span><div style="text-align:left"><div style="font-size:var(--fs-md)">Assign Worker Job</div><div style="font-size:var(--fs-xs);color:var(--mut);font-weight:400;margin-top:2px">Layout, mason, steel, shuttering, electrician…</div></div></button>
     <button class="btn btn-grey" style="justify-content:flex-start;gap:15px;padding:14px" onclick="X('sh-new');O('sh-exp');iExp()"><span style="font-size:22px">💰</span><div style="text-align:left"><div style="font-size:var(--fs-md)">New Expense</div><div style="font-size:var(--fs-xs);color:var(--mut);font-weight:400;margin-top:2px">Budget & cost tracking</div></div></button>
     <button class="btn btn-grey" style="justify-content:flex-start;gap:15px;padding:14px" onclick="X('sh-new');O('sh-personal');iPersonal()"><span style="font-size:22px">📒</span><div style="text-align:left"><div style="font-size:var(--fs-md)">Personal Record</div><div style="font-size:var(--fs-xs);color:var(--mut);font-weight:400;margin-top:2px">Sub-con lent me / I took &amp; spent</div></div></button>
     <button class="btn btn-grey" style="justify-content:flex-start;gap:15px;padding:14px" onclick="X('sh-new');O('sh-cpay');iCpay()"><span style="font-size:22px">💳</span><div style="text-align:left"><div style="font-size:var(--fs-md)">Payment Received</div><div style="font-size:var(--fs-xs);color:var(--mut);font-weight:400;margin-top:2px">Record client payment</div></div></button>
@@ -849,7 +869,22 @@ select option{background:var(--s2);}
     <div class="fg"><label>Full Name</label><input id="s-name" placeholder="Contractor name"></div>
     <div class="f2">
       <div class="fg"><label>Trade</label>
-        <select id="s-trade"><option>Contractor / Mason (Raj Mistri)</option><option>Electrician</option><option>Plumber</option><option>Tile Work</option><option>Painting</option><option>Steel / Iron Work</option><option>Excavation</option><option>Carpenter</option><option>Waterproofing</option><option>Other</option></select>
+        <select id="s-trade">
+          <option>Layout / Setting Out</option>
+          <option>Contractor / Mason (Raj Mistri)</option>
+          <option>Labour</option>
+          <option>Steel Binding</option>
+          <option>Shuttering</option>
+          <option>Electrician</option>
+          <option>Plumber</option>
+          <option>Tile Work</option>
+          <option>Painting</option>
+          <option>Steel / Iron Work</option>
+          <option>Excavation</option>
+          <option>Carpenter</option>
+          <option>Waterproofing</option>
+          <option>Other</option>
+        </select>
       </div>
       <div class="fg"><label>Phone</label><input id="s-ph" type="tel" placeholder="03xx-xxxxxxx"></div>
     </div>
@@ -1356,6 +1391,64 @@ select option{background:var(--s2);}
   <div class="sh-ft"><button class="btn btn-grey" onclick="X('sh-task')">Cancel</button><button class="btn btn-gold" onclick="saveTask()">💾 Save Task</button></div>
 </div></div>
 
+<!-- WORKER JOB / WORK ORDER -->
+<div class="sh-ov" id="sh-workorder"><div class="sh" style="max-height:92vh">
+  <div class="sh-grip"></div>
+  <div class="sh-hd"><div class="sh-title" id="wo-sh-t">Assign Worker Job</div><button class="sh-x" onclick="X('sh-workorder')">×</button></div>
+  <div class="sh-body">
+    <div class="edit-badge" id="wo-eb">✏️ Editing job</div>
+    <input type="hidden" id="wo-eid">
+    <div style="background:rgba(77,148,212,.08);border:1px solid rgba(77,148,212,.25);border-radius:10px;padding:10px 13px;margin-bottom:12px;font-size:var(--fs-xs);color:var(--mut)">Write clear instructions for the worker — what to do, how to do it, and any owner changes. Then share PDF / WhatsApp.</div>
+    <div class="auto-id-badge" id="wo-auto-id">🔖 Auto ID</div>
+    <div class="fg"><label>Project</label>
+      <div class="ds-wrap"><input class="ds-inp" id="wo-proj-t" placeholder="Select project" readonly onclick="oDs('ds-wo-proj')"><div class="ds-list" id="ds-wo-proj"></div><input type="hidden" id="wo-proj-id"></div>
+    </div>
+    <div class="fg"><label>Worker (from directory)</label>
+      <div class="ds-wrap"><input class="ds-inp" id="wo-sub-t" placeholder="Select layout / mason / electrician…" readonly onclick="oDs('ds-wo-sub')"><div class="ds-list" id="ds-wo-sub"></div><input type="hidden" id="wo-sub-id"></div>
+    </div>
+    <div class="fg"><label>Or type worker name</label><input id="wo-worker" placeholder="If not in directory yet"></div>
+    <div class="f2">
+      <div class="fg"><label>Trade / Role</label>
+        <select id="wo-trade">
+          <option>Layout / Setting Out</option>
+          <option>Mason (Raj Mistri)</option>
+          <option>Labour</option>
+          <option>Steel Binding</option>
+          <option>Shuttering</option>
+          <option>Electrician</option>
+          <option>Plumber</option>
+          <option>Tile Fixer</option>
+          <option>Painter</option>
+          <option>Carpenter</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div class="fg"><label>Priority</label>
+        <select id="wo-priority"><option value="normal">Normal</option><option value="high">High</option><option value="urgent">Urgent</option></select>
+      </div>
+    </div>
+    <div class="fg"><label>Job Title</label><input id="wo-title" placeholder="e.g. Move bedroom door 2ft left"></div>
+    <div class="fg"><label>Site / Area</label><input id="wo-area" placeholder="e.g. Ground floor — Master bedroom"></div>
+    <div class="fg"><label>What to do</label><textarea id="wo-what" placeholder="Describe the work clearly…" style="min-height:70px"></textarea></div>
+    <div class="fg"><label>How to do it</label><textarea id="wo-how" placeholder="Step-by-step method, measurements, sequence…" style="min-height:70px"></textarea></div>
+    <div class="fg"><label>Changes from drawing / owner request</label><textarea id="wo-changes" placeholder="Old: door on left wall. New: door on front wall, 3ft from corner…" style="min-height:70px"></textarea></div>
+    <div class="f2">
+      <div class="fg"><label>Date</label><input type="date" id="wo-date"></div>
+      <div class="fg"><label>Due</label><input type="date" id="wo-due"></div>
+    </div>
+    <div class="fg"><label>Status</label>
+      <select id="wo-status">
+        <option value="assigned">🟡 Assigned</option>
+        <option value="inprogress">🔵 In Progress</option>
+        <option value="done">✅ Done</option>
+        <option value="cancelled">⛔ Cancelled</option>
+      </select>
+    </div>
+    <div class="fg"><label>Notes</label><textarea id="wo-notes" placeholder="Optional" style="min-height:50px"></textarea></div>
+  </div>
+  <div class="sh-ft"><button class="btn btn-grey" onclick="X('sh-workorder')">Cancel</button><button class="btn btn-gold" onclick="saveWorkOrder()">💾 Save Job</button></div>
+</div></div>
+
 <!-- EXPENSE SHEET -->
 <div class="sh-ov" id="sh-exp"><div class="sh">
   <div class="sh-grip"></div>
@@ -1588,7 +1681,7 @@ const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 let supa=null,stmr=null;
 // Multi-device sync state
 let baseUpdatedAt=null,applyingRemote=false,rtChannel=null,curUid=null;
-const COLLECTIONS=['clients','projects','subcons','subpays','cpays','invoices','estimates','agreements','tasks','expenses','investors','banks','subconContracts','personals'];
+const COLLECTIONS=['clients','projects','subcons','subpays','cpays','invoices','estimates','agreements','tasks','expenses','investors','banks','subconContracts','personals','workorders'];
 
 // ════ DATA ════
 let D={
@@ -1598,7 +1691,7 @@ let D={
   invoices:[],estimates:[],agreements:[],
   tasks:[],expenses:[],
   investors:[],banks:[],subconContracts:[],
-  personals:[],
+  personals:[],workorders:[],
   _tomb:[]
 };
 
@@ -1826,8 +1919,8 @@ function goPage(p,el,title){
   if(p==='profile')refreshProfileUI();
   else renderPage(p);
 }
-function renderPage(p){if(p==='dash')renderDash();else if(p==='proj')renderProj();else if(p==='inv')renderInv();else if(p==='est')renderEst();else if(p==='pay')renderPay();else if(p==='sub')renderSub();else if(p==='agr')renderAgr();else if(p==='cli')renderCli();else if(p==='tasks')renderTasks();else if(p==='exp')renderExp();else if(p==='ledger')renderLedger();}
-function renderAll(){renderDash();renderProj();renderInv();renderEst();renderPay();renderSub();renderAgr();renderCli();renderTasks();renderExp();renderLedger();updateDots();}
+function renderPage(p){if(p==='dash')renderDash();else if(p==='proj')renderProj();else if(p==='inv')renderInv();else if(p==='est')renderEst();else if(p==='pay')renderPay();else if(p==='sub')renderSub();else if(p==='agr')renderAgr();else if(p==='cli')renderCli();else if(p==='tasks'){if(typeof tasksTabMode!=='undefined'&&tasksTabMode==='jobs')renderWorkOrders();else renderTasks();}else if(p==='exp')renderExp();else if(p==='ledger')renderLedger();}
+function renderAll(){renderDash();renderProj();renderInv();renderEst();renderPay();renderSub();renderAgr();renderCli();renderTasks();renderWorkOrders();renderExp();renderLedger();updateDots();}
 
 // ════ HELPERS ════
 const today=()=>new Date().toISOString().split('T')[0];
@@ -1870,6 +1963,8 @@ const DS={
   'ds-pers-sub':{t:'subcons',tx:'pers-sub-t',id:'pers-sub-id'},
   'ds-pers-proj':{t:'projects',tx:'pers-proj-t',id:'pers-proj-id'},
   'ds-ochg-sub':{t:'subcons',tx:'ochg-sub-t',id:'ochg-sub-id'},
+  'ds-wo-proj':{t:'projects',tx:'wo-proj-t',id:'wo-proj-id'},
+  'ds-wo-sub':{t:'subcons',tx:'wo-sub-t',id:'wo-sub-id'},
 };
 function oDs(dsId){
   document.querySelectorAll('.ds-list').forEach(d=>d.classList.remove('on'));
@@ -1893,7 +1988,24 @@ function oDs(dsId){
   if(cfg.t==='projects')html+=`<div class="ds-add" onclick="X(curSh());O('sh-proj');iP()">+ Add New Project</div>`;
   el.innerHTML=html;el.classList.add('on');
 }
-function selDs(dsId,val,label){e$(dsId).classList.remove('on');const cfg=DS[dsId];if(!cfg)return;sv(cfg.tx,label);sv(cfg.id,val);if(dsId==='ds-sp-sub')refreshSpLoanRow();}
+function selDs(dsId,val,label){
+  e$(dsId).classList.remove('on');const cfg=DS[dsId];if(!cfg)return;sv(cfg.tx,label);sv(cfg.id,val);
+  if(dsId==='ds-sp-sub')refreshSpLoanRow();
+  if(dsId==='ds-wo-sub'){
+    const sc=D.subcons.find(x=>x.id===val);
+    if(sc){
+      sv('wo-worker',sc.name||'');
+      if(sc.trade){
+        const sel=e$('wo-trade');
+        if(sel){
+          const opts=[...sel.options].map(o=>o.value);
+          const match=opts.find(o=>o===sc.trade)||opts.find(o=>sc.trade.includes(o)||o.includes(sc.trade.split('/')[0].trim()));
+          if(match)sel.value=match;
+        }
+      }
+    }
+  }
+}
 const esc=s=>(s||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
 function curSh(){const op=document.querySelector('.sh-ov.on');return op?op.id:'';}
 
@@ -2077,7 +2189,7 @@ function fabAction(){
     'sub':   ()=>{iSub();O('sh-sub');},
     'agr':   ()=>{iAgr();O('sh-agr');},
     'cli':   ()=>{iCli();O('sh-cli');},
-    'tasks': ()=>{iTask();O('sh-task');},
+    'tasks': ()=>{if(typeof tasksTabMode!=='undefined'&&tasksTabMode==='jobs'){iWorkOrder();O('sh-workorder');}else{iTask();O('sh-task');}},
     'exp':   ()=>{iExp();O('sh-exp');},
     'profile':()=>O('sh-new'),
   };
@@ -2428,6 +2540,7 @@ function del(store,id){
       estimates:D.estimates.filter(x=>x.projectId===pid).length,
       agreements:D.agreements.filter(x=>x.projectId===pid).length,
       tasks:(D.tasks||[]).filter(x=>x.projectId===pid).length,
+      'worker jobs':(D.workorders||[]).filter(x=>x.projectId===pid).length,
       expenses:(D.expenses||[]).filter(x=>x.projectId===pid).length,
       'payments received':D.cpays.filter(x=>x.projectId===pid).length,
       'sub-con payments':D.subpays.filter(x=>x.projectId===pid).length,
@@ -2445,6 +2558,7 @@ function del(store,id){
       ...D.estimates.filter(x=>x.projectId===pid).map(x=>x.id),
       ...D.agreements.filter(x=>x.projectId===pid).map(x=>x.id),
       ...(D.tasks||[]).filter(x=>x.projectId===pid).map(x=>x.id),
+      ...(D.workorders||[]).filter(x=>x.projectId===pid).map(x=>x.id),
       ...(D.expenses||[]).filter(x=>x.projectId===pid).map(x=>x.id),
       ...D.cpays.filter(x=>x.projectId===pid).map(x=>x.id),
       ...D.subpays.filter(x=>x.projectId===pid).map(x=>x.id),
@@ -2453,6 +2567,7 @@ function del(store,id){
     D.estimates=D.estimates.filter(x=>x.projectId!==pid);
     D.agreements=D.agreements.filter(x=>x.projectId!==pid);
     if(D.tasks)D.tasks=D.tasks.filter(x=>x.projectId!==pid);
+    if(D.workorders)D.workorders=D.workorders.filter(x=>x.projectId!==pid);
     if(D.expenses)D.expenses=D.expenses.filter(x=>x.projectId!==pid);
     D.cpays=D.cpays.filter(x=>x.projectId!==pid);
     D.subpays=D.subpays.filter(x=>x.projectId!==pid);
@@ -2993,7 +3108,7 @@ function renderCli(){
   </div>`).join('');
 }
 
-function updateDots(){[['inv',D.invoices],['est',D.estimates],['pay',[...D.cpays,...D.subpays]],['sub',D.subcons],['agr',D.agreements],['cli',D.clients],['tasks',D.tasks||[]],['exp',D.expenses||[]],['proj',D.projects]].forEach(([k,arr])=>{const el=e$('bd-'+k);if(el)el.classList.toggle('on',arr.length>0);});}
+function updateDots(){[['inv',D.invoices],['est',D.estimates],['pay',[...D.cpays,...D.subpays]],['sub',D.subcons],['agr',D.agreements],['cli',D.clients],['tasks',[...(D.tasks||[]),...(D.workorders||[])]],['exp',D.expenses||[]],['proj',D.projects]].forEach(([k,arr])=>{const el=e$('bd-'+k);if(el)el.classList.toggle('on',arr.length>0);});}
 
 // ════ PDF GENERATION — Advanced Construction ════
 const co=()=>D.company||{};
@@ -3623,8 +3738,6 @@ _${c.name||'BuildPro'} — Construction Management_`;
 
 // ════ TASKS ════
 let taskFilter='all';
-function fTask(f,el){taskFilter=f;document.querySelectorAll('#pg-tasks .ftab').forEach(t=>t.classList.remove('on'));el.classList.add('on');renderTasks();}
-
 function iTask(){sv('task-eid','');const eb=e$('task-eb');if(eb)eb.classList.remove('on');const sh=e$('task-sh-t');if(sh)sh.textContent='New Task';['tk-title','tk-assign','tk-notes','tk-proj-t','tk-proj-id'].forEach(id=>sv(id,''));sv('tk-status','pending');sv('tk-priority','high');sv('tk-start',today());sv('tk-due','');}
 
 function eTask(id){const r=(D.tasks||[]).find(x=>x.id===id);if(!r)return;sv('task-eid',id);const eb=e$('task-eb');if(eb)eb.classList.add('on');const sh=e$('task-sh-t');if(sh)sh.textContent='Edit Task';sv('tk-title',r.title);sv('tk-status',r.status);sv('tk-priority',r.priority);sv('tk-start',r.start||'');sv('tk-due',r.due||'');sv('tk-assign',r.assign||'');sv('tk-notes',r.notes||'');const p=D.projects.find(x=>x.id===r.projectId);sv('tk-proj-t',p?p.name:'');sv('tk-proj-id',r.projectId||'');O('sh-task');}
@@ -3661,6 +3774,242 @@ function renderTasks(){
 }
 
 function markDone(id){const r=(D.tasks||[]).find(x=>x.id===id);if(!r)return;r.status='done';sched();renderTasks();toast('Task marked done ✅');}
+
+// ════ WORKER JOBS / WORK ORDERS ════
+let tasksTabMode='site';
+let woFilter='all';
+function switchTasksTab(mode){
+  tasksTabMode=mode;
+  const s=e$('tasks-tab-site');const j=e$('tasks-tab-jobs');
+  const ps=e$('tasks-pane-site');const pj=e$('tasks-pane-jobs');
+  if(mode==='site'){
+    if(s){s.style.background='var(--gold)';s.style.color='#1a1916';s.style.border='none';}
+    if(j){j.style.background='var(--s1)';j.style.color='var(--mut)';j.style.border='1px solid var(--bor)';}
+    if(ps)ps.style.display='block';if(pj)pj.style.display='none';
+    renderTasks();
+  }else{
+    if(j){j.style.background='#4D94D4';j.style.color='#fff';j.style.border='none';}
+    if(s){s.style.background='var(--s1)';s.style.color='var(--mut)';s.style.border='1px solid var(--bor)';}
+    if(ps)ps.style.display='none';if(pj)pj.style.display='block';
+    renderWorkOrders();
+  }
+}
+function fTask(f,el){taskFilter=f;document.querySelectorAll('#tasks-pane-site .ftab').forEach(t=>t.classList.remove('on'));if(el)el.classList.add('on');renderTasks();}
+function fWorkOrder(f,el){woFilter=f;document.querySelectorAll('#tasks-pane-jobs .ftab').forEach(t=>t.classList.remove('on'));if(el)el.classList.add('on');renderWorkOrders();}
+
+function iWorkOrder(prefill){
+  sv('wo-eid','');const eb=e$('wo-eb');if(eb)eb.classList.remove('on');
+  const sh=e$('wo-sh-t');if(sh)sh.textContent='Assign Worker Job';
+  const num=nxt('WO',D.workorders||[]);
+  const aid=e$('wo-auto-id');if(aid)aid.textContent='🔖 ID: '+num;
+  ['wo-proj-t','wo-proj-id','wo-sub-t','wo-sub-id','wo-worker','wo-title','wo-area','wo-what','wo-how','wo-changes','wo-notes','wo-due'].forEach(id=>sv(id,''));
+  sv('wo-date',today());sv('wo-trade','Layout / Setting Out');sv('wo-priority','normal');sv('wo-status','assigned');
+  if(prefill){
+    if(prefill.projectId){sv('wo-proj-id',prefill.projectId);sv('wo-proj-t',prefill.projectName||'');}
+    if(prefill.subconId){sv('wo-sub-id',prefill.subconId);sv('wo-sub-t',prefill.workerName||'');sv('wo-worker',prefill.workerName||'');}
+    if(prefill.workerName&&!prefill.subconId)sv('wo-worker',prefill.workerName);
+    if(prefill.trade)sv('wo-trade',prefill.trade);
+    if(prefill.title)sv('wo-title',prefill.title);
+    if(prefill.whatToDo)sv('wo-what',prefill.whatToDo);
+    if(prefill.howToDo)sv('wo-how',prefill.howToDo);
+    if(prefill.changes)sv('wo-changes',prefill.changes);
+    if(prefill.area)sv('wo-area',prefill.area);
+  }
+}
+function eWorkOrder(id){
+  const r=(D.workorders||[]).find(x=>x.id===id);if(!r)return;
+  sv('wo-eid',id);const eb=e$('wo-eb');if(eb)eb.classList.add('on');
+  const sh=e$('wo-sh-t');if(sh)sh.textContent='Edit Worker Job';
+  const aid=e$('wo-auto-id');if(aid)aid.textContent='🔖 ID: '+(r.num||id.slice(-6).toUpperCase());
+  sv('wo-title',r.title||'');sv('wo-area',r.area||'');sv('wo-what',r.whatToDo||'');sv('wo-how',r.howToDo||'');
+  sv('wo-changes',r.changes||'');sv('wo-notes',r.notes||'');sv('wo-worker',r.workerName||'');
+  sv('wo-date',r.date||today());sv('wo-due',r.due||'');sv('wo-trade',r.trade||'Other');
+  sv('wo-priority',r.priority||'normal');sv('wo-status',r.status||'assigned');
+  sv('wo-proj-t',r.projectName||'');sv('wo-proj-id',r.projectId||'');
+  sv('wo-sub-t',r.subconName||r.workerName||'');sv('wo-sub-id',r.subconId||'');
+  O('sh-workorder');
+}
+function saveWorkOrder(){
+  const eid=e$('wo-eid').value;
+  const old=eid?(D.workorders||[]).find(x=>x.id===eid):null;
+  const workerName=(e$('wo-worker').value||e$('wo-sub-t').value||'').trim();
+  const doc={
+    id:eid||uid(),
+    num:old?.num||nxt('WO',D.workorders||[]),
+    date:e$('wo-date').value||today(),
+    due:e$('wo-due').value||'',
+    projectId:e$('wo-proj-id').value,
+    projectName:e$('wo-proj-t').value,
+    subconId:e$('wo-sub-id').value,
+    subconName:e$('wo-sub-t').value,
+    workerName,
+    trade:e$('wo-trade').value||'Other',
+    title:e$('wo-title').value.trim(),
+    area:e$('wo-area').value.trim(),
+    whatToDo:e$('wo-what').value.trim(),
+    howToDo:e$('wo-how').value.trim(),
+    changes:e$('wo-changes').value.trim(),
+    priority:e$('wo-priority').value||'normal',
+    status:e$('wo-status').value||'assigned',
+    notes:e$('wo-notes').value.trim()
+  };
+  if(!doc.title){toast('Enter job title','err');return;}
+  if(!doc.workerName){toast('Select or type worker name','err');return;}
+  if(!doc.whatToDo&&!doc.howToDo&&!doc.changes){toast('Add what to do, how, or changes','err');return;}
+  if(!D.workorders)D.workorders=[];
+  ups('workorders',doc);X('sh-workorder');
+  switchTasksTab('jobs');renderWorkOrders();updateDots();
+  toast(eid?'Job updated ✓':'Job assigned ✓ — share PDF with worker');
+}
+function setWorkOrderStatus(id,status){
+  const r=(D.workorders||[]).find(x=>x.id===id);if(!r)return;
+  r.status=status;r.updatedAt=new Date().toISOString();
+  if(status==='done')r.doneAt=today();
+  sched();renderWorkOrders();
+  toast(status==='done'?'Job marked done ✅':status==='inprogress'?'In progress 🔵':'Status updated');
+}
+function renderWorkOrders(){
+  const el=e$('list-workorders');if(!el)return;
+  const rows=(D.workorders||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const filtered=woFilter==='all'?rows:rows.filter(r=>(r.status||'assigned')===woFilter);
+  if(!filtered.length){
+    el.innerHTML='<div class="empty"><div class="empty-i">👷</div><div class="empty-t">No worker jobs yet.<br>Tap + Assign Job to instruct layout, mason, steel binder…</div></div>';
+    return;
+  }
+  const stColor={assigned:'var(--gold)',inprogress:'var(--blu)',done:'var(--grn)',cancelled:'var(--red)'};
+  const stLabel={assigned:'Assigned',inprogress:'In Progress',done:'Done',cancelled:'Cancelled'};
+  const prIcon={urgent:'🔴',high:'🟠',normal:'🟢'};
+  el.innerHTML=filtered.map(r=>{
+    const st=r.status||'assigned';
+    return`<div class="card" style="border-left:3px solid ${stColor[st]||'var(--bor)'}">
+      <div class="card-top">
+        <div>
+          <div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:4px">${r.num||''} · ${prIcon[r.priority]||''} ${(r.priority||'normal')} · ${r.trade||'—'}</div>
+          <div class="card-nm">${r.title}</div>
+          <div class="card-sub">👷 ${r.workerName||r.subconName||'—'}${r.projectName?' · '+r.projectName:''}</div>
+          ${r.area?`<div class="card-sub">📍 ${r.area}</div>`:''}
+        </div>
+        <span class="b" style="background:${stColor[st]}18;color:${stColor[st]}">${stLabel[st]||st}</span>
+      </div>
+      ${r.whatToDo?`<div style="font-size:var(--fs-sm);color:var(--txt);margin-bottom:6px"><b style="color:var(--mut);font-size:var(--fs-xs)">WHAT</b><br>${r.whatToDo}</div>`:''}
+      ${r.changes?`<div style="font-size:var(--fs-sm);color:var(--ora);margin-bottom:8px;background:rgba(232,148,75,.08);border-radius:8px;padding:8px 10px"><b style="font-size:var(--fs-xs)">CHANGES</b><br>${r.changes}</div>`:''}
+      <div style="display:flex;gap:12px;font-size:var(--fs-xs);color:var(--mut);margin-bottom:10px">
+        <span>Date: ${r.date||'—'}</span>
+        ${r.due?`<span>Due: <span style="color:var(--red)">${r.due}</span></span>`:''}
+      </div>
+      <div class="card-acts">
+        ${st!=='done'&&st!=='cancelled'?`<button class="ca blu" onclick="setWorkOrderStatus('${r.id}','inprogress')">▶ Start</button>`:''}
+        ${st!=='done'?`<button class="ca grn" onclick="setWorkOrderStatus('${r.id}','done')">✅ Done</button>`:''}
+        <button class="ca gold" onclick="pdfWorkOrder('${r.id}')">⬇ PDF</button>
+        <button class="ca" style="color:#25D366;border-color:rgba(37,211,102,.25);background:rgba(37,211,102,.06)" onclick="waWorkOrder('${r.id}')">📤</button>
+        <button class="ca blu" onclick="eWorkOrder('${r.id}')">✏️ Edit</button>
+        <button class="ca red" onclick="del('workorders','${r.id}')">🗑</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function pdfWorkOrder(id){
+  await prepareCompanyLogo();
+  const r=(D.workorders||[]).find(x=>x.id===id);if(!r)return;
+  const c=co();const doc=bPDF();const pw=210;
+  let y=drawHeader(doc,'WORKER JOB ORDER',r.num||id.slice(-6).toUpperCase(),r.date||today(),'Due',r.due||'—');
+
+  doc.setFillColor(248,246,242);doc.rect(14,y,182,28,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(130,125,118);
+  doc.text('ASSIGNED TO',16,y+7);doc.text('TRADE / ROLE',110,y+7);
+  doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(30,30,30);
+  doc.text(r.workerName||r.subconName||'—',16,y+15);
+  doc.text(r.trade||'—',110,y+15);
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(100,100,100);
+  doc.text('Project: '+(r.projectName||'—')+(r.area?' · '+r.area:''),16,y+23);
+  doc.text('Priority: '+(r.priority||'normal').toUpperCase()+' · Status: '+(r.status||'assigned').toUpperCase(),110,y+23);
+  y+=36;
+
+  doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor(30,30,30);
+  doc.text(r.title||'Job',14,y);y+=8;
+
+  function section(label,text,color){
+    if(!text)return;
+    if(y>250){doc.addPage();y=20;}
+    doc.setFillColor(...color);doc.rect(14,y,182,7,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(255,255,255);
+    doc.text(label,16,y+5);y+=10;
+    doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(30,30,30);
+    const lines=doc.splitTextToSize(text,178);
+    doc.text(lines,14,y);y+=lines.length*5+8;
+  }
+  section('WHAT TO DO',r.whatToDo,[77,148,212]);
+  section('HOW TO DO IT',r.howToDo,[201,123,58]);
+  section('CHANGES FROM DRAWING / OWNER',r.changes,[224,85,85]);
+  if(r.notes)section('NOTES',r.notes,[130,125,118]);
+
+  if(y>250){doc.addPage();y=20;}
+  doc.setFont('helvetica','italic');doc.setFontSize(8);doc.setTextColor(130,125,118);
+  doc.text('Please confirm you understand this job before starting. Contact site in-charge for any doubt.',14,y);
+  y+=10;
+  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(30,30,30);
+  doc.text('Worker acknowledgement: ______________________  Date: __________',14,y);
+
+  drawBankFooter(doc);
+  doc.save('JobOrder-'+(r.num||'WO')+'-'+(r.workerName||'worker').replace(/\s+/g,'-')+'.pdf');
+  toast('Worker job PDF ✓');
+}
+
+function waWorkOrder(id){
+  const r=(D.workorders||[]).find(x=>x.id===id);if(!r)return;
+  const c=D.company||{};
+  const sc=D.subcons.find(x=>x.id===r.subconId);
+  const phone=(sc?.phone||'').replace(/\D/g,'');
+  const msg=
+`👷 *WORKER JOB ORDER*
+━━━━━━━━━━━━━━━━━━━
+🏢 *${c.name||'BuildPro'}*
+🔖 *${r.num||''}* · ${r.date||today()}
+
+👷 *Worker:* ${r.workerName||r.subconName||'—'}
+🔧 *Trade:* ${r.trade||'—'}
+📋 *Project:* ${r.projectName||'—'}
+${r.area?'📍 Area: '+r.area:''}
+⚡ *Priority:* ${(r.priority||'normal').toUpperCase()}
+
+*Job:* ${r.title}
+${r.whatToDo?'\n✅ *What to do:*\n'+r.whatToDo:''}
+${r.howToDo?'\n🛠 *How to do it:*\n'+r.howToDo:''}
+${r.changes?'\n⚠️ *Changes:*\n'+r.changes:''}
+${r.notes?'\n📝 '+r.notes:''}
+
+Please confirm when done.
+_${c.name||'BuildPro'}_`;
+  const url=phone
+    ?('https://wa.me/'+(phone.startsWith('92')?phone:phone.replace(/^0/,'92'))+'?text='+encodeURIComponent(msg))
+    :('https://wa.me/?text='+encodeURIComponent(msg));
+  window.open(url,'_blank');
+}
+
+function assignJobFromOwnerChange(pid,cid){
+  const p=D.projects.find(x=>x.id===pid);if(!p)return;
+  const ch=(p.ownerChanges||[]).find(x=>x.id===cid);if(!ch)return;
+  const stage=(ch.stage||'').toLowerCase();
+  let trade='Other';
+  if(stage.includes('layout'))trade='Layout / Setting Out';
+  else if(stage.includes('brick')||stage.includes('plaster')||stage.includes('dpc')||stage.includes('foundation'))trade='Mason (Raj Mistri)';
+  else if(stage.includes('structure')||stage.includes('lintel')||stage.includes('roof')||stage.includes('slab'))trade='Steel Binding';
+  else if(stage.includes('finish'))trade='Painter';
+  iWorkOrder({
+    projectId:pid,
+    projectName:p.name,
+    subconId:ch.subconId||'',
+    workerName:ch.subconName||'',
+    trade,
+    title:ch.title||'Owner change',
+    whatToDo:'Carry out the owner change on site carefully. Do not follow the old drawing for this item.',
+    howToDo:'Measure twice. Mark new position. Confirm with site in-charge before cutting / brickwork / fixing.',
+    changes:(ch.detail||ch.title||'')+(ch.notes?'\n'+ch.notes:''),
+    area:ch.stage||''
+  });
+  O('sh-workorder');
+}
 
 // ════ EXPENSES ════
 
@@ -4973,6 +5322,7 @@ function renderOwnerChangesList(p){
     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:9px">
       ${(c.status||'pending')==='pending'?`<button class="ca gold" style="padding:5px 10px;font-size:var(--fs-xs);flex:none" onclick="markOwnerChangeStatus('${p.id}','${c.id}','told')">Mark Told</button>`:''}
       ${(c.status||'')!=='done'?`<button class="ca grn" style="padding:5px 10px;font-size:var(--fs-xs);flex:none" onclick="markOwnerChangeStatus('${p.id}','${c.id}','done')">Mark Done</button>`:''}
+      <button class="ca" style="padding:5px 10px;font-size:var(--fs-xs);flex:none;background:rgba(77,148,212,.1);color:#4D94D4;border-color:rgba(77,148,212,.3)" onclick="assignJobFromOwnerChange('${p.id}','${c.id}')">👷 Assign Job</button>
       <button class="ca" style="padding:5px 10px;font-size:var(--fs-xs);flex:none;color:#25D366;border-color:rgba(37,211,102,.25);background:rgba(37,211,102,.06)" onclick="waOwnerChange('${p.id}','${c.id}')">📤 WA</button>
       <button class="ca blu" style="padding:5px 10px;font-size:var(--fs-xs);flex:none" onclick="eOwnerChange('${p.id}','${c.id}')">Edit</button>
       <button class="ca red" style="padding:5px 10px;font-size:var(--fs-xs);flex:none" onclick="delOwnerChange('${p.id}','${c.id}')">Del</button>
@@ -5686,7 +6036,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-07-13-v17';
+const APP_VERSION='2026-07-13-v18';
 let _swRefreshing=false;
 
 async function wipeAppCaches(){
