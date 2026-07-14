@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-07-14-v27">
+<meta name="app-version" content="2026-07-14-v28">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -792,6 +792,7 @@ select option{background:var(--s2);}
     <button class="btn btn-grey" style="justify-content:flex-start;gap:15px;padding:14px" onclick="X('sh-new');O('sh-task');iTask()"><span style="font-size:22px">📋</span><div style="text-align:left"><div style="font-size:var(--fs-md)">New Task</div><div style="font-size:var(--fs-xs);color:var(--mut);font-weight:400;margin-top:2px">Schedule & progress tracking</div></div></button>
     <button class="btn btn-grey" style="justify-content:flex-start;gap:15px;padding:14px" onclick="X('sh-new');iWorkOrder();O('sh-workorder')"><span style="font-size:22px">👷</span><div style="text-align:left"><div style="font-size:var(--fs-md)">Assign Worker Job</div><div style="font-size:var(--fs-xs);color:var(--mut);font-weight:400;margin-top:2px">Layout, mason, steel, shuttering, electrician…</div></div></button>
     <button class="btn btn-grey" style="justify-content:flex-start;gap:15px;padding:14px" onclick="X('sh-new');O('sh-exp');iExp()"><span style="font-size:22px">💰</span><div style="text-align:left"><div style="font-size:var(--fs-md)">New Expense</div><div style="font-size:var(--fs-xs);color:var(--mut);font-weight:400;margin-top:2px">Budget & cost tracking</div></div></button>
+    <button class="btn btn-grey" style="justify-content:flex-start;gap:15px;padding:14px" onclick="X('sh-new');pickMaterialStock()"><span style="font-size:22px">📦</span><div style="text-align:left"><div style="font-size:var(--fs-md)">Material Stock</div><div style="font-size:var(--fs-xs);color:var(--mut);font-weight:400;margin-top:2px">In / out / balance for With Material projects</div></div></button>
     <button class="btn btn-grey" style="justify-content:flex-start;gap:15px;padding:14px" onclick="X('sh-new');O('sh-personal');iPersonal()"><span style="font-size:22px">📒</span><div style="text-align:left"><div style="font-size:var(--fs-md)">Personal Record</div><div style="font-size:var(--fs-xs);color:var(--mut);font-weight:400;margin-top:2px">Sub-con lent me / I took &amp; spent</div></div></button>
     <button class="btn btn-grey" style="justify-content:flex-start;gap:15px;padding:14px" onclick="X('sh-new');O('sh-cpay');iCpay()"><span style="font-size:22px">💳</span><div style="text-align:left"><div style="font-size:var(--fs-md)">Payment Received</div><div style="font-size:var(--fs-xs);color:var(--mut);font-weight:400;margin-top:2px">Record client payment</div></div></button>
   </div>
@@ -1688,6 +1689,81 @@ select option{background:var(--s2);}
   <div class="sh-ft"><button class="btn btn-grey" onclick="X('sh-owner-chg')">Cancel</button><button class="btn btn-gold" onclick="saveOwnerChange()">💾 Save Change</button></div>
 </div></div>
 
+<!-- PROJECT MATERIAL STOCK (With Material / Cost-to-Cost) -->
+<div class="sh-ov" id="sh-proj-stock"><div class="sh" style="max-height:92vh">
+  <div class="sh-grip"></div>
+  <div class="sh-hd"><div class="sh-title" id="pstk-title">📦 Material Stock</div><button class="sh-x" onclick="X('sh-proj-stock')">×</button></div>
+  <div class="sh-body">
+    <input type="hidden" id="pstk-pid">
+    <div style="background:rgba(201,123,58,.08);border:1px solid rgba(201,123,58,.25);border-radius:10px;padding:10px 13px;margin-bottom:12px;font-size:var(--fs-xs);color:var(--mut)">Track site materials for <b style="color:var(--txt)">With Material</b> and <b style="color:var(--txt)">Cost to Cost %</b> projects — stock in (purchase/delivery), stock out (used on site), and remaining balance.</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+      <button class="btn btn-gold btn-sm" style="flex:1;min-width:120px" onclick="iStock('in')">＋ Stock In</button>
+      <button class="btn btn-grey btn-sm" style="flex:1;min-width:120px" onclick="iStock('out')">− Stock Out</button>
+      <button class="btn btn-grey btn-sm" style="flex:none;padding:7px 12px" onclick="pdfProjStock()">⬇ PDF</button>
+    </div>
+    <div style="font-size:var(--fs-xs);font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">Balances</div>
+    <div id="pstk-balances"></div>
+    <div style="font-size:var(--fs-xs);font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.6px;margin:16px 0 8px">Movements</div>
+    <div id="pstk-list"></div>
+  </div>
+  <div class="sh-ft"><button class="btn btn-grey" onclick="X('sh-proj-stock')" style="flex:1">Close</button></div>
+</div></div>
+
+<!-- STOCK IN / OUT FORM -->
+<div class="sh-ov" id="sh-stock"><div class="sh">
+  <div class="sh-grip"></div>
+  <div class="sh-hd"><div class="sh-title" id="stk-sh-t">Stock In</div><button class="sh-x" onclick="X('sh-stock')">×</button></div>
+  <div class="sh-body">
+    <div class="edit-badge" id="stk-eb">✏️ Editing stock</div>
+    <input type="hidden" id="stk-eid">
+    <input type="hidden" id="stk-type" value="in">
+    <div class="fg"><label>Project</label>
+      <div class="ds-wrap"><input class="ds-inp" id="stk-proj-t" placeholder="Select With Material / Cost-to-Cost project" readonly onclick="oDs('ds-stk-proj')"><div class="ds-list" id="ds-stk-proj"></div><input type="hidden" id="stk-proj-id"></div>
+    </div>
+    <div class="fg"><label>Type</label>
+      <div style="display:flex;gap:8px">
+        <button type="button" class="btn btn-sm" id="stk-type-in" style="flex:1" onclick="setStockType('in')">📥 Stock In</button>
+        <button type="button" class="btn btn-sm" id="stk-type-out" style="flex:1" onclick="setStockType('out')">📤 Stock Out</button>
+      </div>
+    </div>
+    <div class="fg"><label>Material Item</label>
+      <input id="stk-item" list="stk-item-list" placeholder="e.g. Cement, Tor Steel, Sand, Crush…">
+      <datalist id="stk-item-list">
+        <option value="Cement"><option value="Tor Steel"><option value="Sand"><option value="Crush / Aggregate">
+        <option value="Bricks"><option value="Blocks"><option value="Binding Wire"><option value="Shuttering Oil">
+        <option value="PVC Pipe"><option value="Electrical Cable"><option value="Paint"><option value="Tiles">
+      </datalist>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px" id="stk-item-chips">
+        <button type="button" class="ca" style="padding:5px 10px;font-size:var(--fs-xs)" onclick="sv('stk-item','Cement')">Cement</button>
+        <button type="button" class="ca" style="padding:5px 10px;font-size:var(--fs-xs)" onclick="sv('stk-item','Tor Steel')">Steel</button>
+        <button type="button" class="ca" style="padding:5px 10px;font-size:var(--fs-xs)" onclick="sv('stk-item','Sand')">Sand</button>
+        <button type="button" class="ca" style="padding:5px 10px;font-size:var(--fs-xs)" onclick="sv('stk-item','Crush / Aggregate')">Crush</button>
+        <button type="button" class="ca" style="padding:5px 10px;font-size:var(--fs-xs)" onclick="sv('stk-item','Bricks')">Bricks</button>
+      </div>
+    </div>
+    <div class="f2">
+      <div class="fg"><label>Qty</label><input type="number" id="stk-qty" placeholder="0" step="any" oninput="calcStockAmt()"></div>
+      <div class="fg"><label>Unit</label>
+        <select id="stk-unit">
+          <option>bags</option><option>ton</option><option>kg</option><option>cft</option>
+          <option>sft</option><option>nos</option><option>litre</option><option>truck</option><option>bundle</option>
+        </select>
+      </div>
+    </div>
+    <div class="f2" id="stk-rate-row">
+      <div class="fg"><label>Rate (PKR)</label><input type="number" id="stk-rate" placeholder="0" step="any" oninput="calcStockAmt()"></div>
+      <div class="fg"><label>Amount (PKR)</label><input type="number" id="stk-amount" placeholder="0" step="any"></div>
+    </div>
+    <div class="fg" id="stk-supplier-row"><label>Supplier / From</label><input id="stk-supplier" placeholder="e.g. Latif Steel, DG Cement dealer…"></div>
+    <div class="fg" id="stk-use-row" style="display:none"><label>Used for / Phase</label><input id="stk-use" placeholder="e.g. Foundation, Roof slab, Plaster…"></div>
+    <div class="f2">
+      <div class="fg"><label>Date</label><input type="date" id="stk-date"></div>
+      <div class="fg"><label>Notes</label><input id="stk-notes" placeholder="Optional"></div>
+    </div>
+  </div>
+  <div class="sh-ft"><button class="btn btn-grey" onclick="X('sh-stock')">Cancel</button><button class="btn btn-gold" onclick="saveStock()">💾 Save</button></div>
+</div></div>
+
 <div class="toast" id="toast"><div class="td" id="tdot"></div><span id="tmsg">Saved</span></div>
 
 <script>
@@ -1799,7 +1875,7 @@ const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 let supa=null,stmr=null;
 // Multi-device sync state
 let baseUpdatedAt=null,applyingRemote=false,rtChannel=null,curUid=null;
-const COLLECTIONS=['clients','projects','subcons','subpays','cpays','invoices','estimates','agreements','tasks','expenses','investors','banks','subconContracts','personals','workorders'];
+const COLLECTIONS=['clients','projects','subcons','subpays','cpays','invoices','estimates','agreements','tasks','expenses','investors','banks','subconContracts','personals','workorders','stock'];
 
 // ════ DATA ════
 let D={
@@ -1809,7 +1885,7 @@ let D={
   invoices:[],estimates:[],agreements:[],
   tasks:[],expenses:[],
   investors:[],banks:[],subconContracts:[],
-  personals:[],workorders:[],
+  personals:[],workorders:[],stock:[],
   _tomb:[]
 };
 
@@ -2083,13 +2159,17 @@ const DS={
   'ds-ochg-sub':{t:'subcons',tx:'ochg-sub-t',id:'ochg-sub-id'},
   'ds-wo-proj':{t:'projects',tx:'wo-proj-t',id:'wo-proj-id'},
   'ds-wo-sub':{t:'subcons',tx:'wo-sub-t',id:'wo-sub-id'},
+  'ds-stk-proj':{t:'projects',tx:'stk-proj-t',id:'stk-proj-id',materialOnly:true},
 };
 function oDs(dsId){
   document.querySelectorAll('.ds-list').forEach(d=>d.classList.remove('on'));
   const el=e$(dsId),cfg=DS[dsId];if(!el||!cfg)return;
-  const arr=D[cfg.t]||[];
+  let arr=D[cfg.t]||[];
+  if(cfg.materialOnly&&cfg.t==='projects'){
+    arr=arr.filter(p=>projectHasMaterial(p.id)||projectHasStock(p.id));
+  }
   let html='';
-  if(!arr.length){html='<div class="ds-empty">Nothing added yet</div>';}
+  if(!arr.length){html='<div class="ds-empty">'+(cfg.materialOnly?'No With Material / Cost-to-Cost projects yet':'Nothing added yet')+'</div>';}
   else html=arr.map(item=>{
     let ref='',sub='';
     if(cfg.t==='clients'){ref='Client';sub=item.phone||item.city||'';}
@@ -2103,7 +2183,8 @@ function oDs(dsId){
     </div>`;
   }).join('');
   if(cfg.t==='clients')html+=`<div class="ds-add" onclick="X(curSh());O('sh-cli');iCli()">+ Add New Client</div>`;
-  if(cfg.t==='projects')html+=`<div class="ds-add" onclick="X(curSh());O('sh-proj');iP()">+ Add New Project</div>`;
+  if(cfg.t==='projects'&&!cfg.materialOnly)html+=`<div class="ds-add" onclick="X(curSh());O('sh-proj');iP()">+ Add New Project</div>`;
+  if(cfg.materialOnly)html+=`<div class="ds-empty" style="padding-top:8px;font-size:var(--fs-xs)">Tip: set agreement type to With Material or Cost to Cost %</div>`;
   el.innerHTML=html;el.classList.add('on');
 }
 function selDs(dsId,val,label){
@@ -2758,6 +2839,7 @@ function del(store,id){
       tasks:(D.tasks||[]).filter(x=>x.projectId===pid).length,
       'worker jobs':(D.workorders||[]).filter(x=>x.projectId===pid).length,
       expenses:(D.expenses||[]).filter(x=>x.projectId===pid).length,
+      'material stock':(D.stock||[]).filter(x=>x.projectId===pid).length,
       'payments received':D.cpays.filter(x=>x.projectId===pid).length,
       'sub-con payments':D.subpays.filter(x=>x.projectId===pid).length,
       'sub-con contracts':(D.subconContracts||[]).filter(x=>x.projectId===pid).length
@@ -2776,6 +2858,7 @@ function del(store,id){
       ...(D.tasks||[]).filter(x=>x.projectId===pid).map(x=>x.id),
       ...(D.workorders||[]).filter(x=>x.projectId===pid).map(x=>x.id),
       ...(D.expenses||[]).filter(x=>x.projectId===pid).map(x=>x.id),
+      ...(D.stock||[]).filter(x=>x.projectId===pid).map(x=>x.id),
       ...D.cpays.filter(x=>x.projectId===pid).map(x=>x.id),
       ...D.subpays.filter(x=>x.projectId===pid).map(x=>x.id),
       ...(D.subconContracts||[]).filter(x=>x.projectId===pid).map(x=>x.id)]);
@@ -2785,6 +2868,7 @@ function del(store,id){
     if(D.tasks)D.tasks=D.tasks.filter(x=>x.projectId!==pid);
     if(D.workorders)D.workorders=D.workorders.filter(x=>x.projectId!==pid);
     if(D.expenses)D.expenses=D.expenses.filter(x=>x.projectId!==pid);
+    if(D.stock)D.stock=D.stock.filter(x=>x.projectId!==pid);
     D.cpays=D.cpays.filter(x=>x.projectId!==pid);
     D.subpays=D.subpays.filter(x=>x.projectId!==pid);
     if(D.subconContracts)D.subconContracts=D.subconContracts.filter(x=>x.projectId!==pid);
@@ -5782,6 +5866,213 @@ _${company.name||'BuildPro'}_`;
   if((c.status||'pending')==='pending')markOwnerChangeStatus(pid,cid,'told');
 }
 
+// ════ MATERIAL STOCK (With Material / Cost-to-Cost projects) ════
+function projectHasMaterial(pid){
+  return (D.agreements||[]).some(a=>a.projectId===pid&&(a.agrType==='material'||a.agrType==='costpct'));
+}
+function projectHasStock(pid){
+  return (D.stock||[]).some(x=>x.projectId===pid);
+}
+function projectShowsStock(pid){
+  return projectHasMaterial(pid)||projectHasStock(pid);
+}
+function stockKey(m){
+  return ((m.item||'').trim().toLowerCase())+'|'+(m.unit||'').trim().toLowerCase();
+}
+function stockBalances(pid){
+  const map={};
+  (D.stock||[]).filter(x=>x.projectId===pid).forEach(m=>{
+    const k=stockKey(m);
+    if(!map[k])map[k]={item:m.item||'—',unit:m.unit||'',in:0,out:0,valueIn:0};
+    const q=parseFloat(m.qty)||0;
+    if(m.type==='out'){map[k].out+=q;}
+    else{map[k].in+=q;map[k].valueIn+=(parseFloat(m.amount)||0);}
+  });
+  return Object.values(map).map(b=>({...b,bal:Math.round((b.in-b.out)*1000)/1000}))
+    .sort((a,b)=>a.item.localeCompare(b.item));
+}
+function pickMaterialStock(){
+  const mats=(D.projects||[]).filter(p=>projectShowsStock(p.id));
+  if(mats.length===1){openProjStock(mats[0].id);return;}
+  if(mats.length>1){openProjStock(mats[0].id);toast('Opened '+mats[0].name+' — switch project from Stock In if needed','info');return;}
+  iStock('in');O('sh-stock');
+  toast('Add a With Material or Cost-to-Cost agreement first, or pick a project','info');
+}
+function openProjStock(pid){
+  const p=D.projects.find(x=>x.id===pid);if(!p)return;
+  sv('pstk-pid',pid);
+  const t=e$('pstk-title');if(t)t.textContent='📦 Stock — '+p.name;
+  renderProjStockSheet();
+  O('sh-proj-stock');
+}
+function renderProjStockSheet(){
+  const pid=e$('pstk-pid')?.value;if(!pid)return;
+  const bals=stockBalances(pid);
+  const balEl=e$('pstk-balances');
+  if(balEl){
+    if(!bals.length)balEl.innerHTML='<div style="font-size:var(--fs-sm);color:var(--mut);padding:10px 0">No stock yet. Tap Stock In when material arrives on site.</div>';
+    else balEl.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${bals.map(b=>`
+      <div style="background:var(--s2);border-radius:9px;padding:10px 12px">
+        <div style="font-size:var(--fs-sm);font-weight:700;color:var(--txt)">${b.item}</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-md);margin-top:4px;color:${b.bal>0?'var(--grn)':b.bal<0?'var(--red)':'var(--mut)'}">${b.bal} <span style="font-size:var(--fs-xs);font-weight:400;color:var(--mut)">${b.unit||''}</span></div>
+        <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:4px">In ${b.in} · Out ${b.out}${b.valueIn?` · PKR ${fmt(b.valueIn)}`:''}</div>
+      </div>`).join('')}</div>`;
+  }
+  const rows=(D.stock||[]).filter(x=>x.projectId===pid).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.createdAt||'').localeCompare(a.createdAt||''));
+  const list=e$('pstk-list');if(!list)return;
+  if(!rows.length){list.innerHTML='<div style="font-size:var(--fs-sm);color:var(--mut);padding:8px 0">No movements recorded.</div>';return;}
+  list.innerHTML=rows.map(r=>{
+    const isIn=r.type!=='out';
+    return`<div style="background:var(--s2);border-radius:9px;padding:11px 13px;margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+        <div style="min-width:0">
+          <div style="font-size:var(--fs-sm);font-weight:700">${isIn?'📥':'📤'} ${r.item||'—'} · <span style="color:${isIn?'var(--grn)':'var(--red)'}">${isIn?'+':'-'}${r.qty||0} ${r.unit||''}</span></div>
+          <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">${r.date||'—'}${r.supplier?' · '+r.supplier:''}${r.useFor?' · '+r.useFor:''}${r.amount?` · PKR ${fmt(r.amount)}`:''}</div>
+          ${r.notes?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:3px">${r.notes}</div>`:''}
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+          <button class="ca blu" style="padding:5px 8px;font-size:var(--fs-xs)" onclick="eStock('${r.id}')">Edit</button>
+          <button class="ca red" style="padding:5px 8px;font-size:var(--fs-xs)" onclick="del('stock','${r.id}');renderProjStockSheet();renderProj()">Del</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function setStockType(type){
+  sv('stk-type',type);
+  const isIn=type!=='out';
+  const sh=e$('stk-sh-t');if(sh)sh.textContent=isIn?'Stock In':'Stock Out';
+  const bi=e$('stk-type-in'),bo=e$('stk-type-out');
+  if(bi){bi.className='btn btn-sm '+(isIn?'btn-gold':'btn-grey');bi.style.flex='1';}
+  if(bo){bo.className='btn btn-sm '+(!isIn?'btn-gold':'btn-grey');bo.style.flex='1';}
+  const rr=e$('stk-rate-row'),sr=e$('stk-supplier-row'),ur=e$('stk-use-row');
+  if(rr)rr.style.display=isIn?'':'none';
+  if(sr)sr.style.display=isIn?'':'none';
+  if(ur)ur.style.display=isIn?'none':'';
+}
+function calcStockAmt(){
+  const q=parseFloat(e$('stk-qty')?.value)||0;
+  const r=parseFloat(e$('stk-rate')?.value)||0;
+  if(q&&r)sv('stk-amount',String(Math.round(q*r*100)/100));
+}
+function iStock(type){
+  const t=type||'in';
+  sv('stk-eid','');
+  const eb=e$('stk-eb');if(eb)eb.classList.remove('on');
+  ['stk-item','stk-supplier','stk-use','stk-notes','stk-qty','stk-rate','stk-amount'].forEach(id=>sv(id,''));
+  sv('stk-unit','bags');sv('stk-date',today());
+  const pid=e$('pstk-pid')?.value||'';
+  const p=pid?D.projects.find(x=>x.id===pid):null;
+  sv('stk-proj-id',pid||'');sv('stk-proj-t',p?p.name:'');
+  setStockType(t);
+  O('sh-stock');
+}
+function eStock(id){
+  const r=(D.stock||[]).find(x=>x.id===id);if(!r)return;
+  sv('stk-eid',id);
+  const eb=e$('stk-eb');if(eb)eb.classList.add('on');
+  const p=D.projects.find(x=>x.id===r.projectId);
+  sv('stk-proj-t',p?p.name:r.projectName||'');sv('stk-proj-id',r.projectId||'');
+  sv('stk-item',r.item||'');sv('stk-qty',r.qty||'');sv('stk-unit',r.unit||'bags');
+  sv('stk-rate',r.rate||'');sv('stk-amount',r.amount||'');
+  sv('stk-supplier',r.supplier||'');sv('stk-use',r.useFor||'');
+  sv('stk-date',r.date||today());sv('stk-notes',r.notes||'');
+  setStockType(r.type||'in');
+  O('sh-stock');
+}
+function saveStock(){
+  const eid=e$('stk-eid')?.value;
+  const type=e$('stk-type')?.value||'in';
+  const doc={
+    id:eid||uid(),
+    projectId:e$('stk-proj-id')?.value||'',
+    projectName:e$('stk-proj-t')?.value||'',
+    type:type==='out'?'out':'in',
+    item:(e$('stk-item')?.value||'').trim(),
+    qty:parseFloat(e$('stk-qty')?.value)||0,
+    unit:e$('stk-unit')?.value||'',
+    rate:parseFloat(e$('stk-rate')?.value)||0,
+    amount:parseFloat(e$('stk-amount')?.value)||0,
+    supplier:e$('stk-supplier')?.value||'',
+    useFor:e$('stk-use')?.value||'',
+    date:e$('stk-date')?.value||today(),
+    notes:e$('stk-notes')?.value||''
+  };
+  if(!doc.projectId){toast('Select a project','err');return;}
+  if(!doc.item){toast('Enter material item','err');return;}
+  if(!doc.qty){toast('Enter quantity','err');return;}
+  if(doc.type==='in'&&!doc.amount&&doc.rate)doc.amount=Math.round(doc.qty*doc.rate*100)/100;
+  if(!D.stock)D.stock=[];
+  ups('stock',doc);
+  X('sh-stock');
+  if(e$('pstk-pid')?.value===doc.projectId||!e$('pstk-pid')?.value){
+    sv('pstk-pid',doc.projectId);
+    const p=D.projects.find(x=>x.id===doc.projectId);
+    const t=e$('pstk-title');if(t&&p)t.textContent='📦 Stock — '+p.name;
+    renderProjStockSheet();
+    if(!e$('sh-proj-stock')?.classList.contains('on'))O('sh-proj-stock');
+  }
+  renderProj();
+  toast((doc.type==='out'?'Stock out':'Stock in')+' saved ✓');
+}
+async function pdfProjStock(pid){
+  pid=pid||e$('pstk-pid')?.value;
+  const p=D.projects.find(x=>x.id===pid);if(!p){toast('Open a project stock first','err');return;}
+  const rows=(D.stock||[]).filter(x=>x.projectId===pid).slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  if(!rows.length){toast('No stock movements','info');return;}
+  await prepareCompanyLogo();
+  const doc=bPDF();const pw=210;
+  const bals=stockBalances(pid);
+  const cli=D.clients.find(x=>x.id===p.clientId);
+  let y=drawHeader(doc,'MATERIAL STOCK REPORT',p.name,today(),'','');
+  doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(30,30,30);
+  doc.text(p.name,14,y);
+  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(100,100,100);
+  if(p.loc)doc.text('Location: '+p.loc+(p.plot?' · '+p.plot:''),14,y+6);
+  if(cli)doc.text('Client: '+cli.name+(cli.phone?' · '+cli.phone:''),14,y+12);
+  doc.setFont('helvetica','italic');doc.setFontSize(8);doc.setTextColor(150,145,138);
+  doc.text('With Material / Cost-to-Cost site inventory — stock in, stock out, balance.',14,y+18);
+  y+=26;
+  if(bals.length){
+    doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(130,125,118);
+    doc.text('CURRENT BALANCES',14,y);y+=5;
+    doc.autoTable({
+      startY:y,
+      head:[['Item','Unit','In','Out','Balance','Value In (PKR)']],
+      body:bals.map(b=>[b.item,b.unit||'—',b.in,b.out,b.bal,b.valueIn?fmt(b.valueIn):'—']),
+      styles:{fontSize:8.5,cellPadding:3,textColor:[30,30,30]},
+      headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
+      columnStyles:{2:{halign:'right'},3:{halign:'right'},4:{halign:'right',fontStyle:'bold'},5:{halign:'right'}},
+      rowPageBreak:'avoid',margin:{left:14,right:14,bottom:18}
+    });
+    y=doc.lastAutoTable.finalY+10;
+  }
+  if(y>230){doc.addPage();y=20;}
+  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(130,125,118);
+  doc.text('MOVEMENTS',14,y);y+=5;
+  const valueIn=rows.filter(r=>r.type!=='out').reduce((s,r)=>s+(r.amount||0),0);
+  doc.autoTable({
+    startY:y,
+    head:[['Date','Type','Item','Qty','Unit','Supplier / Use','Amount (PKR)']],
+    body:rows.map(r=>[r.date||'—',r.type==='out'?'OUT':'IN',r.item||'—',r.qty||0,r.unit||'—',r.type==='out'?(r.useFor||r.notes||'—'):(r.supplier||r.notes||'—'),r.amount?fmt(r.amount):'—']),
+    foot:[['','','','','','Stock In Value','PKR '+fmt(valueIn)]],
+    styles:{fontSize:8,cellPadding:2.8,textColor:[30,30,30]},
+    headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:7.5},
+    footStyles:{fontSize:9,fontStyle:'bold',textColor:[201,123,58]},
+    columnStyles:{1:{cellWidth:14},6:{halign:'right',cellWidth:28}},
+    didParseCell:data=>{
+      if(data.section==='body'&&data.column.index===1){
+        data.cell.styles.textColor=data.cell.raw==='IN'?[50,150,50]:[200,50,50];
+        data.cell.styles.fontStyle='bold';
+      }
+    },
+    rowPageBreak:'avoid',showFoot:'lastPage',margin:{left:14,right:14,bottom:18}
+  });
+  drawBankFooter(doc);
+  doc.save('Stock-'+(p.name||'Project').replace(/\s+/g,'-')+'.pdf');
+  toast('Stock PDF ✓');
+}
+
 function renderProj(){
   const el=e$('list-proj');if(!el)return;
   let rows=projFilter==='all'?D.projects:D.projects.filter(r=>r.phase===projFilter);
@@ -5801,13 +6092,17 @@ function renderProj(){
     const displaySub=isReimbursed?0:sub;
     const pct=p.value>0?Math.min(100,Math.round(rec/p.value*100)):0;
     const chk=projCheckSummary(p);
+    const showStock=projectShowsStock(p.id);
+    const stkBal=showStock?stockBalances(p.id):[];
+    const stkItems=stkBal.length;
+    const stkLow=stkBal.filter(b=>b.bal<=0).length;
     return`<div class="card">
       <div class="card-top">
         <div>
           <div class="card-nm">${p.name}</div>
           <div class="card-sub">${[p.loc,p.plot].filter(Boolean).join(' · ')}</div>
           ${cli?`<div class="card-sub">👤 ${cli.name}${cli.phone?' · '+cli.phone:''}</div>`:''}
-          <div style="margin-top:6px"><span class="b b-b">${p.phase||'—'}</span>${p.lumpSum?'<span class="b" style="background:rgba(77,148,212,.15);color:#4D94D4;margin-left:4px;font-size:9px">🧾 Owner Reimburses</span>':''}${agr?` <span class="b b-g" style="font-size:9px">✍️ ${agr.status}</span>`:''}${chk.pending?` <span class="b" style="background:rgba(224,85,85,.15);color:var(--red);margin-left:4px;font-size:9px">⚠ ${chk.pending} change${chk.pending>1?'s':''}</span>`:''}</div>
+          <div style="margin-top:6px"><span class="b b-b">${p.phase||'—'}</span>${p.lumpSum?'<span class="b" style="background:rgba(77,148,212,.15);color:#4D94D4;margin-left:4px;font-size:9px">🧾 Owner Reimburses</span>':''}${agr?` <span class="b b-g" style="font-size:9px">✍️ ${agr.status}</span>`:''}${showStock?` <span class="b" style="background:rgba(201,123,58,.15);color:var(--ora);margin-left:4px;font-size:9px">📦 Stock</span>`:''}${chk.pending?` <span class="b" style="background:rgba(224,85,85,.15);color:var(--red);margin-left:4px;font-size:9px">⚠ ${chk.pending} change${chk.pending>1?'s':''}</span>`:''}</div>
         </div>
         <div style="text-align:right">
           <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-md);color:var(--gold)">${fmt(p.value)}</div>
@@ -5826,6 +6121,13 @@ function renderProj(){
         <div class="pbar-wrap" style="height:4px"><div class="pbar" style="width:${chk.pct}%;height:4px;background:${chk.pct===100?'var(--grn)':'var(--gold)'}"></div></div>
         ${chk.pending?`<div style="font-size:var(--fs-xs);color:var(--red);margin-top:6px;font-weight:600">⚠ ${chk.pending} owner change${chk.pending>1?'s':''} not told to sub-con</div>`:`<div style="font-size:var(--fs-xs);color:var(--mut);margin-top:6px">Tap to check layout / stage items &amp; owner changes</div>`}
       </div>
+      ${showStock?`<div style="background:rgba(201,123,58,.08);border:1px solid rgba(201,123,58,.22);border-radius:9px;padding:10px 12px;margin-bottom:11px;cursor:pointer" onclick="openProjStock('${p.id}')">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <div style="font-size:var(--fs-xs);font-weight:700;color:var(--ora)">📦 Material Stock</div>
+          <div style="font-size:var(--fs-xs);color:var(--mut)">${stkItems?stkItems+' item'+(stkItems>1?'s':''):'Empty'} · tap to manage</div>
+        </div>
+        ${stkItems?`<div style="font-size:var(--fs-xs);color:var(--mut)">${stkBal.slice(0,3).map(b=>b.item+': <b style="color:'+(b.bal>0?'var(--grn)':'var(--red)')+'">'+b.bal+' '+(b.unit||'')+'</b>').join(' · ')}${stkItems>3?' …':''}${stkLow?` · <span style="color:var(--red)">${stkLow} low/empty</span>`:''}</div>`:`<div style="font-size:var(--fs-xs);color:var(--mut)">Record cement, steel, sand… stock in &amp; out for this With Material project</div>`}
+      </div>`:''}
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:11px">
         <div style="background:var(--s2);border-radius:8px;padding:8px;text-align:center">
           <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--grn)">${fmt(rec)}</div>
@@ -5859,6 +6161,7 @@ function renderProj(){
       </div>`:''}
       <div class="card-acts">
         <button class="ca" style="color:var(--gold);border-color:rgba(232,184,75,.35);background:rgba(232,184,75,.08)" onclick="openProjCheck('${p.id}')">☑ Checklist</button>
+        ${showStock?`<button class="ca" style="color:var(--ora);border-color:rgba(201,123,58,.4);background:rgba(201,123,58,.1)" onclick="openProjStock('${p.id}')">📦 Stock</button>`:''}
         <button class="ca blu" onclick="eP('${p.id}')">✏️ Edit</button>
         <button class="ca gold" onclick="pdfProjPayments('${p.id}')">⬇ Owner PDF</button>
         <button class="ca ora" onclick="O('sh-pay-internal');sv('pi-proj-t','${esc(p.name)}');sv('pi-proj-id','${p.id}');e$('pi-proj-label').textContent='${esc(p.name)}'">+ Pay Internal</button>
@@ -5867,7 +6170,7 @@ function renderProj(){
         <button class="ca red" onclick="del('projects','${p.id}')">🗑</button>
       </div>
       ${agr?`<div style="background:var(--s2);border-radius:9px;padding:12px;margin-top:10px">
-        <div style="font-size:var(--fs-xs);color:var(--gold);font-weight:700;text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px">✍️ Agreement: ${agr.num} — ${agr.status.toUpperCase()}</div>
+        <div style="font-size:var(--fs-xs);color:var(--gold);font-weight:700;text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px">✍️ Agreement: ${agr.num} — ${agr.status.toUpperCase()}${(agr.agrType==='material'||agr.agrType==='costpct')?' · 📦 Material Stock':''}</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;font-size:var(--fs-xs)">
           ${agr.pay1?`<div style="background:var(--bg);border-radius:7px;padding:8px"><div style="color:var(--mut)">Advance</div><div style="font-weight:600;color:var(--txt);margin-top:2px">${agr.pay1}</div></div>`:''}
           ${agr.pay2?`<div style="background:var(--bg);border-radius:7px;padding:8px"><div style="color:var(--mut)">At DPC/Slab</div><div style="font-weight:600;color:var(--txt);margin-top:2px">${agr.pay2}</div></div>`:''}
@@ -6321,7 +6624,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-07-14-v27';
+const APP_VERSION='2026-07-14-v28';
 let _swRefreshing=false;
 
 async function wipeAppCaches(){
