@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-07-13-v26">
+<meta name="app-version" content="2026-07-14-v27">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -1222,9 +1222,10 @@ select option{background:var(--s2);}
 
     <!-- Agreement Type & Rate -->
     <div class="fg" id="agr-type-field"><label>Agreement Type</label>
-      <select id="a-type" onchange="calcAgr()">
+      <select id="a-type" onchange="calcAgr();syncAgrRateLabel()">
         <option value="labour">Labour Rate (per sft)</option>
-        <option value="material">Labour + Material (per sft)</option>
+        <option value="material">Labour + Material / With Material (per sft)</option>
+        <option value="costpct">Cost to Cost with %</option>
         <option value="lump">Lump Sum (Fixed Price)</option>
       </select>
     </div>
@@ -1252,8 +1253,19 @@ select option{background:var(--s2);}
 
     <div class="hdiv"></div>
 
+    <!-- Premade scope clauses — include / exclude -->
+    <div style="font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:.8px;font-weight:700;margin-bottom:6px">Work Items — Include / Exclude</div>
+    <div style="font-size:var(--fs-xs);color:var(--mut2);margin-bottom:10px;line-height:1.45">Tick = <b style="color:var(--grn)">Included</b> in contract · Untick = <b style="color:var(--red)">Excluded</b> (shown in PDF). Works for Labour Rate, With Material, and Cost-to-Cost %.</div>
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <button type="button" class="btn btn-grey btn-sm" style="padding:6px 12px;font-size:var(--fs-xs)" onclick="setAllAgrClauses(true)">✓ Include All</button>
+      <button type="button" class="btn btn-grey btn-sm" style="padding:6px 12px;font-size:var(--fs-xs)" onclick="setAllAgrClauses(false)">✕ Exclude All</button>
+    </div>
+    <div id="agr-clauses" style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:14px"></div>
+
+    <div class="hdiv"></div>
+
     <!-- Scope & Terms -->
-    <div class="fg"><label>Scope of Work</label><textarea id="a-scope" placeholder="e.g. Grey structure, single storey, as per CDA approved drawing. Foundation, RCC columns, beams, slab, brickwork, plaster included…" style="min-height:80px"></textarea></div>
+    <div class="fg"><label>Scope of Work <span style="color:var(--mut2);font-weight:400;text-transform:none">(extra detail)</span></label><textarea id="a-scope" placeholder="e.g. Grey structure as per CDA approved drawing. Extra notes beyond the checkboxes above…" style="min-height:70px"></textarea></div>
     <div class="fg"><label>Payment Schedule</label><textarea id="a-terms" placeholder="e.g. 30% advance, 30% at slab level, 20% at roof, 20% on completion…"></textarea></div>
     <div class="fg"><label>Special Conditions</label><textarea id="a-conditions" placeholder="e.g. CDA approved drawings by client. Water + electricity by client. Work hours 7am–6pm…" style="min-height:60px"></textarea></div>
     <div class="f2">
@@ -2340,7 +2352,97 @@ function toggleHideValue(){
     if(valField)valField.style.display='flex';
     if(typeField)typeField.style.display='flex';
     if(calcRow)calcRow.style.display='flex';
-    if(rateLabel)rateLabel.textContent='Rate / Amount (PKR)';
+    syncAgrRateLabel();
+  }
+}
+
+// Premade agreement work-item clauses (tick = include, untick = exclude)
+const AGR_SCOPE_CLAUSES=[
+  {id:'excavation',label:'Excavation / Digging',def:true},
+  {id:'backfill',label:'Back Filling',def:true},
+  {id:'foundation',label:'Foundation / Footing',def:true},
+  {id:'dpc',label:'DPC / Plinth Beam',def:true},
+  {id:'shuttering',label:'Shuttering',def:true},
+  {id:'steel',label:'Steel Binding',def:true},
+  {id:'rcc',label:'RCC Columns / Beams / Slab',def:true},
+  {id:'brickwork',label:'Brickwork / Chuuni',def:true},
+  {id:'boundary',label:'Boundary Wall',def:false},
+  {id:'pardi',label:'Pardi / Parapet Wall',def:false},
+  {id:'plaster',label:'Plaster (Internal / External)',def:true},
+  {id:'electrician',label:'Electrician Works',def:false},
+  {id:'plumber',label:'Plumber Works',def:false},
+  {id:'tile',label:'Tile / Flooring',def:false},
+  {id:'paint',label:'Paint / Polish',def:false},
+  {id:'doors',label:'Doors / Windows Fixing',def:false},
+  {id:'septic',label:'Septic Tank',def:false},
+  {id:'watertank',label:'Overhead / Underground Water Tank',def:false},
+  {id:'stair',label:'Stair Railing',def:false},
+  {id:'roof',label:'Roof Treatment / Waterproofing',def:false},
+  {id:'gate',label:'Main Gate / Grill',def:false},
+  {id:'termite',label:'Termite Proofing',def:true}
+];
+
+function renderAgrClauses(selected){
+  const el=e$('agr-clauses');if(!el)return;
+  // selected: {id:true/false} — if null, use defaults
+  el.innerHTML=AGR_SCOPE_CLAUSES.map(c=>{
+    const on=selected?!!selected[c.id]:!!c.def;
+    return`<label style="display:flex;align-items:flex-start;gap:8px;background:var(--bg);border:1px solid ${on?'rgba(82,181,106,.35)':'rgba(224,85,85,.28)'};border-radius:8px;padding:9px 10px;cursor:pointer">
+      <input type="checkbox" class="agr-clause" data-id="${c.id}" ${on?'checked':''} onchange="refreshAgrClauseStyles()" style="width:16px;height:16px;accent-color:var(--grn);flex-shrink:0;margin-top:1px">
+      <span style="font-size:var(--fs-xs);color:var(--txt);line-height:1.35;font-weight:500">${c.label}</span>
+    </label>`;
+  }).join('');
+}
+function refreshAgrClauseStyles(){
+  document.querySelectorAll('#agr-clauses label').forEach(lab=>{
+    const cb=lab.querySelector('input.agr-clause');
+    const on=!!cb?.checked;
+    lab.style.borderColor=on?'rgba(82,181,106,.35)':'rgba(224,85,85,.28)';
+  });
+}
+function setAllAgrClauses(on){
+  document.querySelectorAll('input.agr-clause').forEach(cb=>{cb.checked=!!on;});
+  refreshAgrClauseStyles();
+}
+function getAgrClauses(){
+  const included=[];const excluded=[];
+  AGR_SCOPE_CLAUSES.forEach(c=>{
+    const cb=document.querySelector('input.agr-clause[data-id="'+c.id+'"]');
+    if(cb?.checked)included.push(c.label);
+    else excluded.push(c.label);
+  });
+  return{included,excluded};
+}
+function applyAgrClauses(included,excluded){
+  const set={};
+  AGR_SCOPE_CLAUSES.forEach(c=>{
+    if(included&&included.length){
+      set[c.id]=included.some(x=>x===c.label||x===c.id);
+    }else if(excluded&&excluded.length){
+      set[c.id]=!excluded.some(x=>x===c.label||x===c.id);
+    }else{
+      set[c.id]=!!c.def;
+    }
+  });
+  renderAgrClauses(set);
+}
+function syncAgrRateLabel(){
+  const type=e$('a-type')?.value||'labour';
+  const rateLabel=e$('agr-rate-label');
+  const rateInp=e$('a-rate');
+  if(!rateLabel)return;
+  if(type==='costpct'){
+    rateLabel.textContent='Contractor Margin (%)';
+    if(rateInp)rateInp.placeholder='e.g. 10';
+  }else if(type==='lump'){
+    rateLabel.textContent='Lump Sum Amount (PKR)';
+    if(rateInp)rateInp.placeholder='e.g. 4500000';
+  }else if(type==='material'){
+    rateLabel.textContent='Rate With Material (PKR/sft)';
+    if(rateInp)rateInp.placeholder='e.g. 3200 per sft';
+  }else{
+    rateLabel.textContent='Labour Rate (PKR/sft)';
+    if(rateInp)rateInp.placeholder='e.g. 650 per sft';
   }
 }
 
@@ -2350,9 +2452,10 @@ function calcAgr(){
   const rate=parseFloat(e$('a-rate')?.value)||0;
   let val=0, formula='';
   if(type==='labour'&&area&&rate){val=area*rate;formula=fmt(area)+' sft × PKR '+fmt(rate)+'/sft = PKR '+fmt(val);}
-  else if(type==='material'&&area&&rate){val=area*rate;formula=fmt(area)+' sft × PKR '+fmt(rate)+'/sft = PKR '+fmt(val);}
+  else if(type==='material'&&area&&rate){val=area*rate;formula=fmt(area)+' sft × PKR '+fmt(rate)+'/sft (with material) = PKR '+fmt(val);}
+  else if(type==='costpct'&&rate){val=0;formula='Cost to Cost + '+rate+'% contractor margin (final bill = actual cost + '+rate+'%)';}
   else if(type==='lump'&&rate){val=rate;formula='Fixed lump sum: PKR '+fmt(val);}
-  if(e$('agr-calc'))e$('agr-calc').textContent=val?'PKR '+fmt(val):'—';
+  if(e$('agr-calc'))e$('agr-calc').textContent=type==='costpct'?(rate?rate+'% margin':'—'):(val?'PKR '+fmt(val):'—');
   if(e$('agr-formula'))e$('agr-formula').textContent=formula||'Enter area × rate to auto-calculate';
   if(val>0)sv('a-val',Math.round(val));
 }
@@ -2365,6 +2468,8 @@ function iAgr(){
    'a-s','a-e','a-val','a-rate','a-covered','a-dims','a-permit','a-arch','a-footer'].forEach(id=>sv(id,''));
   const sd=e$('a-style-digital');if(sd)sd.checked=true;const hv=e$('a-hide-value');if(hv)hv.checked=false;toggleHideValue();
   sv('a-st','draft');sv('a-type','labour');
+  renderAgrClauses(null);
+  syncAgrRateLabel();
   // Default general conditions — editable
   sv('a-general',
     '1. Contractor shall carry out all work as per CDA-approved drawings and agreed specifications.\n'+
@@ -2429,6 +2534,8 @@ function eAgr(id){
   const ts=e$('a-type');if(ts&&r.agrType)ts.value=r.agrType;const ct=e$('a-const-type');if(ct&&r.constType)ct.value=r.constType;
   const ps=e$('a-plot-size');if(ps&&r.plotSize)ps.value=r.plotSize;
   const ss=e$('a-storeys');if(ss&&r.storeys)ss.value=r.storeys;
+  applyAgrClauses(r.inclusions||[], Array.isArray(r.exclusions)?r.exclusions:(r.exclusions?String(r.exclusions).split(/\s*[·,]\s*/):[]));
+  syncAgrRateLabel();
   calcAgr();O('sh-agr');
 }
 
@@ -2529,6 +2636,7 @@ function saveInv(){
 function saveEst(){const eid=e$('est-eid').value;const items=gLI('e'),total=totLI(items);const doc={id:eid||uid(),num:e$('e-num').value,date:e$('e-date').value,clientId:e$('e-cli-id').value,clientName:e$('e-cli-t').value,projectId:e$('e-proj-id').value,projectName:e$('e-proj-t').value,valid:e$('e-vld').value,status:e$('e-st').value,notes:e$('e-notes').value,items,total};if(!doc.clientName){toast('Select a client','err');return;}ups('estimates',doc);X('sh-est');renderEst();updateDots();renderDash();toast(eid?'Estimate updated ✓':'Estimate '+doc.num+' saved ✓');}
 function saveAgr(){
   const eid=e$('agr-eid').value;
+  const clauses=getAgrClauses();
   const doc={
     id:eid||uid(),
     num:e$('a-num').value||nxt('AGR',D.agreements),
@@ -2547,6 +2655,8 @@ function saveAgr(){
     permit:e$('a-permit')?.value||'',
     arch:e$('a-arch')?.value||'',
     scope:e$('a-scope').value,
+    inclusions:clauses.included,
+    exclusions:clauses.excluded,
     terms:e$('a-terms').value,
     conditions:e$('a-conditions').value,
     general:e$('a-general')?.value||'',
@@ -3205,14 +3315,18 @@ function renderSub(){
 function renderAgr(){
   const el=e$('list-agr');
   if(!D.agreements.length){el.innerHTML='<div class="empty"><div class="empty-i">✍️</div><div class="empty-t">No agreements yet</div></div>';return;}
-  el.innerHTML=D.agreements.map(r=>`<div class="card">
-    <div class="card-top"><div><div class="card-num">${r.num}</div><div class="card-nm">${r.clientName}</div><div class="card-sub">${r.projectName||'—'}</div></div>${bdg(r.status)}</div>
-    <div class="card-mid"><div class="card-amt">PKR ${fmt(r.value)}</div><div class="card-date">${r.date||'—'}</div></div>
+  const typeLbl={labour:'Labour Rate',material:'With Material',costpct:'Cost to Cost %',lump:'Lump Sum',phase:'Phase-wise'};
+  el.innerHTML=D.agreements.map(r=>{
+    const inc=(r.inclusions||[]).length;const exc=Array.isArray(r.exclusions)?r.exclusions.length:0;
+    return`<div class="card">
+    <div class="card-top"><div><div class="card-num">${r.num} · <span style="color:var(--mut)">${typeLbl[r.agrType]||r.agrType||'—'}</span></div><div class="card-nm">${r.clientName}</div><div class="card-sub">${r.projectName||'—'}${inc||exc?` · ✓${inc} include · ✕${exc} exclude`:''}</div></div>${bdg(r.status)}</div>
+    <div class="card-mid"><div class="card-amt">${r.agrType==='costpct'?(r.rate?r.rate+'%':'—'):('PKR '+fmt(r.value))}</div><div class="card-date">${r.date||'—'}</div></div>
     <div class="card-acts">
       <button class="ca blu" onclick="eAgr('${r.id}')">✏️ Edit</button>
       <button class="ca gold" onclick="pdfAgr('${r.id}')">⬇ PDF</button>
       <button class="ca red" onclick="del('agreements','${r.id}')">🗑</button>
-    </div></div>`).join('');
+    </div></div>`;
+  }).join('');
 }
 
 // ════ RENDER CLIENTS ════
@@ -3722,7 +3836,7 @@ async function pdfAgr(id){
   sec('House / Structure Specifications',specs);
 
   // 4. Agreement type & contract value
-  const typeLabel={labour:'Labour Rate Contract',material:'Labour + Material Contract',lump:'Lump Sum Contract',phase:'Phase-wise Contract'};
+  const typeLabel={labour:'Labour Rate Contract',material:'Labour + Material (With Material) Contract',costpct:'Cost to Cost with % Contract',lump:'Lump Sum Contract',phase:'Phase-wise Contract'};
   let rateDetail='Agreement Type: '+(typeLabel[r.agrType]||'Labour Rate Contract')+'\n';
   if(!r.hideValue){
     if(r.agrType==='labour'&&r.rate){
@@ -3732,15 +3846,21 @@ async function pdfAgr(id){
       rateDetail+='Construction Scope: '+(r.constType||'Grey Structure');
     }else if(r.agrType==='material'&&r.rate){
       const area=r.covered||(r.gfArea+r.ffArea)||0;
-      rateDetail+='Rate: PKR '+fmt(r.rate)+' per sft (Labour + Material)\n';
+      rateDetail+='Rate: PKR '+fmt(r.rate)+' per sft (Labour + Material / With Material)\n';
       if(area)rateDetail+='Covered Area: '+fmt(area)+' sft\n';
       if(r.matGrade)rateDetail+='Material Grade: '+r.matGrade+'\n';
       if(r.matSupply)rateDetail+='Material Supply: '+r.matSupply;
+    }else if(r.agrType==='costpct'&&r.rate){
+      rateDetail+='Basis: Cost to Cost\n';
+      rateDetail+='Contractor Margin: '+r.rate+'%\n';
+      rateDetail+='Final payable = Actual verified cost + '+r.rate+'% margin\n';
+      rateDetail+='Construction Scope: '+(r.constType||'Grey Structure');
     }else if(r.agrType==='phase'){
       const phases=[['Foundation',r.ph1],['DPC/Plinth',r.ph2],['Structure/Slab',r.ph3],['Brickwork',r.ph4],['Plaster',r.ph5],['Finishing',r.ph6]];
       phases.filter(([,v])=>v>0).forEach(([n,v])=>{rateDetail+=n+': PKR '+fmt(v)+'\n';});
     }
-    rateDetail+='\nContract Value: PKR '+fmt(r.value)+'\n('+nW(r.value)+' Pakistani Rupees Only)';
+    if(r.agrType!=='costpct')rateDetail+='\nContract Value: PKR '+fmt(r.value)+'\n('+nW(r.value)+' Pakistani Rupees Only)';
+    else if(r.value)rateDetail+='\nEstimated / Reference Value: PKR '+fmt(r.value);
   }else{
     // Hidden — show only labour rate, no covered area (area varies by shade-to-shade measurement)
     if(r.agrType==='labour'&&r.rate){
@@ -3752,6 +3872,9 @@ async function pdfAgr(id){
       if(r.matGrade)rateDetail+='Material Grade: '+r.matGrade+'\n';
       if(r.matSupply)rateDetail+='Material Supply: '+r.matSupply+'\n';
       rateDetail+='\nNote: Final covered area will be measured shade-to-shade upon completion. Total amount payable will be calculated as per the above rate applied to the measured area.';
+    }else if(r.agrType==='costpct'&&r.rate){
+      rateDetail+='Basis: Cost to Cost + '+r.rate+'% contractor margin\n';
+      rateDetail+='Construction Scope: '+(r.constType||'Grey Structure');
     }
   }
   sec(r.hideValue?'Agreement Type & Scope':'Contract Value & Rate Details',rateDetail);
@@ -3759,12 +3882,13 @@ async function pdfAgr(id){
   // 5. Duration
   sec('Contract Duration','Start Date: '+(r.start||'—')+'          Expected Completion: '+(r.end||'—'));
 
-  // 6. Scope
+  // 6. Scope — checkbox inclusions / exclusions
   if(r.inclusions&&r.inclusions.length){
-    sec('Work Included in Contract',r.inclusions.join(' · '));
+    sec('Work Included in Contract',r.inclusions.map((x,i)=>(i+1)+'. '+x).join('\n'));
   }
   if(r.scope)sec('Detailed Scope of Work',r.scope);
-  if(r.exclusions)sec('Exclusions (Not Included)',r.exclusions);
+  const exclList=Array.isArray(r.exclusions)?r.exclusions:(r.exclusions?String(r.exclusions).split(/\s*[·,]\s*/).filter(Boolean):[]);
+  if(exclList.length)sec('Exclusions (Not Included)',exclList.map((x,i)=>(i+1)+'. '+x).join('\n'));
 
   // 7. Payment schedule
   let payDetail='';
@@ -6197,7 +6321,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-07-13-v26';
+const APP_VERSION='2026-07-14-v27';
 let _swRefreshing=false;
 
 async function wipeAppCaches(){
