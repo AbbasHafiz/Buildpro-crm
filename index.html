@@ -5894,9 +5894,13 @@ function stockBalances(pid){
 function pickMaterialStock(){
   const mats=(D.projects||[]).filter(p=>projectShowsStock(p.id));
   if(mats.length===1){openProjStock(mats[0].id);return;}
-  if(mats.length>1){openProjStock(mats[0].id);toast('Opened '+mats[0].name+' — switch project from Stock In if needed','info');return;}
+  if(mats.length>1){
+    openProjStock(mats[0].id);
+    toast(mats.length+' material projects — opened '+mats[0].name,'info');
+    return;
+  }
   iStock('in');O('sh-stock');
-  toast('Add a With Material or Cost-to-Cost agreement first, or pick a project','info');
+  toast('Set agreement to With Material or Cost to Cost %, then add stock','info');
 }
 function openProjStock(pid){
   const p=D.projects.find(x=>x.id===pid);if(!p)return;
