@@ -3717,7 +3717,7 @@ async function pdfInv(id){
     head=[['Description','Qty','Unit','Rate (PKR)','Amount (PKR)']];
     body=(r.items||[]).map(i=>[i.d,i.q,i.u||'—',fmt(i.r),fmt(i.a)]);
     colStyles={0:{cellWidth:72},3:{halign:'right'},4:{halign:'right'}};
-    foot=[['','','','Total (PKR)',fmt(r.total)]];
+    foot=[['','','','TOTAL (PKR)',fmt(r.total)]];
   }
   doc.autoTable({startY:y,head,body,foot,styles:{fontSize:9.5,cellPadding:3.5,textColor:[30,30,30]},headStyles:{fillColor:[242,240,235],textColor:[130,125,118],fontStyle:'bold',fontSize:8.5},footStyles:pdfFootStyles('gold'),columnStyles:colStyles,showFoot:'lastPage',rowPageBreak:'avoid',margin:{left:14,right:14,bottom:18}});
 
@@ -3736,7 +3736,7 @@ async function pdfEst(id){
   doc.setFontSize(8);doc.setTextColor(160,155,148);doc.text('PREPARED FOR',14,y);
   doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor(20,20,20);doc.text(r.clientName,14,y+7);
   doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(100,100,100);if(r.projectName)doc.text('Project: '+r.projectName,14,y+13);y+=22;
-  doc.autoTable({startY:y,head:[['Work Item / Description','Qty','Unit','Rate (PKR)','Amount (PKR)']],body:(r.items||[]).map(i=>[i.d,i.q,i.u||'—',fmt(i.r),fmt(i.a)]),foot:[['','','','Total (PKR)',fmt(r.total)]],styles:{fontSize:9.5,cellPadding:3.5,textColor:[30,30,30]},headStyles:{fillColor:[242,240,235],textColor:[130,125,118],fontStyle:'bold',fontSize:8.5},footStyles:pdfFootStyles('gold'),columnStyles:{0:{cellWidth:72},3:{halign:'right'},4:{halign:'right'}},rowPageBreak:'avoid',showFoot:'lastPage',
+  doc.autoTable({startY:y,head:[['Work Item / Description','Qty','Unit','Rate (PKR)','Amount (PKR)']],body:(r.items||[]).map(i=>[i.d,i.q,i.u||'—',fmt(i.r),fmt(i.a)]),foot:[['','','','TOTAL (PKR)',fmt(r.total)]],styles:{fontSize:9.5,cellPadding:3.5,textColor:[30,30,30]},headStyles:{fillColor:[242,240,235],textColor:[130,125,118],fontStyle:'bold',fontSize:8.5},footStyles:pdfFootStyles('gold'),columnStyles:{0:{cellWidth:72},3:{halign:'right'},4:{halign:'right'}},rowPageBreak:'avoid',showFoot:'lastPage',
     margin:{left:14,right:14,bottom:18}});
   if(r.notes){const fy=doc.lastAutoTable.finalY+8;doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(80,80,80);doc.text('Notes / Scope:',14,fy);doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(100,100,100);doc.text(r.notes,14,fy+6,{maxWidth:182});}
   drawBankFooter(doc);doc.save('Estimate-'+r.num+'.pdf');toast('Estimate PDF ✓');
