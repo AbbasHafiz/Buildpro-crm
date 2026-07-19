@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-07-19-v30">
+<meta name="app-version" content="2026-07-19-v31">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -3281,7 +3281,7 @@ async function pdfSubProjStatement(subconId,projectId){
       foot:[['','','','','Total Paid','PKR '+fmt(totalPaid),'']],
       styles:{fontSize:8.5,cellPadding:2.8,textColor:[30,30,30],valign:'top'},
       headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:7.5},
-      footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[30,30,30],fontSize:9},
+      footStyles:pdfFootStyles('gold'),
       columnStyles:{
         2:{cellWidth:42},
         3:{cellWidth:48},
@@ -3577,51 +3577,87 @@ function drawBankFooter(doc){
   doc.setPage(pages);
 }
 
+/** Shared autoTable foot style — large, high-contrast subtotals. */
+function pdfFootStyles(kind){
+  // kind: 'gold' | 'red' | 'green' | 'dark'
+  const map={
+    gold:{fillColor:[232,184,75],textColor:[30,30,30],fontStyle:'bold',fontSize:11,cellPadding:4.5},
+    red:{fillColor:[255,236,232],textColor:[180,40,40],fontStyle:'bold',fontSize:11,cellPadding:4.5},
+    green:{fillColor:[232,245,234],textColor:[30,120,50],fontStyle:'bold',fontSize:11,cellPadding:4.5},
+    dark:{fillColor:[40,38,34],textColor:[255,255,255],fontStyle:'bold',fontSize:11,cellPadding:4.5}
+  };
+  return map[kind]||map.gold;
+}
+
+/** Full-width grand total bar — biggest figure on the page. Returns new y. */
+function drawPdfGrandTotal(doc,y,label,amountText,opts){
+  opts=opts||{};
+  const h=opts.h||18;
+  const pw=210;
+  if(y+h>272){doc.addPage();y=20;}
+  const tone=opts.tone||'gold'; // gold | dark | red | green
+  if(tone==='dark')doc.setFillColor(40,38,34);
+  else if(tone==='red')doc.setFillColor(200,55,55);
+  else if(tone==='green')doc.setFillColor(50,140,70);
+  else doc.setFillColor(232,184,75);
+  doc.rect(14,y,182,h,'F');
+  // Thin accent edge for gold bars
+  if(tone==='gold'){doc.setFillColor(40,38,34);doc.rect(14,y,3,h,'F');}
+  const light=tone==='gold';
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(opts.fontSize||12);
+  doc.setTextColor(light?30:255,light?30:255,light?30:255);
+  const txt=(label||'TOTAL')+(amountText?('  ·  '+amountText):'');
+  doc.text(txt,pw/2,y+h/2+4,{align:'center'});
+  return y+h+10;
+}
+
 /** Crisp owner-expense totals box (avoids blurry blue autoTable foot on mobile PDF viewers). */
 function drawOwnerExpTotals(doc,y,cashSpent,behalfSpent){
   const total=cashSpent+behalfSpent;
-  const boxH=28;
+  const boxH=36;
   if(y+boxH>270){doc.addPage();y=20;}
   doc.setFillColor(248,246,242);doc.rect(14,y,182,boxH,'F');
-  doc.setFillColor(201,123,58);doc.rect(14,y,3,boxH,'F');
-  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(90,85,80);
-  doc.text('Misc Cash Spent',20,y+8);
-  doc.setFont('helvetica','bold');doc.setTextColor(30,30,30);
-  doc.text('PKR '+fmt(cashSpent),190,y+8,{align:'right'});
-  doc.setFont('helvetica','normal');doc.setTextColor(90,85,80);
-  doc.text('On Behalf Spent',20,y+16);
-  doc.setFont('helvetica','bold');doc.setTextColor(30,30,30);
-  doc.text('PKR '+fmt(behalfSpent),190,y+16,{align:'right'});
-  doc.setDrawColor(220,215,208);doc.setLineWidth(0.3);doc.line(20,y+19.5,190,y+19.5);
-  doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(30,30,30);
-  doc.text('Owner-Side Total',20,y+25);
-  doc.setTextColor(201,123,58);
-  doc.text('PKR '+fmt(total),190,y+25,{align:'right'});
-  return y+boxH+8;
+  doc.setFillColor(232,184,75);doc.rect(14,y,4,boxH,'F');
+  doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.setTextColor(90,85,80);
+  doc.text('Misc Cash Spent',22,y+10);
+  doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(30,30,30);
+  doc.text('PKR '+fmt(cashSpent),190,y+10,{align:'right'});
+  doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.setTextColor(90,85,80);
+  doc.text('On Behalf Spent',22,y+19);
+  doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(30,30,30);
+  doc.text('PKR '+fmt(behalfSpent),190,y+19,{align:'right'});
+  doc.setDrawColor(200,195,188);doc.setLineWidth(0.4);doc.line(22,y+23,190,y+23);
+  doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(30,30,30);
+  doc.text('OWNER-SIDE TOTAL',22,y+31);
+  doc.setTextColor(180,100,30);
+  doc.text('PKR '+fmt(total),190,y+31,{align:'right'});
+  return y+boxH+10;
 }
 
-/** Crisp reimbursement / generic totals box. */
+/** Crisp reimbursement / generic totals box — last row is the prominent total. */
 function drawPdfTotalsBox(doc,y,rows){
   // rows: [{label,value,emphasis?}]
-  const boxH=8+rows.length*8;
+  const rowH=10;
+  const boxH=10+rows.length*rowH;
   if(y+boxH>270){doc.addPage();y=20;}
   doc.setFillColor(248,246,242);doc.rect(14,y,182,boxH,'F');
-  doc.setFillColor(201,123,58);doc.rect(14,y,3,boxH,'F');
+  doc.setFillColor(232,184,75);doc.rect(14,y,4,boxH,'F');
   rows.forEach((r,i)=>{
-    const yy=y+8+i*8;
+    const yy=y+10+i*rowH;
     const last=i===rows.length-1;
     if(last&&rows.length>1){
-      doc.setDrawColor(220,215,208);doc.setLineWidth(0.3);doc.line(20,yy-4,190,yy-4);
+      doc.setDrawColor(200,195,188);doc.setLineWidth(0.4);doc.line(22,yy-4.5,190,yy-4.5);
     }
-    doc.setFont('helvetica',last?'bold':'normal');
-    doc.setFontSize(last?10:9);
-    doc.setTextColor(last?201:90,last?123:85,last?58:80);
-    doc.text(r.label,20,yy);
     doc.setFont('helvetica','bold');
-    doc.setTextColor(last?201:30,last?123:30,last?58:30);
+    doc.setFontSize(last?12:10);
+    doc.setTextColor(last?180:90,last?100:85,last?30:80);
+    doc.text(r.label,22,yy);
+    doc.setFont('helvetica','bold');
+    doc.setTextColor(last?180:30,last?100:30,last?30:30);
     doc.text(r.value,190,yy,{align:'right'});
   });
-  return y+boxH+8;
+  return y+boxH+10;
 }
 
 async function pdfInv(id){
@@ -3671,19 +3707,19 @@ async function pdfInv(id){
     head=[['Worker / Trade','Days','Rate/Day (PKR)','Amount (PKR)']];
     body=(r.items||[]).map(i=>[i.d,i.q,fmt(i.r),fmt(i.a)]);
     colStyles={0:{cellWidth:80},1:{halign:'center'},2:{halign:'right'},3:{halign:'right'}};
-    foot=[['','','Total (PKR)',fmt(r.total)]];
+    foot=[['','','TOTAL (PKR)',fmt(r.total)]];
   } else if(type==='progress'){
     head=[['Work Item / Phase','% Complete','Amount (PKR)']];
     body=(r.items||[]).map(i=>[i.d,i.q+'%',fmt(i.a)]);
     colStyles={0:{cellWidth:100},1:{halign:'center'},2:{halign:'right'}};
-    foot=[['','Total (PKR)',fmt(r.total)]];
+    foot=[['','TOTAL (PKR)',fmt(r.total)]];
   } else {
     head=[['Description','Qty','Unit','Rate (PKR)','Amount (PKR)']];
     body=(r.items||[]).map(i=>[i.d,i.q,i.u||'—',fmt(i.r),fmt(i.a)]);
     colStyles={0:{cellWidth:72},3:{halign:'right'},4:{halign:'right'}};
-    foot=[['','','','Total (PKR)',fmt(r.total)]];
+    foot=[['','','','TOTAL (PKR)',fmt(r.total)]];
   }
-  doc.autoTable({startY:y,head,body,foot,styles:{fontSize:9.5,cellPadding:3.5,textColor:[30,30,30]},headStyles:{fillColor:[242,240,235],textColor:[130,125,118],fontStyle:'bold',fontSize:8.5},footStyles:{fillColor:[248,246,242],fontStyle:'bold',textColor:[201,123,58],fontSize:11},columnStyles:colStyles,showFoot:'lastPage',rowPageBreak:'avoid',margin:{left:14,right:14,bottom:18}});
+  doc.autoTable({startY:y,head,body,foot,styles:{fontSize:9.5,cellPadding:3.5,textColor:[30,30,30]},headStyles:{fillColor:[242,240,235],textColor:[130,125,118],fontStyle:'bold',fontSize:8.5},footStyles:pdfFootStyles('gold'),columnStyles:colStyles,showFoot:'lastPage',rowPageBreak:'avoid',margin:{left:14,right:14,bottom:18}});
 
   // Notes
   if(r.notes){const fy=doc.lastAutoTable.finalY+8;doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(80,80,80);doc.text('Notes:',14,fy);doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(100,100,100);doc.text(r.notes,14,fy+6,{maxWidth:182});}
@@ -3700,7 +3736,7 @@ async function pdfEst(id){
   doc.setFontSize(8);doc.setTextColor(160,155,148);doc.text('PREPARED FOR',14,y);
   doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor(20,20,20);doc.text(r.clientName,14,y+7);
   doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(100,100,100);if(r.projectName)doc.text('Project: '+r.projectName,14,y+13);y+=22;
-  doc.autoTable({startY:y,head:[['Work Item / Description','Qty','Unit','Rate (PKR)','Amount (PKR)']],body:(r.items||[]).map(i=>[i.d,i.q,i.u||'—',fmt(i.r),fmt(i.a)]),foot:[['','','','Total (PKR)',fmt(r.total)]],styles:{fontSize:9.5,cellPadding:3.5,textColor:[30,30,30]},headStyles:{fillColor:[242,240,235],textColor:[130,125,118],fontStyle:'bold',fontSize:8.5},footStyles:{fillColor:[248,246,242],fontStyle:'bold',textColor:[201,123,58],fontSize:11},columnStyles:{0:{cellWidth:72},3:{halign:'right'},4:{halign:'right'}},rowPageBreak:'avoid',showFoot:'lastPage',
+  doc.autoTable({startY:y,head:[['Work Item / Description','Qty','Unit','Rate (PKR)','Amount (PKR)']],body:(r.items||[]).map(i=>[i.d,i.q,i.u||'—',fmt(i.r),fmt(i.a)]),foot:[['','','','TOTAL (PKR)',fmt(r.total)]],styles:{fontSize:9.5,cellPadding:3.5,textColor:[30,30,30]},headStyles:{fillColor:[242,240,235],textColor:[130,125,118],fontStyle:'bold',fontSize:8.5},footStyles:pdfFootStyles('gold'),columnStyles:{0:{cellWidth:72},3:{halign:'right'},4:{halign:'right'}},rowPageBreak:'avoid',showFoot:'lastPage',
     margin:{left:14,right:14,bottom:18}});
   if(r.notes){const fy=doc.lastAutoTable.finalY+8;doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(80,80,80);doc.text('Notes / Scope:',14,fy);doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(100,100,100);doc.text(r.notes,14,fy+6,{maxWidth:182});}
   drawBankFooter(doc);doc.save('Estimate-'+r.num+'.pdf');toast('Estimate PDF ✓');
@@ -3766,7 +3802,7 @@ async function pdfBoqVsActual(id){
       foot:[['Matched totals',fmt(matchedEst),fmt(matchedAct),(matchedAct-matchedEst>=0?'+':'')+fmt(matchedAct-matchedEst)]],
       styles:{fontSize:8.5,cellPadding:2.5,textColor:[30,30,30]},
       headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
-      footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[30,30,30]},
+      footStyles:pdfFootStyles('gold'),
       columnStyles:{1:{halign:'right'},2:{halign:'right'},3:{halign:'right'}},
       rowPageBreak:'avoid',showFoot:'lastPage',
     margin:{left:14,right:14,bottom:18}
@@ -5007,10 +5043,10 @@ function pdfDrawSpayTable(doc,y,spays,opts){
     startY:y,
     head:[['Date','Sub-Contractor','Phase','Method','Amount (PKR)']],
     body:list.map(r=>[r.date||'—',r.subconName||'—',r.phase||'—',r.method||'Cash',fmt(r.amount)]),
-    foot:[['','','','Sub-Con Total',(opts&&opts.footPrefix?'PKR ':'')+fmt(total)]],
+    foot:[['','','','SUB-CON TOTAL',(opts&&opts.footPrefix?'PKR ':'')+fmt(total)]],
     styles:{fontSize:8.5,cellPadding:2.5,textColor:[30,30,30]},
     headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
-    footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[200,50,50],fontSize:8.5},
+    footStyles:pdfFootStyles('red'),
     columnStyles:{4:{halign:'right'}},
     rowPageBreak:'avoid',showFoot:'lastPage',
     margin:{left:14,right:14,bottom:18}
@@ -5041,10 +5077,10 @@ function pdfDrawExpPaidPending(doc,y,exps,opts){
     doc.text(opts.paidTitle||'PAID EXPENSES (in total)',14,y);y+=5;
     doc.autoTable({
       startY:y,head:[head],body:paid.map(row),
-      foot:[withMethod?['','','','Paid Total','PKR '+fmt(paidTot)]:['','','Paid Total','PKR '+fmt(paidTot)]],
+      foot:[withMethod?['','','','PAID TOTAL','PKR '+fmt(paidTot)]:['','','PAID TOTAL','PKR '+fmt(paidTot)]],
       styles:{fontSize:8.5,cellPadding:opts.pad||3,textColor:[30,30,30]},
       headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
-      footStyles:{fontSize:9,fontStyle:'bold',textColor:[201,123,58]},
+      footStyles:pdfFootStyles('gold'),
       columnStyles:{[amtCol]:{halign:'right',cellWidth:28}},
       rowPageBreak:'avoid',showFoot:'lastPage',margin:{left:14,right:14,bottom:18}
     });
@@ -5056,10 +5092,10 @@ function pdfDrawExpPaidPending(doc,y,exps,opts){
     doc.text(opts.pendTitle||'PENDING EXPENSES (not in total until paid)',14,y);y+=5;
     doc.autoTable({
       startY:y,head:[head],body:pending.map(row),
-      foot:[withMethod?['','','','Pending Total','PKR '+fmt(pendTot)]:['','','Pending Total','PKR '+fmt(pendTot)]],
+      foot:[withMethod?['','','','PENDING TOTAL','PKR '+fmt(pendTot)]:['','','PENDING TOTAL','PKR '+fmt(pendTot)]],
       styles:{fontSize:8.5,cellPadding:opts.pad||3,textColor:[30,30,30]},
       headStyles:{fillColor:[255,248,235],textColor:[201,123,58],fontStyle:'bold',fontSize:8},
-      footStyles:{fontSize:9,fontStyle:'bold',textColor:[201,123,58]},
+      footStyles:pdfFootStyles('gold'),
       columnStyles:{[amtCol]:{halign:'right',cellWidth:28}},
       rowPageBreak:'avoid',showFoot:'lastPage',margin:{left:14,right:14,bottom:18}
     });
@@ -5082,14 +5118,17 @@ async function pdfExp(){
   const expPending=pendingExps.reduce((s,e)=>s+e.amount,0);
   const subTotal=spays.reduce((s,p)=>s+p.amount,0);
   const totalSpent=expPaid+subTotal;
-  doc.setFillColor(248,246,242);doc.rect(14,y,182,22,'F');
-  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(30,30,30);
-  doc.text('Total Spent (paid): PKR '+fmt(totalSpent),16,y+7);
-  doc.text('Sub-Con: PKR '+fmt(subTotal),100,y+7);
-  doc.text('Paid Exp: PKR '+fmt(expPaid),155,y+7);
-  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(201,123,58);
-  doc.text('Pending expenses (not in total): PKR '+fmt(expPending),16,y+15);
-  y+=28;
+  doc.setFillColor(40,38,34);doc.rect(14,y,182,16,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(255,255,255);
+  doc.text('TOTAL SPENT (PAID):  PKR '+fmt(totalSpent),pw/2,y+10.5,{align:'center'});
+  y+=20;
+  doc.setFillColor(248,246,242);doc.rect(14,y,182,16,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(30,30,30);
+  doc.text('Sub-Con  PKR '+fmt(subTotal),30,y+10);
+  doc.text('Paid Exp  PKR '+fmt(expPaid),105,y+10);
+  doc.setTextColor(201,123,58);
+  doc.text('Pending  PKR '+fmt(expPending),170,y+10,{align:'right'});
+  y+=22;
   doc.setFont('helvetica','italic');doc.setFontSize(7.5);doc.setTextColor(130,125,118);
   doc.text('Totals include paid expenses + sub-con only. Pending supplier payments are listed separately.',14,y);
   y+=8;
@@ -5117,6 +5156,8 @@ async function pdfExp(){
       y=pdfDrawExpPaidPending(doc,y,projExps,{titleSize:8,pad:2.5,paidTitle:'Paid Expenses',pendTitle:'Pending Expenses (not in total)'});
     }
   });
+  if(y>250){doc.addPage();y=20;}
+  drawPdfGrandTotal(doc,y,'TOTAL CONTRACTOR SPENT (PAID)','PKR '+fmt(totalSpent),{tone:'gold',h:18});
   drawBankFooter(doc);
   doc.save('ContractorSpending-'+today()+'.pdf');
   toast('Contractor spending PDF downloaded ✓');
@@ -5209,14 +5250,17 @@ async function pdfExpProjectContractor(pid,projName){
   doc.setFont('helvetica','italic');doc.setFontSize(8);doc.setTextColor(150,145,138);
   doc.text('Paid totals only. Pending supplier payments listed separately — not in spent total.',14,y+18);
   y+=26;
-  doc.setFillColor(248,246,242);doc.rect(14,y,182,18,'F');
-  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(30,30,30);
-  doc.text('Total Spent: PKR '+fmt(totalSpent),16,y+7);
-  doc.text('Sub-Con: PKR '+fmt(subTotal),75,y+7);
-  doc.text('Paid Exp: PKR '+fmt(expPaid),140,y+7);
-  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(201,123,58);
-  doc.text('Pending expenses (not in total): PKR '+fmt(pendingAmt),16,y+14);
-  y+=24;
+  doc.setFillColor(40,38,34);doc.rect(14,y,182,14,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(255,255,255);
+  doc.text('TOTAL SPENT (PAID):  PKR '+fmt(totalSpent),pw/2,y+9.5,{align:'center'});
+  y+=18;
+  doc.setFillColor(248,246,242);doc.rect(14,y,182,14,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(30,30,30);
+  doc.text('Sub-Con  PKR '+fmt(subTotal),30,y+9);
+  doc.text('Paid Exp  PKR '+fmt(expPaid),105,y+9);
+  doc.setTextColor(201,123,58);
+  doc.text('Pending  PKR '+fmt(pendingAmt),190,y+9,{align:'right'});
+  y+=20;
   if(allSpays.length){
     y=pdfDrawSpayTable(doc,y,allSpays,{title:'SUB-CONTRACTOR PAYMENTS',footPrefix:true});
   }
@@ -5224,9 +5268,7 @@ async function pdfExpProjectContractor(pid,projName){
     y=pdfDrawExpPaidPending(doc,y,allExps,{withMethod:true});
   }
   if(y>250){doc.addPage();y=20;}
-  doc.setFillColor(201,123,58);doc.rect(14,y,182,12,'F');
-  doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(255,255,255);
-  doc.text('TOTAL CONTRACTOR SPENT (PAID): PKR '+fmt(totalSpent),pw/2,y+8,{align:'center'});
+  drawPdfGrandTotal(doc,y,'TOTAL CONTRACTOR SPENT (PAID)','PKR '+fmt(totalSpent),{tone:'gold',h:18});
   drawBankFooter(doc);
   doc.save('ContractorSpending-'+projName.replace(/\s+/g,'-')+'-'+today()+'.pdf');
   toast('Contractor spending PDF ✓');
@@ -5359,7 +5401,7 @@ async function pdfCpayConfirm(id){
       foot:[['','','Total Received',fmt(totalPaid)]],
       styles:{fontSize:9,cellPadding:3,textColor:[30,30,30]},
       headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
-      footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[82,181,106],fontSize:9},
+      footStyles:pdfFootStyles('green'),
       columnStyles:{3:{halign:'right'}},
       rowPageBreak:'avoid',showFoot:'lastPage',
     margin:{left:14,right:14,bottom:18}
@@ -5426,7 +5468,7 @@ async function pdfSpayConfirm(id){
       ],
       styles:{fontSize:9,cellPadding:3,textColor:[30,30,30]},
       headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
-      footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[30,30,30],fontSize:9},
+      footStyles:pdfFootStyles('gold'),
       columnStyles:{2:{halign:'right'}},
       rowPageBreak:'avoid',showFoot:'lastPage',
     margin:{left:14,right:14,bottom:18}
@@ -5459,7 +5501,7 @@ async function pdfSpayConfirm(id){
       foot:[['','','','Total Paid',fmt(totalPaid)]],
       styles:{fontSize:8.5,cellPadding:2.8,textColor:[30,30,30],valign:'top'},
       headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:7.5},
-      footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[30,30,30],fontSize:9},
+      footStyles:pdfFootStyles('gold'),
       columnStyles:{1:{cellWidth:45},2:{cellWidth:50},4:{halign:'right'}},
       rowPageBreak:'avoid',showFoot:'lastPage',
     margin:{left:14,right:14,bottom:18}
@@ -5522,7 +5564,7 @@ async function pdfProjPayments(pid){
       foot:[['','','','Total Contract Received','PKR '+fmt(totalContract),'']],
       styles:{fontSize:9,cellPadding:3,textColor:[30,30,30]},
       headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
-      footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[82,181,106],fontSize:9},
+      footStyles:pdfFootStyles('green'),
       columnStyles:{0:{cellWidth:8},4:{halign:'right'},5:{halign:'right',textColor:[82,181,106]}},
       rowPageBreak:'avoid',showFoot:'lastPage',
     margin:{left:14,right:14,bottom:18}
@@ -5555,7 +5597,7 @@ async function pdfProjPayments(pid){
       foot:[['','','Total Misc','PKR '+fmt(totalMisc)]],
       styles:{fontSize:8.5,cellPadding:2.5,textColor:[30,30,30]},
       headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
-      footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[30,30,30]},
+      footStyles:pdfFootStyles('gold'),
       columnStyles:{3:{halign:'right'}},
       rowPageBreak:'avoid',showFoot:'lastPage',
     margin:{left:14,right:14,bottom:18}
@@ -6099,7 +6141,7 @@ async function pdfProjStock(pid){
     foot:[['','','','','','Stock In Value','PKR '+fmt(valueIn)]],
     styles:{fontSize:8,cellPadding:2.8,textColor:[30,30,30]},
     headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:7.5},
-    footStyles:{fontSize:9,fontStyle:'bold',textColor:[201,123,58]},
+    footStyles:pdfFootStyles('gold'),
     columnStyles:{1:{cellWidth:14},6:{halign:'right',cellWidth:28}},
     didParseCell:data=>{
       if(data.section==='body'&&data.column.index===1){
@@ -6394,7 +6436,7 @@ async function pdfPartnerSummary(pid){
       foot:[['','','','Total Received','PKR '+fmt(totalRec),'']],
       styles:{fontSize:8.5,cellPadding:2.5,textColor:[30,30,30]},
       headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
-      footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[50,150,50]},
+      footStyles:pdfFootStyles('green'),
       columnStyles:{4:{halign:'right'},5:{halign:'right',textColor:[50,150,50]}},
       rowPageBreak:'avoid',showFoot:'lastPage',
     margin:{left:14,right:14,bottom:18}
@@ -6419,7 +6461,7 @@ async function pdfPartnerSummary(pid){
       foot:[['','','','Total','PKR '+fmt(totalExp)]],
       styles:{fontSize:8.5,cellPadding:2.5,textColor:[30,30,30]},
       headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
-      footStyles:{fillColor:[250,248,244],fontStyle:'bold',textColor:[200,50,50]},
+      footStyles:pdfFootStyles('red'),
       columnStyles:{3:{cellWidth:20},4:{halign:'right'}},
       didParseCell:data=>{if(data.section==='body'&&data.column.index===3)data.cell.styles.textColor=data.cell.raw==='PAID'?[50,150,50]:[200,50,50];},
       rowPageBreak:'avoid',showFoot:'lastPage',
@@ -6428,11 +6470,9 @@ async function pdfPartnerSummary(pid){
     y=doc.lastAutoTable.finalY+10;
   }
 
-  // Final split footer
+  // Final split footer — prominent grand total
   if(y>240){doc.addPage();y=20;}
-  doc.setFillColor(232,184,75);doc.rect(14,y,182,16,'F');
-  doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(30,30,30);
-  doc.text('NET PROFIT: PKR '+fmt(netProfit)+'  |  YOUR SHARE ('+p.myShare+'%): PKR '+fmt(myAmt)+'  |  '+p.partnerName+': PKR '+fmt(partnerAmt),pw/2,y+10,{align:'center'});
+  y=drawPdfGrandTotal(doc,y,'NET PROFIT','PKR '+fmt(netProfit)+'  ·  Your '+p.myShare+'%: '+fmt(myAmt)+'  ·  '+(p.partnerName||'Partner')+': '+fmt(partnerAmt),{tone:'gold',h:20,fontSize:11});
 
   drawBankFooter(doc);
   doc.save('Partnership-'+p.name.replace(/\s+/g,'-')+'-'+today()+'.pdf');
@@ -6521,9 +6561,7 @@ async function pdfInternalSummary(pid){
 
   // Grand total footer
   if(y>240){doc.addPage();y=20;}
-  doc.setFillColor(77,148,212);doc.rect(14,y,182,15,'F');
-  doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(255,255,255);
-  doc.text('TOTAL INTERNAL PAID: PKR '+fmt(totalInternal),pw/2,y+10,{align:'center'});
+  drawPdfGrandTotal(doc,y,'TOTAL INTERNAL PAID','PKR '+fmt(totalInternal),{tone:'dark',h:18});
 
   drawBankFooter(doc);
   doc.save('Internal-'+p.name.replace(/\s+/g,'-')+'-'+today()+'.pdf');
@@ -6604,17 +6642,11 @@ async function pdfReimbursement(pid,projName){
   // Final reimbursement request box
   if(y>240){doc.addPage();y=20;}
   if(reimburseDue>0){
-    // Owner owes contractor
-    doc.setFillColor(224,85,85);doc.rect(14,y,182,15,'F');
-    doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(255,255,255);
-    doc.text('TOTAL REIMBURSEMENT DUE TO CONTRACTOR: PKR '+fmt(reimburseDue),pw/2,y+10,{align:'center'});
+    y=drawPdfGrandTotal(doc,y,'TOTAL REIMBURSEMENT DUE','PKR '+fmt(reimburseDue),{tone:'red',h:18});
   }else{
-    doc.setFillColor(82,181,106);doc.rect(14,y,182,15,'F');
-    doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(255,255,255);
-    const msg=advanceBalance>0?'All settled. Advance balance PKR '+fmt(advanceBalance)+' remaining with contractor.':'All owner-side expenses settled.';
-    doc.text(msg,pw/2,y+10,{align:'center',maxWidth:170});
+    const msg=advanceBalance>0?'All settled · Advance left PKR '+fmt(advanceBalance):'All owner-side expenses settled';
+    y=drawPdfGrandTotal(doc,y,msg,'',{tone:'green',h:18,fontSize:11});
   }
-  y+=22;
 
   // Bank details for payment
   if(c.bank&&reimburseDue>0){
@@ -6671,7 +6703,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-07-19-v30';
+const APP_VERSION='2026-07-19-v31';
 let _swRefreshing=false;
 
 async function wipeAppCaches(){
