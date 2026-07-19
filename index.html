@@ -3707,12 +3707,12 @@ async function pdfInv(id){
     head=[['Worker / Trade','Days','Rate/Day (PKR)','Amount (PKR)']];
     body=(r.items||[]).map(i=>[i.d,i.q,fmt(i.r),fmt(i.a)]);
     colStyles={0:{cellWidth:80},1:{halign:'center'},2:{halign:'right'},3:{halign:'right'}};
-    foot=[['','','Total (PKR)',fmt(r.total)]];
+    foot=[['','','TOTAL (PKR)',fmt(r.total)]];
   } else if(type==='progress'){
     head=[['Work Item / Phase','% Complete','Amount (PKR)']];
     body=(r.items||[]).map(i=>[i.d,i.q+'%',fmt(i.a)]);
     colStyles={0:{cellWidth:100},1:{halign:'center'},2:{halign:'right'}};
-    foot=[['','Total (PKR)',fmt(r.total)]];
+    foot=[['','TOTAL (PKR)',fmt(r.total)]];
   } else {
     head=[['Description','Qty','Unit','Rate (PKR)','Amount (PKR)']];
     body=(r.items||[]).map(i=>[i.d,i.q,i.u||'—',fmt(i.r),fmt(i.a)]);
