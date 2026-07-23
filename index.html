@@ -3566,11 +3566,18 @@ function renderPay(){
 
   const el=e$('list-pay');
   let rows=[];
-  if(fPayF==='all')rows=[...D.cpays.map(p=>({...p,dir:'in'})),...D.subpays.map(p=>({...p,dir:'out'}))].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
-  else if(fPayF==='in')rows=D.cpays.map(p=>({...p,dir:'in'})).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
-  else rows=D.subpays.map(p=>({...p,dir:'out'})).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  if(fPayF==='all')rows=[...D.cpays.map(p=>({...p,dir:'in'})),...D.subpays.map(p=>({...p,dir:'out'}))];
+  else if(fPayF==='in')rows=D.cpays.map(p=>({...p,dir:'in'}));
+  else rows=D.subpays.map(p=>({...p,dir:'out'}));
   if(!rows.length){el.innerHTML='<div class="empty"><div class="empty-i">💳</div><div class="empty-t">No payments yet</div></div>';return;}
-  el.innerHTML=rows.map(p=>{
+  // Resolve which client each payment belongs to (sub-con payments resolve via their project's client)
+  const clientOf=p=>{
+    if(p.dir==='in')return{id:p.clientId||'__none__',name:p.clientName||'No Client'};
+    const proj=D.projects.find(x=>x.id===p.projectId);
+    const cli=proj?D.clients.find(x=>x.id===proj.clientId):null;
+    return{id:cli?cli.id:((proj&&proj.clientId)||'__none__'),name:cli?cli.name:'No Client'};
+  };
+  const renderPayCard=p=>{
     const isIn=p.dir==='in';
     const bd=(!isIn&&p.breakdown&&p.breakdown.length)?p.breakdown:[];
     return`<div class="pay-card">
@@ -3592,6 +3599,26 @@ function renderPay(){
           <button class="ca red" style="padding:5px 12px;font-size:var(--fs-xs)" onclick="del('${isIn?'cpays':'subpays'}','${p.id}')">🗑</button>
         </div>
       </div>
+    </div>`;
+  };
+  // Group all payments under each client
+  const groups={};
+  rows.forEach(p=>{const c=clientOf(p);if(!groups[c.id])groups[c.id]={name:c.name,rows:[]};groups[c.id].rows.push(p);});
+  const order=Object.keys(groups).sort((a,b)=>{
+    if(a==='__none__')return 1;if(b==='__none__')return -1;
+    return groups[a].name.localeCompare(groups[b].name);
+  });
+  el.innerHTML=order.map(cid=>{
+    const g=groups[cid];
+    g.rows.sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.time||'').localeCompare(a.time||''));
+    const cin=g.rows.filter(r=>r.dir==='in').reduce((s,r)=>s+r.amount,0);
+    const cout=g.rows.filter(r=>r.dir==='out').reduce((s,r)=>s+r.amount,0);
+    return`<div style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 13px;background:var(--s2);border:1px solid var(--bor);border-radius:10px;margin-bottom:8px">
+        <div style="font-size:var(--fs-sm);font-weight:700">👤 ${g.name} <span style="color:var(--mut);font-weight:400;font-size:var(--fs-xs)">· ${g.rows.length} payment${g.rows.length!==1?'s':''}</span></div>
+        <div style="font-size:var(--fs-xs);font-family:'JetBrains Mono',monospace">${cin?`<span style="color:var(--grn)">+${fmt(cin)}</span>`:''}${cin&&cout?' <span style="color:var(--mut)">|</span> ':''}${cout?`<span style="color:var(--red)">-${fmt(cout)}</span>`:''}</div>
+      </div>
+      ${g.rows.map(renderPayCard).join('')}
     </div>`;
   }).join('');
 }
