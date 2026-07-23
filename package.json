@@ -1,0 +1,19 @@
+{
+  "name": "buildpro-crm",
+  "version": "1.0.0",
+  "private": true,
+  "description": "BuildPro CRM - Construction business management (PWA + Android app)",
+  "scripts": {
+    "copy:web": "node scripts/copy-web.mjs",
+    "sync": "npm run copy:web && cap sync android",
+    "open:android": "cap open android",
+    "build:apk": "npm run sync && cd android && ./gradlew assembleDebug"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.2.1",
+    "@capacitor/app": "^6.0.3",
+    "@capacitor/browser": "^6.0.6",
+    "@capacitor/cli": "^6.2.1",
+    "@capacitor/core": "^6.2.1"
+  }
+}
