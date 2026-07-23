@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-07-19-v31">
+<meta name="app-version" content="2026-07-23-v32">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -1148,7 +1148,31 @@ select option{background:var(--s2);}
     </div>
     <div class="fg"><label>Notes / Scope Summary</label><textarea id="e-notes" placeholder="Inclusions, exclusions, assumptions, site conditions…"></textarea></div>
     <div class="hdiv"></div>
-    <label style="display:block;margin-bottom:10px">BOQ Items</label>
+
+    <!-- BOQ Structure package: Brown → Grey → Finishing -->
+    <div style="font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:.8px;font-weight:700;margin-bottom:6px">BOQ Structure Package</div>
+    <div style="font-size:var(--fs-xs);color:var(--mut2);margin-bottom:10px;line-height:1.45">
+      <b style="color:var(--txt)">Brown</b> = digging, materials, foundation ·
+      <b style="color:var(--txt)">Grey</b> = Brown + RCC, brick, electric/plumber rough ·
+      <b style="color:var(--txt)">Finishing</b> = Grey + tiles, marble, fixtures, wood, ceiling…
+    </div>
+    <div class="fg"><label>Structure Level</label>
+      <select id="e-structure" onchange="onBoqStructureChange()">
+        <option value="brown">🟤 Brown Structure</option>
+        <option value="grey" selected>⬜ Grey Structure (includes Brown)</option>
+        <option value="finishing">✨ Finishing (includes Brown + Grey)</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+      <button type="button" class="btn btn-grey btn-sm" style="padding:6px 12px;font-size:var(--fs-xs)" onclick="setAllBoqScope(true)">✓ Include All</button>
+      <button type="button" class="btn btn-grey btn-sm" style="padding:6px 12px;font-size:var(--fs-xs)" onclick="setAllBoqScope(false)">✕ Exclude All</button>
+      <button type="button" class="btn btn-gold btn-sm" style="padding:6px 12px;font-size:var(--fs-xs)" onclick="fillBoqFromScope()">↓ Fill BOQ Lines from Included</button>
+    </div>
+    <div id="boq-scope-hint" style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:8px"></div>
+    <div id="boq-scope" style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:14px"></div>
+
+    <div class="hdiv"></div>
+    <label style="display:block;margin-bottom:10px">BOQ Items <span style="color:var(--mut2);font-weight:400;text-transform:none">(qty × rate)</span></label>
     <div class="li-wrap li-std">
       <div class="li-hd"><span>Work Item / Description</span><span>Qty</span><span>Unit</span><span>Rate PKR</span><span></span></div>
       <div id="li-e"></div>
@@ -1236,17 +1260,18 @@ select option{background:var(--s2);}
     </div>
     <div class="fg"><label id="agr-rate-label">Rate / Amount (PKR)</label><input type="number" id="a-rate" placeholder="e.g. 650 per sft" oninput="calcAgr()"></div>
     <div class="fg"><label>Construction Scope</label>
-      <select id="a-const-type">
+      <select id="a-const-type" onchange="onAgrConstTypeChange()">
+        <option value="Brown Structure">🟤 Brown Structure</option>
         <option value="Foundation Only">Foundation Only</option>
         <option value="Foundation + Material">Foundation + Material</option>
-        <option value="Grey Structure">Grey Structure</option>
+        <option value="Grey Structure" selected>⬜ Grey Structure</option>
         <option value="Single Storey Grey Structure">Single Storey Grey Structure</option>
         <option value="Double Storey Grey Structure">Double Storey Grey Structure</option>
         <option value="Grey Structure + Finishing">Grey Structure + Finishing</option>
-        <option value="Single Storey Complete">Single Storey Complete</option>
-        <option value="Double Storey Complete">Double Storey Complete</option>
+        <option value="Finishing Only">✨ Finishing Only</option>
+        <option value="Single Storey Complete">Single Storey Complete (Finishing)</option>
+        <option value="Double Storey Complete">Double Storey Complete (Finishing)</option>
         <option value="Turnkey / Complete">Turnkey / Complete</option>
-        <option value="Finishing Only">Finishing Only</option>
         <option value="Custom">Custom (specify in Scope of Work)</option>
       </select>
     </div>
@@ -2378,6 +2403,8 @@ function iEst(){
   const num=nxt('EST',D.estimates);sv('e-num',num);sv('e-date',today());sv('e-vld',dF(30));
   ['e-cli-t','e-cli-id','e-proj-t','e-proj-id','e-notes'].forEach(id=>sv(id,''));
   sv('e-st','draft');e$('est-auto-id').textContent='🔖 Auto ID: '+num;
+  if(e$('e-structure'))e$('e-structure').value='grey';
+  renderBoqScope(null);
   e$('li-e').innerHTML='';e$('li-e-tot').textContent='0';addLI('e','std');
 }
 // ════ FAB CONTEXT ACTION ════
@@ -2467,6 +2494,160 @@ const AGR_SCOPE_CLAUSES=[
   {id:'termite',label:'Termite Proofing',def:true}
 ];
 
+// BOQ structure packages — Brown ⊂ Grey ⊂ Finishing
+const BOQ_SCOPE_ITEMS=[
+  // ── BROWN STRUCTURE ──
+  {id:'elec_meter',label:'Electricity Meter / Temporary Power',unit:'job',stage:'brown',def:true},
+  {id:'digging',label:'Digging / Excavation',unit:'cft',stage:'brown',def:true},
+  {id:'boring',label:'Boring / Soil Investigation',unit:'job',stage:'brown',def:true},
+  {id:'backfill',label:'Back Filling',unit:'cft',stage:'brown',def:true},
+  {id:'termite',label:'Termite Proofing',unit:'sft',stage:'brown',def:true},
+  {id:'foundation',label:'Foundation / Footing',unit:'cft',stage:'brown',def:true},
+  {id:'bricks',label:'Bricks',unit:'nos',stage:'brown',def:true},
+  {id:'steel',label:'Steel / Tor Steel',unit:'ton',stage:'brown',def:true},
+  {id:'sand',label:'Sand',unit:'cft',stage:'brown',def:true},
+  {id:'crush',label:'Crush / Aggregate',unit:'cft',stage:'brown',def:true},
+  {id:'cement',label:'Cement',unit:'bags',stage:'brown',def:true},
+  {id:'shuttering',label:'Shuttering (Foundation)',unit:'sft',stage:'brown',def:true},
+  {id:'dpc',label:'DPC / Plinth Beam',unit:'rft',stage:'brown',def:true},
+  {id:'water_conn',label:'Water Connection',unit:'job',stage:'brown',def:false},
+  // ── GREY STRUCTURE (adds to Brown) ──
+  {id:'rcc',label:'RCC Columns / Beams / Slab',unit:'cft',stage:'grey',def:true},
+  {id:'brickwork',label:'Brickwork / Chuuni',unit:'sft',stage:'grey',def:true},
+  {id:'kachi',label:'Kachi Plaster (Rough)',unit:'sft',stage:'grey',def:true},
+  {id:'electric_conduit',label:'Electric Conduiting',unit:'job',stage:'grey',def:true},
+  {id:'plumber_rough',label:'Plumber Rough / Pipes',unit:'job',stage:'grey',def:true},
+  {id:'drainage',label:'Drainage / Sewer Pipes',unit:'job',stage:'grey',def:true},
+  {id:'boundary',label:'Boundary Wall',unit:'rft',stage:'grey',def:false},
+  {id:'stair',label:'Stair Case',unit:'job',stage:'grey',def:true},
+  {id:'watertank',label:'Water Tank (UG / OH)',unit:'job',stage:'grey',def:false},
+  {id:'septic',label:'Septic Tank',unit:'job',stage:'grey',def:false},
+  {id:'pardi',label:'Pardi / Parapet',unit:'rft',stage:'grey',def:false},
+  // ── FINISHING (adds to Grey) ──
+  {id:'plaster_fin',label:'Finishing Plaster',unit:'sft',stage:'finishing',def:true},
+  {id:'tiles',label:'Tiles / Flooring',unit:'sft',stage:'finishing',def:true},
+  {id:'marble',label:'Marble / Granite',unit:'sft',stage:'finishing',def:false},
+  {id:'wires',label:'Electric Wires / Final Wiring',unit:'job',stage:'finishing',def:true},
+  {id:'fixtures',label:'Fixtures / Switches / Boards',unit:'job',stage:'finishing',def:true},
+  {id:'fans',label:'Fans',unit:'nos',stage:'finishing',def:true},
+  {id:'appliances',label:'Appliances',unit:'job',stage:'finishing',def:false},
+  {id:'aluminum',label:'Aluminum Windows / Doors',unit:'sft',stage:'finishing',def:true},
+  {id:'wood',label:'Wood Works / Doors / Cabinets',unit:'job',stage:'finishing',def:true},
+  {id:'ceiling',label:'Ceiling / False Ceiling',unit:'sft',stage:'finishing',def:false},
+  {id:'paint',label:'Paint / Polish',unit:'sft',stage:'finishing',def:true},
+  {id:'sanitary',label:'Sanitary Fittings',unit:'job',stage:'finishing',def:true},
+  {id:'gate',label:'Main Gate / Grill',unit:'job',stage:'finishing',def:false}
+];
+const BOQ_STAGE_ORDER={brown:0,grey:1,finishing:2};
+const BOQ_STAGE_LABEL={brown:'Brown Structure',grey:'Grey Structure',finishing:'Finishing'};
+function boqItemsForStructure(struct){
+  const max=BOQ_STAGE_ORDER[struct]??1;
+  return BOQ_SCOPE_ITEMS.filter(i=>(BOQ_STAGE_ORDER[i.stage]??0)<=max);
+}
+function renderBoqScope(selected){
+  const el=e$('boq-scope');if(!el)return;
+  const struct=e$('e-structure')?.value||'grey';
+  const items=boqItemsForStructure(struct);
+  const hint=e$('boq-scope-hint');
+  if(hint){
+    const n={brown:'Brown only',grey:'Brown + Grey',finishing:'Brown + Grey + Finishing'}[struct]||'';
+    hint.textContent='Showing '+items.length+' items ('+n+'). Tick = Included · Untick = Excluded.';
+  }
+  let lastStage='';
+  el.innerHTML=items.map(c=>{
+    const on=selected?!!selected[c.id]:!!c.def;
+    const stageHdr=c.stage!==lastStage
+      ?`<div style="grid-column:1/-1;font-size:10px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.6px;margin:${lastStage?'8px':0} 0 2px">${BOQ_STAGE_LABEL[c.stage]||c.stage}</div>`
+      :'';
+    lastStage=c.stage;
+    return stageHdr+`<label style="display:flex;align-items:flex-start;gap:8px;background:var(--bg);border:1px solid ${on?'rgba(82,181,106,.35)':'rgba(224,85,85,.28)'};border-radius:8px;padding:9px 10px;cursor:pointer">
+      <input type="checkbox" class="boq-scope" data-id="${c.id}" ${on?'checked':''} onchange="refreshBoqScopeStyles()" style="width:16px;height:16px;accent-color:var(--grn);flex-shrink:0;margin-top:1px">
+      <span style="font-size:var(--fs-xs);color:var(--txt);line-height:1.35;font-weight:500">${c.label}<span style="color:var(--mut2);font-weight:400"> · ${c.unit}</span></span>
+    </label>`;
+  }).join('');
+}
+function refreshBoqScopeStyles(){
+  document.querySelectorAll('#boq-scope label').forEach(lab=>{
+    const cb=lab.querySelector('input.boq-scope');if(!cb)return;
+    lab.style.borderColor=cb.checked?'rgba(82,181,106,.35)':'rgba(224,85,85,.28)';
+  });
+}
+function setAllBoqScope(on){
+  document.querySelectorAll('input.boq-scope').forEach(cb=>{cb.checked=!!on;});
+  refreshBoqScopeStyles();
+}
+function onBoqStructureChange(){
+  // Keep checked state for items still visible; new items use defaults
+  const prev={};
+  document.querySelectorAll('input.boq-scope').forEach(cb=>{prev[cb.dataset.id]=cb.checked;});
+  const struct=e$('e-structure')?.value||'grey';
+  const selected={};
+  boqItemsForStructure(struct).forEach(c=>{
+    selected[c.id]=(c.id in prev)?prev[c.id]:!!c.def;
+  });
+  renderBoqScope(selected);
+}
+function getBoqScope(){
+  const included=[];const excluded=[];
+  const struct=e$('e-structure')?.value||'grey';
+  boqItemsForStructure(struct).forEach(c=>{
+    const cb=document.querySelector('input.boq-scope[data-id="'+c.id+'"]');
+    if(cb?.checked)included.push(c.label);
+    else excluded.push(c.label);
+  });
+  return{structure:struct,included,excluded};
+}
+function applyBoqScope(structure,included,excluded){
+  if(structure&&e$('e-structure'))e$('e-structure').value=structure;
+  const set={};
+  boqItemsForStructure(structure||'grey').forEach(c=>{
+    if(included&&included.length)set[c.id]=included.some(x=>x===c.label||x===c.id);
+    else if(excluded&&excluded.length)set[c.id]=!excluded.some(x=>x===c.label||x===c.id);
+    else set[c.id]=!!c.def;
+  });
+  renderBoqScope(set);
+}
+function fillBoqFromScope(){
+  const struct=e$('e-structure')?.value||'grey';
+  const items=boqItemsForStructure(struct).filter(c=>{
+    const cb=document.querySelector('input.boq-scope[data-id="'+c.id+'"]');
+    return !!cb?.checked;
+  });
+  if(!items.length){toast('Tick at least one included item','err');return;}
+  const existing=gLI('e');
+  const keep=existing.filter(i=>i.d&&(parseFloat(i.r)||0)>0); // keep lines that already have rates
+  if(existing.length&&!confirm('Replace empty BOQ lines with '+items.length+' included items?\n(Lines with rates already set will be kept.)'))return;
+  e$('li-e').innerHTML='';
+  keep.forEach(item=>addLIData('e','std',item));
+  const have=new Set(keep.map(i=>(i.d||'').toLowerCase()));
+  items.forEach(c=>{
+    if(have.has(c.label.toLowerCase()))return;
+    addLIData('e','std',{d:c.label,q:1,u:c.unit||'job',r:0});
+  });
+  if(!e$('li-e').children.length)addLI('e','std');
+  cLI('e');
+  toast(items.length+' included items loaded into BOQ ✓');
+}
+function agrStructureLevel(constType){
+  const t=(constType||'').toLowerCase();
+  if(t.includes('brown')||t==='foundation only'||t==='foundation + material')return 'brown';
+  if(t.includes('finish')||t.includes('complete')||t.includes('turnkey'))return 'finishing';
+  return 'grey';
+}
+function onAgrConstTypeChange(){
+  const level=agrStructureLevel(e$('a-const-type')?.value);
+  const set={};
+  AGR_SCOPE_CLAUSES.forEach(c=>{set[c.id]=false;});
+  if(level==='brown'){
+    ['excavation','backfill','foundation','dpc','shuttering','steel','termite'].forEach(id=>set[id]=true);
+  }else if(level==='grey'){
+    ['excavation','backfill','foundation','dpc','shuttering','steel','termite','rcc','brickwork','plaster','electrician','plumber','boundary','pardi','septic','watertank','stair','roof'].forEach(id=>set[id]=true);
+  }else{
+    AGR_SCOPE_CLAUSES.forEach(c=>{set[c.id]=true;});
+  }
+  renderAgrClauses(set);
+  toast('Scope checkboxes set for '+BOQ_STAGE_LABEL[level],'info');
+}
 function renderAgrClauses(selected){
   const el=e$('agr-clauses');if(!el)return;
   // selected: {id:true/false} — if null, use defaults
@@ -2598,7 +2779,7 @@ function eInv(id){
   if(!r.items||!r.items.length){if(type==='labour')addLI('lab','lab');else if(type==='progress')addLI('prg','prg');else addLI('i','std');}
   O('sh-inv');
 }
-function eEst(id){const r=D.estimates.find(x=>x.id===id);if(!r)return;sv('est-eid',id);e$('est-eb').classList.add('on');e$('est-sh-t').textContent='Edit Estimate';e$('est-auto-id').textContent='🔖 ID: '+r.num;sv('e-num',r.num);sv('e-date',r.date);const c=D.clients.find(x=>x.id===r.clientId);sv('e-cli-t',c?c.name:r.clientName||'');sv('e-cli-id',r.clientId||'');const p=D.projects.find(x=>x.id===r.projectId);sv('e-proj-t',p?p.name:r.projectName||'');sv('e-proj-id',r.projectId||'');sv('e-vld',r.valid);sv('e-st',r.status);sv('e-notes',r.notes);e$('li-e').innerHTML='';(r.items||[]).forEach(item=>addLIData('e','std',item));if(!r.items||!r.items.length)addLI('e','std');O('sh-est');}
+function eEst(id){const r=D.estimates.find(x=>x.id===id);if(!r)return;sv('est-eid',id);e$('est-eb').classList.add('on');e$('est-sh-t').textContent='Edit Estimate';e$('est-auto-id').textContent='🔖 ID: '+r.num;sv('e-num',r.num);sv('e-date',r.date);const c=D.clients.find(x=>x.id===r.clientId);sv('e-cli-t',c?c.name:r.clientName||'');sv('e-cli-id',r.clientId||'');const p=D.projects.find(x=>x.id===r.projectId);sv('e-proj-t',p?p.name:r.projectName||'');sv('e-proj-id',r.projectId||'');sv('e-vld',r.valid);sv('e-st',r.status);sv('e-notes',r.notes);applyBoqScope(r.structure||'grey',r.inclusions||[],r.exclusions||[]);e$('li-e').innerHTML='';(r.items||[]).forEach(item=>addLIData('e','std',item));if(!r.items||!r.items.length)addLI('e','std');O('sh-est');}
 function eAgr(id){
   const r=D.agreements.find(x=>x.id===id);if(!r)return;
   sv('agr-eid',id);const eb=e$('agr-eb');if(eb)eb.classList.add('on');
@@ -2718,7 +2899,7 @@ function saveInv(){
   if(!doc.clientName){toast('Select a client','err');return;}
   ups('invoices',doc);X('sh-inv');renderInv();updateDots();renderDash();toast(eid?'Invoice updated ✓':'Invoice '+doc.num+' saved ✓');
 }
-function saveEst(){const eid=e$('est-eid').value;const items=gLI('e'),total=totLI(items);const doc={id:eid||uid(),num:e$('e-num').value,date:e$('e-date').value,clientId:e$('e-cli-id').value,clientName:e$('e-cli-t').value,projectId:e$('e-proj-id').value,projectName:e$('e-proj-t').value,valid:e$('e-vld').value,status:e$('e-st').value,notes:e$('e-notes').value,items,total};if(!doc.clientName){toast('Select a client','err');return;}ups('estimates',doc);X('sh-est');renderEst();updateDots();renderDash();toast(eid?'Estimate updated ✓':'Estimate '+doc.num+' saved ✓');}
+function saveEst(){const eid=e$('est-eid').value;const items=gLI('e'),total=totLI(items);const scope=getBoqScope();const doc={id:eid||uid(),num:e$('e-num').value,date:e$('e-date').value,clientId:e$('e-cli-id').value,clientName:e$('e-cli-t').value,projectId:e$('e-proj-id').value,projectName:e$('e-proj-t').value,valid:e$('e-vld').value,status:e$('e-st').value,notes:e$('e-notes').value,structure:scope.structure,inclusions:scope.included,exclusions:scope.excluded,items,total};if(!doc.clientName){toast('Select a client','err');return;}ups('estimates',doc);X('sh-est');renderEst();updateDots();renderDash();toast(eid?'Estimate updated ✓':'Estimate '+doc.num+' saved ✓');}
 function saveAgr(){
   const eid=e$('agr-eid').value;
   const clauses=getAgrClauses();
@@ -3121,8 +3302,12 @@ function renderInv(){
 function renderEst(){
   const el=e$('list-est');let rows=fEstF==='all'?D.estimates:D.estimates.filter(r=>r.status===fEstF);
   if(!rows.length){el.innerHTML='<div class="empty"><div class="empty-i">📊</div><div class="empty-t">No estimates yet</div></div>';return;}
-  el.innerHTML=rows.map(r=>`<div class="card">
-    <div class="card-top"><div><div class="card-num">${r.num}</div><div class="card-nm">${r.clientName}</div><div class="card-sub">${r.projectName||'—'}</div></div>${bdg(r.status)}</div>
+  const structLbl={brown:'Brown',grey:'Grey',finishing:'Finishing'};
+  el.innerHTML=rows.map(r=>{
+    const inc=(r.inclusions||[]).length;const exc=Array.isArray(r.exclusions)?r.exclusions.length:0;
+    const st=structLbl[r.structure]||'';
+    return`<div class="card">
+    <div class="card-top"><div><div class="card-num">${r.num}${st?` · <span style="color:var(--mut)">${st}</span>`:''}</div><div class="card-nm">${r.clientName}</div><div class="card-sub">${r.projectName||'—'}${inc||exc?` · ✓${inc} include · ✕${exc} exclude`:''}</div></div>${bdg(r.status)}</div>
     <div class="card-mid"><div class="card-amt">PKR ${fmt(r.total)}</div><div class="card-date">${r.date||'—'}</div></div>
     <div class="card-acts">
       <button class="ca blu" onclick="eEst('${r.id}')">✏️ Edit</button>
@@ -3130,7 +3315,8 @@ function renderEst(){
       <button class="ca" style="color:var(--pur);border-color:rgba(155,127,212,.3);background:rgba(155,127,212,.08)" onclick="pdfBoqVsActual('${r.id}')">⚖ vs Actual</button>
       <button class="ca ora" onclick="est2inv('${r.id}')">→ Invoice</button>
       <button class="ca red" onclick="del('estimates','${r.id}')">🗑</button>
-    </div></div>`).join('');
+    </div></div>`;
+  }).join('');
 }
 
 // ════ RENDER PAYMENTS ════
@@ -3735,7 +3921,29 @@ async function pdfEst(id){
   const doc=bPDF();let y=drawHeader(doc,'ESTIMATE / BOQ',r.num,r.date,'Valid Until',r.valid);
   doc.setFontSize(8);doc.setTextColor(160,155,148);doc.text('PREPARED FOR',14,y);
   doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor(20,20,20);doc.text(r.clientName,14,y+7);
-  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(100,100,100);if(r.projectName)doc.text('Project: '+r.projectName,14,y+13);y+=22;
+  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(100,100,100);
+  if(r.projectName)doc.text('Project: '+r.projectName,14,y+13);
+  const structName=BOQ_STAGE_LABEL[r.structure]||r.structure||'';
+  if(structName)doc.text('Structure: '+structName,14,y+(r.projectName?19:13));
+  y+=r.projectName||structName?26:22;
+  const inc=r.inclusions||[];const exc=r.exclusions||[];
+  if(inc.length||exc.length){
+    if(inc.length){
+      doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(50,140,60);
+      doc.text('INCLUDED ('+inc.length+')',14,y);y+=5;
+      doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(60,60,60);
+      const lines=doc.splitTextToSize(inc.map(x=>'• '+x).join('   '),182);
+      doc.text(lines,14,y);y+=lines.length*4+6;
+    }
+    if(exc.length){
+      if(y>250){doc.addPage();y=20;}
+      doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(180,50,50);
+      doc.text('EXCLUDED ('+exc.length+')',14,y);y+=5;
+      doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(60,60,60);
+      const lines=doc.splitTextToSize(exc.map(x=>'• '+x).join('   '),182);
+      doc.text(lines,14,y);y+=lines.length*4+8;
+    }
+  }
   doc.autoTable({startY:y,head:[['Work Item / Description','Qty','Unit','Rate (PKR)','Amount (PKR)']],body:(r.items||[]).map(i=>[i.d,i.q,i.u||'—',fmt(i.r),fmt(i.a)]),foot:[['','','','TOTAL (PKR)',fmt(r.total)]],styles:{fontSize:9.5,cellPadding:3.5,textColor:[30,30,30]},headStyles:{fillColor:[242,240,235],textColor:[130,125,118],fontStyle:'bold',fontSize:8.5},footStyles:pdfFootStyles('gold'),columnStyles:{0:{cellWidth:72},3:{halign:'right'},4:{halign:'right'}},rowPageBreak:'avoid',showFoot:'lastPage',
     margin:{left:14,right:14,bottom:18}});
   if(r.notes){const fy=doc.lastAutoTable.finalY+8;doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(80,80,80);doc.text('Notes / Scope:',14,fy);doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(100,100,100);doc.text(r.notes,14,fy+6,{maxWidth:182});}
@@ -6703,7 +6911,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-07-19-v31';
+const APP_VERSION='2026-07-23-v32';
 let _swRefreshing=false;
 
 async function wipeAppCaches(){
