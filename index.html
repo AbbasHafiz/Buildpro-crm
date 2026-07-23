@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-07-23-v34">
+<meta name="app-version" content="2026-07-23-v35">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -995,17 +995,20 @@ select option{background:var(--s2);}
       <div class="ds-wrap"><input class="ds-inp" id="cp-inv-t" placeholder="Link to invoice (optional)" readonly onclick="oDs('ds-cp-inv')"><div class="ds-list" id="ds-cp-inv"></div><input type="hidden" id="cp-inv-id"></div>
     </div>
     <div class="f2">
-      <div class="fg"><label>Date</label><input type="date" id="cp-date"></div>
+      <div class="fg"><label>Date Received</label><input type="date" id="cp-date"></div>
+      <div class="fg"><label>Time Received</label><input type="time" id="cp-time"></div>
+    </div>
+    <div class="f2">
       <div class="fg"><label>Amount (PKR)</label><input type="number" id="cp-amt" placeholder="0"></div>
+      <div class="fg"><label>Method</label>
+        <select id="cp-method"><option>Cash</option><option>Bank Transfer</option><option>JazzCash</option><option>EasyPaisa</option><option>Cheque</option></select>
+      </div>
     </div>
     <div class="f2">
       <div class="fg"><label>Payment Milestone</label>
         <select id="cp-milestone"><option>Advance / Booking</option><option>Foundation Stage</option><option>Structure Stage</option><option>Finishing Stage</option><option>Final Payment</option><option>Other</option></select>
       </div>
       <div class="fg"><label>Custom Stage (if other)</label><input id="cp-custom-stage" placeholder="e.g. 1st floor complete, roof done…"></div>
-      <div class="fg"><label>Method</label>
-        <select id="cp-method"><option>Cash</option><option>Bank Transfer</option><option>JazzCash</option><option>EasyPaisa</option><option>Cheque</option></select>
-      </div>
     </div>
     <div class="fg"><label>Payment Type</label>
       <select id="cp-pay-type" onchange="toggleMiscAdvance()">
@@ -2164,6 +2167,16 @@ function renderAll(){renderDash();renderProj();renderInv();renderEst();renderPay
 
 // ════ HELPERS ════
 const today=()=>new Date().toISOString().split('T')[0];
+const nowTime=()=>{const d=new Date();return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');};
+const fmtDT=(date,time)=>{if(!date&&!time)return '';return(date||'—')+(time?' · '+time:'');};
+const fmtTime12=t=>{
+  if(!t)return '';
+  const m=String(t).match(/^(\d{1,2}):(\d{2})/);
+  if(!m)return t;
+  let h=+m[1];const min=m[2];const ap=h>=12?'PM':'AM';
+  h=h%12;if(!h)h=12;
+  return h+':'+min+' '+ap;
+};
 const dF=n=>{const d=new Date();d.setDate(d.getDate()+n);return d.toISOString().split('T')[0];};
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,5);
 const nxt=(pfx,arr)=>pfx+'-'+String((arr||[]).length+1).padStart(3,'0');
@@ -2403,7 +2416,7 @@ function refreshSpLoanRow(){
   if(hint)hint.textContent='Outstanding personal loan balance: PKR '+fmt(bal)+(open.length>1?' across '+open.length+' loans':'')+' — tick to record repayment against it';
   if(cb)cb.checked=false;
 }
-function iCpay(){sv('cpay-eid','');e$('cpay-eb').classList.remove('on');e$('cpay-sh-t').textContent='Payment Received';['cp-cli-t','cp-cli-id','cp-proj-t','cp-proj-id','cp-inv-t','cp-inv-id','cp-note','cp-custom-stage'].forEach(id=>sv(id,''));sv('cp-amt','');sv('cp-date',today());sv('cp-pay-type','contract');}
+function iCpay(){sv('cpay-eid','');e$('cpay-eb').classList.remove('on');e$('cpay-sh-t').textContent='Payment Received';['cp-cli-t','cp-cli-id','cp-proj-t','cp-proj-id','cp-inv-t','cp-inv-id','cp-note','cp-custom-stage'].forEach(id=>sv(id,''));sv('cp-amt','');sv('cp-date',today());sv('cp-time',nowTime());sv('cp-pay-type','contract');}
 function iInv(type){
   sv('inv-eid','');e$('inv-eb').classList.remove('on');e$('inv-sh-t').textContent='New Invoice';
   const num=nxt('INV',D.invoices);sv('i-num',num);sv('i-date',today());sv('i-due',dF(14));
@@ -2876,7 +2889,7 @@ function eP(id){const r=D.projects.find(x=>x.id===id);if(!r)return;sv('proj-eid'
 function eCli(id){const r=D.clients.find(x=>x.id===id);if(!r)return;sv('cli-eid',id);e$('cli-eb').classList.add('on');e$('cli-sh-t').textContent='Edit Client';sv('c-name',r.name);sv('c-ph',r.phone);sv('c-cnic',r.cnic);sv('c-city',r.city);sv('c-email',r.email);sv('c-addr',r.addr);O('sh-cli');}
 function eSub(id){const r=D.subcons.find(x=>x.id===id);if(!r)return;sv('sub-eid',id);e$('sub-eb').classList.add('on');e$('sub-sh-t').textContent='Edit Contractor';sv('s-name',r.name);sv('s-trade',r.trade);sv('s-ph',r.phone);sv('s-contract',r.contract);sv('s-ptype',r.ptype);sv('s-notes',r.notes);sv('s-cnic',r.cnic||'');const p=D.projects.find(x=>x.id===r.projectId);sv('s-proj-t',p?p.name:'');sv('s-proj-id',r.projectId||'');O('sh-sub');}
 function eSpay(id){const r=D.subpays.find(x=>x.id===id);if(!r)return;sv('spay-eid',id);e$('spay-eb').classList.add('on');e$('spay-sh-t').textContent='Edit Payment';const sc=D.subcons.find(x=>x.id===r.subconId);sv('sp-sub-t',sc?sc.name:r.subconName||'');sv('sp-sub-id',r.subconId||'');const p=D.projects.find(x=>x.id===r.projectId);sv('sp-proj-t',p?p.name:r.projectName||'');sv('sp-proj-id',r.projectId||'');sv('sp-date',r.date);sv('sp-amt',r.amount);sv('sp-proj-contract',r.projContract||'');sv('sp-phase',r.phase);sv('sp-custom-stage','');sv('sp-method',r.method);sv('sp-desc',r.desc);clearSpBd();renderSpBdChips();(r.breakdown||[]).forEach(b=>addSpBd(b));if(!(r.breakdown||[]).length)cSpBd();refreshSpLoanRow();O('sh-spay');}
-function eCpay(id){const r=D.cpays.find(x=>x.id===id);if(!r)return;sv('cpay-eid',id);e$('cpay-eb').classList.add('on');e$('cpay-sh-t').textContent='Edit Payment';const c=D.clients.find(x=>x.id===r.clientId);sv('cp-cli-t',c?c.name:'');sv('cp-cli-id',r.clientId||'');const p=D.projects.find(x=>x.id===r.projectId);sv('cp-proj-t',p?p.name:'');sv('cp-proj-id',r.projectId||'');sv('cp-date',r.date);sv('cp-amt',r.amount);sv('cp-custom-stage','');sv('cp-pay-type',r.payType||'contract');const inv=D.invoices.find(x=>x.id===r.invoiceId);sv('cp-inv-t',inv?inv.num:'');sv('cp-inv-id',r.invoiceId||'');sv('cp-method',r.method);sv('cp-note',r.note);sv('cp-milestone',r.milestone||'Other');O('sh-cpay');}
+function eCpay(id){const r=D.cpays.find(x=>x.id===id);if(!r)return;sv('cpay-eid',id);e$('cpay-eb').classList.add('on');e$('cpay-sh-t').textContent='Edit Payment';const c=D.clients.find(x=>x.id===r.clientId);sv('cp-cli-t',c?c.name:'');sv('cp-cli-id',r.clientId||'');const p=D.projects.find(x=>x.id===r.projectId);sv('cp-proj-t',p?p.name:'');sv('cp-proj-id',r.projectId||'');sv('cp-date',r.date);sv('cp-time',r.time||'');sv('cp-amt',r.amount);sv('cp-custom-stage','');sv('cp-pay-type',r.payType||'contract');const inv=D.invoices.find(x=>x.id===r.invoiceId);sv('cp-inv-t',inv?inv.num:'');sv('cp-inv-id',r.invoiceId||'');sv('cp-method',r.method);sv('cp-note',r.note);sv('cp-milestone',r.milestone||'Other');O('sh-cpay');}
 function eInv(id){
   const r=D.invoices.find(x=>x.id===id);if(!r)return;
   sv('inv-eid',id);e$('inv-eb').classList.add('on');e$('inv-sh-t').textContent='Edit Invoice';
@@ -2995,13 +3008,21 @@ function fmtSpBd(list){
 }
 function saveCpay(){
   const eid=e$('cpay-eid').value;const invId=e$('cp-inv-id').value;
-  const doc={id:eid||uid(),clientId:e$('cp-cli-id').value,clientName:e$('cp-cli-t').value,projectId:e$('cp-proj-id').value,projectName:e$('cp-proj-t').value,date:e$('cp-date').value||today(),amount:parseFloat(e$('cp-amt').value)||0,invoiceId:invId,invoiceRef:e$('cp-inv-t').value,milestone:e$('cp-custom-stage')?.value||e$('cp-milestone').value,method:e$('cp-method').value,note:e$('cp-note').value,payType:e$('cp-pay-type')?.value||'contract'};
+  const doc={id:eid||uid(),clientId:e$('cp-cli-id').value,clientName:e$('cp-cli-t').value,projectId:e$('cp-proj-id').value,projectName:e$('cp-proj-t').value,date:e$('cp-date').value||today(),time:e$('cp-time')?.value||'',amount:parseFloat(e$('cp-amt').value)||0,invoiceId:invId,invoiceRef:e$('cp-inv-t').value,milestone:e$('cp-custom-stage')?.value||e$('cp-milestone').value,method:e$('cp-method').value,note:e$('cp-note').value,payType:e$('cp-pay-type')?.value||'contract'};
   if(!doc.amount){toast('Enter amount','err');return;}
   const old=eid?D.cpays.find(x=>x.id===eid):null;
   // Cash in Hand (misc advances): reverse the previous contribution, then apply the new one.
   // Delta-safe so editing/moving/changing a misc payment doesn't double-count.
   if(old&&old.payType==='misc'&&old.projectId){const op=D.projects.find(x=>x.id===old.projectId);if(op){op.cashInHand=Math.max(0,(op.cashInHand||0)-(old.amount||0));op.updatedAt=new Date().toISOString();}}
-  if(doc.payType==='misc'&&doc.projectId){const np=D.projects.find(x=>x.id===doc.projectId);if(np){np.cashInHand=(np.cashInHand||0)+doc.amount;np.updatedAt=new Date().toISOString();}}
+  if(doc.payType==='misc'&&doc.projectId){
+    const np=D.projects.find(x=>x.id===doc.projectId);
+    if(np){
+      np.cashInHand=(np.cashInHand||0)+doc.amount;
+      np.cashInHandDate=doc.date||today();
+      np.cashInHandTime=doc.time||'';
+      np.updatedAt=new Date().toISOString();
+    }
+  }
   ups('cpays',doc);
   // Recompute invoice paid status (contract payments only). Also refresh any invoice this payment moved away from.
   recalcInvoiceStatus(doc.invoiceId);
@@ -3503,7 +3524,7 @@ function renderPay(){
         <div class="pay-amt" style="color:${isIn?'var(--grn)':'var(--red)'}">${isIn?'+':'-'}${fmt(p.amount)}</div>
       </div>
       <div class="pay-bot">
-        <span class="pay-meta">${p.date||'—'} · ${p.method||'Cash'}${bd.length?' · '+bd.length+' further':''}</span>
+        <span class="pay-meta">${fmtDT(p.date,p.time?fmtTime12(p.time):'')} · ${p.method||'Cash'}${isIn&&p.payType==='misc'?' · Misc advance':''}${bd.length?' · '+bd.length+' further':''}</span>
         <div style="display:flex;gap:7px">
           <button class="ca gold" style="padding:5px 10px;font-size:var(--fs-xs);flex:none" onclick="${isIn?`pdfCpayConfirm('${p.id}')`:`pdfSpayConfirm('${p.id}')`}">⬇ PDF</button>
           <button class="ca" style="padding:5px 10px;font-size:var(--fs-xs);flex:none;color:#25D366;border-color:rgba(37,211,102,.25);background:rgba(37,211,102,.06)" onclick="${isIn?`waCpay('${p.id}')`:`waSpay('${p.id}')`}">📤</button>
@@ -4886,13 +4907,33 @@ function eExp(id){const r=(D.expenses||[]).find(x=>x.id===id);if(!r)return;sv('e
 
 function saveExp(){const eid=e$('exp-eid').value;const funded=e$('ex-funded')?.value||'contract';const doc={id:eid||uid(),desc:e$('ex-desc').value,paidTo:e$('ex-paid-to')?.value||'',projectId:e$('ex-proj-id').value,projectName:e$('ex-proj-t').value,cat:e$('ex-cat').value,date:e$('ex-date').value||today(),amount:parseFloat(e$('ex-amount').value)||0,paid:e$('ex-paid').value,fundedBy:funded,notes:e$('ex-notes').value};if(funded==='onbehalf'){doc.rstatus=e$('ex-rstatus')?.value||'unpaid';doc.isPaid=doc.rstatus==='paid';}else{doc.isPaid=e$('ex-ispaid')?.checked||false;}if(!doc.desc||!doc.amount){toast('Enter description and amount','err');return;}if(!D.expenses)D.expenses=[];ups('expenses',doc);X('sh-exp');renderExp();updateDots();renderDash();toast(eid?'Expense updated ✓':'Expense saved ✓');}
 
-function updateCashInHand(projectId,value){
+function updateCashInHand(projectId,value,date,time){
   const proj=D.projects.find(x=>x.id===projectId);
   if(!proj)return;
-  proj.cashInHand=parseFloat(value)||0;proj.updatedAt=new Date().toISOString();
+  proj.cashInHand=parseFloat(value)||0;
+  if(date!==undefined)proj.cashInHandDate=date||'';
+  if(time!==undefined)proj.cashInHandTime=time||'';
+  // If date left empty but amount set, default to today
+  if(proj.cashInHand>0&&!proj.cashInHandDate)proj.cashInHandDate=today();
+  proj.updatedAt=new Date().toISOString();
   sched();
   renderExp();
   toast('Cash in hand updated ✓');
+}
+function saveCashInHandFromUI(projectId){
+  const amtEl=document.querySelector('input.cih-amt[data-pid="'+projectId+'"]');
+  const dateEl=document.querySelector('input.cih-date[data-pid="'+projectId+'"]');
+  const timeEl=document.querySelector('input.cih-time[data-pid="'+projectId+'"]');
+  updateCashInHand(projectId, amtEl?.value||0, dateEl?.value||'', timeEl?.value||'');
+}
+function openMiscAdvanceForProject(projectId){
+  const p=D.projects.find(x=>x.id===projectId);if(!p)return;
+  iCpay();
+  sv('cp-proj-t',p.name);sv('cp-proj-id',p.id);
+  sv('cp-pay-type','misc');
+  const cli=D.clients.find(x=>x.id===p.clientId);
+  if(cli){sv('cp-cli-t',cli.name);sv('cp-cli-id',cli.id);}
+  O('sh-cpay');
 }
 
 function markExpPaid(id){
@@ -5023,10 +5064,46 @@ function renderExp(){
         </div>
         ${isOwnerMode&&proj?`<div style="margin-bottom:10px">
           <label style="font-size:var(--fs-xs);color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px">💵 Misc Cash in Hand (owner advance for expenses — not contract payment)</label>
-          <input type="number" value="${cashInHand||''}" placeholder="0" data-pid="${pid}"
-            onblur="updateCashInHand('${pid}',this.value)"
-            onkeydown="if(event.key==='Enter')this.blur()"
-            style="background:var(--bg);border:1px solid var(--bor);border-radius:8px;padding:9px 11px;font-size:var(--fs-md);color:var(--gold);font-family:'JetBrains Mono',monospace;width:100%">
+          <div style="display:grid;grid-template-columns:1.2fr 1fr 0.85fr;gap:7px;margin-bottom:7px">
+            <div>
+              <div style="font-size:9px;color:var(--mut2);margin-bottom:3px">Amount (PKR)</div>
+              <input type="number" class="cih-amt" value="${cashInHand||''}" placeholder="0" data-pid="${pid}"
+                style="background:var(--bg);border:1px solid var(--bor);border-radius:8px;padding:9px 11px;font-size:var(--fs-md);color:var(--gold);font-family:'JetBrains Mono',monospace;width:100%">
+            </div>
+            <div>
+              <div style="font-size:9px;color:var(--mut2);margin-bottom:3px">Received Date</div>
+              <input type="date" class="cih-date" value="${proj.cashInHandDate||''}" data-pid="${pid}"
+                style="background:var(--bg);border:1px solid var(--bor);border-radius:8px;padding:9px 11px;font-size:var(--fs-sm);color:var(--txt);width:100%">
+            </div>
+            <div>
+              <div style="font-size:9px;color:var(--mut2);margin-bottom:3px">Received Time</div>
+              <input type="time" class="cih-time" value="${proj.cashInHandTime||''}" data-pid="${pid}"
+                style="background:var(--bg);border:1px solid var(--bor);border-radius:8px;padding:9px 11px;font-size:var(--fs-sm);color:var(--txt);width:100%">
+            </div>
+          </div>
+          <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center">
+            <button type="button" class="btn btn-gold btn-sm" style="padding:7px 12px;font-size:var(--fs-xs);flex:none" onclick="saveCashInHandFromUI('${pid}')">💾 Save Cash</button>
+            <button type="button" class="btn btn-grey btn-sm" style="padding:7px 12px;font-size:var(--fs-xs);flex:none;color:#4D94D4;border-color:rgba(77,148,212,.3)" onclick="openMiscAdvanceForProject('${pid}')">+ Record Advance</button>
+            ${proj.cashInHandDate||proj.cashInHandTime?`<span style="font-size:var(--fs-xs);color:var(--mut)">Last received: <b style="color:var(--txt)">${fmtDT(proj.cashInHandDate,proj.cashInHandTime?fmtTime12(proj.cashInHandTime):'')} </b></span>`:''}
+          </div>
+          ${(()=>{
+            const miscAdv=(D.cpays||[]).filter(x=>x.projectId===pid&&x.payType==='misc')
+              .slice().sort((a,b)=>((b.date||'')+(b.time||'')).localeCompare((a.date||'')+(a.time||'')));
+            if(!miscAdv.length)return '';
+            return`<div style="margin-top:9px;background:var(--s2);border-radius:8px;padding:8px 10px">
+              <div style="font-size:9px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Advances received</div>
+              ${miscAdv.map(p=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--bor);gap:8px">
+                <div style="font-size:var(--fs-xs);color:var(--mut);min-width:0">
+                  <span style="color:var(--txt);font-weight:600">${fmtDT(p.date,p.time?fmtTime12(p.time):'')}</span>
+                  ${p.method?` · ${p.method}`:''}${p.note?` · ${p.note}`:''}
+                </div>
+                <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-xs);color:var(--gold);font-weight:700">${fmt(p.amount)}</span>
+                  <button type="button" style="background:none;border:none;color:var(--mut);cursor:pointer;font-size:11px;padding:2px" onclick="eCpay('${p.id}')">✏️</button>
+                </div>
+              </div>`).join('')}
+            </div>`;
+          })()}
         </div>`:''}
         ${isOwnerMode&&cashInHand>0?`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px">
           <div style="background:var(--s2);border-radius:8px;padding:8px;text-align:center">
@@ -5705,10 +5782,10 @@ async function pdfCpayConfirm(id){
   doc.setFillColor(248,246,242);doc.rect(14,y,182,44,'F');
   doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(100,100,100);
   doc.text('Project:',16,y+9);doc.text('Invoice Ref:',16,y+17);
-  doc.text('Payment Method:',16,y+25);doc.text('Milestone:',16,y+33);doc.text('Date:',16,y+41);
+  doc.text('Payment Method:',16,y+25);doc.text('Milestone:',16,y+33);doc.text('Received:',16,y+41);
   doc.setFont('helvetica','bold');doc.setTextColor(30,30,30);
   doc.text(r.projectName||'—',70,y+9);doc.text(r.invoiceRef||'—',70,y+17);
-  doc.text(r.method||'Cash',70,y+25);doc.text(r.milestone||'—',70,y+33);doc.text(r.date||'—',70,y+41);
+  doc.text(r.method||'Cash',70,y+25);doc.text(r.milestone||'—',70,y+33);doc.text(fmtDT(r.date,r.time?fmtTime12(r.time):'')||'—',70,y+41);
   // Big amount
   doc.setFillColor(232,184,75);doc.rect(pw-80,y,66,44,'F');
   doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(30,30,30);
@@ -5725,8 +5802,8 @@ async function pdfCpayConfirm(id){
     const proj=D.projects.find(x=>x.id===r.projectId);
     doc.autoTable({
       startY:y,
-      head:[['Date','Milestone','Method','Amount (PKR)']],
-      body:history.map(p=>[p.date||'—',p.milestone||'—',p.method||'Cash',fmt(p.amount)]),
+      head:[['Date / Time','Milestone','Method','Amount (PKR)']],
+      body:history.map(p=>[fmtDT(p.date,p.time?fmtTime12(p.time):'')||'—',p.milestone||'—',p.method||'Cash',fmt(p.amount)]),
       foot:[['','','Total Received',fmt(totalPaid)]],
       styles:{fontSize:9,cellPadding:3,textColor:[30,30,30]},
       headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
@@ -5910,7 +5987,7 @@ async function pdfProjPayments(pid){
   doc.text('2. OWNER MISC EXPENSES (separate from contract)',14,y);y+=5;
   doc.setFillColor(252,248,240);doc.rect(14,y,182,22,'F');
   doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(30,30,30);
-  doc.text('Misc Cash Given: PKR '+fmt(cashInHand),16,y+7);
+  doc.text('Misc Cash Given: PKR '+fmt(cashInHand)+(proj.cashInHandDate?'  ('+fmtDT(proj.cashInHandDate,proj.cashInHandTime?fmtTime12(proj.cashInHandTime):'')+')':''),16,y+7);
   doc.text('Misc Cash Spent: PKR '+fmt(cashSpent),110,y+7);
   doc.text('On Behalf Spent: PKR '+fmt(behalfSpent),16,y+15);
   doc.text('Owner Still Owes: PKR '+fmt(behalfOwed),110,y+15);
@@ -5921,8 +5998,8 @@ async function pdfProjPayments(pid){
     doc.text('Misc advances recorded as payments',14,y);y+=4;
     doc.autoTable({
       startY:y,
-      head:[['Date','Reference','Method','Amount (PKR)']],
-      body:miscPays.map(p=>[p.date||'—',p.milestone||p.note||'Misc advance',p.method||'Cash',fmt(p.amount)]),
+      head:[['Date / Time','Reference','Method','Amount (PKR)']],
+      body:miscPays.map(p=>[fmtDT(p.date,p.time?fmtTime12(p.time):'')||'—',p.milestone||p.note||'Misc advance',p.method||'Cash',fmt(p.amount)]),
       foot:[['','','Total Misc','PKR '+fmt(totalMisc)]],
       styles:{fontSize:8.5,cellPadding:2.5,textColor:[30,30,30]},
       headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
@@ -6646,7 +6723,7 @@ function renderLedger(){
 
   const fundTag=fb=>fb==='cashinhand'?'Misc Cash':fb==='onbehalf'?'On Behalf':'Contract';
   const txns=[
-    ...income.map(p=>({date:p.date,type:p.payType==='misc'?'Misc Advance':'Receipt',desc:p.clientName+' — '+(p.milestone||p.projectName||''),amount:p.amount,dir:'in',project:p.projectName,side:p.payType==='misc'?'cashinhand':'contract'})),
+    ...income.map(p=>({date:fmtDT(p.date,p.time?fmtTime12(p.time):'')||p.date,type:p.payType==='misc'?'Misc Advance':'Receipt',desc:p.clientName+' — '+(p.milestone||p.projectName||''),amount:p.amount,dir:'in',project:p.projectName,side:p.payType==='misc'?'cashinhand':'contract'})),
     ...spays.map(p=>({date:p.date,type:'Sub-Con Payment',desc:p.subconName+' — '+p.phase,amount:p.amount,dir:'out',project:p.projectName,side:'contract'})),
     ...paidExps.map(p=>({date:p.date,type:'Expense · '+fundTag(p.fundedBy||'contract'),desc:p.desc+' ('+(p.cat||'other')+')'+(p.paidTo?' · '+p.paidTo:''),amount:p.amount,dir:'out',project:p.projectName,side:p.fundedBy||'contract'})),
     ...pendingBehalf.map(p=>({date:p.date,type:'On Behalf (unpaid)',desc:p.desc+(p.paidTo?' · '+p.paidTo:''),amount:p.amount,dir:'out',project:p.projectName,side:'onbehalf',pending:true})),
@@ -7032,7 +7109,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-07-23-v34';
+const APP_VERSION='2026-07-23-v35';
 let _swRefreshing=false;
 
 async function wipeAppCaches(){
