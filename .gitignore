@@ -16,7 +16,9 @@ android/build/
 android/app/build/
 android/capacitor-cordova-android-plugins/
 
-# Build outputs / signing
+# Build outputs / signing (never commit signing keys or passwords)
 *.apk
 *.aab
 *.keystore
+*.jks
+android/keystore.properties

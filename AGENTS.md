@@ -25,6 +25,7 @@ A construction-business management app for a Pakistani contracting business.
   - `npm run copy:web` — copies root static files into `www/`.
   - `npm run sync` — copy web + `cap sync android`.
   - `npm run build:apk` — sync + `./gradlew assembleDebug`; APK at `android/app/build/outputs/apk/debug/app-debug.apk`.
+  - **Signed release**: requires `android/keystore.properties` (gitignored) with `storeFile`/`storePassword`/`keyAlias`/`keyPassword` and the keystore file (also gitignored). Then `cd android && ./gradlew assembleRelease bundleRelease` → signed `app-release.apk` and `app-release.aab` (for Play Store). Signing is auto-skipped if `keystore.properties` is absent (debug/CI still work). NEVER commit the keystore or `keystore.properties`.
 - **Do not edit `www/` or `android/app/src/main/assets/public/`** — they are generated from the repo-root `index.html`. Edit `index.html` (the single source) and re-run sync.
 - Native Google sign-in uses the system browser + deep link `com.buildpro.crm://login-callback` (Google blocks OAuth inside WebViews). This deep link must be added to Supabase Auth → URL Configuration → Redirect URLs for login to work in the app. The web/PWA login path is unchanged and guarded by `isNative()`.
 
