@@ -1927,6 +1927,20 @@ let supa=null,stmr=null;
 const APP_DEEPLINK='com.buildpro.crm://login-callback';
 function isNative(){return !!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform());}
 function capPlugin(name){return window.Capacitor&&window.Capacitor.Plugins?window.Capacitor.Plugins[name]:null;}
+// Save a jsPDF document. On the web, triggers a normal download. In the native app,
+// jsPDF's download trick doesn't work in a WebView, so we write the file and open the share sheet.
+async function savePdf(doc,filename){
+  if(!isNative()){doc.save(filename);return;}
+  try{
+    const Filesystem=capPlugin('Filesystem'),Share=capPlugin('Share');
+    const dataUri=doc.output('datauristring');
+    const base64=dataUri.substring(dataUri.indexOf(',')+1);
+    if(!Filesystem){const Browser=capPlugin('Browser');if(Browser)await Browser.open({url:dataUri});return;}
+    const res=await Filesystem.writeFile({path:filename,data:base64,directory:'CACHE'});
+    if(Share&&res&&res.uri){await Share.share({title:filename,url:res.uri});}
+    else{toast('Saved to app storage: '+filename,'ok');}
+  }catch(e){toast('PDF error: '+(e.message||e),'err');}
+}
 // Multi-device sync state
 let baseUpdatedAt=null,applyingRemote=false,rtChannel=null,curUid=null;
 const COLLECTIONS=['clients','projects','subcons','subpays','cpays','invoices','estimates','agreements','tasks','expenses','investors','banks','subconContracts','personals','workorders','stock'];
@@ -3664,7 +3678,7 @@ async function pdfSubProjStatement(subconId,projectId){
     doc.text('No payments recorded yet.',14,y);
   }
   drawBankFooter(doc);
-  doc.save('SubConStatement-'+(sc?.name||'').replace(/\s+/g,'-')+'-'+(pr?.name||'').replace(/\s+/g,'-')+'.pdf');
+  savePdf(doc,'SubConStatement-'+(sc?.name||'').replace(/\s+/g,'-')+'-'+(pr?.name||'').replace(/\s+/g,'-')+'.pdf');
   toast('Statement PDF ✓');
 }
 
@@ -4093,7 +4107,7 @@ async function pdfInv(id){
   if(r.notes){const fy=doc.lastAutoTable.finalY+8;doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(80,80,80);doc.text('Notes:',14,fy);doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(100,100,100);doc.text(r.notes,14,fy+6,{maxWidth:182});}
 
   drawBankFooter(doc);
-  doc.save((type==='labour'?'Labour-':'Invoice-')+r.num+'.pdf');
+  savePdf(doc,(type==='labour'?'Labour-':'Invoice-')+r.num+'.pdf');
   toast(type==='labour'?'Labour Invoice PDF ✓':'Invoice PDF ✓');
 }
 
@@ -4129,7 +4143,7 @@ async function pdfEst(id){
   doc.autoTable({startY:y,head:[['Work Item / Description','Qty','Unit','Rate (PKR)','Amount (PKR)']],body:(r.items||[]).map(i=>[i.d,i.q,i.u||'—',fmt(i.r),fmt(i.a)]),foot:[['','','','TOTAL (PKR)',fmt(r.total)]],styles:{fontSize:9.5,cellPadding:3.5,textColor:[30,30,30]},headStyles:{fillColor:[242,240,235],textColor:[130,125,118],fontStyle:'bold',fontSize:8.5},footStyles:pdfFootStyles('gold'),columnStyles:{0:{cellWidth:72},3:{halign:'right'},4:{halign:'right'}},rowPageBreak:'avoid',showFoot:'lastPage',
     margin:{left:14,right:14,bottom:18}});
   if(r.notes){const fy=doc.lastAutoTable.finalY+8;doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(80,80,80);doc.text('Notes / Scope:',14,fy);doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(100,100,100);doc.text(r.notes,14,fy+6,{maxWidth:182});}
-  drawBankFooter(doc);doc.save('Estimate-'+r.num+'.pdf');toast('Estimate PDF ✓');
+  drawBankFooter(doc);savePdf(doc,'Estimate-'+r.num+'.pdf');toast('Estimate PDF ✓');
 }
 
 // BOQ vs actual spend for the linked project (estimate lines matched to expenses / sub-pays)
@@ -4207,7 +4221,7 @@ async function pdfBoqVsActual(id){
   doc.setFont('helvetica','italic');doc.setFontSize(7.5);doc.setTextColor(150,145,138);
   doc.text('Matching is by description/phase keywords. Review unmatched lines and rename for better alignment.',14,y);
   drawBankFooter(doc);
-  doc.save('BOQ-vs-Actual-'+(r.num||'est')+'-'+today()+'.pdf');
+  savePdf(doc,'BOQ-vs-Actual-'+(r.num||'est')+'-'+today()+'.pdf');
   toast('BOQ vs Actual PDF ✓');
 }
 
@@ -4464,7 +4478,7 @@ async function pdfAgr(id){
     }else{drawBankFooter(doc);}
   }
   // letterhead/legal: no digital footer — physical paper has its own
-  doc.save('Agreement-'+r.num+'.pdf');
+  savePdf(doc,'Agreement-'+r.num+'.pdf');
   toast('Agreement PDF downloaded ✓');
 }
 
@@ -4840,7 +4854,7 @@ async function pdfWorkOrder(id){
   if(showUr)y=pdfAddMixedBlock(doc,'ورکر دستخط',y,178);
 
   drawBankFooter(doc);
-  doc.save('JobOrder-'+(r.num||'WO')+'-'+(r.workerName||'worker').replace(/\s+/g,'-')+'.pdf');
+  savePdf(doc,'JobOrder-'+(r.num||'WO')+'-'+(r.workerName||'worker').replace(/\s+/g,'-')+'.pdf');
   toast('Worker job PDF ✓ · کام کا حکم');
 }
 
@@ -5620,7 +5634,7 @@ async function pdfExp(){
   if(y>250){doc.addPage();y=20;}
   drawPdfGrandTotal(doc,y,'TOTAL CONTRACTOR SPENT (PAID)','PKR '+fmt(totalSpent),{tone:'gold',h:18});
   drawBankFooter(doc);
-  doc.save('ContractorSpending-'+today()+'.pdf');
+  savePdf(doc,'ContractorSpending-'+today()+'.pdf');
   toast('Contractor spending PDF downloaded ✓');
 }
 
@@ -5681,7 +5695,7 @@ async function pdfExpExternal(){
     y=drawOwnerExpTotals(doc,doc.lastAutoTable.finalY+6,pCashSpent,pBehalfSpent);
   });
   drawBankFooter(doc);
-  doc.save('OwnerExpenses-'+today()+'.pdf');
+  savePdf(doc,'OwnerExpenses-'+today()+'.pdf');
   toast('Owner expenses PDF ✓');
 }
 
@@ -5731,7 +5745,7 @@ async function pdfExpProjectContractor(pid,projName){
   if(y>250){doc.addPage();y=20;}
   drawPdfGrandTotal(doc,y,'TOTAL CONTRACTOR SPENT (PAID)','PKR '+fmt(totalSpent),{tone:'gold',h:18});
   drawBankFooter(doc);
-  doc.save('ContractorSpending-'+projName.replace(/\s+/g,'-')+'-'+today()+'.pdf');
+  savePdf(doc,'ContractorSpending-'+projName.replace(/\s+/g,'-')+'-'+today()+'.pdf');
   toast('Contractor spending PDF ✓');
 }
 
@@ -5801,7 +5815,7 @@ async function pdfExpProjectOwner(pid,projName){
   });
   drawOwnerExpTotals(doc,doc.lastAutoTable.finalY+6,cashSpent,behalfSpent);
   drawBankFooter(doc);
-  doc.save('OwnerExpenses-'+projName.replace(/\s+/g,'-')+'-'+today()+'.pdf');
+  savePdf(doc,'OwnerExpenses-'+projName.replace(/\s+/g,'-')+'-'+today()+'.pdf');
   toast('Owner expense PDF ✓');
 }
 
@@ -5870,7 +5884,7 @@ async function pdfCpayConfirm(id){
     y=doc.lastAutoTable.finalY+8;
   }
   drawBankFooter(doc);
-  doc.save('PaymentReceipt-'+r.clientName+'-'+r.date+'.pdf');
+  savePdf(doc,'PaymentReceipt-'+r.clientName+'-'+r.date+'.pdf');
   toast('Payment receipt PDF ✓');
 }
 
@@ -5971,7 +5985,7 @@ async function pdfSpayConfirm(id){
     if(sc2?.contract){const rem=sc2.contract-totalPaid;doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(rem>0?201:82,rem>0?123:181,rem>0?58:106);doc.text('Contract: PKR '+fmt(sc2.contract)+'   |   Total Paid: PKR '+fmt(totalPaid)+'   |   Remaining: PKR '+fmt(Math.max(0,rem)),14,y);}
   }
   drawBankFooter(doc);
-  doc.save('PaymentVoucher-'+r.subconName+'-'+r.date+'.pdf');
+  savePdf(doc,'PaymentVoucher-'+r.subconName+'-'+r.date+'.pdf');
   toast('Payment voucher PDF ✓');
 }
 
@@ -6092,7 +6106,7 @@ async function pdfProjPayments(pid){
   doc.text('Note: Contractor expenses from contract funds are NOT included. Contract receipts and owner misc spending are treated separately.',14,y);
 
   drawBankFooter(doc);
-  doc.save('OwnerStatement-'+proj.name.replace(/\s+/g,'-')+'-'+today()+'.pdf');
+  savePdf(doc,'OwnerStatement-'+proj.name.replace(/\s+/g,'-')+'-'+today()+'.pdf');
   toast('Owner statement PDF ✓');
 }
 
@@ -6613,7 +6627,7 @@ async function pdfProjStock(pid){
     rowPageBreak:'avoid',showFoot:'lastPage',margin:{left:14,right:14,bottom:18}
   });
   drawBankFooter(doc);
-  doc.save('Stock-'+(p.name||'Project').replace(/\s+/g,'-')+'.pdf');
+  savePdf(doc,'Stock-'+(p.name||'Project').replace(/\s+/g,'-')+'.pdf');
   toast('Stock PDF ✓');
 }
 
@@ -6936,7 +6950,7 @@ async function pdfPartnerSummary(pid){
   y=drawPdfGrandTotal(doc,y,'NET PROFIT','PKR '+fmt(netProfit)+'  ·  Your '+p.myShare+'%: '+fmt(myAmt)+'  ·  '+(p.partnerName||'Partner')+': '+fmt(partnerAmt),{tone:'gold',h:20,fontSize:11});
 
   drawBankFooter(doc);
-  doc.save('Partnership-'+p.name.replace(/\s+/g,'-')+'-'+today()+'.pdf');
+  savePdf(doc,'Partnership-'+p.name.replace(/\s+/g,'-')+'-'+today()+'.pdf');
   toast('Partnership summary PDF ✓');
 }
 
@@ -7025,7 +7039,7 @@ async function pdfInternalSummary(pid){
   drawPdfGrandTotal(doc,y,'TOTAL INTERNAL PAID','PKR '+fmt(totalInternal),{tone:'dark',h:18});
 
   drawBankFooter(doc);
-  doc.save('Internal-'+p.name.replace(/\s+/g,'-')+'-'+today()+'.pdf');
+  savePdf(doc,'Internal-'+p.name.replace(/\s+/g,'-')+'-'+today()+'.pdf');
   toast('Internal payments PDF ✓');
 }
 
@@ -7119,7 +7133,7 @@ async function pdfReimbursement(pid,projName){
   }
 
   drawBankFooter(doc);
-  doc.save('Reimbursement-'+p.name.replace(/\s+/g,'-')+'-'+today()+'.pdf');
+  savePdf(doc,'Reimbursement-'+p.name.replace(/\s+/g,'-')+'-'+today()+'.pdf');
   toast('Reimbursement request PDF ✓');
 }
 
