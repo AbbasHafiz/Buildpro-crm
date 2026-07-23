@@ -2199,6 +2199,12 @@ function launchApp(){
     setInterval(()=>writeSupabase(),5*60*1000);         // periodic push
     setInterval(()=>pullRemote(),30*1000);              // periodic pull (freshness across devices)
     document.addEventListener('visibilitychange',()=>{if(!document.hidden)pullRemote();}); // pull when tab refocused
+    // Auto-sync the moment the connection returns: push pending offline changes, then pull latest.
+    window.addEventListener('online',async()=>{
+      toast('Back online — syncing…','info');
+      try{await writeSupabase();await pullRemote();}catch(e){}
+    });
+    window.addEventListener('offline',()=>{try{setSync('error');}catch(e){}});
   }
   startRealtime();
   renderAll();refreshProfileUI();
