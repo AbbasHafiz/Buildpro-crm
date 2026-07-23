@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-07-23-v33">
+<meta name="app-version" content="2026-07-23-v34">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -1152,8 +1152,8 @@ select option{background:var(--s2);}
     <!-- BOQ Structure package: Brown → Grey → Finishing -->
     <div style="font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:.8px;font-weight:700;margin-bottom:6px">BOQ Structure Package</div>
     <div style="font-size:var(--fs-xs);color:var(--mut2);margin-bottom:10px;line-height:1.45">
-      <b style="color:var(--txt)">Brown</b> = digging, materials, foundation ·
-      <b style="color:var(--txt)">Grey</b> = Brown + RCC, brick, plaster, electric/plumber ·
+      <b style="color:var(--txt)">Brown</b> = digging, materials, foundation, shuttering, RCC columns / beams ·
+      <b style="color:var(--txt)">Grey</b> = Brown + brick, plaster, electric/plumber ·
       <b style="color:var(--txt)">Finishing</b> = Grey + tiles, marble, fixtures, wood, ceiling…
     </div>
     <div class="fg"><label>Structure Level</label>
@@ -2527,11 +2527,11 @@ const BOQ_SCOPE_ITEMS=[
   {id:'sand',label:'Sand',unit:'cft',stage:'brown',def:true},
   {id:'crush',label:'Crush / Aggregate',unit:'cft',stage:'brown',def:true},
   {id:'cement',label:'Cement',unit:'bags',stage:'brown',def:true},
-  {id:'shuttering',label:'Shuttering (Foundation)',unit:'sft',stage:'brown',def:true},
+  {id:'shuttering',label:'Shuttering Work',unit:'sft',stage:'brown',def:true},
   {id:'dpc',label:'DPC / Plinth Beam',unit:'rft',stage:'brown',def:true},
+  {id:'rcc',label:'RCC Columns / Beams / Slab',unit:'cft',stage:'brown',def:true},
   {id:'water_conn',label:'Water Connection',unit:'job',stage:'brown',def:false},
   // ── GREY STRUCTURE (adds to Brown) ──
-  {id:'rcc',label:'RCC Columns / Beams / Slab',unit:'cft',stage:'grey',def:true},
   {id:'brickwork',label:'Brickwork / Chuuni',unit:'sft',stage:'grey',def:true},
   {id:'kachi',label:'Kachi Plaster (Rough)',unit:'sft',stage:'grey',def:true},
   {id:'electric_conduit',label:'Electric Conduiting',unit:'job',stage:'grey',def:true},
@@ -2711,7 +2711,7 @@ function onAgrConstTypeChange(){
   const set={};
   AGR_SCOPE_CLAUSES.forEach(c=>{set[c.id]=false;});
   if(level==='brown'){
-    ['excavation','backfill','foundation','dpc','shuttering','steel','termite'].forEach(id=>set[id]=true);
+    ['excavation','backfill','foundation','dpc','shuttering','steel','termite','rcc'].forEach(id=>set[id]=true);
   }else if(level==='grey'){
     ['excavation','backfill','foundation','dpc','shuttering','steel','termite','rcc','brickwork','plaster','electrician','plumber','boundary','pardi','septic','watertank','stair','roof'].forEach(id=>set[id]=true);
   }else{
@@ -7032,7 +7032,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-07-23-v33';
+const APP_VERSION='2026-07-23-v34';
 let _swRefreshing=false;
 
 async function wipeAppCaches(){
