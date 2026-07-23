@@ -1,0 +1,8 @@
+{
+  "appId": "com.buildpro.crm",
+  "appName": "BuildPro CRM",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": true
+  }
+}

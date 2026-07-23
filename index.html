@@ -1922,6 +1922,11 @@ function pdfTextUrdu(doc,text,x,y,opts){
 const SUPA_URL='https://lwjcnevludsiwoudzxcj.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3amNuZXZsdWRzaXdvdWR6eGNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExNDQ0NjAsImV4cCI6MjA5NjcyMDQ2MH0.-6O4Z6OCUqjm3B1wSqtQv5uH7QuWTTkHdximiJB2PKE';
 let supa=null,stmr=null;
+// Native (Capacitor Android) helpers — Google blocks OAuth inside embedded WebViews,
+// so on the native app we open the system browser and return via this deep link.
+const APP_DEEPLINK='com.buildpro.crm://login-callback';
+function isNative(){return !!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform());}
+function capPlugin(name){return window.Capacitor&&window.Capacitor.Plugins?window.Capacitor.Plugins[name]:null;}
 // Multi-device sync state
 let baseUpdatedAt=null,applyingRemote=false,rtChannel=null,curUid=null;
 const COLLECTIONS=['clients','projects','subcons','subpays','cpays','invoices','estimates','agreements','tasks','expenses','investors','banks','subconContracts','personals','workorders','stock'];
@@ -1989,6 +1994,7 @@ function recordTomb(ids){
 // ════ SUPABASE AUTH & STORAGE ════
 function initSupa(){
   supa=supabase.createClient(SUPA_URL,SUPA_KEY);
+  initNativeAuth();
   // Listen for auth state changes
   supa.auth.onAuthStateChange(async(event,session)=>{
     if(event==='SIGNED_IN'&&session){
@@ -2014,11 +2020,45 @@ function initSupa(){
   });
 }
 
-function signIn(){
+async function signIn(){
   if(!supa){toast('Loading…','info');return;}
+  if(isNative()){
+    // Native app: open Google sign-in in the system browser, return via the app deep link.
+    try{
+      const{data,error}=await supa.auth.signInWithOAuth({
+        provider:'google',
+        options:{redirectTo:APP_DEEPLINK,skipBrowserRedirect:true}
+      });
+      if(error)throw error;
+      const Browser=capPlugin('Browser');
+      if(Browser&&data?.url)await Browser.open({url:data.url});
+    }catch(e){toast('Login error: '+(e.message||e),'err');}
+    return;
+  }
   supa.auth.signInWithOAuth({
     provider:'google',
     options:{redirectTo:window.location.origin+window.location.pathname}
+  });
+}
+
+// Native app: handle the OAuth redirect deep link (implicit tokens or PKCE code).
+function initNativeAuth(){
+  if(!isNative())return;
+  const App=capPlugin('App');if(!App)return;
+  App.addListener('appUrlOpen',async({url})=>{
+    if(!url||url.indexOf(APP_DEEPLINK)!==0)return;
+    try{
+      const frag=url.split('#')[1]||'';
+      const q=new URLSearchParams(frag);
+      const access_token=q.get('access_token'),refresh_token=q.get('refresh_token');
+      if(access_token&&refresh_token){
+        await supa.auth.setSession({access_token,refresh_token});
+      }else{
+        const code=new URL(url).searchParams.get('code');
+        if(code)await supa.auth.exchangeCodeForSession(code);
+      }
+    }catch(e){toast('Login failed: '+(e.message||e),'err');}
+    const Browser=capPlugin('Browser');if(Browser){try{await Browser.close();}catch(e){}}
   });
 }
 
