@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-07-23-v32">
+<meta name="app-version" content="2026-07-23-v33">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -1153,7 +1153,7 @@ select option{background:var(--s2);}
     <div style="font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:.8px;font-weight:700;margin-bottom:6px">BOQ Structure Package</div>
     <div style="font-size:var(--fs-xs);color:var(--mut2);margin-bottom:10px;line-height:1.45">
       <b style="color:var(--txt)">Brown</b> = digging, materials, foundation ·
-      <b style="color:var(--txt)">Grey</b> = Brown + RCC, brick, electric/plumber rough ·
+      <b style="color:var(--txt)">Grey</b> = Brown + RCC, brick, plaster, electric/plumber ·
       <b style="color:var(--txt)">Finishing</b> = Grey + tiles, marble, fixtures, wood, ceiling…
     </div>
     <div class="fg"><label>Structure Level</label>
@@ -1169,7 +1169,16 @@ select option{background:var(--s2);}
       <button type="button" class="btn btn-gold btn-sm" style="padding:6px 12px;font-size:var(--fs-xs)" onclick="fillBoqFromScope()">↓ Fill BOQ Lines from Included</button>
     </div>
     <div id="boq-scope-hint" style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:8px"></div>
-    <div id="boq-scope" style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:14px"></div>
+    <div id="boq-scope" style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:10px"></div>
+    <div style="background:var(--s2);border:1px solid var(--bor);border-radius:10px;padding:10px 12px;margin-bottom:14px">
+      <div style="font-size:var(--fs-xs);font-weight:700;color:var(--mut);margin-bottom:8px">＋ Custom / Missing Items</div>
+      <div style="display:flex;gap:7px;flex-wrap:wrap">
+        <input id="boq-custom-txt" placeholder="e.g. Lift shaft, Solar panels, Rain water…" style="flex:1;min-width:140px" onkeydown="if(event.key==='Enter'){event.preventDefault();addBoqCustomItem()}">
+        <input id="boq-custom-unit" placeholder="unit" value="job" style="width:72px">
+        <button type="button" class="btn btn-grey btn-sm" style="padding:8px 12px;font-size:var(--fs-xs);flex:none" onclick="addBoqCustomItem()">+ Add</button>
+      </div>
+      <div id="boq-custom-list" style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px"></div>
+    </div>
 
     <div class="hdiv"></div>
     <label style="display:block;margin-bottom:10px">BOQ Items <span style="color:var(--mut2);font-weight:400;text-transform:none">(qty × rate)</span></label>
@@ -1290,7 +1299,15 @@ select option{background:var(--s2);}
       <button type="button" class="btn btn-grey btn-sm" style="padding:6px 12px;font-size:var(--fs-xs)" onclick="setAllAgrClauses(true)">✓ Include All</button>
       <button type="button" class="btn btn-grey btn-sm" style="padding:6px 12px;font-size:var(--fs-xs)" onclick="setAllAgrClauses(false)">✕ Exclude All</button>
     </div>
-    <div id="agr-clauses" style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:14px"></div>
+    <div id="agr-clauses" style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:10px"></div>
+    <div style="background:var(--s2);border:1px solid var(--bor);border-radius:10px;padding:10px 12px;margin-bottom:14px">
+      <div style="font-size:var(--fs-xs);font-weight:700;color:var(--mut);margin-bottom:8px">＋ Custom / Missing Work Items</div>
+      <div style="display:flex;gap:7px">
+        <input id="agr-custom-txt" placeholder="e.g. Lift shaft, Solar, Rain water harvesting…" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();addAgrCustomItem()}">
+        <button type="button" class="btn btn-grey btn-sm" style="padding:8px 12px;font-size:var(--fs-xs);flex:none" onclick="addAgrCustomItem()">+ Add</button>
+      </div>
+      <div id="agr-custom-list" style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px"></div>
+    </div>
 
     <div class="hdiv"></div>
 
@@ -2404,6 +2421,8 @@ function iEst(){
   ['e-cli-t','e-cli-id','e-proj-t','e-proj-id','e-notes'].forEach(id=>sv(id,''));
   sv('e-st','draft');e$('est-auto-id').textContent='🔖 Auto ID: '+num;
   if(e$('e-structure'))e$('e-structure').value='grey';
+  boqCustomItems=[];
+  sv('boq-custom-txt','');sv('boq-custom-unit','job');
   renderBoqScope(null);
   e$('li-e').innerHTML='';e$('li-e-tot').textContent='0';addLI('e','std');
 }
@@ -2523,8 +2542,8 @@ const BOQ_SCOPE_ITEMS=[
   {id:'watertank',label:'Water Tank (UG / OH)',unit:'job',stage:'grey',def:false},
   {id:'septic',label:'Septic Tank',unit:'job',stage:'grey',def:false},
   {id:'pardi',label:'Pardi / Parapet',unit:'rft',stage:'grey',def:false},
+  {id:'plaster',label:'Plaster (Internal / External)',unit:'sft',stage:'grey',def:true},
   // ── FINISHING (adds to Grey) ──
-  {id:'plaster_fin',label:'Finishing Plaster',unit:'sft',stage:'finishing',def:true},
   {id:'tiles',label:'Tiles / Flooring',unit:'sft',stage:'finishing',def:true},
   {id:'marble',label:'Marble / Granite',unit:'sft',stage:'finishing',def:false},
   {id:'wires',label:'Electric Wires / Final Wiring',unit:'job',stage:'finishing',def:true},
@@ -2540,6 +2559,8 @@ const BOQ_SCOPE_ITEMS=[
 ];
 const BOQ_STAGE_ORDER={brown:0,grey:1,finishing:2};
 const BOQ_STAGE_LABEL={brown:'Brown Structure',grey:'Grey Structure',finishing:'Finishing'};
+let boqCustomItems=[]; // {id,label,unit,included}
+let agrCustomItems=[]; // {id,label,included}
 function boqItemsForStructure(struct){
   const max=BOQ_STAGE_ORDER[struct]??1;
   return BOQ_SCOPE_ITEMS.filter(i=>(BOQ_STAGE_ORDER[i.stage]??0)<=max);
@@ -2550,8 +2571,8 @@ function renderBoqScope(selected){
   const items=boqItemsForStructure(struct);
   const hint=e$('boq-scope-hint');
   if(hint){
-    const n={brown:'Brown only',grey:'Brown + Grey',finishing:'Brown + Grey + Finishing'}[struct]||'';
-    hint.textContent='Showing '+items.length+' items ('+n+'). Tick = Included · Untick = Excluded.';
+    const n={brown:'Brown only',grey:'Brown + Grey (incl. plaster)',finishing:'Brown + Grey + Finishing'}[struct]||'';
+    hint.textContent='Showing '+items.length+' premade items ('+n+'). Tick = Included · Untick = Excluded.';
   }
   let lastStage='';
   el.innerHTML=items.map(c=>{
@@ -2565,6 +2586,36 @@ function renderBoqScope(selected){
       <span style="font-size:var(--fs-xs);color:var(--txt);line-height:1.35;font-weight:500">${c.label}<span style="color:var(--mut2);font-weight:400"> · ${c.unit}</span></span>
     </label>`;
   }).join('');
+  renderBoqCustomList();
+}
+function renderBoqCustomList(){
+  const el=e$('boq-custom-list');if(!el)return;
+  if(!boqCustomItems.length){el.innerHTML='';return;}
+  el.innerHTML=boqCustomItems.map(c=>`<label style="display:flex;align-items:flex-start;gap:8px;background:var(--bg);border:1px solid ${c.included?'rgba(82,181,106,.35)':'rgba(224,85,85,.28)'};border-radius:8px;padding:9px 10px;cursor:pointer">
+    <input type="checkbox" class="boq-custom" data-id="${c.id}" ${c.included?'checked':''} onchange="toggleBoqCustom('${c.id}',this.checked)" style="width:16px;height:16px;accent-color:var(--grn);flex-shrink:0;margin-top:1px">
+    <span style="font-size:var(--fs-xs);color:var(--txt);line-height:1.35;font-weight:500;flex:1">${c.label}<span style="color:var(--mut2);font-weight:400"> · ${c.unit||'job'}</span></span>
+    <button type="button" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;flex-shrink:0;padding:0 2px" onclick="event.preventDefault();delBoqCustomItem('${c.id}')">×</button>
+  </label>`).join('');
+}
+function addBoqCustomItem(){
+  const label=(e$('boq-custom-txt')?.value||'').trim();
+  const unit=(e$('boq-custom-unit')?.value||'job').trim()||'job';
+  if(!label){toast('Enter a custom item name','err');return;}
+  if(boqCustomItems.some(x=>x.label.toLowerCase()===label.toLowerCase())||BOQ_SCOPE_ITEMS.some(x=>x.label.toLowerCase()===label.toLowerCase())){
+    toast('Item already in list','err');return;
+  }
+  boqCustomItems.push({id:'c_'+uid(),label,unit,included:true});
+  sv('boq-custom-txt','');
+  renderBoqCustomList();
+  toast('Custom item added ✓');
+}
+function toggleBoqCustom(id,on){
+  const c=boqCustomItems.find(x=>x.id===id);if(!c)return;
+  c.included=!!on;renderBoqCustomList();
+}
+function delBoqCustomItem(id){
+  boqCustomItems=boqCustomItems.filter(x=>x.id!==id);
+  renderBoqCustomList();
 }
 function refreshBoqScopeStyles(){
   document.querySelectorAll('#boq-scope label').forEach(lab=>{
@@ -2574,10 +2625,11 @@ function refreshBoqScopeStyles(){
 }
 function setAllBoqScope(on){
   document.querySelectorAll('input.boq-scope').forEach(cb=>{cb.checked=!!on;});
+  boqCustomItems.forEach(c=>{c.included=!!on;});
   refreshBoqScopeStyles();
+  renderBoqCustomList();
 }
 function onBoqStructureChange(){
-  // Keep checked state for items still visible; new items use defaults
   const prev={};
   document.querySelectorAll('input.boq-scope').forEach(cb=>{prev[cb.dataset.id]=cb.checked;});
   const struct=e$('e-structure')?.value||'grey';
@@ -2595,9 +2647,14 @@ function getBoqScope(){
     if(cb?.checked)included.push(c.label);
     else excluded.push(c.label);
   });
-  return{structure:struct,included,excluded};
+  const custom=[];
+  boqCustomItems.forEach(c=>{
+    custom.push({label:c.label,unit:c.unit||'job',included:!!c.included});
+    if(c.included)included.push(c.label);else excluded.push(c.label);
+  });
+  return{structure:struct,included,excluded,custom};
 }
-function applyBoqScope(structure,included,excluded){
+function applyBoqScope(structure,included,excluded,custom){
   if(structure&&e$('e-structure'))e$('e-structure').value=structure;
   const set={};
   boqItemsForStructure(structure||'grey').forEach(c=>{
@@ -2605,17 +2662,32 @@ function applyBoqScope(structure,included,excluded){
     else if(excluded&&excluded.length)set[c.id]=!excluded.some(x=>x===c.label||x===c.id);
     else set[c.id]=!!c.def;
   });
+  const premadeLabels=new Set(BOQ_SCOPE_ITEMS.map(x=>x.label.toLowerCase()));
+  if(Array.isArray(custom)&&custom.length){
+    boqCustomItems=custom.map(c=>({id:'c_'+uid(),label:c.label,unit:c.unit||'job',included:c.included!==false}));
+  }else if(included&&included.length){
+    // Restore customs from inclusions that aren't premade
+    boqCustomItems=included.filter(l=>!premadeLabels.has((l||'').toLowerCase()))
+      .map(l=>({id:'c_'+uid(),label:l,unit:'job',included:true}));
+    // Also excluded customs
+    (excluded||[]).filter(l=>!premadeLabels.has((l||'').toLowerCase()))
+      .forEach(l=>{if(!boqCustomItems.some(x=>x.label.toLowerCase()===l.toLowerCase()))boqCustomItems.push({id:'c_'+uid(),label:l,unit:'job',included:false});});
+  }else{
+    boqCustomItems=[];
+  }
   renderBoqScope(set);
 }
 function fillBoqFromScope(){
   const struct=e$('e-structure')?.value||'grey';
-  const items=boqItemsForStructure(struct).filter(c=>{
+  const premade=boqItemsForStructure(struct).filter(c=>{
     const cb=document.querySelector('input.boq-scope[data-id="'+c.id+'"]');
     return !!cb?.checked;
   });
+  const customs=boqCustomItems.filter(c=>c.included).map(c=>({label:c.label,unit:c.unit||'job'}));
+  const items=[...premade.map(c=>({label:c.label,unit:c.unit})),...customs];
   if(!items.length){toast('Tick at least one included item','err');return;}
   const existing=gLI('e');
-  const keep=existing.filter(i=>i.d&&(parseFloat(i.r)||0)>0); // keep lines that already have rates
+  const keep=existing.filter(i=>i.d&&(parseFloat(i.r)||0)>0);
   if(existing.length&&!confirm('Replace empty BOQ lines with '+items.length+' included items?\n(Lines with rates already set will be kept.)'))return;
   e$('li-e').innerHTML='';
   keep.forEach(item=>addLIData('e','std',item));
@@ -2658,6 +2730,35 @@ function renderAgrClauses(selected){
       <span style="font-size:var(--fs-xs);color:var(--txt);line-height:1.35;font-weight:500">${c.label}</span>
     </label>`;
   }).join('');
+  renderAgrCustomList();
+}
+function renderAgrCustomList(){
+  const el=e$('agr-custom-list');if(!el)return;
+  if(!agrCustomItems.length){el.innerHTML='';return;}
+  el.innerHTML=agrCustomItems.map(c=>`<label style="display:flex;align-items:flex-start;gap:8px;background:var(--bg);border:1px solid ${c.included?'rgba(82,181,106,.35)':'rgba(224,85,85,.28)'};border-radius:8px;padding:9px 10px;cursor:pointer">
+    <input type="checkbox" class="agr-custom" data-id="${c.id}" ${c.included?'checked':''} onchange="toggleAgrCustom('${c.id}',this.checked)" style="width:16px;height:16px;accent-color:var(--grn);flex-shrink:0;margin-top:1px">
+    <span style="font-size:var(--fs-xs);color:var(--txt);line-height:1.35;font-weight:500;flex:1">${c.label}</span>
+    <button type="button" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;flex-shrink:0;padding:0 2px" onclick="event.preventDefault();delAgrCustomItem('${c.id}')">×</button>
+  </label>`).join('');
+}
+function addAgrCustomItem(){
+  const label=(e$('agr-custom-txt')?.value||'').trim();
+  if(!label){toast('Enter a custom work item','err');return;}
+  if(agrCustomItems.some(x=>x.label.toLowerCase()===label.toLowerCase())||AGR_SCOPE_CLAUSES.some(x=>x.label.toLowerCase()===label.toLowerCase())){
+    toast('Item already in list','err');return;
+  }
+  agrCustomItems.push({id:'ac_'+uid(),label,included:true});
+  sv('agr-custom-txt','');
+  renderAgrCustomList();
+  toast('Custom work item added ✓');
+}
+function toggleAgrCustom(id,on){
+  const c=agrCustomItems.find(x=>x.id===id);if(!c)return;
+  c.included=!!on;renderAgrCustomList();
+}
+function delAgrCustomItem(id){
+  agrCustomItems=agrCustomItems.filter(x=>x.id!==id);
+  renderAgrCustomList();
 }
 function refreshAgrClauseStyles(){
   document.querySelectorAll('#agr-clauses label').forEach(lab=>{
@@ -2668,7 +2769,9 @@ function refreshAgrClauseStyles(){
 }
 function setAllAgrClauses(on){
   document.querySelectorAll('input.agr-clause').forEach(cb=>{cb.checked=!!on;});
+  agrCustomItems.forEach(c=>{c.included=!!on;});
   refreshAgrClauseStyles();
+  renderAgrCustomList();
 }
 function getAgrClauses(){
   const included=[];const excluded=[];
@@ -2677,9 +2780,14 @@ function getAgrClauses(){
     if(cb?.checked)included.push(c.label);
     else excluded.push(c.label);
   });
-  return{included,excluded};
+  const custom=[];
+  agrCustomItems.forEach(c=>{
+    custom.push({label:c.label,included:!!c.included});
+    if(c.included)included.push(c.label);else excluded.push(c.label);
+  });
+  return{included,excluded,custom};
 }
-function applyAgrClauses(included,excluded){
+function applyAgrClauses(included,excluded,custom){
   const set={};
   AGR_SCOPE_CLAUSES.forEach(c=>{
     if(included&&included.length){
@@ -2690,6 +2798,17 @@ function applyAgrClauses(included,excluded){
       set[c.id]=!!c.def;
     }
   });
+  const premadeLabels=new Set(AGR_SCOPE_CLAUSES.map(x=>x.label.toLowerCase()));
+  if(Array.isArray(custom)&&custom.length){
+    agrCustomItems=custom.map(c=>({id:'ac_'+uid(),label:c.label,included:c.included!==false}));
+  }else if(included&&included.length){
+    agrCustomItems=included.filter(l=>!premadeLabels.has((l||'').toLowerCase()))
+      .map(l=>({id:'ac_'+uid(),label:l,included:true}));
+    (excluded||[]).filter(l=>!premadeLabels.has((l||'').toLowerCase()))
+      .forEach(l=>{if(!agrCustomItems.some(x=>x.label.toLowerCase()===l.toLowerCase()))agrCustomItems.push({id:'ac_'+uid(),label:l,included:false});});
+  }else{
+    agrCustomItems=[];
+  }
   renderAgrClauses(set);
 }
 function syncAgrRateLabel(){
@@ -2734,6 +2853,7 @@ function iAgr(){
    'a-s','a-e','a-val','a-rate','a-covered','a-dims','a-permit','a-arch','a-footer'].forEach(id=>sv(id,''));
   const sd=e$('a-style-digital');if(sd)sd.checked=true;const hv=e$('a-hide-value');if(hv)hv.checked=false;toggleHideValue();
   sv('a-st','draft');sv('a-type','labour');
+  agrCustomItems=[];sv('agr-custom-txt','');
   renderAgrClauses(null);
   syncAgrRateLabel();
   // Default general conditions — editable
@@ -2779,7 +2899,7 @@ function eInv(id){
   if(!r.items||!r.items.length){if(type==='labour')addLI('lab','lab');else if(type==='progress')addLI('prg','prg');else addLI('i','std');}
   O('sh-inv');
 }
-function eEst(id){const r=D.estimates.find(x=>x.id===id);if(!r)return;sv('est-eid',id);e$('est-eb').classList.add('on');e$('est-sh-t').textContent='Edit Estimate';e$('est-auto-id').textContent='🔖 ID: '+r.num;sv('e-num',r.num);sv('e-date',r.date);const c=D.clients.find(x=>x.id===r.clientId);sv('e-cli-t',c?c.name:r.clientName||'');sv('e-cli-id',r.clientId||'');const p=D.projects.find(x=>x.id===r.projectId);sv('e-proj-t',p?p.name:r.projectName||'');sv('e-proj-id',r.projectId||'');sv('e-vld',r.valid);sv('e-st',r.status);sv('e-notes',r.notes);applyBoqScope(r.structure||'grey',r.inclusions||[],r.exclusions||[]);e$('li-e').innerHTML='';(r.items||[]).forEach(item=>addLIData('e','std',item));if(!r.items||!r.items.length)addLI('e','std');O('sh-est');}
+function eEst(id){const r=D.estimates.find(x=>x.id===id);if(!r)return;sv('est-eid',id);e$('est-eb').classList.add('on');e$('est-sh-t').textContent='Edit Estimate';e$('est-auto-id').textContent='🔖 ID: '+r.num;sv('e-num',r.num);sv('e-date',r.date);const c=D.clients.find(x=>x.id===r.clientId);sv('e-cli-t',c?c.name:r.clientName||'');sv('e-cli-id',r.clientId||'');const p=D.projects.find(x=>x.id===r.projectId);sv('e-proj-t',p?p.name:r.projectName||'');sv('e-proj-id',r.projectId||'');sv('e-vld',r.valid);sv('e-st',r.status);sv('e-notes',r.notes);applyBoqScope(r.structure||'grey',r.inclusions||[],r.exclusions||[],r.customScope||null);e$('li-e').innerHTML='';(r.items||[]).forEach(item=>addLIData('e','std',item));if(!r.items||!r.items.length)addLI('e','std');O('sh-est');}
 function eAgr(id){
   const r=D.agreements.find(x=>x.id===id);if(!r)return;
   sv('agr-eid',id);const eb=e$('agr-eb');if(eb)eb.classList.add('on');
@@ -2800,7 +2920,7 @@ function eAgr(id){
   const ts=e$('a-type');if(ts&&r.agrType)ts.value=r.agrType;const ct=e$('a-const-type');if(ct&&r.constType)ct.value=r.constType;
   const ps=e$('a-plot-size');if(ps&&r.plotSize)ps.value=r.plotSize;
   const ss=e$('a-storeys');if(ss&&r.storeys)ss.value=r.storeys;
-  applyAgrClauses(r.inclusions||[], Array.isArray(r.exclusions)?r.exclusions:(r.exclusions?String(r.exclusions).split(/\s*[·,]\s*/):[]));
+  applyAgrClauses(r.inclusions||[], Array.isArray(r.exclusions)?r.exclusions:(r.exclusions?String(r.exclusions).split(/\s*[·,]\s*/):[]), r.customScope||null);
   syncAgrRateLabel();
   calcAgr();O('sh-agr');
 }
@@ -2899,7 +3019,7 @@ function saveInv(){
   if(!doc.clientName){toast('Select a client','err');return;}
   ups('invoices',doc);X('sh-inv');renderInv();updateDots();renderDash();toast(eid?'Invoice updated ✓':'Invoice '+doc.num+' saved ✓');
 }
-function saveEst(){const eid=e$('est-eid').value;const items=gLI('e'),total=totLI(items);const scope=getBoqScope();const doc={id:eid||uid(),num:e$('e-num').value,date:e$('e-date').value,clientId:e$('e-cli-id').value,clientName:e$('e-cli-t').value,projectId:e$('e-proj-id').value,projectName:e$('e-proj-t').value,valid:e$('e-vld').value,status:e$('e-st').value,notes:e$('e-notes').value,structure:scope.structure,inclusions:scope.included,exclusions:scope.excluded,items,total};if(!doc.clientName){toast('Select a client','err');return;}ups('estimates',doc);X('sh-est');renderEst();updateDots();renderDash();toast(eid?'Estimate updated ✓':'Estimate '+doc.num+' saved ✓');}
+function saveEst(){const eid=e$('est-eid').value;const items=gLI('e'),total=totLI(items);const scope=getBoqScope();const doc={id:eid||uid(),num:e$('e-num').value,date:e$('e-date').value,clientId:e$('e-cli-id').value,clientName:e$('e-cli-t').value,projectId:e$('e-proj-id').value,projectName:e$('e-proj-t').value,valid:e$('e-vld').value,status:e$('e-st').value,notes:e$('e-notes').value,structure:scope.structure,inclusions:scope.included,exclusions:scope.excluded,customScope:scope.custom||[],items,total};if(!doc.clientName){toast('Select a client','err');return;}ups('estimates',doc);X('sh-est');renderEst();updateDots();renderDash();toast(eid?'Estimate updated ✓':'Estimate '+doc.num+' saved ✓');}
 function saveAgr(){
   const eid=e$('agr-eid').value;
   const clauses=getAgrClauses();
@@ -2923,6 +3043,7 @@ function saveAgr(){
     scope:e$('a-scope').value,
     inclusions:clauses.included,
     exclusions:clauses.excluded,
+    customScope:clauses.custom||[],
     terms:e$('a-terms').value,
     conditions:e$('a-conditions').value,
     general:e$('a-general')?.value||'',
@@ -6911,7 +7032,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-07-23-v32';
+const APP_VERSION='2026-07-23-v33';
 let _swRefreshing=false;
 
 async function wipeAppCaches(){
