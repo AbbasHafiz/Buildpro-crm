@@ -1,0 +1,9 @@
+# Wasmer GitHub / Shipit deploy: treat this repo as a static site.
+# package.json is only for Capacitor/Android — do not use the Node provider.
+# https://github.com/wasmerio/shipit
+
+load("//shipit/tools:staticfile.shipit", "staticfile_build", "staticfile_serve")
+
+build = staticfile_build(config)
+
+staticfile_serve(config, build, name = "buildpro-crm")

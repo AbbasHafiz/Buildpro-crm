@@ -2,6 +2,7 @@
 name = "abbashafiz/buildpro-crm"
 version = "0.1.0"
 description = "BuildPro CRM — construction business PWA"
+entrypoint = "start"
 
 [dependencies]
 "wasmer/static-web-server" = "^1"
@@ -11,7 +12,7 @@ description = "BuildPro CRM — construction business PWA"
 "/settings" = "settings"
 
 [[command]]
-name = "script"
+name = "start"
 module = "wasmer/static-web-server:webserver"
 runner = "https://webc.org/runner/wasi"
 

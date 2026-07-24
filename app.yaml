@@ -1,3 +1,8 @@
 kind: wasmer.io/App.v0
 name: buildpro-crm
 package: .
+annotations:
+  shipitcli.com/provider: staticfile
+  shipitcli.com/config:
+    name: buildpro-crm
+    static_dir: public
