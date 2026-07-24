@@ -3522,6 +3522,27 @@ function renderEst(){
 }
 
 // ════ RENDER PAYMENTS ════
+// Collapsible group state (persists across re-renders). Keyed by a stable group id.
+let collapsedGroups={};
+function toggleGroup(id){
+  const body=document.getElementById(id);if(!body)return;
+  const chev=document.getElementById(id+'-chev');
+  const willHide=body.style.display!=='none';
+  body.style.display=willHide?'none':'';
+  collapsedGroups[id]=willHide;
+  if(chev)chev.textContent=willHide?'▸':'▾';
+}
+// Standard collapsible section header + wrapped body. `open` decides initial state.
+function collapsibleSection(id,headerHTML,bodyHTML,open){
+  return`<div style="margin-bottom:12px">
+    <div onclick="toggleGroup('${id}')" style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 13px;background:var(--s2);border:1px solid var(--bor);border-radius:10px;cursor:pointer">
+      <span id="${id}-chev" style="display:inline-block;width:14px;flex-shrink:0;color:var(--mut)">${open?'▾':'▸'}</span>
+      <div style="flex:1;min-width:0">${headerHTML}</div>
+    </div>
+    <div id="${id}" style="margin-top:8px;${open?'':'display:none'}">${bodyHTML}</div>
+  </div>`;
+}
+
 function renderPay(){
   const tin=D.cpays.reduce((s,p)=>s+p.amount,0);
   const tout=D.subpays.reduce((s,p)=>s+p.amount,0);
@@ -3601,25 +3622,27 @@ function renderPay(){
       </div>
     </div>`;
   };
-  // Group all payments under each client
+  // Group all payments under each client; newest activity first, payments sorted newest-first within.
   const groups={};
   rows.forEach(p=>{const c=clientOf(p);if(!groups[c.id])groups[c.id]={name:c.name,rows:[]};groups[c.id].rows.push(p);});
+  const keyOf=r=>(r.date||'')+' '+(r.time||'');
+  Object.values(groups).forEach(g=>g.rows.sort((a,b)=>keyOf(b).localeCompare(keyOf(a))));
+  const recency=g=>g.rows.reduce((m,r)=>{const k=keyOf(r);return k>m?k:m;},'');
   const order=Object.keys(groups).sort((a,b)=>{
     if(a==='__none__')return 1;if(b==='__none__')return -1;
-    return groups[a].name.localeCompare(groups[b].name);
+    return recency(groups[b]).localeCompare(recency(groups[a]));
   });
   el.innerHTML=order.map(cid=>{
     const g=groups[cid];
-    g.rows.sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.time||'').localeCompare(a.time||''));
+    const gid='pay-grp-'+cid;
+    const open=!collapsedGroups[gid];
     const cin=g.rows.filter(r=>r.dir==='in').reduce((s,r)=>s+r.amount,0);
     const cout=g.rows.filter(r=>r.dir==='out').reduce((s,r)=>s+r.amount,0);
-    return`<div style="margin-bottom:16px">
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 13px;background:var(--s2);border:1px solid var(--bor);border-radius:10px;margin-bottom:8px">
-        <div style="font-size:var(--fs-sm);font-weight:700">👤 ${g.name} <span style="color:var(--mut);font-weight:400;font-size:var(--fs-xs)">· ${g.rows.length} payment${g.rows.length!==1?'s':''}</span></div>
-        <div style="font-size:var(--fs-xs);font-family:'JetBrains Mono',monospace">${cin?`<span style="color:var(--grn)">+${fmt(cin)}</span>`:''}${cin&&cout?' <span style="color:var(--mut)">|</span> ':''}${cout?`<span style="color:var(--red)">-${fmt(cout)}</span>`:''}</div>
-      </div>
-      ${g.rows.map(renderPayCard).join('')}
-    </div>`;
+    const header=`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+        <div style="font-size:var(--fs-sm);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">👤 ${g.name} <span style="color:var(--mut);font-weight:400;font-size:var(--fs-xs)">· ${g.rows.length}</span></div>
+        <div style="font-size:var(--fs-xs);font-family:'JetBrains Mono',monospace;flex-shrink:0">${cin?`<span style="color:var(--grn)">+${fmt(cin)}</span>`:''}${cin&&cout?' <span style="color:var(--mut)">|</span> ':''}${cout?`<span style="color:var(--red)">-${fmt(cout)}</span>`:''}</div>
+      </div>`;
+    return collapsibleSection(gid,header,g.rows.map(renderPayCard).join(''),open);
   }).join('');
 }
 
@@ -6837,11 +6860,13 @@ function renderLedger(){
     const ptxns=txns.filter(t=>(t.project||'General')===proj);
     const pIn=ptxns.filter(t=>t.dir==='in').reduce((s,t)=>s+t.amount,0);
     const pOut=ptxns.filter(t=>t.dir==='out'&&!t.pending).reduce((s,t)=>s+t.amount,0);
-    return`<div style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);overflow:hidden;margin-bottom:12px">
-      <div style="padding:12px 14px;border-bottom:1px solid var(--bor);display:flex;justify-content:space-between;align-items:center">
-        <div style="font-size:var(--fs-md);font-weight:700">📁 ${proj}</div>
-        <div style="text-align:right;font-size:var(--fs-xs)"><span style="color:var(--grn)">+${fmt(pIn)}</span> <span style="color:var(--mut)">|</span> <span style="color:var(--red)">-${fmt(pOut)}</span></div>
-      </div>
+    const gid='led-grp-'+proj.replace(/[^a-z0-9]/gi,'_');
+    const open=!collapsedGroups[gid];
+    const header=`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+        <div style="font-size:var(--fs-sm);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">📁 ${proj} <span style="color:var(--mut);font-weight:400;font-size:var(--fs-xs)">· ${ptxns.length}</span></div>
+        <div style="text-align:right;font-size:var(--fs-xs);font-family:'JetBrains Mono',monospace;flex-shrink:0"><span style="color:var(--grn)">+${fmt(pIn)}</span> <span style="color:var(--mut)">|</span> <span style="color:var(--red)">-${fmt(pOut)}</span></div>
+      </div>`;
+    const body=`<div style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);overflow:hidden">
       ${ptxns.map(t=>`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:10px 14px;border-bottom:1px solid var(--bor);opacity:${t.pending?'.75':'1'}">
         <div>
           <div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:2px">${t.date||'—'} · ${t.type}</div>
@@ -6854,6 +6879,7 @@ function renderLedger(){
         <span style="font-family:'JetBrains Mono',monospace;color:${pIn-pOut>=0?'var(--grn)':'var(--red)'}">PKR ${fmt(pIn-pOut)}</span>
       </div>
     </div>`;
+    return collapsibleSection(gid,header,body,open);
   }).join('');
 }
 
