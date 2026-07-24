@@ -1,6 +1,9 @@
 # Node
 node_modules/
 
+# Wasmer Shipit local build output
+.shipit/
+
 # Capacitor web build output (regenerated from repo-root static files via `npm run copy:web`)
 www/
 
