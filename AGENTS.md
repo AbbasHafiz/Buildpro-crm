@@ -19,7 +19,13 @@ A construction-business management app for a Pakistani contracting business.
 - **Login is Google-OAuth-gated** (Supabase). Google OAuth cannot be completed in this VM/headless browser. To test app functionality without logging in, run `launchApp()` in the DevTools console — it bypasses the login screen and runs against `localStorage` (key `bp5`).
 - `confirm()`/`alert()` dialogs get suppressed by Chrome after a few prompts in automated sessions, which makes delete buttons look unresponsive. In tests, set `window.confirm=()=>true` before exercising deletes.
 
-### Building the Android app (Capacitor)
+### Deploying the web/PWA
+- Static hosts (Wasmer Edge, Cloudflare Workers, GitHub Pages) publish from generated folders — run `npm run copy:web` before commit/deploy so they stay in sync with root `index.html`:
+  - `public/` — Wasmer (`wasmer.toml`) + Cloudflare (`wrangler.jsonc`)
+  - `docs/` — GitHub Pages (repo Pages source is `/docs`)
+  - `www/` — Capacitor (gitignored; regenerated on `npm run sync`)
+- Live PWA: `https://buildpro-crm.wasmer.app` — after a deploy, use in-app menu → **Check for Updates** if the installed PWA still shows an old version (service worker / CDN cache).
+- Android APK bundles a snapshot of `index.html` at build time, so native can be ahead of a stale web deploy.
 - Requires a JDK (17+; 21 works) and the **Android SDK** (`ANDROID_HOME` set; `platforms;android-34`, `build-tools;34.0.0`, `platform-tools`). The SDK is NOT preinstalled on the VM — install command-line tools from `https://dl.google.com/android/repository/commandlinetools-linux-<build>_latest.zip` (note: filename is `commandlinetools`, no hyphen) and `sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"`.
 - Commands:
   - `npm run copy:web` — copies root static files into `www/`.
