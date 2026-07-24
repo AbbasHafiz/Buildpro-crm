@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-07-23-v35">
+<meta name="app-version" content="2026-07-24-v36">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -3533,9 +3533,10 @@ function toggleGroup(id){
   if(chev)chev.textContent=willHide?'▸':'▾';
 }
 // Standard collapsible section header + wrapped body. `open` decides initial state.
+// Put interactive controls in the header with onclick="event.stopPropagation();…" so they don't toggle.
 function collapsibleSection(id,headerHTML,bodyHTML,open){
   return`<div style="margin-bottom:12px">
-    <div onclick="toggleGroup('${id}')" style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 13px;background:var(--s2);border:1px solid var(--bor);border-radius:10px;cursor:pointer">
+    <div onclick="toggleGroup('${id}')" style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 13px;background:var(--s2);border:1px solid var(--bor);border-radius:10px;cursor:pointer;user-select:none">
       <span id="${id}-chev" style="display:inline-block;width:14px;flex-shrink:0;color:var(--mut)">${open?'▾':'▸'}</span>
       <div style="flex:1;min-width:0">${headerHTML}</div>
     </div>
@@ -3742,55 +3743,62 @@ async function pdfSubProjStatement(subconId,projectId){
 function renderSub(){
   const el=e$('list-sub');
   if(!D.subcons.length){el.innerHTML='<div class="empty"><div class="empty-i">👷</div><div class="empty-t">No sub-contractors yet</div></div>';return;}
-  el.innerHTML=D.subcons.map(s=>{
+  // Newest payment activity first
+  const subRecency=s=>{
+    const pays=D.subpays.filter(p=>p.subconId===s.id);
+    return pays.reduce((m,p)=>((p.date||'')>m?(p.date||''):m),'');
+  };
+  const ordered=[...D.subcons].sort((a,b)=>subRecency(b).localeCompare(subRecency(a)));
+  el.innerHTML=ordered.map(s=>{
     const allPays=D.subpays.filter(p=>p.subconId===s.id);
     const totalPaid=allPays.reduce((t,p)=>t+p.amount,0);
-    // Use sum of per-project contracts if available, else s.contract
     const projContracts=(D.subconContracts||[]).filter(x=>x.subconId===s.id);
-    const totalContract=projContracts.length>0?projContracts.reduce((s,x)=>s+x.value,0):(s.contract||0);
+    const totalContract=projContracts.length>0?projContracts.reduce((sum,x)=>sum+x.value,0):(s.contract||0);
     const rem=Math.max(0,totalContract-totalPaid);
     const pct=totalContract>0?Math.min(100,Math.round(totalPaid/totalContract*100)):0;
-    // Only show projects that have payments (exclude __none__ if empty)
     const projIds=[...new Set(allPays.filter(p=>p.projectId).map(p=>p.projectId))];
-    // Handle unlinked payments separately
     const unlinkedPays=allPays.filter(p=>!p.projectId);
     const byProject=projIds.map(pid=>{
       const proj=D.projects.find(x=>x.id===pid);
       const projPays=allPays.filter(p=>(p.projectId||'__none__')===pid).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
-      const projTotal=projPays.reduce((s,p)=>s+p.amount,0);
-      // Get contract from subconContracts first, then fallback to projContract on payments
+      const projTotal=projPays.reduce((sum,p)=>sum+p.amount,0);
       const scCon=(D.subconContracts||[]).find(x=>x.subconId===s.id&&x.projectId===pid);
       const projContract=scCon?.value||projPays.filter(p=>p.projContract>0).reduce((max,p)=>Math.max(max,p.projContract),0);
       const projRem=projContract>0?Math.max(0,projContract-projTotal):0;
       const projName=proj?proj.name:(pid==='__none__'?'No Project':projPays[0]?.projectName||'Unknown Project');
       return{pid,projName,projPays,projTotal,projContract,projRem};
     });
-    return`<div class="sub-card">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
-        <div><div style="font-size:var(--fs-lg);font-weight:700">${s.name}</div><div style="margin-top:5px"><span class="b ${trC(s.trade)}">${s.trade}</span></div>${s.phone?`<div style="font-size:var(--fs-sm);color:var(--mut);margin-top:3px">${s.phone}</div>`:''}</div>
-        <div style="text-align:right;font-size:var(--fs-sm);color:var(--mut)">${s.ptype||''}</div>
+    // Sort projects by newest payment
+    byProject.sort((a,b)=>{
+      const ra=a.projPays[0]?.date||'';
+      const rb=b.projPays[0]?.date||'';
+      return rb.localeCompare(ra);
+    });
+    const gid='sub-grp-'+s.id;
+    const open=!collapsedGroups[gid];
+    const header=`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+      <div style="min-width:0">
+        <div style="font-size:var(--fs-sm);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.name} <span style="color:var(--mut);font-weight:400;font-size:var(--fs-xs)">· ${allPays.length}</span></div>
+        <div style="margin-top:3px"><span class="b ${trC(s.trade)}">${s.trade}</span>${s.phone?`<span style="font-size:var(--fs-xs);color:var(--mut);margin-left:6px">${s.phone}</span>`:''}</div>
       </div>
-      <div class="sub-stats">
-        <div class="sub-stat"><div class="sub-stat-val" style="color:var(--gold)">${fmt(totalContract)}</div><div class="sub-stat-lbl">Total Contract</div></div>
-        <div class="sub-stat"><div class="sub-stat-val" style="color:var(--red)">${fmt(totalPaid)}</div><div class="sub-stat-lbl">Total Paid</div></div>
-        <div class="sub-stat"><div class="sub-stat-val" style="color:${rem>0?'var(--gold)':'var(--grn)'}">${fmt(rem)}</div><div class="sub-stat-lbl">Remaining</div></div>
+      <div style="text-align:right;flex-shrink:0;font-size:var(--fs-xs);font-family:'JetBrains Mono',monospace">
+        <div style="color:var(--red)">-${fmt(totalPaid)}</div>
+        <div style="color:${rem>0?'var(--gold)':'var(--grn)'};margin-top:2px">${fmt(rem)} left</div>
       </div>
-      <div class="pbar-wrap"><div class="pbar" style="width:${pct}%"></div></div>
-      <div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:14px">Paid ${pct}% of total contract</div>
-      ${byProject.map(pg=>{
-        // One project = same numbers as top summary — skip duplicate Contract/Paid/Remaining row
-        const showProjStats=byProject.length>1;
-        return`
-        <div style="background:var(--s2);border-radius:10px;overflow:hidden;margin-bottom:10px">
-          <div style="padding:11px 13px;border-bottom:1px solid var(--bor)">
-            <div style="display:flex;justify-content:space-between;align-items:center;${showProjStats?'margin-bottom:8px':''}">
-              <div style="font-size:var(--fs-md);font-weight:700">📁 ${pg.projName}</div>
-              <div style="display:flex;gap:7px;align-items:center">
-                <button class="ca gold" style="padding:5px 9px;font-size:var(--fs-xs);flex:none" onclick="pdfSubProjStatement('${s.id}','${pg.pid}')">⬇ PDF</button>
-                <button class="ca blu" style="padding:5px 9px;font-size:var(--fs-xs);flex:none" onclick="openSpCon('${s.id}','${pg.pid}')">✏️ Contract</button>
-              </div>
-            </div>
-            ${showProjStats?`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+    </div>`;
+    const projectsHtml=byProject.map(pg=>{
+      const showProjStats=byProject.length>1;
+      const pgid='sub-proj-'+s.id+'-'+pg.pid;
+      const pOpen=!collapsedGroups[pgid];
+      const pHeader=`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+        <div style="font-size:var(--fs-sm);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">📁 ${pg.projName} <span style="color:var(--mut);font-weight:400;font-size:var(--fs-xs)">· ${pg.projPays.length}</span></div>
+        <div style="display:flex;gap:7px;align-items:center;flex-shrink:0">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-xs);color:var(--red)">-${fmt(pg.projTotal)}</span>
+          <button class="ca gold" style="padding:5px 9px;font-size:var(--fs-xs);flex:none" onclick="event.stopPropagation();pdfSubProjStatement('${s.id}','${pg.pid}')">⬇ PDF</button>
+          <button class="ca blu" style="padding:5px 9px;font-size:var(--fs-xs);flex:none" onclick="event.stopPropagation();openSpCon('${s.id}','${pg.pid}')">✏️ Contract</button>
+        </div>
+      </div>`;
+      const pBody=`${showProjStats?`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px">
               <div style="background:var(--bg);border-radius:7px;padding:8px;text-align:center">
                 <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--gold)">${pg.projContract>0?fmt(pg.projContract):'Tap ✏️'}</div>
                 <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Contract</div>
@@ -3804,7 +3812,7 @@ function renderSub(){
                 <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Remaining</div>
               </div>
             </div>`:''}
-          </div>
+          <div style="background:var(--s1);border:1px solid var(--bor);border-radius:10px;overflow:hidden">
           ${pg.projPays.map(p=>`
           <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:10px 13px;border-bottom:1px solid var(--bor)">
             <div>
@@ -3821,21 +3829,33 @@ function renderSub(){
               </div>
             </div>
           </div>`).join('')}
-        </div>`;
-      }).join('')}
-      ${unlinkedPays.length?`<div style="background:var(--s2);border-radius:10px;overflow:hidden;margin-bottom:10px">
+          </div>`;
+      return collapsibleSection(pgid,pHeader,pBody,pOpen);
+    }).join('');
+    const unlinkedHtml=unlinkedPays.length?`<div style="background:var(--s2);border-radius:10px;overflow:hidden;margin-bottom:10px">
         <div style="padding:10px 13px;border-bottom:1px solid var(--bor);font-size:var(--fs-xs);color:var(--mut);font-weight:700;text-transform:uppercase">📌 Unlinked Payments (No Project)</div>
         ${unlinkedPays.map(p=>`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:10px 13px;border-bottom:1px solid var(--bor)">
           <div><div style="font-size:var(--fs-sm);font-weight:600">${p.phase}</div><div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">${p.date} · ${p.method||'Cash'}</div>${p.desc?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">${p.desc}</div>`:''}</div>
           <div style="text-align:right"><div style="font-family:'JetBrains Mono',monospace;color:var(--red)">${fmt(p.amount)}</div><div style="display:flex;gap:8px;margin-top:4px;justify-content:flex-end"><button style="font-size:var(--fs-xs);color:var(--blu);background:none;border:none;cursor:pointer" onclick="eSpay('${p.id}')">Edit</button><button style="font-size:var(--fs-xs);color:var(--red);background:none;border:none;cursor:pointer" onclick="del('subpays','${p.id}')">Del</button></div></div>
         </div>`).join('')}
-      </div>`:''}
+      </div>`:'';
+    const body=`<div style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:12px 14px">
+      <div class="sub-stats">
+        <div class="sub-stat"><div class="sub-stat-val" style="color:var(--gold)">${fmt(totalContract)}</div><div class="sub-stat-lbl">Total Contract</div></div>
+        <div class="sub-stat"><div class="sub-stat-val" style="color:var(--red)">${fmt(totalPaid)}</div><div class="sub-stat-lbl">Total Paid</div></div>
+        <div class="sub-stat"><div class="sub-stat-val" style="color:${rem>0?'var(--gold)':'var(--grn)'}">${fmt(rem)}</div><div class="sub-stat-lbl">Remaining</div></div>
+      </div>
+      <div class="pbar-wrap"><div class="pbar" style="width:${pct}%"></div></div>
+      <div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:14px">Paid ${pct}% of total contract</div>
+      ${projectsHtml}
+      ${unlinkedHtml}
       <div class="card-acts" style="margin-top:4px">
         <button class="ca blu" onclick="eSub('${s.id}')">✏️ Edit</button>
         <button class="ca gold" onclick="O('sh-spay');iSpay();sv('sp-sub-t','${esc(s.name)}');sv('sp-sub-id','${s.id}')">+ Pay</button>
         <button class="ca red" onclick="del('subcons','${s.id}')">🗑</button>
       </div>
     </div>`;
+    return collapsibleSection(gid,header,body,open);
   }).join('');
 }
 
@@ -5152,6 +5172,17 @@ function renderExp(){
     ...rows.map(r=>r.projectId||'__none__'),
     ...subpaysFiltered.map(p=>p.projectId||'__none__')
   ])];
+  // Newest activity first (expenses + subpays by date)
+  const expRecency=pid=>{
+    let m='';
+    rows.filter(r=>(r.projectId||'__none__')===pid).forEach(r=>{if((r.date||'')>m)m=r.date||'';});
+    subpaysFiltered.filter(p=>(p.projectId||'__none__')===pid).forEach(p=>{if((p.date||'')>m)m=p.date||'';});
+    return m;
+  };
+  projIds.sort((a,b)=>{
+    if(a==='__none__')return 1;if(b==='__none__')return -1;
+    return expRecency(b).localeCompare(expRecency(a));
+  });
   el.innerHTML=projIds.map(pid=>{
     const proj=D.projects.find(x=>x.id===pid);
     const projName=proj?proj.name:(rows.find(r=>(r.projectId||'__none__')===pid)?.projectName||subpaysFiltered.find(p=>(p.projectId||'__none__')===pid)?.projectName||'No Project');
@@ -5161,31 +5192,32 @@ function renderExp(){
       .slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
     const allProjExps=(D.expenses||[]).filter(r=>(r.projectId||'__none__')===pid);
     const cashRows=allProjExps.filter(r=>r.fundedBy==='cashinhand');
-    const contractRows=allProjExps.filter(r=>(r.fundedBy||'contract')==='contract');
     const behalfRows=allProjExps.filter(r=>r.fundedBy==='onbehalf');
-    const projSpent=cashRows.filter(r=>r.isPaid).reduce((s,r)=>s+r.amount,0); // paid misc cash only
+    const projSpent=cashRows.filter(r=>r.isPaid).reduce((s,r)=>s+r.amount,0);
     const cashPending=cashRows.filter(r=>!r.isPaid).reduce((s,r)=>s+r.amount,0);
     const behalfSpent=behalfRows.reduce((s,r)=>s+r.amount,0);
     const behalfOwed=behalfRows.filter(r=>rst(r)!=='paid').reduce((s,r)=>s+r.amount,0);
     const subSpent=projSubpays.reduce((s,p)=>s+p.amount,0);
-    // Contractor/owner cash totals = paid only; pending shown separately
     const expPaidDisplay=projRows.filter(r=>r.fundedBy==='onbehalf'||r.isPaid).reduce((s,r)=>s+r.amount,0);
     const expPendingDisplay=projRows.filter(r=>r.fundedBy!=='onbehalf'&&!r.isPaid).reduce((s,r)=>s+r.amount,0);
     const totalDisplay=isOwnerMode?expPaidDisplay:(expPaidDisplay+subSpent);
     const balance=cashInHand-projSpent;
     const pct=cashInHand>0?Math.min(100,Math.round(projSpent/cashInHand*100)):0;
-    return`<div style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);overflow:hidden;margin-bottom:12px">
-      <div style="padding:13px 14px;border-bottom:1px solid var(--bor)">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:${isOwnerMode?'11px':'0'}">
-          <div style="font-size:var(--fs-md);font-weight:700">📁 ${projName}</div>
-          <div style="display:flex;gap:7px">
-            ${isOwnerMode
-              ?`<button class="ca" style="flex:none;padding:6px 10px;font-size:var(--fs-xs);color:#4D94D4;border-color:rgba(77,148,212,.3);background:rgba(77,148,212,.06)" onclick="pdfExpProjectOwner('${pid}','${esc(projName)}')">⬇ Owner PDF</button>
-                <button class="ca" style="flex:none;padding:6px 10px;font-size:var(--fs-xs);color:#4D94D4;border-color:rgba(77,148,212,.3);background:rgba(77,148,212,.06)" onclick="pdfReimbursement('${pid}','${esc(projName)}')">⬇ Reimburse PDF</button>`
-              :`<button class="ca gold" style="flex:none;padding:6px 10px;font-size:var(--fs-xs)" onclick="pdfExpProjectContractor('${pid}','${esc(projName)}')">⬇ Contractor PDF</button>`}
-          </div>
-        </div>
-        ${isOwnerMode&&proj?`<div style="margin-bottom:10px">
+    const entryCount=projRows.length+projSubpays.length;
+    const gid='exp-grp-'+(isOwnerMode?'own-':'con-')+pid;
+    const open=!collapsedGroups[gid];
+    const pdfBtns=isOwnerMode
+      ?`<button class="ca" style="flex:none;padding:5px 9px;font-size:var(--fs-xs);color:#4D94D4;border-color:rgba(77,148,212,.3);background:rgba(77,148,212,.06)" onclick="event.stopPropagation();pdfExpProjectOwner('${pid}','${esc(projName)}')">⬇ Owner</button>
+         <button class="ca" style="flex:none;padding:5px 9px;font-size:var(--fs-xs);color:#4D94D4;border-color:rgba(77,148,212,.3);background:rgba(77,148,212,.06)" onclick="event.stopPropagation();pdfReimbursement('${pid}','${esc(projName)}')">⬇ Reimb</button>`
+      :`<button class="ca gold" style="flex:none;padding:5px 9px;font-size:var(--fs-xs)" onclick="event.stopPropagation();pdfExpProjectContractor('${pid}','${esc(projName)}')">⬇ PDF</button>`;
+    const header=`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+      <div style="font-size:var(--fs-sm);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">📁 ${projName} <span style="color:var(--mut);font-weight:400;font-size:var(--fs-xs)">· ${entryCount}</span></div>
+      <div style="display:flex;align-items:center;gap:7px;flex-shrink:0">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-xs);color:var(--red)">-${fmt(totalDisplay)}</span>
+        ${pdfBtns}
+      </div>
+    </div>`;
+    const cashBlock=isOwnerMode&&proj?`<div style="padding:12px 14px;border-bottom:1px solid var(--bor)">
           <label style="font-size:var(--fs-xs);color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px">💵 Misc Cash in Hand (owner advance for expenses — not contract payment)</label>
           <div style="display:grid;grid-template-columns:1.2fr 1fr 0.85fr;gap:7px;margin-bottom:7px">
             <div>
@@ -5227,8 +5259,7 @@ function renderExp(){
               </div>`).join('')}
             </div>`;
           })()}
-        </div>`:''}
-        ${isOwnerMode&&cashInHand>0?`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px">
+          ${cashInHand>0?`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-top:10px">
           <div style="background:var(--s2);border-radius:8px;padding:8px;text-align:center">
             <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--gold)">${fmt(cashInHand)}</div>
             <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Misc Given</div>
@@ -5243,8 +5274,8 @@ function renderExp(){
           </div>
         </div>
         <div class="pbar-wrap" style="margin-top:8px"><div class="pbar" style="width:${pct}%;background:${pct>90?'var(--red)':pct>70?'var(--gold)':'var(--grn)'}"></div></div>`:''}
-      </div>
-      ${(()=>{
+        </div>`:'';
+    const rowsHtml=(()=>{
         const internalRows=projRows.filter(r=>(r.fundedBy||'contract')==='contract');
         const ownerRows=projRows.filter(r=>r.fundedBy==='cashinhand');
         const behalfRowsF=projRows.filter(r=>r.fundedBy==='onbehalf');
@@ -5326,8 +5357,8 @@ function renderExp(){
           html+=behalfRowsF.map(renderRowB).join('');
         }
         return html;
-      })()}
-      <div style="padding:10px 14px;background:var(--s2)">
+      })();
+    const footer=`<div style="padding:10px 14px;background:var(--s2)">
         ${!isOwnerMode&&subSpent>0?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--mut);margin-bottom:3px"><span>Sub-Con Paid</span><span style="font-family:'JetBrains Mono',monospace;color:var(--red)">PKR ${fmt(subSpent)}</span></div>`:''}
         ${!isOwnerMode&&expPaidDisplay>0?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--mut);margin-bottom:3px"><span>Paid Expenses</span><span style="font-family:'JetBrains Mono',monospace;color:var(--red)">PKR ${fmt(expPaidDisplay)}</span></div>`:''}
         ${!isOwnerMode?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-sm);font-weight:600;border-top:1px solid var(--bor);padding-top:6px;margin-top:3px"><span style="color:var(--mut)">Total Contractor Spent</span><span style="font-family:'JetBrains Mono',monospace;color:var(--red)">PKR ${fmt(totalDisplay)}</span></div>`:''}
@@ -5337,8 +5368,11 @@ function renderExp(){
         ${isOwnerMode&&behalfSpent>0?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--mut);margin-bottom:3px"><span>On Behalf (Reimbursable)</span><span style="font-family:'JetBrains Mono',monospace;color:var(--red)">PKR ${fmt(behalfSpent)}</span></div>`:''}
         ${isOwnerMode&&behalfOwed>0?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--red);margin-bottom:3px"><span>↳ Owner still owes you</span><span style="font-family:'JetBrains Mono',monospace;color:var(--red);font-weight:700">PKR ${fmt(behalfOwed)}</span></div>`:''}
         ${isOwnerMode?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-sm);font-weight:600;border-top:1px solid var(--bor);padding-top:6px;margin-top:3px"><span style="color:var(--mut)">Owner-Side Total</span><span style="font-family:'JetBrains Mono',monospace;color:var(--red)">PKR ${fmt(totalDisplay)}</span></div>`:''}
-      </div>
+      </div>`;
+    const body=`<div style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);overflow:hidden">
+      ${cashBlock}${rowsHtml}${footer}
     </div>`;
+    return collapsibleSection(gid,header,body,open);
   }).join('')+(!isOwnerMode?personalSectionHtml():'');
 }
 
@@ -7237,7 +7271,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-07-23-v35';
+const APP_VERSION='2026-07-24-v36';
 let _swRefreshing=false;
 
 async function wipeAppCaches(){
