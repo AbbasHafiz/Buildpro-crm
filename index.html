@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-07-24-v37">
+<meta name="app-version" content="2026-07-24-v38">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -3488,6 +3488,7 @@ function renderUnpaidSuppliers(){
 // ════ RENDER INVOICES ════
 function renderInv(){
   const el=e$('list-inv');let rows=fInvF==='all'?D.invoices:D.invoices.filter(r=>r.status===fInvF);
+  rows=[...rows].sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.createdAt||'').localeCompare(a.createdAt||''));
   if(!rows.length){el.innerHTML=`<div class="empty"><div class="empty-i">🧾</div><div class="empty-t">No invoices${fInvF!=='all'?' with status "'+fInvF+'"':' yet'}</div></div>`;return;}
   const typeLabel={standard:'Standard',labour:'Labour',progress:'Progress Billing',material:'Material'};
   el.innerHTML=rows.map(r=>`<div class="card">
@@ -3505,6 +3506,7 @@ function renderInv(){
 // ════ RENDER ESTIMATES ════
 function renderEst(){
   const el=e$('list-est');let rows=fEstF==='all'?D.estimates:D.estimates.filter(r=>r.status===fEstF);
+  rows=[...rows].sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.createdAt||'').localeCompare(a.createdAt||''));
   if(!rows.length){el.innerHTML='<div class="empty"><div class="empty-i">📊</div><div class="empty-t">No estimates yet</div></div>';return;}
   const structLbl={brown:'Brown',grey:'Grey',finishing:'Finishing'};
   el.innerHTML=rows.map(r=>{
@@ -3769,7 +3771,7 @@ function renderSub(){
     const rem=Math.max(0,totalContract-totalPaid);
     const pct=totalContract>0?Math.min(100,Math.round(totalPaid/totalContract*100)):0;
     const projIds=[...new Set(allPays.filter(p=>p.projectId).map(p=>p.projectId))];
-    const unlinkedPays=allPays.filter(p=>!p.projectId);
+    const unlinkedPays=allPays.filter(p=>!p.projectId).sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.createdAt||'').localeCompare(a.createdAt||''));
     const byProject=projIds.map(pid=>{
       const proj=D.projects.find(x=>x.id===pid);
       const projPays=allPays.filter(p=>(p.projectId||'__none__')===pid).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
@@ -3876,7 +3878,8 @@ function renderAgr(){
   const el=e$('list-agr');
   if(!D.agreements.length){el.innerHTML='<div class="empty"><div class="empty-i">✍️</div><div class="empty-t">No agreements yet</div></div>';return;}
   const typeLbl={labour:'Labour Rate',material:'With Material',costpct:'Cost to Cost %',lump:'Lump Sum',phase:'Phase-wise'};
-  el.innerHTML=D.agreements.map(r=>{
+  const agrRows=[...D.agreements].sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.createdAt||'').localeCompare(a.createdAt||''));
+  el.innerHTML=agrRows.map(r=>{
     const inc=(r.inclusions||[]).length;const exc=Array.isArray(r.exclusions)?r.exclusions.length:0;
     return`<div class="card">
     <div class="card-top"><div><div class="card-num">${r.num} · <span style="color:var(--mut)">${typeLbl[r.agrType]||r.agrType||'—'}</span></div><div class="card-nm">${r.clientName}</div><div class="card-sub">${r.projectName||'—'}${inc||exc?` · ✓${inc} include · ✕${exc} exclude`:''}</div></div>${bdg(r.status)}</div>
@@ -4699,6 +4702,7 @@ function renderTasks(){
   const el=e$('list-tasks');if(!el)return;
   const tasks=D.tasks||[];
   let rows=taskFilter==='all'?tasks:tasks.filter(r=>r.status===taskFilter);
+  rows=[...rows].sort((a,b)=>((b.due||b.start||'')+(b.createdAt||'')).localeCompare((a.due||a.start||'')+(a.createdAt||'')));
   if(!rows.length){el.innerHTML='<div class="empty"><div class="empty-i">📋</div><div class="empty-t">No tasks yet.<br>Tap + to add a task.</div></div>';return;}
   const statusColor={pending:'var(--gold)',inprogress:'var(--blu)',done:'var(--grn)',blocked:'var(--red)'};
   const priorityIcon={high:'🔴',medium:'🟡',low:'🟢'};
@@ -5199,9 +5203,11 @@ function renderExp(){
     const proj=D.projects.find(x=>x.id===pid);
     const projName=proj?proj.name:(rows.find(r=>(r.projectId||'__none__')===pid)?.projectName||subpaysFiltered.find(p=>(p.projectId||'__none__')===pid)?.projectName||'No Project');
     const cashInHand=proj?.cashInHand||0;
-    const projRows=rows.filter(r=>(r.projectId||'__none__')===pid);
+    // Newest date first within each project group
+    const byDateDesc=(a,b)=>(b.date||'').localeCompare(a.date||'')||(b.createdAt||'').localeCompare(a.createdAt||'');
+    const projRows=rows.filter(r=>(r.projectId||'__none__')===pid).slice().sort(byDateDesc);
     const projSubpays=subpaysFiltered.filter(p=>(p.projectId||'__none__')===pid)
-      .slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+      .slice().sort(byDateDesc);
     const allProjExps=(D.expenses||[]).filter(r=>(r.projectId||'__none__')===pid);
     const cashRows=allProjExps.filter(r=>r.fundedBy==='cashinhand');
     const behalfRows=allProjExps.filter(r=>r.fundedBy==='onbehalf');
@@ -6902,8 +6908,10 @@ function renderLedger(){
 
   if(!txns.length){el.innerHTML='<div class="empty"><div class="empty-i">📒</div><div class="empty-t">No transactions for this side yet</div></div>';return;}
   const projects=[...new Set(txns.map(t=>t.project||'General'))];
+  // Groups appear in newest-txn-first order (txns already sorted); keep rows newest→oldest within.
   el.innerHTML=projects.map(proj=>{
-    const ptxns=txns.filter(t=>(t.project||'General')===proj);
+    const ptxns=txns.filter(t=>(t.project||'General')===proj)
+      .slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
     const pIn=ptxns.filter(t=>t.dir==='in').reduce((s,t)=>s+t.amount,0);
     const pOut=ptxns.filter(t=>t.dir==='out'&&!t.pending).reduce((s,t)=>s+t.amount,0);
     const gid='led-grp-'+proj.replace(/[^a-z0-9]/gi,'_');
@@ -7283,7 +7291,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-07-24-v37';
+const APP_VERSION='2026-07-24-v38';
 let _swRefreshing=false;
 
 async function wipeAppCaches(){
