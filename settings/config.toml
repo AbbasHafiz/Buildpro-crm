@@ -1,0 +1,17 @@
+[general]
+# https://static-web-server.net/configuration/config-file/
+
+[[advanced.headers]]
+source = "**/*.{html,js,json}"
+[advanced.headers.headers]
+Cache-Control = "no-cache, no-store, must-revalidate"
+
+[[advanced.headers]]
+source = "sw.js"
+[advanced.headers.headers]
+Cache-Control = "no-cache, no-store, must-revalidate"
+
+[[advanced.headers]]
+source = "index.html"
+[advanced.headers.headers]
+Cache-Control = "no-cache, no-store, must-revalidate"
