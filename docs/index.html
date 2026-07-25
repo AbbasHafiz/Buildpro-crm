@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-07-24-v38">
+<meta name="app-version" content="2026-07-25-v39">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -65,10 +65,10 @@ body{color:var(--txt);font-family:'Inter',sans-serif;overscroll-behavior:none;fo
 /* CONTENT */
 .content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 16px 0;}
 
-/* BOTTOM NAV — scrollable */
-.bnav{background:var(--s1);border-top:1px solid var(--bor);display:flex;flex-shrink:0;padding-bottom:var(--safe-b);overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+/* BOTTOM NAV — scrollable; end padding so last tabs can fully scroll into view */
+.bnav{background:var(--s1);border-top:1px solid var(--bor);display:flex;flex-shrink:0;padding:0 6px var(--safe-b);overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;overscroll-behavior-x:contain;}
 .bnav::-webkit-scrollbar{display:none;}
-.bi{min-width:58px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;padding:9px 2px 7px;cursor:pointer;color:var(--mut);font-size:9px;font-weight:600;gap:4px;border-top:2px solid transparent;transition:all .15s;text-transform:uppercase;letter-spacing:.3px;position:relative;}
+.bi{min-width:56px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;padding:9px 4px 7px;cursor:pointer;color:var(--mut);font-size:9px;font-weight:600;gap:4px;border-top:2px solid transparent;transition:all .15s;text-transform:uppercase;letter-spacing:.3px;position:relative;}
 .bi svg{width:20px;height:20px;}
 .bi.on{color:var(--gold);border-top-color:var(--gold);}
 .bi-dot{position:absolute;top:7px;right:calc(50% - 14px);width:6px;height:6px;border-radius:50%;background:var(--gold);display:none;}
@@ -154,7 +154,9 @@ body{color:var(--txt);font-family:'Inter',sans-serif;overscroll-behavior:none;fo
 .card-mid{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-top:1px solid var(--bor);border-bottom:1px solid var(--bor);margin:0 0 12px;}
 .card-amt{font-family:'JetBrains Mono',monospace;font-size:18px;}
 .card-date{font-size:var(--fs-sm);color:var(--mut);}
-.card-acts{display:flex;gap:8px;}
+/* Card action rows wrap (Projects has many buttons); never spill off phone/Android */
+.card-acts{display:grid;grid-template-columns:repeat(auto-fill,minmax(108px,1fr));gap:8px;width:100%;max-width:100%;box-sizing:border-box;}
+.card-acts .ca{width:100%;min-width:0;box-sizing:border-box;font-size:var(--fs-xs);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .ca{flex:1;background:var(--s2);border:1px solid var(--bor);border-radius:9px;padding:9px 6px;font-size:var(--fs-sm);font-weight:600;color:var(--mut);cursor:pointer;font-family:'Inter',sans-serif;text-align:center;transition:all .15s;}
 .ca:active{transform:scale(.96);}
 .ca.gold{color:var(--gold);border-color:rgba(232,184,75,.25);background:rgba(232,184,75,.07);}
@@ -6830,10 +6832,10 @@ function renderProj(){
         ${showStock?`<button class="ca" style="color:var(--ora);border-color:rgba(201,123,58,.4);background:rgba(201,123,58,.1)" onclick="openProjStock('${p.id}')">📦 Stock</button>`:''}
         <button class="ca blu" onclick="eP('${p.id}')">✏️ Edit</button>
         <button class="ca gold" onclick="pdfProjPayments('${p.id}')">⬇ Owner PDF</button>
-        <button class="ca ora" onclick="O('sh-pay-internal');sv('pi-proj-t','${esc(p.name)}');sv('pi-proj-id','${p.id}');e$('pi-proj-label').textContent='${esc(p.name)}'">+ Pay Internal</button>
-        <button class="ca grn" onclick="O('sh-cpay');iCpay();sv('cp-proj-t','${esc(p.name)}');sv('cp-proj-id','${p.id}')">+ Pay Recv</button>
-        <button class="ca" style="color:#4D94D4;border-color:rgba(77,148,212,.3);background:rgba(77,148,212,.06)" onclick="pdfInternalSummary('${p.id}')">⬇ Internal PDF</button>
-        <button class="ca red" onclick="del('projects','${p.id}')">🗑</button>
+        <button class="ca ora" onclick="O('sh-pay-internal');sv('pi-proj-t','${esc(p.name)}');sv('pi-proj-id','${p.id}');e$('pi-proj-label').textContent='${esc(p.name)}'">+ Internal</button>
+        <button class="ca grn" onclick="O('sh-cpay');iCpay();sv('cp-proj-t','${esc(p.name)}');sv('cp-proj-id','${p.id}')">+ Received</button>
+        <button class="ca" style="color:#4D94D4;border-color:rgba(77,148,212,.3);background:rgba(77,148,212,.06)" onclick="pdfInternalSummary('${p.id}')">⬇ Internal</button>
+        <button class="ca red" onclick="del('projects','${p.id}')">🗑 Delete</button>
       </div>
       ${agr?`<div style="background:var(--s2);border-radius:9px;padding:12px;margin-top:10px">
         <div style="font-size:var(--fs-xs);color:var(--gold);font-weight:700;text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px">✍️ Agreement: ${agr.num} — ${agr.status.toUpperCase()}${(agr.agrType==='material'||agr.agrType==='costpct')?' · 📦 Material Stock':''}</div>
@@ -7291,7 +7293,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-07-24-v38';
+const APP_VERSION='2026-07-25-v39';
 let _swRefreshing=false;
 
 async function wipeAppCaches(){
