@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-07-25-v39">
+<meta name="app-version" content="2026-07-25-v40">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -646,7 +646,7 @@ select option{background:var(--s2);}
           <div class="stat"><div class="stat-lbl">Paid Expenses</div><div class="stat-val" id="exp-int-exp" style="font-size:24px;color:var(--ora)">0</div><div class="stat-unit">PKR</div></div>
         </div>
         <div id="exp-int-pending-row" style="display:none;background:rgba(201,123,58,.08);border:1px solid rgba(201,123,58,.25);border-radius:9px;padding:9px 12px;margin-bottom:8px;font-size:var(--fs-xs);color:var(--mut);justify-content:space-between;align-items:center">
-          <span>⏳ Pending expenses (not in total until paid)</span>
+          <span>⏳ Still due on expenses (partial / unpaid — not in total)</span>
           <span style="font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--ora)" id="exp-int-pending">PKR 0</span>
         </div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
@@ -1567,7 +1567,7 @@ select option{background:var(--s2);}
       <div class="fg"><label>Date</label><input type="date" id="ex-date"></div>
     </div>
     <div class="f2">
-      <div class="fg"><label>Amount (PKR)</label><input type="number" id="ex-amount" placeholder="0"></div>
+      <div class="fg"><label>Bill Amount (PKR)</label><input type="number" id="ex-amount" placeholder="e.g. 20000" oninput="syncExpPayHint()"></div>
       <div class="fg"><label>Paid By</label>
         <select id="ex-paid">
           <option>Cash</option>
@@ -1586,7 +1586,21 @@ select option{background:var(--s2);}
       </select>
     </div>
     <div class="fg"><label>Notes / Receipt Ref</label><input id="ex-notes" placeholder="Receipt no, supplier name…"></div>
-    <label id="ex-ispaid-row" style="display:flex;align-items:center;gap:11px;font-size:var(--fs-sm);color:var(--txt);text-transform:none;letter-spacing:0;font-weight:400;cursor:pointer;background:var(--bg);border:1px solid var(--bor);border-radius:8px;padding:11px 13px"><input type="checkbox" id="ex-ispaid" style="width:16px;height:16px;accent-color:var(--grn);flex-shrink:0"> <div><div style="font-weight:600">✅ Already Paid Out</div><div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">On by default — counts in spent totals. Uncheck if still pending payment to supplier (listed separately, not in total until paid).</div></div></label>
+    <div id="ex-ispaid-row" style="background:var(--bg);border:1px solid var(--bor);border-radius:10px;padding:12px 13px;margin-bottom:4px">
+      <div style="font-size:var(--fs-sm);font-weight:700;color:var(--txt);margin-bottom:4px">💳 Payment to supplier</div>
+      <div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:10px">Bill can be higher than cash paid — e.g. cement 20,000, paid 10,000 now (10,000 still due).</div>
+      <div class="f2" style="margin-bottom:8px">
+        <div class="fg" style="margin:0"><label>Paid So Far (PKR)</label><input type="number" id="ex-paid-amt" placeholder="e.g. 10000" oninput="syncExpPayHint()"></div>
+        <div class="fg" style="margin:0"><label>Still Due</label><div id="ex-due-amt" style="background:var(--s2);border:1px solid var(--bor);border-radius:8px;padding:11px 13px;font-family:'JetBrains Mono',monospace;font-size:var(--fs-md);color:var(--ora)">—</div></div>
+      </div>
+      <div id="ex-pay-hint" style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:8px">Leave Paid So Far empty to mark the full bill as paid.</div>
+      <div style="display:flex;gap:7px;flex-wrap:wrap">
+        <button type="button" class="btn btn-grey btn-sm" style="padding:7px 12px;font-size:var(--fs-xs);flex:none" onclick="setExPaidQuick('all')">✅ Pay All</button>
+        <button type="button" class="btn btn-grey btn-sm" style="padding:7px 12px;font-size:var(--fs-xs);flex:none" onclick="setExPaidQuick('half')">½ Half</button>
+        <button type="button" class="btn btn-grey btn-sm" style="padding:7px 12px;font-size:var(--fs-xs);flex:none;color:var(--ora)" onclick="setExPaidQuick('0')">⏳ Unpaid</button>
+      </div>
+      <input type="checkbox" id="ex-ispaid" style="display:none">
+    </div>
     <div class="fg" id="ex-rstatus-row" style="display:none"><label>Reimbursement Status (owner pays you back)</label>
       <select id="ex-rstatus">
         <option value="unpaid">🔴 Unpaid — owner has not paid you back</option>
@@ -3350,14 +3364,14 @@ function renderDash(){
   // Received = contract payments only (misc owner advances are tracked separately, not contract collection)
   const tr=D.cpays.filter(p=>(p.payType||'contract')==='contract').reduce((s,p)=>s+p.amount,0);
   const ts=D.subpays.reduce((s,p)=>s+p.amount,0);
-  // Spent totals = PAID contractor expenses only (pending kept separate until paid)
-  const te=(D.expenses||[]).filter(e=>e.isPaid&&(e.fundedBy||'contract')==='contract').reduce((s,e)=>s+e.amount,0);
+  // Spent totals = paid portion of contractor expenses (partial payments count)
+  const te=(D.expenses||[]).filter(e=>(e.fundedBy||'contract')==='contract').reduce((s,e)=>s+expPaidAmt(e),0);
   const ti=D.invoices.reduce((s,i)=>s+i.total,0);
   // Net profit = your share of each project's P&L
   const pft=D.projects.reduce((net,p)=>{
     const rec=D.cpays.filter(x=>x.projectId===p.id&&(x.payType||'contract')==='contract').reduce((s,x)=>s+x.amount,0);
     const sub=D.subpays.filter(x=>x.projectId===p.id).reduce((s,x)=>s+x.amount,0);
-    const exp=(D.expenses||[]).filter(x=>x.projectId===p.id&&x.isPaid&&(x.fundedBy||'contract')==='contract').reduce((s,x)=>s+x.amount,0);
+    const exp=(D.expenses||[]).filter(x=>x.projectId===p.id&&(x.fundedBy||'contract')==='contract').reduce((s,x)=>s+expPaidAmt(x),0);
     const internal=sub+exp;
     const isReimbursedD=p.lumpSum;
     const projNet=isReimbursedD?rec:rec-internal;
@@ -3396,7 +3410,7 @@ function renderDash(){
     const active=D.projects.filter(p=>!['Completed','Handover'].includes(p.phase));
     const completed=D.projects.filter(p=>['Completed','Handover'].includes(p.phase));
     const pendingTasks=(D.tasks||[]).filter(t=>t.status==='pending'||t.status==='inprogress').length;
-    const unpaidExp=(D.expenses||[]).filter(e=>!e.isPaid).length;
+    const unpaidExp=(D.expenses||[]).filter(e=>expHasDue(e)).length;
     ps.innerHTML=[
       {label:'Active',val:active.length,clr:'var(--grn)'},
       {label:'Done',val:completed.length,clr:'var(--mut)'},
@@ -3449,7 +3463,7 @@ function renderDash(){
   const acts=[
     ...D.cpays.map(x=>({type:'💳 Received',name:x.clientName,sub:x.projectName||'',amt:x.amount,date:x.date,clr:'var(--grn)'})),
     ...D.subpays.map(x=>({type:'💸 Paid Out',name:x.subconName,sub:(x.phase||'')+(x.projectName?' · '+x.projectName:''),amt:x.amount,date:x.date,clr:'var(--red)'})),
-    ...(D.expenses||[]).filter(e=>!e.isPaid).slice(0,5).map(x=>({type:'📦 Expense',name:x.desc,sub:x.projectName||'',amt:x.amount,date:x.date,clr:'var(--mut)'})),
+    ...(D.expenses||[]).filter(e=>expHasDue(e)).slice(0,5).map(x=>({type:'📦 Expense',name:x.desc,sub:(x.projectName||'')+(expPayStatus(x)==='partial'?' · partial':''),amt:expDueAmt(x),date:x.date,clr:'var(--mut)'})),
   ].sort((a,b)=>(b.date||'').localeCompare(a.date||'')).slice(0,8);
   const al=e$('act-list');
   if(al){
@@ -3461,13 +3475,15 @@ function renderDash(){
 function renderUnpaidSuppliers(){
   const el=e$('d-unpaid-suppliers');const tot=e$('d-unpaid-sup-total');
   if(!el)return;
-  const unpaid=(D.expenses||[]).filter(e=>e.fundedBy==='onbehalf'?rst(e)!=='paid':!e.isPaid);
+  const unpaid=(D.expenses||[]).filter(e=>e.fundedBy==='onbehalf'?rst(e)!=='paid':expHasDue(e));
   // Prefer paidTo; fall back to description
   const map={};
   unpaid.forEach(e=>{
     const key=(e.paidTo||'').trim()||'(No supplier name)';
     if(!map[key])map[key]={name:key,amt:0,n:0,projects:new Set()};
-    map[key].amt+=e.amount||0;map[key].n++;
+    // On-behalf unpaid to you uses bill; supplier dues use remaining balance
+    map[key].amt+=e.fundedBy==='onbehalf'&&rst(e)!=='paid'?(e.amount||0):expDueAmt(e);
+    map[key].n++;
     if(e.projectName)map[key].projects.add(e.projectName);
   });
   const rows=Object.values(map).sort((a,b)=>b.amt-a.amt);
@@ -4246,7 +4262,7 @@ async function pdfBoqVsActual(id){
   const pid=r.projectId;
   if(!pid){toast('Link this estimate to a project first','err');return;}
   const norm=s=>(s||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
-  const exps=(D.expenses||[]).filter(e=>e.projectId===pid&&(e.fundedBy||'contract')==='contract'&&e.isPaid);
+  const exps=(D.expenses||[]).filter(e=>e.projectId===pid&&(e.fundedBy||'contract')==='contract'&&expPaidAmt(e)>0);
   const spays=(D.subpays||[]).filter(p=>p.projectId===pid);
   const actualTotal=exps.reduce((s,e)=>s+e.amount,0)+spays.reduce((s,p)=>s+p.amount,0);
   const boqTotal=r.total||0;
@@ -5037,23 +5053,90 @@ function fExp(f,el){expFilter=f;document.querySelectorAll('#pg-exp .ftab').forEa
 // Falls back to legacy isPaid for records saved before this field existed.
 function rst(r){return r.rstatus||(r.isPaid?'paid':'unpaid');}
 
+// Supplier payment vs bill: amount = full bill, paidAmt = paid so far (partial OK).
+// Legacy records without paidAmt: isPaid true => fully paid, false => unpaid.
+function expPaidAmt(r){
+  if(!r)return 0;
+  if(r.paidAmt!=null&&r.paidAmt!==''){
+    const n=parseFloat(r.paidAmt);
+    if(!isNaN(n))return Math.max(0,Math.min(r.amount||0,n));
+  }
+  return r.isPaid?(r.amount||0):0;
+}
+function expDueAmt(r){return Math.max(0,(r.amount||0)-expPaidAmt(r));}
+function expPayStatus(r){
+  const tot=r.amount||0,paid=expPaidAmt(r);
+  if(paid<=0.005)return 'unpaid';
+  if(tot>0&&paid+0.005>=tot)return 'paid';
+  if(tot<=0&&paid>0)return 'paid';
+  return 'partial';
+}
+function expIsFullyPaid(r){return expPayStatus(r)==='paid';}
+function expHasDue(r){return expDueAmt(r)>0.005;}
+function expPayBadge(r){
+  const st=expPayStatus(r);
+  if(st==='paid')return'<span style="color:var(--grn);font-size:var(--fs-xs)">✅ Paid</span>';
+  if(st==='partial')return`<span style="color:var(--gold);font-size:var(--fs-xs)">🟡 Partial ${fmt(expPaidAmt(r))}/${fmt(r.amount||0)}</span>`;
+  return'<span style="color:var(--ora);font-size:var(--fs-xs)">⏳ Unpaid</span>';
+}
+
+function syncExpPayHint(){
+  const bill=parseFloat(e$('ex-amount')?.value)||0;
+  const raw=e$('ex-paid-amt')?.value;
+  const paid=(raw===''||raw==null)?bill:(parseFloat(raw)||0);
+  const due=Math.max(0,bill-Math.max(0,Math.min(bill,paid)));
+  const dueEl=e$('ex-due-amt');const hint=e$('ex-pay-hint');
+  if(dueEl){dueEl.textContent=fmt(due);dueEl.style.color=due>0?'var(--ora)':'var(--grn)';}
+  if(hint){
+    if(raw===''||raw==null)hint.textContent='Leave Paid So Far empty to mark the full bill as paid.';
+    else if(due<=0)hint.textContent='✅ Fully paid — counts in spent totals.';
+    else if(paid<=0)hint.textContent='⏳ Unpaid — full bill listed as due (not in spent until you pay).';
+    else hint.textContent=`🟡 Partial — PKR ${fmt(paid)} paid counts in spent; PKR ${fmt(due)} still due.`;
+  }
+  const ip=e$('ex-ispaid');if(ip)ip.checked=due<=0&&bill>0;
+}
+function setExPaidQuick(mode){
+  const bill=parseFloat(e$('ex-amount')?.value)||0;
+  if(mode==='all')sv('ex-paid-amt',bill?String(bill):'0');
+  else if(mode==='half')sv('ex-paid-amt',bill?String(Math.round(bill/2)): '0');
+  else sv('ex-paid-amt','0');
+  syncExpPayHint();
+}
+
 function toggleExpFunded(){
   const funded=e$('ex-funded')?.value||'contract';
   const paidRow=e$('ex-ispaid-row');const rRow=e$('ex-rstatus-row');
   if(funded==='onbehalf'){
-    if(paidRow)paidRow.style.display='none';
+    // Still show supplier payment; reimbursement is separate below
+    if(paidRow)paidRow.style.display='';
     if(rRow)rRow.style.display='';
   }else{
-    if(paidRow)paidRow.style.display='flex';
+    if(paidRow)paidRow.style.display='';
     if(rRow)rRow.style.display='none';
   }
+  syncExpPayHint();
 }
 
-function iExp(){sv('exp-eid','');const eb=e$('exp-eb');if(eb)eb.classList.remove('on');const sh=e$('exp-sh-t');if(sh)sh.textContent='New Expense';['ex-desc','ex-paid-to','ex-proj-t','ex-proj-id','ex-notes'].forEach(id=>sv(id,''));sv('ex-amount','');sv('ex-date',today());sv('ex-cat','material');sv('ex-paid','Cash');sv('ex-funded','contract');const ip=e$('ex-ispaid');if(ip)ip.checked=true;sv('ex-rstatus','unpaid');toggleExpFunded();}
+function iExp(){sv('exp-eid','');const eb=e$('exp-eb');if(eb)eb.classList.remove('on');const sh=e$('exp-sh-t');if(sh)sh.textContent='New Expense';['ex-desc','ex-paid-to','ex-proj-t','ex-proj-id','ex-notes','ex-paid-amt'].forEach(id=>sv(id,''));sv('ex-amount','');sv('ex-date',today());sv('ex-cat','material');sv('ex-paid','Cash');sv('ex-funded','contract');const ip=e$('ex-ispaid');if(ip)ip.checked=true;sv('ex-rstatus','unpaid');toggleExpFunded();syncExpPayHint();}
 
-function eExp(id){const r=(D.expenses||[]).find(x=>x.id===id);if(!r)return;sv('exp-eid',id);const eb=e$('exp-eb');if(eb)eb.classList.add('on');const sh=e$('exp-sh-t');if(sh)sh.textContent='Edit Expense';sv('ex-desc',r.desc);sv('ex-paid-to',r.paidTo||'');sv('ex-amount',r.amount);sv('ex-date',r.date||'');sv('ex-cat',r.cat||'material');sv('ex-paid',r.paid||'Cash');sv('ex-funded',r.fundedBy||'contract');sv('ex-notes',r.notes||'');const ip=e$('ex-ispaid');if(ip)ip.checked=!!r.isPaid;sv('ex-rstatus',rst(r));toggleExpFunded();const p=D.projects.find(x=>x.id===r.projectId);sv('ex-proj-t',p?p.name:'');sv('ex-proj-id',r.projectId||'');O('sh-exp');}
+function eExp(id){const r=(D.expenses||[]).find(x=>x.id===id);if(!r)return;sv('exp-eid',id);const eb=e$('exp-eb');if(eb)eb.classList.add('on');const sh=e$('exp-sh-t');if(sh)sh.textContent='Edit Expense';sv('ex-desc',r.desc);sv('ex-paid-to',r.paidTo||'');sv('ex-amount',r.amount);sv('ex-date',r.date||'');sv('ex-cat',r.cat||'material');sv('ex-paid',r.paid||'Cash');sv('ex-funded',r.fundedBy||'contract');sv('ex-notes',r.notes||'');sv('ex-paid-amt',String(expPaidAmt(r)));const ip=e$('ex-ispaid');if(ip)ip.checked=expIsFullyPaid(r);sv('ex-rstatus',rst(r));toggleExpFunded();const p=D.projects.find(x=>x.id===r.projectId);sv('ex-proj-t',p?p.name:'');sv('ex-proj-id',r.projectId||'');syncExpPayHint();O('sh-exp');}
 
-function saveExp(){const eid=e$('exp-eid').value;const funded=e$('ex-funded')?.value||'contract';const doc={id:eid||uid(),desc:e$('ex-desc').value,paidTo:e$('ex-paid-to')?.value||'',projectId:e$('ex-proj-id').value,projectName:e$('ex-proj-t').value,cat:e$('ex-cat').value,date:e$('ex-date').value||today(),amount:parseFloat(e$('ex-amount').value)||0,paid:e$('ex-paid').value,fundedBy:funded,notes:e$('ex-notes').value};if(funded==='onbehalf'){doc.rstatus=e$('ex-rstatus')?.value||'unpaid';doc.isPaid=doc.rstatus==='paid';}else{doc.isPaid=e$('ex-ispaid')?.checked||false;}if(!doc.desc||!doc.amount){toast('Enter description and amount','err');return;}if(!D.expenses)D.expenses=[];ups('expenses',doc);X('sh-exp');renderExp();updateDots();renderDash();toast(eid?'Expense updated ✓':'Expense saved ✓');}
+function saveExp(){
+  const eid=e$('exp-eid').value;
+  const funded=e$('ex-funded')?.value||'contract';
+  const amount=parseFloat(e$('ex-amount').value)||0;
+  const paidRaw=e$('ex-paid-amt')?.value;
+  // Empty Paid So Far = treat as fully paid (same default as old checkbox-on)
+  let paidAmt=(paidRaw===''||paidRaw==null)?amount:(parseFloat(paidRaw)||0);
+  paidAmt=Math.max(0,Math.min(amount,paidAmt));
+  const doc={id:eid||uid(),desc:e$('ex-desc').value,paidTo:e$('ex-paid-to')?.value||'',projectId:e$('ex-proj-id').value,projectName:e$('ex-proj-t').value,cat:e$('ex-cat').value,date:e$('ex-date').value||today(),amount,paidAmt,paid:e$('ex-paid').value,fundedBy:funded,notes:e$('ex-notes').value,isPaid:amount>0?paidAmt+0.005>=amount:paidAmt>0};
+  if(funded==='onbehalf'){doc.rstatus=e$('ex-rstatus')?.value||'unpaid';}
+  if(!doc.desc||!doc.amount){toast('Enter description and bill amount','err');return;}
+  if(!D.expenses)D.expenses=[];
+  ups('expenses',doc);X('sh-exp');renderExp();updateDots();renderDash();renderLedger();
+  const st=expPayStatus(doc);
+  toast(eid?'Expense updated ✓':(st==='partial'?`Expense saved · paid ${fmt(doc.paidAmt)} / due ${fmt(expDueAmt(doc))}`:'Expense saved ✓'));
+}
 
 function updateCashInHand(projectId,value,date,time){
   const proj=D.projects.find(x=>x.id===projectId);
@@ -5086,8 +5169,21 @@ function openMiscAdvanceForProject(projectId){
 
 function markExpPaid(id){
   const r=(D.expenses||[]).find(x=>x.id===id);if(!r)return;
-  r.isPaid=!r.isPaid;r.updatedAt=new Date().toISOString();sched();renderExp();renderLedger();renderDash();
-  toast(r.isPaid?'Marked as paid ✅':'Marked as unpaid','info');
+  const st=expPayStatus(r);
+  if(st==='paid'){
+    r.paidAmt=0;r.isPaid=false;
+    r.updatedAt=new Date().toISOString();sched();renderExp();renderLedger();renderDash();
+    toast('Marked as unpaid','info');return;
+  }
+  const due=expDueAmt(r);
+  const raw=prompt('Pay amount now (still due PKR '+fmt(due)+').\nEnter '+fmt(due)+' to clear the balance.',String(due));
+  if(raw===null)return;
+  const add=parseFloat(raw);
+  if(!(add>0)){toast('Enter a valid payment amount','err');return;}
+  r.paidAmt=Math.min(r.amount||0,expPaidAmt(r)+add);
+  r.isPaid=expPaidAmt(r)+0.005>=(r.amount||0);
+  r.updatedAt=new Date().toISOString();sched();renderExp();renderLedger();renderDash();
+  toast(r.isPaid?'Fully paid ✅':`Partial payment recorded · due PKR ${fmt(expDueAmt(r))}`,'info');
 }
 
 function updateMiscReconBanner(){
@@ -5096,7 +5192,7 @@ function updateMiscReconBanner(){
   D.projects.forEach(p=>{
     const miscSum=(D.cpays||[]).filter(x=>x.projectId===p.id&&x.payType==='misc').reduce((s,x)=>s+x.amount,0);
     const hand=p.cashInHand||0;
-    const spent=(D.expenses||[]).filter(e=>e.projectId===p.id&&e.fundedBy==='cashinhand'&&e.isPaid).reduce((s,e)=>s+e.amount,0);
+    const spent=(D.expenses||[]).filter(e=>e.projectId===p.id&&e.fundedBy==='cashinhand').reduce((s,e)=>s+expPaidAmt(e),0);
     if(miscSum>0&&Math.abs(hand-miscSum)>0.5){
       issues.push(`<b>${p.name}</b>: Misc advances recorded PKR ${fmt(miscSum)} but cash-in-hand is PKR ${fmt(hand)}`);
     }
@@ -5117,7 +5213,9 @@ function cycleFunded(id){
   const order=['contract','cashinhand','onbehalf'];
   const next=order[(order.indexOf(r.fundedBy||'contract')+1)%order.length];
   r.fundedBy=next;
-  if(next==='onbehalf'&&!r.rstatus)r.rstatus=r.isPaid?'paid':'unpaid';
+  if(next==='onbehalf'&&!r.rstatus)r.rstatus='unpaid';
+  // Keep isPaid as supplier-pay flag (from paidAmt), not reimbursement
+  r.isPaid=expPaidAmt(r)+0.005>=(r.amount||0);
   r.updatedAt=new Date().toISOString();
   sched();renderExp();renderDash();renderLedger();
   const lbl={contract:'Contractor Side',cashinhand:"Owner's Cash in Hand",onbehalf:'Paid on Behalf (reimbursable)'};
@@ -5125,11 +5223,12 @@ function cycleFunded(id){
 }
 
 // Cycle reimbursement status for on-behalf expenses: unpaid -> pending -> paid -> unpaid
+// (Separate from supplier paidAmt / partial payment.)
 function cycleReimburse(id){
   const r=(D.expenses||[]).find(x=>x.id===id);if(!r)return;
   const order=['unpaid','pending','paid'];
   const next=order[(order.indexOf(rst(r))+1)%order.length];
-  r.rstatus=next;r.isPaid=next==='paid';r.updatedAt=new Date().toISOString();sched();renderExp();renderLedger();renderDash();
+  r.rstatus=next;r.updatedAt=new Date().toISOString();sched();renderExp();renderLedger();renderDash();
   toast(next==='paid'?'Owner reimbursed ✅':next==='pending'?'Reimbursement pending 🟡':'Marked unpaid 🔴','info');
 }
 
@@ -5145,10 +5244,10 @@ function renderExp(){
   const ownerExps=cashExps.concat(behalfExps);
   const setV=(id,v)=>{const x=e$(id);if(x)x.textContent=fmt(v);};
 
-  // Contractor stats = PAID expenses + sub-con (pending expenses not in total)
+  // Contractor stats = paid portion + sub-con (remaining due not in total)
   const subTotalAll=allSubpays.reduce((s,p)=>s+p.amount,0);
-  const expPaidAll=internalExps.filter(e=>e.isPaid).reduce((s,e)=>s+e.amount,0);
-  const expPendingAll=internalExps.filter(e=>!e.isPaid).reduce((s,e)=>s+e.amount,0);
+  const expPaidAll=internalExps.reduce((s,e)=>s+expPaidAmt(e),0);
+  const expPendingAll=internalExps.reduce((s,e)=>s+expDueAmt(e),0);
   setV('exp-int-spent',expPaidAll+subTotalAll);
   setV('exp-int-sub',subTotalAll);
   setV('exp-int-exp',expPaidAll);
@@ -5161,7 +5260,7 @@ function renderExp(){
 
   // Update owner stats (misc cash only — not contract receipts). Spent = paid-out only.
   const totalCash=D.projects.reduce((s,p)=>s+(p.cashInHand||0),0);
-  const ownerSpent=cashExps.filter(e=>e.isPaid).reduce((s,e)=>s+e.amount,0);
+  const ownerSpent=cashExps.reduce((s,e)=>s+expPaidAmt(e),0);
   setV('exp-own-hand',totalCash);
   setV('exp-own-spent',ownerSpent);
   const or=e$('exp-own-rem');
@@ -5173,7 +5272,7 @@ function renderExp(){
   const mode=(typeof expTabMode!=='undefined')?expTabMode:'builder';
   const isOwnerMode=mode==='owner';
   const modeExps=isOwnerMode?ownerExps:internalExps;
-  const expsFiltered=expFilter==='all'?modeExps:expFilter==='unpaid'?modeExps.filter(r=>isOwnerMode&&r.fundedBy==='onbehalf'?rst(r)!=='paid':!r.isPaid):expFilter==='paid'?modeExps.filter(r=>isOwnerMode&&r.fundedBy==='onbehalf'?rst(r)==='paid':!!r.isPaid):modeExps.filter(r=>r.cat===expFilter);
+  const expsFiltered=expFilter==='all'?modeExps:expFilter==='unpaid'?modeExps.filter(r=>isOwnerMode&&r.fundedBy==='onbehalf'?rst(r)!=='paid':expHasDue(r)):expFilter==='paid'?modeExps.filter(r=>isOwnerMode&&r.fundedBy==='onbehalf'?rst(r)==='paid':expIsFullyPaid(r)):modeExps.filter(r=>r.cat===expFilter);
   // Sub-con payments show on contractor tab for All / Paid (always paid). Hide on category filters except labour.
   const showSubpays=!isOwnerMode&&(expFilter==='all'||expFilter==='paid'||expFilter==='labour');
   const subpaysFiltered=showSubpays?allSubpays:[];
@@ -5213,13 +5312,13 @@ function renderExp(){
     const allProjExps=(D.expenses||[]).filter(r=>(r.projectId||'__none__')===pid);
     const cashRows=allProjExps.filter(r=>r.fundedBy==='cashinhand');
     const behalfRows=allProjExps.filter(r=>r.fundedBy==='onbehalf');
-    const projSpent=cashRows.filter(r=>r.isPaid).reduce((s,r)=>s+r.amount,0);
-    const cashPending=cashRows.filter(r=>!r.isPaid).reduce((s,r)=>s+r.amount,0);
+    const projSpent=cashRows.reduce((s,r)=>s+expPaidAmt(r),0);
+    const cashPending=cashRows.reduce((s,r)=>s+expDueAmt(r),0);
     const behalfSpent=behalfRows.reduce((s,r)=>s+r.amount,0);
     const behalfOwed=behalfRows.filter(r=>rst(r)!=='paid').reduce((s,r)=>s+r.amount,0);
     const subSpent=projSubpays.reduce((s,p)=>s+p.amount,0);
-    const expPaidDisplay=projRows.filter(r=>r.fundedBy==='onbehalf'||r.isPaid).reduce((s,r)=>s+r.amount,0);
-    const expPendingDisplay=projRows.filter(r=>r.fundedBy!=='onbehalf'&&!r.isPaid).reduce((s,r)=>s+r.amount,0);
+    const expPaidDisplay=projRows.reduce((s,r)=>s+(r.fundedBy==='onbehalf'?(r.amount||0):expPaidAmt(r)),0);
+    const expPendingDisplay=projRows.filter(r=>r.fundedBy!=='onbehalf').reduce((s,r)=>s+expDueAmt(r),0);
     const totalDisplay=isOwnerMode?expPaidDisplay:(expPaidDisplay+subSpent);
     const balance=cashInHand-projSpent;
     const pct=cashInHand>0?Math.min(100,Math.round(projSpent/cashInHand*100)):0;
@@ -5301,8 +5400,8 @@ function renderExp(){
         const behalfRowsF=projRows.filter(r=>r.fundedBy==='onbehalf');
         const renderRow=r=>`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:11px 14px;border-bottom:1px solid var(--bor)">
           <div>
-            <div style="font-size:var(--fs-sm);font-weight:600">${catIcon[r.cat]||'📦'} ${r.desc} ${r.isPaid?'<span style="color:var(--grn);font-size:var(--fs-xs)">✅ Paid</span>':'<span style="color:var(--ora);font-size:var(--fs-xs)">⏳ Pending</span>'}</div>
-            <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">${r.date} · ${r.paid} · <span class="b b-m" style="font-size:9px">${r.cat}</span></div>
+            <div style="font-size:var(--fs-sm);font-weight:600">${catIcon[r.cat]||'📦'} ${r.desc} ${expPayBadge(r)}</div>
+            <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">${r.date} · ${r.paid} · <span class="b b-m" style="font-size:9px">${r.cat}</span>${expHasDue(r)?` · <span style="color:var(--ora)">Due ${fmt(expDueAmt(r))}</span>`:''}</div>
             ${r.paidTo?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">To: ${r.paidTo}</div>`:''}
             ${r.notes?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">${r.notes}</div>`:''}
             <div style="display:flex;gap:5px;margin-top:6px;flex-wrap:wrap">
@@ -5313,8 +5412,9 @@ function renderExp(){
           </div>
           <div style="text-align:right;flex-shrink:0;margin-left:12px">
             <div style="font-family:'JetBrains Mono',monospace;color:var(--red);font-size:var(--fs-md)">${fmt(r.amount)}</div>
+            ${expPayStatus(r)==='partial'?`<div style="font-size:9px;color:var(--mut);margin-top:2px">Paid ${fmt(expPaidAmt(r))}</div>`:''}
             <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
-              <button style="font-size:var(--fs-xs);color:${r.isPaid?'var(--mut)':'var(--grn)'};background:none;border:none;cursor:pointer;font-family:Inter,sans-serif;font-weight:600" onclick="markExpPaid('${r.id}')">${r.isPaid?'↩ Unpaid':'✅ Paid'}</button>
+              <button style="font-size:var(--fs-xs);color:${expIsFullyPaid(r)?'var(--mut)':'var(--grn)'};background:none;border:none;cursor:pointer;font-family:Inter,sans-serif;font-weight:600" onclick="markExpPaid('${r.id}')">${expIsFullyPaid(r)?'↩ Unpaid':(expHasDue(r)?'💰 Pay':'✅ Paid')}</button>
               <button style="font-size:var(--fs-xs);color:#4D94D4;background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="cycleFunded('${r.id}')" title="Change funding side">⇄ ${({contract:'Owner Cash',cashinhand:'On Behalf',onbehalf:'Internal'})[r.fundedBy||'contract']}</button>
               <button style="font-size:var(--fs-xs);color:var(--blu);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="eExp('${r.id}')">Edit</button>
               <button style="font-size:var(--fs-xs);color:var(--red);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="del('expenses','${r.id}')">Del</button>
@@ -5399,10 +5499,8 @@ function renderExp(){
 function setExpFunding(id,funded){
   const r=(D.expenses||[]).find(x=>x.id===id);if(!r)return;
   r.fundedBy=funded;
-  if(funded==='onbehalf'){
-    r.rstatus=rst(r)||'unpaid';
-    r.isPaid=r.rstatus==='paid';
-  }
+  if(funded==='onbehalf'&&!r.rstatus)r.rstatus='unpaid';
+  r.isPaid=expPaidAmt(r)+0.005>=(r.amount||0);
   r.updatedAt=new Date().toISOString();
   sched();renderExp();renderLedger();renderDash();
   toast(funded==='contract'?'Moved to Contractor Expenses':funded==='cashinhand'?'Moved to Owner Misc Cash':'Moved to On Behalf of Owner');
@@ -5641,32 +5739,44 @@ function pdfDrawSpayTable(doc,y,spays,opts){
 // Legacy no-op — breakdown belongs on sub-con statement PDF only, not expenses/partnership.
 function pdfAppendSpayBreakdown(doc,y){return y;}
 
-/** Draw paid expenses (in totals) then pending expenses (separate, not in totals). Returns new y. */
+/** Draw paid portion (in totals) then remaining due (not in totals). Supports partial payments. */
 function pdfDrawExpPaidPending(doc,y,exps,opts){
   opts=opts||{};
-  const paid=exps.filter(r=>r.isPaid);
-  const pending=exps.filter(r=>!r.isPaid);
-  const paidTot=paid.reduce((s,r)=>s+r.amount,0);
-  const pendTot=pending.reduce((s,r)=>s+r.amount,0);
+  const paid=exps.filter(r=>expPaidAmt(r)>0.005);
+  const pending=exps.filter(r=>expHasDue(r));
+  const paidTot=paid.reduce((s,r)=>s+expPaidAmt(r),0);
+  const pendTot=pending.reduce((s,r)=>s+expDueAmt(r),0);
   const withMethod=!!opts.withMethod;
   const head=withMethod
-    ?['Date','Description','Category','Method','Amount (PKR)']
-    :['Date','Description','Category','Amount (PKR)'];
-  const row=r=>withMethod
-    ?[r.date||'—',r.desc+(r.notes?'\n'+r.notes:''),(r.cat||'other'),r.paid||'Cash',fmt(r.amount)]
-    :[r.date||'—',r.desc,r.cat||'—',fmt(r.amount)];
-  const amtCol=withMethod?4:3;
-  if(paid.length){
+    ?['Date','Description','Category','Method','Bill','Paid']
+    :['Date','Description','Category','Bill','Paid'];
+  const row=r=>{
+    const desc=r.desc+(expPayStatus(r)==='partial'?' (partial)':'')+(r.notes?'\n'+r.notes:'');
+    return withMethod
+      ?[r.date||'—',desc,(r.cat||'other'),r.paid||'Cash',fmt(r.amount),fmt(expPaidAmt(r))]
+      :[r.date||'—',desc,r.cat||'—',fmt(r.amount),fmt(expPaidAmt(r))];
+  };
+  const pendHead=withMethod
+    ?['Date','Description','Category','Method','Bill','Due']
+    :['Date','Description','Category','Bill','Due'];
+  const pendRow=r=>{
+    const desc=r.desc+(expPayStatus(r)==='partial'?' (balance)':'')+(r.notes?'\n'+r.notes:'');
+    return withMethod
+      ?[r.date||'—',desc,(r.cat||'other'),r.paid||'Cash',fmt(r.amount),fmt(expDueAmt(r))]
+      :[r.date||'—',desc,r.cat||'—',fmt(r.amount),fmt(expDueAmt(r))];
+  };
+  const amtCol=withMethod?5:4;
+  if(paid.length&&opts.paidTitle!==''){
     if(y>230){doc.addPage();y=20;}
     doc.setFont('helvetica','bold');doc.setFontSize(opts.titleSize||9);doc.setTextColor(130,125,118);
     doc.text(opts.paidTitle||'PAID EXPENSES (in total)',14,y);y+=5;
     doc.autoTable({
       startY:y,head:[head],body:paid.map(row),
-      foot:[withMethod?['','','','PAID TOTAL','PKR '+fmt(paidTot)]:['','','PAID TOTAL','PKR '+fmt(paidTot)]],
+      foot:[withMethod?['','','','','PAID TOTAL','PKR '+fmt(paidTot)]:['','','','PAID TOTAL','PKR '+fmt(paidTot)]],
       styles:{fontSize:8.5,cellPadding:opts.pad||3,textColor:[30,30,30]},
       headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
       footStyles:pdfFootStyles('gold'),
-      columnStyles:{[amtCol]:{halign:'right',cellWidth:28}},
+      columnStyles:{[amtCol-1]:{halign:'right',cellWidth:24},[amtCol]:{halign:'right',cellWidth:24}},
       rowPageBreak:'avoid',showFoot:'lastPage',margin:{left:14,right:14,bottom:18}
     });
     y=doc.lastAutoTable.finalY+10;
@@ -5674,14 +5784,14 @@ function pdfDrawExpPaidPending(doc,y,exps,opts){
   if(pending.length){
     if(y>230){doc.addPage();y=20;}
     doc.setFont('helvetica','bold');doc.setFontSize(opts.titleSize||9);doc.setTextColor(201,123,58);
-    doc.text(opts.pendTitle||'PENDING EXPENSES (not in total until paid)',14,y);y+=5;
+    doc.text(opts.pendTitle||'PENDING / DUE (not in total until paid)',14,y);y+=5;
     doc.autoTable({
-      startY:y,head:[head],body:pending.map(row),
-      foot:[withMethod?['','','','PENDING TOTAL','PKR '+fmt(pendTot)]:['','','PENDING TOTAL','PKR '+fmt(pendTot)]],
+      startY:y,head:[pendHead],body:pending.map(pendRow),
+      foot:[withMethod?['','','','','DUE TOTAL','PKR '+fmt(pendTot)]:['','','','DUE TOTAL','PKR '+fmt(pendTot)]],
       styles:{fontSize:8.5,cellPadding:opts.pad||3,textColor:[30,30,30]},
       headStyles:{fillColor:[255,248,235],textColor:[201,123,58],fontStyle:'bold',fontSize:8},
       footStyles:pdfFootStyles('gold'),
-      columnStyles:{[amtCol]:{halign:'right',cellWidth:28}},
+      columnStyles:{[amtCol-1]:{halign:'right',cellWidth:24},[amtCol]:{halign:'right',cellWidth:24}},
       rowPageBreak:'avoid',showFoot:'lastPage',margin:{left:14,right:14,bottom:18}
     });
     y=doc.lastAutoTable.finalY+10;
@@ -5697,10 +5807,10 @@ async function pdfExp(){
   const exps=(D.expenses||[]).filter(e=>(e.fundedBy||'contract')==='contract');
   const spays=D.subpays||[];
   if(!exps.length&&!spays.length){toast('No contractor spending to export','info');return;}
-  const paidExps=exps.filter(e=>e.isPaid);
-  const pendingExps=exps.filter(e=>!e.isPaid);
-  const expPaid=paidExps.reduce((s,e)=>s+e.amount,0);
-  const expPending=pendingExps.reduce((s,e)=>s+e.amount,0);
+  const paidExps=exps.filter(e=>expPaidAmt(e)>0);
+  const pendingExps=exps.filter(e=>expHasDue(e));
+  const expPaid=exps.reduce((s,e)=>s+expPaidAmt(e),0);
+  const expPending=exps.reduce((s,e)=>s+expDueAmt(e),0);
   const subTotal=spays.reduce((s,p)=>s+p.amount,0);
   const totalSpent=expPaid+subTotal;
   doc.setFillColor(40,38,34);doc.rect(14,y,182,16,'F');
@@ -5726,7 +5836,7 @@ async function pdfExp(){
     const projName=proj?proj.name:(exps.find(r=>(r.projectId||'__none__')===pid)?.projectName||spays.find(r=>(r.projectId||'__none__')===pid)?.projectName||'No Project');
     const projExps=exps.filter(r=>(r.projectId||'__none__')===pid);
     const projSpays=spays.filter(r=>(r.projectId||'__none__')===pid).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
-    const pExpPaid=projExps.filter(r=>r.isPaid).reduce((s,r)=>s+r.amount,0);
+    const pExpPaid=projExps.reduce((s,r)=>s+expPaidAmt(r),0);
     const pSub=projSpays.reduce((s,r)=>s+r.amount,0);
     if(y>240){doc.addPage();y=20;}
     doc.setFillColor(242,240,235);doc.rect(14,y-3,182,9,'F');
@@ -5755,13 +5865,13 @@ async function pdfExpExternal(){
   const doc=bPDF();const pw=210;
   let y=drawHeader(doc,'OWNER EXPENSE REPORT','ALL','Date: '+today(),'','');
   const fundLabel=r=>r.fundedBy==='onbehalf'?'On Behalf':'Misc Cash';
-  const statLabel=r=>r.fundedBy==='onbehalf'?rst(r).toUpperCase():(r.isPaid?'PAID':'PENDING');
+  const statLabel=r=>r.fundedBy==='onbehalf'?rst(r).toUpperCase():({paid:'PAID',partial:'PARTIAL',unpaid:'UNPAID'}[expPayStatus(r)]||'UNPAID');
   const allExps=(D.expenses||[]).filter(r=>r.fundedBy==='cashinhand'||r.fundedBy==='onbehalf');
   if(!allExps.length){toast('No owner-side expenses found','info');return;}
   const cashExps=allExps.filter(e=>e.fundedBy==='cashinhand');
   const behalfExps=allExps.filter(e=>e.fundedBy==='onbehalf');
-  const cashSpent=cashExps.filter(e=>e.isPaid).reduce((s,e)=>s+e.amount,0);
-  const cashPending=cashExps.filter(e=>!e.isPaid).reduce((s,e)=>s+e.amount,0);
+  const cashSpent=cashExps.reduce((s,e)=>s+expPaidAmt(e),0);
+  const cashPending=cashExps.reduce((s,e)=>s+expDueAmt(e),0);
   const behalfSpent=behalfExps.reduce((s,e)=>s+e.amount,0);
   const behalfOwed=behalfExps.filter(e=>rst(e)!=='paid').reduce((s,e)=>s+e.amount,0);
   const totalMiscGiven=D.projects.reduce((s,p)=>s+(p.cashInHand||0),0);
@@ -5783,7 +5893,7 @@ async function pdfExpExternal(){
     const pCash=projRows.filter(r=>r.fundedBy==='cashinhand');
     const pBehalf=projRows.filter(r=>r.fundedBy==='onbehalf');
     const cashInHand=proj?.cashInHand||0;
-    const pCashSpent=pCash.filter(r=>r.isPaid).reduce((s,r)=>s+r.amount,0);
+    const pCashSpent=pCash.reduce((s,r)=>s+expPaidAmt(r),0);
     const pBehalfSpent=pBehalf.reduce((s,r)=>s+r.amount,0);
     if(y>240){doc.addPage();y=20;}
     doc.setFillColor(242,240,235);doc.rect(14,y-3,182,9,'F');
@@ -5793,12 +5903,12 @@ async function pdfExpExternal(){
     y+=12;
     doc.autoTable({
       startY:y,
-      head:[['Date','Description','Funded','Category','Status','Amount (PKR)']],
-      body:projRows.map(r=>[r.date||'—',r.desc+(r.paidTo?'\nTo: '+r.paidTo:''),fundLabel(r),r.cat||'—',statLabel(r),fmt(r.amount)]),
-      styles:{fontSize:8.5,cellPadding:2.5,textColor:[30,30,30]},
-      headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
-      columnStyles:{4:{cellWidth:24},5:{halign:'right',cellWidth:28}},
-      didParseCell:data=>{if(data.section==='body'&&data.column.index===4)data.cell.styles.textColor=(data.cell.raw==='PAID')?[50,150,50]:(data.cell.raw==='PENDING')?[201,123,58]:[200,50,50];},
+      head:[['Date','Description','Funded','Category','Status','Bill','Paid','Due']],
+      body:projRows.map(r=>[r.date||'—',r.desc+(r.paidTo?'\nTo: '+r.paidTo:''),fundLabel(r),r.cat||'—',statLabel(r),fmt(r.amount),fmt(expPaidAmt(r)),fmt(expDueAmt(r))]),
+      styles:{fontSize:8,cellPadding:2.2,textColor:[30,30,30]},
+      headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:7.5},
+      columnStyles:{4:{cellWidth:20},5:{halign:'right',cellWidth:18},6:{halign:'right',cellWidth:18},7:{halign:'right',cellWidth:18}},
+      didParseCell:data=>{if(data.section==='body'&&data.column.index===4)data.cell.styles.textColor=(data.cell.raw==='PAID')?[50,150,50]:(data.cell.raw==='PARTIAL')?[201,123,58]:[200,50,50];},
       rowPageBreak:'avoid',
       margin:{left:14,right:14,bottom:18}
     });
@@ -5820,10 +5930,10 @@ async function pdfExpProjectContractor(pid,projName){
   if(!allExps.length&&!allSpays.length){toast('No contractor spending for this project','info');return;}
   const proj=D.projects.find(x=>x.id===pid);
   const cli=proj?D.clients.find(x=>x.id===proj.clientId):null;
-  const paidExps=allExps.filter(r=>r.isPaid);
-  const pendingExps=allExps.filter(r=>!r.isPaid);
-  const expPaid=paidExps.reduce((s,r)=>s+r.amount,0);
-  const pendingAmt=pendingExps.reduce((s,r)=>s+r.amount,0);
+  const paidExps=allExps.filter(r=>expPaidAmt(r)>0);
+  const pendingExps=allExps.filter(r=>expHasDue(r));
+  const expPaid=allExps.reduce((s,r)=>s+expPaidAmt(r),0);
+  const pendingAmt=allExps.reduce((s,r)=>s+expDueAmt(r),0);
   const subTotal=allSpays.reduce((s,r)=>s+r.amount,0);
   const totalSpent=expPaid+subTotal;
   let y=drawHeader(doc,'CONTRACTOR SPENDING REPORT',projName,today(),'','');
@@ -5871,13 +5981,13 @@ async function pdfExpProjectOwner(pid,projName){
   const cashInHand=proj?.cashInHand||0;
   const cashExps=allExps.filter(r=>r.fundedBy==='cashinhand');
   const behalfExps=allExps.filter(r=>r.fundedBy==='onbehalf');
-  const cashSpent=cashExps.filter(r=>r.isPaid).reduce((s,r)=>s+r.amount,0);
-  const cashPending=cashExps.filter(r=>!r.isPaid).reduce((s,r)=>s+r.amount,0);
+  const cashSpent=cashExps.reduce((s,r)=>s+expPaidAmt(r),0);
+  const cashPending=cashExps.reduce((s,r)=>s+expDueAmt(r),0);
   const behalfSpent=behalfExps.reduce((s,r)=>s+r.amount,0);
   const behalfOwed=behalfExps.filter(r=>rst(r)!=='paid').reduce((s,r)=>s+r.amount,0);
   const miscLeft=cashInHand-cashSpent;
   const fundLabel=r=>r.fundedBy==='onbehalf'?'On Behalf':'Misc Cash';
-  const statLabel=r=>r.fundedBy==='onbehalf'?rst(r).toUpperCase():(r.isPaid?'PAID':'PENDING');
+  const statLabel=r=>r.fundedBy==='onbehalf'?rst(r).toUpperCase():({paid:'PAID',partial:'PARTIAL',unpaid:'UNPAID'}[expPayStatus(r)]||'UNPAID');
 
   let y=drawHeader(doc,'OWNER EXPENSE REPORT',projName,today(),'','');
   doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(30,30,30);
@@ -5914,12 +6024,12 @@ async function pdfExpProjectOwner(pid,projName){
 
   doc.autoTable({
     startY:y,
-    head:[['Date','Description','Funded','Category','Status','Amount (PKR)']],
-    body:allExps.map(r=>[r.date||'—',r.desc+(r.paidTo?'\nTo: '+r.paidTo:''),fundLabel(r),(r.cat||'other'),statLabel(r),fmt(r.amount)]),
-    styles:{fontSize:8.5,cellPadding:3,textColor:[30,30,30]},
-    headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
-    columnStyles:{4:{cellWidth:24},5:{halign:'right',cellWidth:28}},
-    didParseCell:data=>{if(data.section==='body'&&data.column.index===4)data.cell.styles.textColor=(data.cell.raw==='PAID')?[50,150,50]:(data.cell.raw==='PENDING')?[201,123,58]:[200,50,50];},
+    head:[['Date','Description','Funded','Category','Status','Bill','Paid','Due']],
+    body:allExps.map(r=>[r.date||'—',r.desc+(r.paidTo?'\nTo: '+r.paidTo:''),fundLabel(r),(r.cat||'other'),statLabel(r),fmt(r.amount),fmt(expPaidAmt(r)),fmt(expDueAmt(r))]),
+    styles:{fontSize:8,cellPadding:2.2,textColor:[30,30,30]},
+    headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:7.5},
+    columnStyles:{4:{cellWidth:20},5:{halign:'right',cellWidth:18},6:{halign:'right',cellWidth:18},7:{halign:'right',cellWidth:18}},
+    didParseCell:data=>{if(data.section==='body'&&data.column.index===4)data.cell.styles.textColor=(data.cell.raw==='PAID')?[50,150,50]:(data.cell.raw==='PARTIAL')?[201,123,58]:[200,50,50];},
     rowPageBreak:'avoid',
     margin:{left:14,right:14,bottom:18}
   });
@@ -6193,15 +6303,15 @@ async function pdfProjPayments(pid){
   if(ownerExps.length){
     if(y>230){doc.addPage();y=20;}
     const fundLabel=r=>r.fundedBy==='onbehalf'?'On Behalf':'Misc Cash';
-    const statLabel=r=>r.fundedBy==='onbehalf'?rst(r).toUpperCase():(r.isPaid?'PAID':'PENDING');
+    const statLabel=r=>r.fundedBy==='onbehalf'?rst(r).toUpperCase():({paid:'PAID',partial:'PARTIAL',unpaid:'UNPAID'}[expPayStatus(r)]||'UNPAID');
     doc.autoTable({
       startY:y,
-      head:[['Date','Description','Funded','Status','Amount (PKR)']],
-      body:ownerExps.sort((a,b)=>(a.date||'').localeCompare(b.date||'')).map(r=>[r.date||'—',r.desc+(r.paidTo?'\nTo: '+r.paidTo:''),fundLabel(r),statLabel(r),fmt(r.amount)]),
-      styles:{fontSize:8.5,cellPadding:2.5,textColor:[30,30,30]},
-      headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
-      columnStyles:{3:{cellWidth:24},4:{halign:'right',cellWidth:28}},
-      didParseCell:data=>{if(data.section==='body'&&data.column.index===3)data.cell.styles.textColor=(data.cell.raw==='PAID')?[50,150,50]:(data.cell.raw==='PENDING')?[201,123,58]:[200,50,50];},
+      head:[['Date','Description','Funded','Status','Bill','Paid','Due']],
+      body:ownerExps.sort((a,b)=>(a.date||'').localeCompare(b.date||'')).map(r=>[r.date||'—',r.desc+(r.paidTo?'\nTo: '+r.paidTo:''),fundLabel(r),statLabel(r),fmt(r.amount),fmt(expPaidAmt(r)),fmt(expDueAmt(r))]),
+      styles:{fontSize:8,cellPadding:2.2,textColor:[30,30,30]},
+      headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:7.5},
+      columnStyles:{3:{cellWidth:20},4:{halign:'right',cellWidth:20},5:{halign:'right',cellWidth:20},6:{halign:'right',cellWidth:20}},
+      didParseCell:data=>{if(data.section==='body'&&data.column.index===3)data.cell.styles.textColor=(data.cell.raw==='PAID')?[50,150,50]:(data.cell.raw==='PARTIAL')?[201,123,58]:[200,50,50];},
       rowPageBreak:'avoid',
       margin:{left:14,right:14,bottom:18}
     });
@@ -6751,7 +6861,7 @@ function renderProj(){
     const rec=D.cpays.filter(x=>x.projectId===p.id&&(x.payType||'contract')==='contract').reduce((s,x)=>s+x.amount,0);
     const subOnly=D.subpays.filter(x=>x.projectId===p.id).reduce((s,x)=>s+x.amount,0);
     // Internal = sub-con payments + PAID expenses (material/supplier/other). Pending expenses don't count yet.
-    const expPaid=(D.expenses||[]).filter(x=>x.projectId===p.id&&x.isPaid&&(x.fundedBy||'contract')==='contract').reduce((s,x)=>s+x.amount,0);
+    const expPaid=(D.expenses||[]).filter(x=>x.projectId===p.id&&(x.fundedBy||'contract')==='contract').reduce((s,x)=>s+expPaidAmt(x),0);
     const sub=subOnly+expPaid;
     const agr=D.agreements.find(x=>x.projectId===p.id);
     const inv=D.invoices.filter(x=>x.projectId===p.id).reduce((s,x)=>s+x.total,0);
@@ -6887,13 +6997,21 @@ function renderLedger(){
     if(side==='cashinhand'&&fb!=='cashinhand')return false;
     if(side==='onbehalf'&&fb!=='onbehalf')return false;
     if(fb==='onbehalf')return rst(e)==='paid';
-    return !!e.isPaid;
+    return expPaidAmt(e)>0.005;
   });
   const pendingBehalf=side==='all'||side==='onbehalf'
     ?(D.expenses||[]).filter(e=>e.fundedBy==='onbehalf'&&rst(e)!=='paid'):[];
+  const pendingDue=(side==='all'||side==='contract'||side==='cashinhand')
+    ?(D.expenses||[]).filter(e=>{
+        const fb=e.fundedBy||'contract';
+        if(fb==='onbehalf')return false;
+        if(side==='contract'&&fb!=='contract')return false;
+        if(side==='cashinhand'&&fb!=='cashinhand')return false;
+        return expHasDue(e);
+      }):[];
 
   const totalIn=income.reduce((s,p)=>s+p.amount,0);
-  const totalOut=spays.reduce((s,p)=>s+p.amount,0)+paidExps.reduce((s,e)=>s+e.amount,0);
+  const totalOut=spays.reduce((s,p)=>s+p.amount,0)+paidExps.reduce((s,e)=>s+(e.fundedBy==='onbehalf'?(e.amount||0):expPaidAmt(e)),0);
   const net=totalIn-totalOut;
   const subTotal=spays.reduce((s,p)=>s+p.amount,0);
   const setV=(id,v,color)=>{const x=e$(id);if(x){x.textContent=fmt(v);if(color)x.style.color=color;}};
@@ -6904,7 +7022,8 @@ function renderLedger(){
   const txns=[
     ...income.map(p=>({date:fmtDT(p.date,p.time?fmtTime12(p.time):'')||p.date,type:p.payType==='misc'?'Misc Advance':'Receipt',desc:p.clientName+' — '+(p.milestone||p.projectName||''),amount:p.amount,dir:'in',project:p.projectName,side:p.payType==='misc'?'cashinhand':'contract'})),
     ...spays.map(p=>({date:p.date,type:'Sub-Con Payment',desc:p.subconName+' — '+p.phase,amount:p.amount,dir:'out',project:p.projectName,side:'contract'})),
-    ...paidExps.map(p=>({date:p.date,type:'Expense · '+fundTag(p.fundedBy||'contract'),desc:p.desc+' ('+(p.cat||'other')+')'+(p.paidTo?' · '+p.paidTo:''),amount:p.amount,dir:'out',project:p.projectName,side:p.fundedBy||'contract'})),
+    ...paidExps.map(p=>({date:p.date,type:'Expense · '+fundTag(p.fundedBy||'contract')+(expPayStatus(p)==='partial'?' (partial)':''),desc:p.desc+' ('+(p.cat||'other')+')'+(p.paidTo?' · '+p.paidTo:''),amount:p.fundedBy==='onbehalf'?(p.amount||0):expPaidAmt(p),dir:'out',project:p.projectName,side:p.fundedBy||'contract'})),
+    ...pendingDue.map(p=>({date:p.date,type:'Expense due',desc:p.desc+(p.paidTo?' · '+p.paidTo:'')+' · bill '+fmt(p.amount),amount:expDueAmt(p),dir:'out',project:p.projectName,side:p.fundedBy||'contract',pending:true})),
     ...pendingBehalf.map(p=>({date:p.date,type:'On Behalf (unpaid)',desc:p.desc+(p.paidTo?' · '+p.paidTo:''),amount:p.amount,dir:'out',project:p.projectName,side:'onbehalf',pending:true})),
   ].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
 
@@ -6949,10 +7068,10 @@ async function pdfPartnerSummary(pid){
   // Match on-screen P&L: contract receipts, sub-con payouts, and PAID contractor-side expenses
   const cpays=D.cpays.filter(x=>x.projectId===pid&&(x.payType||'contract')==='contract').sort((a,b)=>(a.date||'').localeCompare(b.date||''));
   const spays=D.subpays.filter(x=>x.projectId===pid).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
-  const exps=(D.expenses||[]).filter(x=>x.projectId===pid&&x.isPaid&&(x.fundedBy||'contract')==='contract');
+  const exps=(D.expenses||[]).filter(x=>x.projectId===pid&&(x.fundedBy||'contract')==='contract'&&expPaidAmt(x)>0);
   const totalRec=cpays.reduce((s,x)=>s+x.amount,0);
   const totalSub=spays.reduce((s,x)=>s+x.amount,0);
-  const totalExp=exps.reduce((s,x)=>s+x.amount,0);
+  const totalExp=exps.reduce((s,x)=>s+expPaidAmt(x),0);
   const netProfit=totalRec-totalSub-totalExp;
   const myAmt=Math.round(netProfit*(p.myShare||100)/100);
   const partnerAmt=Math.round(netProfit*(p.partnerShare||0)/100);
@@ -7046,14 +7165,14 @@ async function pdfPartnerSummary(pid){
     doc.text('PROJECT EXPENSES',14,y);y+=6;
     doc.autoTable({
       startY:y,
-      head:[['Date','Description','Category','Status','Amount (PKR)']],
-      body:exps.map(x=>[x.date||'—',x.desc,x.cat||'—',x.isPaid?'PAID':'PENDING',fmt(x.amount)]),
-      foot:[['','','','Total','PKR '+fmt(totalExp)]],
+      head:[['Date','Description','Category','Status','Paid / Bill']],
+      body:exps.map(x=>[x.date||'—',x.desc+(expPayStatus(x)==='partial'?' (partial)':''),x.cat||'—',({paid:'PAID',partial:'PARTIAL',unpaid:'UNPAID'}[expPayStatus(x)]||'—'),fmt(expPaidAmt(x))+' / '+fmt(x.amount)]),
+      foot:[['','','','Total paid','PKR '+fmt(totalExp)]],
       styles:{fontSize:8.5,cellPadding:2.5,textColor:[30,30,30]},
       headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
       footStyles:pdfFootStyles('red'),
       columnStyles:{3:{cellWidth:20},4:{halign:'right'}},
-      didParseCell:data=>{if(data.section==='body'&&data.column.index===3)data.cell.styles.textColor=data.cell.raw==='PAID'?[50,150,50]:[200,50,50];},
+      didParseCell:data=>{if(data.section==='body'&&data.column.index===3)data.cell.styles.textColor=data.cell.raw==='PAID'?[50,150,50]:data.cell.raw==='PARTIAL'?[201,123,58]:[200,50,50];},
       rowPageBreak:'avoid',showFoot:'lastPage',
     margin:{left:14,right:14,bottom:18}
     });
@@ -7076,15 +7195,15 @@ async function pdfInternalSummary(pid){
   const c=co();const doc=bPDF();const pw=210;
   const cli=D.clients.find(x=>x.id===p.clientId);
   const spays=D.subpays.filter(x=>x.projectId===pid).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
-  const exps=(D.expenses||[]).filter(x=>x.projectId===pid).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  const exps=(D.expenses||[]).filter(x=>x.projectId===pid).sort((a,b)=>(a.date||'').localeCompare(b.date||'')); // paidAmt-aware below
 
   if(!spays.length&&!exps.length){toast('No internal payments for this project','info');return;}
 
   // Combine into one chronological list, grouped by "Paid To".
   // Payment totals only — person/trade breakdown stays on sub-con statement PDF.
   const contractExps=exps.filter(x=>(x.fundedBy||'contract')==='contract');
-  const paidExps=contractExps.filter(x=>x.isPaid);
-  const pendingExps=contractExps.filter(x=>!x.isPaid);
+  const paidExps=contractExps.filter(x=>expPaidAmt(x)>0);
+  const pendingExps=contractExps.filter(x=>expHasDue(x));
   const combined=[
     ...spays.map(x=>({date:x.date,paidTo:x.subconName||'—',type:'Sub-Contractor',desc:(x.phase||'')+(x.desc?' · '+x.desc:''),method:x.method||'Cash',amount:x.amount,isPaid:true})),
     ...paidExps.map(x=>({date:x.date,paidTo:x.paidTo||'—',type:(x.cat||'other').charAt(0).toUpperCase()+(x.cat||'other').slice(1),desc:x.desc,method:x.paid||'Cash',amount:x.amount,isPaid:true}))
@@ -7171,14 +7290,14 @@ async function pdfReimbursement(pid,projName){
   const cashInHand=p.cashInHand||0;
   const cashExps=exps.filter(r=>r.fundedBy==='cashinhand');
   const behalfExps=exps.filter(r=>r.fundedBy==='onbehalf');
-  const cashSpent=cashExps.filter(r=>r.isPaid).reduce((s,r)=>s+r.amount,0);
+  const cashSpent=cashExps.reduce((s,r)=>s+expPaidAmt(r),0);
   const behalfTotal=behalfExps.reduce((s,r)=>s+r.amount,0);
   const behalfOwed=behalfExps.filter(r=>rst(r)!=='paid').reduce((s,r)=>s+r.amount,0);
   const totalAll=cashSpent+behalfTotal;
   const advanceBalance=cashInHand-cashSpent;
   const reimburseDue=behalfOwed+Math.max(0,cashSpent-cashInHand);
   const fundLabel=r=>r.fundedBy==='onbehalf'?'On Behalf':'Cash in Hand';
-  const statLabel=r=>r.fundedBy==='onbehalf'?rst(r).toUpperCase():(r.isPaid?'PAID':'PENDING');
+  const statLabel=r=>r.fundedBy==='onbehalf'?rst(r).toUpperCase():({paid:'PAID',partial:'PARTIAL',unpaid:'UNPAID'}[expPayStatus(r)]||'UNPAID');
 
   let y=drawHeader(doc,'EXPENSE REIMBURSEMENT REQUEST',p.name,today(),'','');
 
@@ -7208,17 +7327,17 @@ async function pdfReimbursement(pid,projName){
   // Expense table
   doc.autoTable({
     startY:y,
-    head:[['Date','Description','Funded','Category','Status','Amount (PKR)']],
+    head:[['Date','Description','Funded','Category','Status','Bill','Paid','Due']],
     body:exps.map(r=>[r.date||'—',r.desc+(r.paidTo?'\nPaid to: '+r.paidTo:''),
       fundLabel(r),
       (r.cat||'other').charAt(0).toUpperCase()+(r.cat||'other').slice(1),
-      statLabel(r),fmt(r.amount)]),
-    styles:{fontSize:8.5,cellPadding:3,textColor:[30,30,30]},
-    headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
-    columnStyles:{4:{cellWidth:26},5:{halign:'right',cellWidth:28}},
+      statLabel(r),fmt(r.amount),fmt(expPaidAmt(r)),fmt(expDueAmt(r))]),
+    styles:{fontSize:8,cellPadding:2.2,textColor:[30,30,30]},
+    headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:7.5},
+    columnStyles:{4:{cellWidth:20},5:{halign:'right',cellWidth:18},6:{halign:'right',cellWidth:18},7:{halign:'right',cellWidth:18}},
     didParseCell:data=>{
       if(data.section==='body'&&data.column.index===4)
-        data.cell.styles.textColor=(data.cell.raw==='PAID')?[50,150,50]:(data.cell.raw==='PENDING')?[201,123,58]:[200,50,50];
+        data.cell.styles.textColor=(data.cell.raw==='PAID')?[50,150,50]:(data.cell.raw==='PARTIAL')?[201,123,58]:[200,50,50];
     },
     rowPageBreak:'avoid',
     margin:{left:14,right:14,bottom:18}
@@ -7293,7 +7412,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-07-25-v39';
+const APP_VERSION='2026-07-25-v40';
 let _swRefreshing=false;
 
 async function wipeAppCaches(){
