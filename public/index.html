@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-07-28-v41">
+<meta name="app-version" content="2026-08-06-v42">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -7465,7 +7465,19 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-07-28-v41';
+const APP_VERSION='2026-08-06-v42';
+// Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
+const OTA_ORIGIN='https://buildpro-crm.wasmer.app';
+const OTA_MIRROR='https://abbashafiz.github.io/Buildpro-crm';
+function appOrigin(){
+  try{
+    const h=location.hostname||'';
+    if(h==='buildpro-crm.wasmer.app')return location.origin;
+    if(h==='abbashafiz.github.io')return location.origin+'/Buildpro-crm';
+    if(isNative())return OTA_ORIGIN;
+  }catch(e){}
+  return location.origin||OTA_ORIGIN;
+}
 let _swRefreshing=false;
 
 async function wipeAppCaches(){
@@ -7490,7 +7502,7 @@ function safeReload(reason){
 // Saved data (localStorage / Supabase) is preserved.
 async function clearCacheUpdate(){
   cMenu();
-  toast('Clearing cache & updating…','info');
+  toast(isNative()?'Fetching live OTA update…':'Clearing cache & updating…','info');
   try{
     await wipeAppCaches();
     if('serviceWorker' in navigator){
@@ -7503,7 +7515,17 @@ async function clearCacheUpdate(){
   }catch(e){}
   // Manual update may reload more than once across sessions — clear guards.
   try{Object.keys(sessionStorage).filter(k=>k.startsWith('bp-reloaded-')).forEach(k=>sessionStorage.removeItem(k));}catch(e){}
-  setTimeout(()=>location.reload(),400);
+  setTimeout(()=>{
+    // Native shell may be on bundled offline copy — jump back to live OTA host.
+    if(isNative()){
+      const host=appOrigin().replace(/\/$/,'');
+      if(location.origin!==host&&!String(location.href||'').startsWith(host)){
+        location.replace(host+'/');
+        return;
+      }
+    }
+    location.reload();
+  },400);
 }
 
 // If Wasmer has a newer index.html than last seen, reload automatically.
@@ -7513,8 +7535,11 @@ async function checkAppVersion(){
   if(_verCheckBusy)return;
   _verCheckBusy=true;
   try{
+    // Prefer the live OTA host so a bundled offline copy can still detect newer deploys.
+    const base=appOrigin().replace(/\/$/,'');
+    const verUrl=base+'/index.html?_bpver='+Date.now();
     // Bypass SW HTML handler so we always fingerprint the real network file.
-    const r=await fetch('./index.html?_bpver='+Date.now(),{cache:'no-store',headers:{'Cache-Control':'no-cache'}});
+    const r=await fetch(verUrl,{cache:'no-store',headers:{'Cache-Control':'no-cache'}});
     if(!r.ok)return;
     const t=await r.text();
     let h=2166136261;
@@ -7541,6 +7566,7 @@ async function checkAppVersion(){
       if(appliedFp===fp)return; // already reloaded for this deploy; don't loop
       localStorage.setItem('bp-applied-fp',fp);
       await wipeAppCaches();
+      if(isNative()&&location.origin!==base){location.replace(base+'/');return;}
       safeReload('deploy-fp');
       return;
     }
@@ -7551,6 +7577,7 @@ async function checkAppVersion(){
       if(applied===netVer)return; // already tried loading this version
       localStorage.setItem('bp-applied-ver',netVer);
       await wipeAppCaches();
+      if(isNative()&&location.origin!==base){location.replace(base+'/');return;}
       safeReload('app-ver');
     }
   }catch(e){}
