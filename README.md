@@ -18,7 +18,7 @@ The Capacitor Android shell loads the live PWA from **GitHub Pages** (`server.ur
 
 - **Web/feature updates** → merge to `main` (Pages auto-deploys `/docs`) → phones pick them up on next launch / “Check for Updates”. No new APK required.
 - **Native shell updates** (plugins, permissions, signing) → bump Android `versionCode` and ship a new APK.
-- Wasmer Edge remains a mirror; its GitHub auto-deploy currently fails without a working `WASMER_TOKEN` / dashboard fix.
+- Wasmer Edge remains a mirror. GitHub deploys need the repo **`Anybuild`** file (provider `node-static`, `static_dir: public`). In the Wasmer UI keep Project preset **`node-static`**, then Deploy.
 
 If the device is offline, Capacitor shows the bundled `offline.html`, which can retry the live host or open the last packaged local copy.
 
