@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-07-25-v40">
+<meta name="app-version" content="2026-08-06-v42">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -58,9 +58,10 @@ body{color:var(--txt);font-family:'Inter',sans-serif;overscroll-behavior:none;fo
 .tb-sync{background:none;border:1px solid var(--bor);border-radius:8px;padding:6px 12px;color:var(--mut);font-size:var(--fs-xs);font-family:'Inter',sans-serif;cursor:pointer;display:flex;align-items:center;gap:6px;}
 .tb-sync.spin svg{animation:rot .7s linear infinite;}
 @keyframes rot{to{transform:rotate(360deg)}}
-.ava{width:33px;height:33px;border-radius:50%;border:2px solid var(--bor);overflow:hidden;background:var(--s2);cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:var(--gold);}
-.ava img{width:100%;height:100%;object-fit:cover;display:none;}
+.ava{width:33px;height:33px;border-radius:50%;border:2px solid var(--bor);overflow:hidden;background:var(--s2);cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:var(--gold);position:relative;}
+.ava img{width:100%;height:100%;object-fit:cover;display:none;position:absolute;inset:0;}
 .ava img.on{display:block;}
+.ava.has-pic #ava-i{display:none;}
 
 /* CONTENT */
 .content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 16px 0;}
@@ -372,7 +373,7 @@ select option{background:var(--s2);}
         <span id="sync-lbl">Sync</span>
       </button>
       <div class="ava" id="ava" onclick="toggleMenu()">
-        <img id="upic" src="" alt="" onload="this.classList.add('on')">
+        <img id="upic" src="" alt="" referrerpolicy="no-referrer" decoding="async">
         <span id="ava-i">U</span>
       </div>
     </div>
@@ -2101,14 +2102,66 @@ async function signOut(){
   cMenu();toast('Signed out','info');
 }
 
+function resolveAvatarUrl(user){
+  if(!user)return'';
+  const meta=user.user_metadata||{};
+  const fromMeta=meta.avatar_url||meta.picture||meta.avatar||'';
+  if(fromMeta)return String(fromMeta).trim();
+  const ids=user.identities||[];
+  for(const id of ids){
+    const d=id.identity_data||{};
+    const u=d.avatar_url||d.picture||d.avatar||'';
+    if(u)return String(u).trim();
+  }
+  return'';
+}
+
+function clearUserAvatar(){
+  const img=e$('upic');
+  const ava=e$('ava');
+  if(!img)return;
+  img.onload=null;
+  img.onerror=null;
+  img.removeAttribute('src');
+  img.src='';
+  img.classList.remove('on');
+  if(ava)ava.classList.remove('has-pic');
+}
+
+function setUserAvatar(url){
+  const img=e$('upic');
+  const ava=e$('ava');
+  if(!img)return;
+  clearUserAvatar();
+  if(!url)return;
+  // Google avatars (lh3.googleusercontent.com) often fail in Android WebView
+  // unless Referer is omitted — Capacitor loads as https://localhost.
+  img.referrerPolicy='no-referrer';
+  let triedAlt=false;
+  img.onload=()=>{
+    img.classList.add('on');
+    if(ava)ava.classList.add('has-pic');
+  };
+  img.onerror=()=>{
+    // One retry: strip size params / force a common Google size suffix
+    if(!triedAlt&&/googleusercontent\.com/i.test(url)){
+      triedAlt=true;
+      const base=url.replace(/=s\d+(-c)?$/i,'').replace(/\?.*$/,'');
+      img.src=base+'=s96-c';
+      return;
+    }
+    clearUserAvatar();
+  };
+  img.src=url;
+}
+
 function updateUserUI(user){
   if(!user)return;
   const meta=user.user_metadata||{};
-  const img=e$('upic');
-  if(meta.avatar_url){img.src=meta.avatar_url;img.classList.add('on');}
   const name=meta.full_name||meta.name||user.email||'';
   if(name)e$('ava-i').textContent=name[0].toUpperCase();
   e$('um-nm').textContent=name||user.email||'—';
+  setUserAvatar(resolveAvatarUrl(user));
 }
 
 async function loadSupaData(user){
@@ -7412,7 +7465,19 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-07-25-v40';
+const APP_VERSION='2026-08-06-v42';
+// Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
+const OTA_ORIGIN='https://buildpro-crm.wasmer.app';
+const OTA_MIRROR='https://abbashafiz.github.io/Buildpro-crm';
+function appOrigin(){
+  try{
+    const h=location.hostname||'';
+    if(h==='buildpro-crm.wasmer.app')return location.origin;
+    if(h==='abbashafiz.github.io')return location.origin+'/Buildpro-crm';
+    if(isNative())return OTA_ORIGIN;
+  }catch(e){}
+  return location.origin||OTA_ORIGIN;
+}
 let _swRefreshing=false;
 
 async function wipeAppCaches(){
@@ -7437,7 +7502,7 @@ function safeReload(reason){
 // Saved data (localStorage / Supabase) is preserved.
 async function clearCacheUpdate(){
   cMenu();
-  toast('Clearing cache & updating…','info');
+  toast(isNative()?'Fetching live OTA update…':'Clearing cache & updating…','info');
   try{
     await wipeAppCaches();
     if('serviceWorker' in navigator){
@@ -7450,7 +7515,17 @@ async function clearCacheUpdate(){
   }catch(e){}
   // Manual update may reload more than once across sessions — clear guards.
   try{Object.keys(sessionStorage).filter(k=>k.startsWith('bp-reloaded-')).forEach(k=>sessionStorage.removeItem(k));}catch(e){}
-  setTimeout(()=>location.reload(),400);
+  setTimeout(()=>{
+    // Native shell may be on bundled offline copy — jump back to live OTA host.
+    if(isNative()){
+      const host=appOrigin().replace(/\/$/,'');
+      if(location.origin!==host&&!String(location.href||'').startsWith(host)){
+        location.replace(host+'/');
+        return;
+      }
+    }
+    location.reload();
+  },400);
 }
 
 // If Wasmer has a newer index.html than last seen, reload automatically.
@@ -7460,8 +7535,11 @@ async function checkAppVersion(){
   if(_verCheckBusy)return;
   _verCheckBusy=true;
   try{
+    // Prefer the live OTA host so a bundled offline copy can still detect newer deploys.
+    const base=appOrigin().replace(/\/$/,'');
+    const verUrl=base+'/index.html?_bpver='+Date.now();
     // Bypass SW HTML handler so we always fingerprint the real network file.
-    const r=await fetch('./index.html?_bpver='+Date.now(),{cache:'no-store',headers:{'Cache-Control':'no-cache'}});
+    const r=await fetch(verUrl,{cache:'no-store',headers:{'Cache-Control':'no-cache'}});
     if(!r.ok)return;
     const t=await r.text();
     let h=2166136261;
@@ -7488,6 +7566,7 @@ async function checkAppVersion(){
       if(appliedFp===fp)return; // already reloaded for this deploy; don't loop
       localStorage.setItem('bp-applied-fp',fp);
       await wipeAppCaches();
+      if(isNative()&&location.origin!==base){location.replace(base+'/');return;}
       safeReload('deploy-fp');
       return;
     }
@@ -7498,6 +7577,7 @@ async function checkAppVersion(){
       if(applied===netVer)return; // already tried loading this version
       localStorage.setItem('bp-applied-ver',netVer);
       await wipeAppCaches();
+      if(isNative()&&location.origin!==base){location.replace(base+'/');return;}
       safeReload('app-ver');
     }
   }catch(e){}

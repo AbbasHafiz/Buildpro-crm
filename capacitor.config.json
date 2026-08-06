@@ -4,5 +4,17 @@
   "webDir": "www",
   "android": {
     "allowMixedContent": true
+  },
+  "server": {
+    "url": "https://buildpro-crm.wasmer.app",
+    "cleartext": false,
+    "errorPath": "offline.html",
+    "allowNavigation": [
+      "buildpro-crm.wasmer.app",
+      "abbashafiz.github.io",
+      "*.supabase.co",
+      "accounts.google.com",
+      "*.googleusercontent.com"
+    ]
   }
 }

@@ -8,7 +8,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const FILES = ['index.html', 'sw.js', 'manifest.json', 'icon-192.png', 'icon-512.png'];
+const FILES = ['index.html', 'sw.js', 'manifest.json', 'icon-192.png', 'icon-512.png', 'offline.html'];
 const EXTRA = { public: ['_headers'], docs: [] };
 const TARGETS = ['www', 'public', 'docs'];
 

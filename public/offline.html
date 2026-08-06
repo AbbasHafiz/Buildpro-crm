@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+  <meta name="color-scheme" content="dark"/>
+  <title>BuildPro CRM — Offline</title>
+  <style>
+    :root{--bg:#141310;--s1:#1c1a16;--gold:#e8c547;--tx:#f2efe8;--mut:#9a958a;--bor:#2e2b25;}
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+      font-family:system-ui,-apple-system,sans-serif;background:radial-gradient(1200px 600px at 50% -10%,#2a2418 0%,var(--bg) 55%);
+      color:var(--tx);padding:24px;text-align:center}
+    .card{max-width:360px;width:100%;background:var(--s1);border:1px solid var(--bor);border-radius:16px;padding:28px 22px}
+    h1{margin:0 0 8px;font-size:22px;letter-spacing:.02em;color:var(--gold)}
+    p{margin:0 0 18px;color:var(--mut);font-size:14px;line-height:1.45}
+    .row{display:flex;flex-direction:column;gap:10px}
+    a,button{appearance:none;border:0;border-radius:10px;padding:12px 14px;font-size:14px;font-weight:700;cursor:pointer;text-decoration:none}
+    .primary{background:var(--gold);color:#1a1916}
+    .ghost{background:transparent;color:var(--tx);border:1px solid var(--bor)}
+    .hint{margin-top:14px;font-size:11px;color:var(--mut)}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>BuildPro CRM</h1>
+    <p>Can't reach the live app right now. Check your connection, then retry. You can also open the packaged offline copy.</p>
+    <div class="row">
+      <button class="primary" type="button" id="retry">Retry live update</button>
+      <a class="ghost" id="local" href="./index.html">Open offline copy</a>
+    </div>
+    <p class="hint" id="status">OTA host: https://buildpro-crm.wasmer.app</p>
+  </div>
+  <script>
+    const OTA='https://buildpro-crm.wasmer.app/';
+    const MIRROR='https://abbashafiz.github.io/Buildpro-crm/';
+    const status=document.getElementById('status');
+    async function ping(url){
+      try{
+        const r=await fetch(url+(url.includes('?')?'&':'?')+'_ota='+Date.now(),{method:'HEAD',cache:'no-store',mode:'no-cors'});
+        return true;
+      }catch(e){return false;}
+    }
+    async function retry(){
+      status.textContent='Checking live host…';
+      const ok=await ping(OTA);
+      if(ok){location.replace(OTA);return;}
+      const ok2=await ping(MIRROR);
+      if(ok2){location.replace(MIRROR);return;}
+      status.textContent='Still offline — try again when you have internet.';
+    }
+    document.getElementById('retry').addEventListener('click',retry);
+    // Auto-retry once on open (covers brief blips).
+    setTimeout(retry,600);
+  </script>
+</body>
+</html>
