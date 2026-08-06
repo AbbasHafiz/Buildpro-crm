@@ -8,16 +8,17 @@ Open-source construction CRM for Pakistani contracting businesses — expenses, 
 
 | Surface | URL |
 |--------|-----|
-| **PWA (primary OTA host)** | https://buildpro-crm.wasmer.app/ |
-| **GitHub Pages mirror** | https://abbashafiz.github.io/Buildpro-crm/ |
+| **PWA (primary OTA host)** | https://abbashafiz.github.io/Buildpro-crm/ |
+| **Wasmer mirror** | https://buildpro-crm.wasmer.app/ |
 | **Android release APK** | [Download](https://github.com/AbbasHafiz/Buildpro-crm/raw/cursor/apk-download-6cf4/BuildPro-CRM-release.apk) |
 
 ## How OTA works (Android)
 
-The Capacitor Android shell loads the live PWA from Wasmer (`server.url` in `capacitor.config.json`).
+The Capacitor Android shell loads the live PWA from **GitHub Pages** (`server.url` in `capacitor.config.json`).
 
-- **Web/feature updates** → merge to `main`, deploy static assets → phones pick them up on next launch / “Check for Updates”. No new APK required.
+- **Web/feature updates** → merge to `main` (Pages auto-deploys `/docs`) → phones pick them up on next launch / “Check for Updates”. No new APK required.
 - **Native shell updates** (plugins, permissions, signing) → bump Android `versionCode` and ship a new APK.
+- Wasmer Edge remains a mirror; its GitHub auto-deploy currently fails without a working `WASMER_TOKEN` / dashboard fix.
 
 If the device is offline, Capacitor shows the bundled `offline.html`, which can retry the live host or open the last packaged local copy.
 

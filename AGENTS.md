@@ -4,7 +4,7 @@ A construction-business management app for a Pakistani contracting business.
 
 - **Web/PWA**: the entire app is a single static file, `index.html` (markup + CSS + vanilla JS inline), plus `sw.js`, `manifest.json`, and icons. No web build step, no framework, no bundler.
 - **Backend**: Supabase (hosted) — Google OAuth + a single `buildpro_data` row per user (JSON blob). Config is inlined in `index.html`.
-- **Android app**: a Capacitor wrapper. In production it loads the live PWA over-the-air from `https://buildpro-crm.wasmer.app` (`capacitor.config.json` → `server.url`). Bundled `www/` assets are the offline fallback (`server.errorPath` → `offline.html`). Web feature updates do **not** require a new APK — only native shell/plugin changes do.
+- **Android app**: a Capacitor wrapper. In production it loads the live PWA over-the-air from GitHub Pages `https://abbashafiz.github.io/Buildpro-crm/` (`capacitor.config.json` → `server.url`). Bundled `www/` assets are the offline fallback (`server.errorPath` → `offline.html`). Web feature updates do **not** require a new APK — only native shell/plugin changes do. Wasmer (`buildpro-crm.wasmer.app`) is a mirror; CLI deploy needs `WASMER_TOKEN`.
 
 ## Cursor Cloud specific instructions
 
@@ -24,8 +24,8 @@ A construction-business management app for a Pakistani contracting business.
   - `public/` — Wasmer (`wasmer.toml`) + Cloudflare (`wrangler.jsonc`)
   - `docs/` — GitHub Pages (repo Pages source is `/docs`)
   - `www/` — Capacitor (gitignored; regenerated on `npm run sync`)
-- Live PWA: `https://buildpro-crm.wasmer.app` — after a deploy, use in-app menu → **Check for Updates** if the installed PWA still shows an old version (service worker / CDN cache).
-- Android APK shell version tracks native packaging only. With OTA enabled, phones load Wasmer; after a web deploy, use in-app **Check for Updates** (or relaunch) — no APK rebuild needed for HTML/JS changes.
+- Live PWA (OTA): `https://abbashafiz.github.io/Buildpro-crm/` — after a merge to `main`, Pages auto-deploys; use in-app **Check for Updates** if needed. Wasmer mirror: `https://buildpro-crm.wasmer.app` (GitHub→Wasmer Edge deploy may fail; CLI needs `WASMER_TOKEN`).
+- Android APK shell version tracks native packaging only. With OTA enabled, phones load GitHub Pages; after a web deploy, use in-app **Check for Updates** (or relaunch) — no APK rebuild needed for HTML/JS changes.
 - Requires a JDK (17+; 21 works) and the **Android SDK** (`ANDROID_HOME` set; `platforms;android-34`, `build-tools;34.0.0`, `platform-tools`). The SDK is NOT preinstalled on the VM — install command-line tools from `https://dl.google.com/android/repository/commandlinetools-linux-<build>_latest.zip` (note: filename is `commandlinetools`, no hyphen) and `sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"`.
 - Commands:
   - `npm run copy:web` — copies root static files (including `offline.html`) into `www/` / `public/` / `docs/`.
