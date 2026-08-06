@@ -24,7 +24,7 @@ A construction-business management app for a Pakistani contracting business.
   - `public/` — Wasmer (`wasmer.toml`) + Cloudflare (`wrangler.jsonc`)
   - `docs/` — GitHub Pages (repo Pages source is `/docs`)
   - `www/` — Capacitor (gitignored; regenerated on `npm run sync`)
-- Live PWA (OTA): `https://abbashafiz.github.io/Buildpro-crm/` — after a merge to `main`, Pages auto-deploys; use in-app **Check for Updates** if needed. Wasmer mirror: `https://buildpro-crm.wasmer.app` (GitHub→Wasmer Edge deploy may fail; CLI needs `WASMER_TOKEN`).
+- Live PWA (OTA): `https://abbashafiz.github.io/Buildpro-crm/` — after a merge to `main`, Pages auto-deploys; use in-app **Check for Updates** if needed. Wasmer mirror: `https://buildpro-crm.wasmer.app` — GitHub→Wasmer uses **Anybuild** (`Anybuild` file, provider `node-static`, serves `public/`). Legacy `Shipit` files break modern Edge deploys (`static_redirects_config` / “must construct its provider config”). Regenerate with `anybuild generate --provider node-static --config '{"static_dir":"public"}'`.
 - Android APK shell version tracks native packaging only. With OTA enabled, phones load GitHub Pages; after a web deploy, use in-app **Check for Updates** (or relaunch) — no APK rebuild needed for HTML/JS changes.
 - Requires a JDK (17+; 21 works) and the **Android SDK** (`ANDROID_HOME` set; `platforms;android-34`, `build-tools;34.0.0`, `platform-tools`). The SDK is NOT preinstalled on the VM — install command-line tools from `https://dl.google.com/android/repository/commandlinetools-linux-<build>_latest.zip` (note: filename is `commandlinetools`, no hyphen) and `sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"`.
 - Commands:
