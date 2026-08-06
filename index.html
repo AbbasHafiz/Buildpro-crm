@@ -562,7 +562,15 @@ select option{background:var(--s2);}
     </div>
 
     <!-- SUB-CON -->
-    <div class="pg" id="pg-sub"><div id="list-sub"></div></div>
+    <div class="pg" id="pg-sub">
+      <div class="ftabs" style="margin-bottom:10px">
+        <div class="ftab on" onclick="fSub('all',this)">All</div>
+        <div class="ftab" onclick="fSub('paid',this)">Paid</div>
+        <div class="ftab" onclick="fSub('unpaid',this)">Unpaid</div>
+      </div>
+      <div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:10px;padding:0 2px" id="sub-filter-hint">All payment lines — paid and still due</div>
+      <div id="list-sub"></div>
+    </div>
 
     <!-- PROJECTS PAGE -->
     <div class="pg" id="pg-proj">
@@ -940,7 +948,7 @@ select option{background:var(--s2);}
     </div>
     <div class="f2">
       <div class="fg"><label>Date</label><input type="date" id="sp-date"></div>
-      <div class="fg"><label>Amount (PKR)</label><input type="number" id="sp-amt" placeholder="0" oninput="cSpBd()"></div>
+      <div class="fg"><label>Amount (PKR)</label><input type="number" id="sp-amt" placeholder="0" oninput="cSpBd();syncSpayPayHint()"></div>
     </div>
     <div class="fg"><label>Contract Value for This Project (PKR)</label><input type="number" id="sp-proj-contract" placeholder="Total agreed for this project"></div>
     <div class="f2">
@@ -953,6 +961,20 @@ select option{background:var(--s2);}
       </div>
     </div>
     <div class="fg"><label>Work Description (Kaam)</label><textarea id="sp-desc" placeholder="e.g. Foundation complete, 1st floor slab done, tiling 3 rooms…"></textarea></div>
+    <div id="sp-ispaid-row" style="background:var(--bg);border:1px solid var(--bor);border-radius:10px;padding:12px 13px;margin-bottom:4px">
+      <div style="font-size:var(--fs-sm);font-weight:700;color:var(--txt);margin-bottom:4px">💳 Payment status</div>
+      <div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:10px">Agreed amount can be higher than cash given — e.g. milestone 100,000, paid 40,000 now (60,000 still due).</div>
+      <div class="f2" style="margin-bottom:8px">
+        <div class="fg" style="margin:0"><label>Paid So Far (PKR)</label><input type="number" id="sp-paid-amt" placeholder="e.g. 40000" oninput="syncSpayPayHint()"></div>
+        <div class="fg" style="margin:0"><label>Still Due</label><div id="sp-due-amt" style="background:var(--s2);border:1px solid var(--bor);border-radius:8px;padding:11px 13px;font-family:'JetBrains Mono',monospace;font-size:var(--fs-md);color:var(--ora)">—</div></div>
+      </div>
+      <div id="sp-pay-hint" style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:8px">Leave Paid So Far empty to mark the full amount as paid.</div>
+      <div style="display:flex;gap:7px;flex-wrap:wrap">
+        <button type="button" class="btn btn-grey btn-sm" style="padding:7px 12px;font-size:var(--fs-xs);flex:none" onclick="setSpPaidQuick('all')">✅ Pay All</button>
+        <button type="button" class="btn btn-grey btn-sm" style="padding:7px 12px;font-size:var(--fs-xs);flex:none" onclick="setSpPaidQuick('half')">½ Half</button>
+        <button type="button" class="btn btn-grey btn-sm" style="padding:7px 12px;font-size:var(--fs-xs);flex:none;color:var(--ora)" onclick="setSpPaidQuick('0')">⏳ Unpaid</button>
+      </div>
+    </div>
     <div id="sp-loan-row" style="display:none;margin-bottom:12px">
       <label style="display:flex;align-items:flex-start;gap:11px;font-size:var(--fs-sm);color:var(--txt);text-transform:none;letter-spacing:0;font-weight:400;cursor:pointer;background:rgba(155,127,212,.08);border:1px solid rgba(155,127,212,.3);border-radius:8px;padding:11px 13px">
         <input type="checkbox" id="sp-apply-loan" style="width:16px;height:16px;accent-color:var(--pur);flex-shrink:0;margin-top:2px">
@@ -2535,7 +2557,7 @@ function calcProjVal(){
 function iP(){sv('proj-eid','');e$('proj-eb').classList.remove('on');e$('proj-sh-t').textContent='New Project';['p-name','p-loc','p-plot','p-val','p-area','p-rate','p-notes','p-start','p-end','p-custom-stage','p-partner-name','p-my-share','p-partner-share'].forEach(id=>sv(id,''));const pip=e$('p-is-partner');if(pip)pip.checked=false;const ppf=e$('p-partner-fields');if(ppf)ppf.style.display='none';const pls=e$('p-lumpsum');if(pls)pls.checked=false;sv('p-cli-t','');sv('p-cli-id','');sv('p-phase','Foundation');const lbl=e$('proj-calc-label');if(lbl)lbl.textContent='Enter area × rate to calculate';const cv=e$('proj-calc-val');if(cv)cv.textContent='—';}
 function iCli(){sv('cli-eid','');e$('cli-eb').classList.remove('on');e$('cli-sh-t').textContent='New Client';['c-name','c-ph','c-cnic','c-city','c-email','c-addr'].forEach(id=>sv(id,''));}
 function iSub(){sv('sub-eid','');e$('sub-eb').classList.remove('on');e$('sub-sh-t').textContent='New Sub-Contractor';['s-name','s-ph','s-contract','s-notes','s-cnic'].forEach(id=>sv(id,''));sv('s-proj-t','');sv('s-proj-id','');}
-function iSpay(){sv('spay-eid','');e$('spay-eb').classList.remove('on');e$('spay-sh-t').textContent='Sub-Con Payment';['sp-sub-t','sp-sub-id','sp-proj-t','sp-proj-id','sp-desc','sp-custom-stage','sp-proj-contract'].forEach(id=>sv(id,''));sv('sp-amt','');sv('sp-date',today());sv('sp-phase','Advance');sv('sp-method','Cash');clearSpBd();renderSpBdChips();refreshSpLoanRow();}
+function iSpay(){sv('spay-eid','');e$('spay-eb').classList.remove('on');e$('spay-sh-t').textContent='Sub-Con Payment';['sp-sub-t','sp-sub-id','sp-proj-t','sp-proj-id','sp-desc','sp-custom-stage','sp-proj-contract','sp-paid-amt'].forEach(id=>sv(id,''));sv('sp-amt','');sv('sp-date',today());sv('sp-phase','Advance');sv('sp-method','Cash');clearSpBd();renderSpBdChips();refreshSpLoanRow();syncSpayPayHint();}
 function refreshSpLoanRow(){
   const row=e$('sp-loan-row');const cb=e$('sp-apply-loan');const hint=e$('sp-loan-hint');
   if(!row)return;
@@ -3019,7 +3041,7 @@ function iAgr(){
 function eP(id){const r=D.projects.find(x=>x.id===id);if(!r)return;sv('proj-eid',id);e$('proj-eb').classList.add('on');e$('proj-sh-t').textContent='Edit Project';sv('p-name',r.name);sv('p-loc',r.loc);sv('p-plot',r.plot);sv('p-val',r.value);sv('p-notes',r.notes);sv('p-phase',r.phase||'Foundation');sv('p-custom-stage',r.customStage||'');sv('p-area',r.area||'');sv('p-rate',r.rate||'');sv('p-partner-name',r.partnerName||'');sv('p-my-share',r.myShare||'');sv('p-partner-share',r.partnerShare||'');const pip2=e$('p-is-partner');if(pip2)pip2.checked=r.isPartner||false;const pls2=e$('p-lumpsum');if(pls2)pls2.checked=r.lumpSum||false;const ppf2=e$('p-partner-fields');if(ppf2)ppf2.style.display=r.isPartner?'block':'none';sv('p-start',r.start);sv('p-end',r.end);const c=D.clients.find(x=>x.id===r.clientId);sv('p-cli-t',c?c.name:'');sv('p-cli-id',r.clientId||'');O('sh-proj');}
 function eCli(id){const r=D.clients.find(x=>x.id===id);if(!r)return;sv('cli-eid',id);e$('cli-eb').classList.add('on');e$('cli-sh-t').textContent='Edit Client';sv('c-name',r.name);sv('c-ph',r.phone);sv('c-cnic',r.cnic);sv('c-city',r.city);sv('c-email',r.email);sv('c-addr',r.addr);O('sh-cli');}
 function eSub(id){const r=D.subcons.find(x=>x.id===id);if(!r)return;sv('sub-eid',id);e$('sub-eb').classList.add('on');e$('sub-sh-t').textContent='Edit Contractor';sv('s-name',r.name);sv('s-trade',r.trade);sv('s-ph',r.phone);sv('s-contract',r.contract);sv('s-ptype',r.ptype);sv('s-notes',r.notes);sv('s-cnic',r.cnic||'');const p=D.projects.find(x=>x.id===r.projectId);sv('s-proj-t',p?p.name:'');sv('s-proj-id',r.projectId||'');O('sh-sub');}
-function eSpay(id){const r=D.subpays.find(x=>x.id===id);if(!r)return;sv('spay-eid',id);e$('spay-eb').classList.add('on');e$('spay-sh-t').textContent='Edit Payment';const sc=D.subcons.find(x=>x.id===r.subconId);sv('sp-sub-t',sc?sc.name:r.subconName||'');sv('sp-sub-id',r.subconId||'');const p=D.projects.find(x=>x.id===r.projectId);sv('sp-proj-t',p?p.name:r.projectName||'');sv('sp-proj-id',r.projectId||'');sv('sp-date',r.date);sv('sp-amt',r.amount);sv('sp-proj-contract',r.projContract||'');sv('sp-phase',r.phase);sv('sp-custom-stage','');sv('sp-method',r.method);sv('sp-desc',r.desc);clearSpBd();renderSpBdChips();(r.breakdown||[]).forEach(b=>addSpBd(b));if(!(r.breakdown||[]).length)cSpBd();refreshSpLoanRow();O('sh-spay');}
+function eSpay(id){const r=D.subpays.find(x=>x.id===id);if(!r)return;sv('spay-eid',id);e$('spay-eb').classList.add('on');e$('spay-sh-t').textContent='Edit Payment';const sc=D.subcons.find(x=>x.id===r.subconId);sv('sp-sub-t',sc?sc.name:r.subconName||'');sv('sp-sub-id',r.subconId||'');const p=D.projects.find(x=>x.id===r.projectId);sv('sp-proj-t',p?p.name:r.projectName||'');sv('sp-proj-id',r.projectId||'');sv('sp-date',r.date);sv('sp-amt',r.amount);sv('sp-proj-contract',r.projContract||'');sv('sp-phase',r.phase);sv('sp-custom-stage','');sv('sp-method',r.method);sv('sp-desc',r.desc);sv('sp-paid-amt',String(spayPaidAmt(r)));clearSpBd();renderSpBdChips();(r.breakdown||[]).forEach(b=>addSpBd(b));if(!(r.breakdown||[]).length)cSpBd();refreshSpLoanRow();syncSpayPayHint();O('sh-spay');}
 function eCpay(id){const r=D.cpays.find(x=>x.id===id);if(!r)return;sv('cpay-eid',id);e$('cpay-eb').classList.add('on');e$('cpay-sh-t').textContent='Edit Payment';const c=D.clients.find(x=>x.id===r.clientId);sv('cp-cli-t',c?c.name:'');sv('cp-cli-id',r.clientId||'');const p=D.projects.find(x=>x.id===r.projectId);sv('cp-proj-t',p?p.name:'');sv('cp-proj-id',r.projectId||'');sv('cp-date',r.date);sv('cp-time',r.time||'');sv('cp-amt',r.amount);sv('cp-custom-stage','');sv('cp-pay-type',r.payType||'contract');const inv=D.invoices.find(x=>x.id===r.invoiceId);sv('cp-inv-t',inv?inv.num:'');sv('cp-inv-id',r.invoiceId||'');sv('cp-method',r.method);sv('cp-note',r.note);sv('cp-milestone',r.milestone||'Other');O('sh-cpay');}
 function eInv(id){
   const r=D.invoices.find(x=>x.id===id);if(!r)return;
@@ -3087,7 +3109,42 @@ function saveP(){const eid=e$('proj-eid').value;const customStage=e$('p-custom-s
     isPartner:e$('p-is-partner')?.checked||false,partnerName:e$('p-partner-name')?.value||'',myShare:parseFloat(e$('p-my-share')?.value)||100,partnerShare:parseFloat(e$('p-partner-share')?.value)||0};if(!doc.name){toast('Enter project name','err');return;}ups('projects',doc);X('sh-proj');renderAll();toast(eid?'Project updated ✓':'Project saved ✓');}
 function saveCli(){const eid=e$('cli-eid').value;const doc={id:eid||uid(),name:e$('c-name').value,phone:e$('c-ph').value,cnic:e$('c-cnic').value,city:e$('c-city').value,email:e$('c-email').value,addr:e$('c-addr').value};if(!doc.name){toast('Enter name','err');return;}ups('clients',doc);X('sh-cli');renderCli();renderDash();updateDots();toast(eid?'Client updated ✓':'Client added ✓');}
 function saveSub(){const eid=e$('sub-eid').value;const doc={id:eid||uid(),name:e$('s-name').value,trade:e$('s-trade').value,phone:e$('s-ph').value,cnic:e$('s-cnic').value,contract:parseFloat(e$('s-contract').value)||0,ptype:e$('s-ptype').value,projectId:e$('s-proj-id').value,notes:e$('s-notes').value};if(!doc.name){toast('Enter name','err');return;}ups('subcons',doc);X('sh-sub');renderSub();updateDots();toast(eid?'Updated ✓':'Saved ✓');}
-function saveSpay(){const eid=e$('spay-eid').value;const breakdown=gSpBd();const doc={id:eid||uid(),subconId:e$('sp-sub-id').value,subconName:e$('sp-sub-t').value,projectId:e$('sp-proj-id').value,projectName:e$('sp-proj-t').value,date:e$('sp-date').value||today(),amount:parseFloat(e$('sp-amt').value)||0,projContract:parseFloat(e$('sp-proj-contract')?.value)||0,phase:e$('sp-custom-stage')?.value||e$('sp-phase').value,method:e$('sp-method').value,desc:e$('sp-desc').value,breakdown};if(!doc.subconId||!doc.amount){toast('Select contractor and enter amount','err');return;}if(breakdown.length){const bt=breakdown.reduce((s,b)=>s+b.amount,0);if(bt>doc.amount+0.01){toast('Breakdown (PKR '+fmt(bt)+') cannot exceed payment amount','err');return;}}const applyLoan=!!e$('sp-apply-loan')?.checked;ups('subpays',doc);if(applyLoan)applySpayToPersLoan(doc);X('sh-spay');renderAll();toast(eid?'Updated ✓':'PKR '+fmt(doc.amount)+' recorded ✓'+(applyLoan?' + loan repayment':''));}
+function saveSpay(){
+  const eid=e$('spay-eid').value;
+  const breakdown=gSpBd();
+  const amount=parseFloat(e$('sp-amt').value)||0;
+  const paidRaw=e$('sp-paid-amt')?.value;
+  // Empty Paid So Far = fully paid (keeps previous create behaviour).
+  let paidAmt=(paidRaw===''||paidRaw==null)?amount:(parseFloat(paidRaw)||0);
+  paidAmt=Math.max(0,Math.min(amount,paidAmt));
+  const doc={
+    id:eid||uid(),
+    subconId:e$('sp-sub-id').value,
+    subconName:e$('sp-sub-t').value,
+    projectId:e$('sp-proj-id').value,
+    projectName:e$('sp-proj-t').value,
+    date:e$('sp-date').value||today(),
+    amount,
+    paidAmt,
+    isPaid:amount>0?paidAmt+0.005>=amount:paidAmt>0,
+    projContract:parseFloat(e$('sp-proj-contract')?.value)||0,
+    phase:e$('sp-custom-stage')?.value||e$('sp-phase').value,
+    method:e$('sp-method').value,
+    desc:e$('sp-desc').value,
+    breakdown
+  };
+  if(!doc.subconId||!doc.amount){toast('Select contractor and enter amount','err');return;}
+  if(breakdown.length){
+    const bt=breakdown.reduce((s,b)=>s+b.amount,0);
+    if(bt>doc.amount+0.01){toast('Breakdown (PKR '+fmt(bt)+') cannot exceed payment amount','err');return;}
+  }
+  const applyLoan=!!e$('sp-apply-loan')?.checked;
+  ups('subpays',doc);
+  if(applyLoan)applySpayToPersLoan(doc);
+  X('sh-spay');renderAll();
+  const st=spayPayStatus(doc);
+  toast(eid?'Updated ✓':(st==='partial'?`Saved · paid ${fmt(doc.paidAmt)} / due ${fmt(spayDueAmt(doc))}`:(st==='unpaid'?`Saved · unpaid (due ${fmt(doc.amount)})`:`PKR ${fmt(doc.amount)} recorded ✓`))+(applyLoan?' + loan repayment':''));
+}
 
 // ════ SUB-CON PAYMENT BREAKDOWN (further payees) ════
 const SP_BD_TRADES=['Shuttering','Steel Binding','Brick / Chuuni Mason','Electrician','Plumber','Tile Fixer','Painter','Carpenter','Labour','Other'];
@@ -3416,14 +3473,14 @@ function fPay(f,el){fPayF=f;document.querySelectorAll('#pg-pay .ftab').forEach(t
 function renderDash(){
   // Received = contract payments only (misc owner advances are tracked separately, not contract collection)
   const tr=D.cpays.filter(p=>(p.payType||'contract')==='contract').reduce((s,p)=>s+p.amount,0);
-  const ts=D.subpays.reduce((s,p)=>s+p.amount,0);
+  const ts=D.subpays.reduce((s,p)=>s+spayPaidAmt(p),0);
   // Spent totals = paid portion of contractor expenses (partial payments count)
   const te=(D.expenses||[]).filter(e=>(e.fundedBy||'contract')==='contract').reduce((s,e)=>s+expPaidAmt(e),0);
   const ti=D.invoices.reduce((s,i)=>s+i.total,0);
   // Net profit = your share of each project's P&L
   const pft=D.projects.reduce((net,p)=>{
     const rec=D.cpays.filter(x=>x.projectId===p.id&&(x.payType||'contract')==='contract').reduce((s,x)=>s+x.amount,0);
-    const sub=D.subpays.filter(x=>x.projectId===p.id).reduce((s,x)=>s+x.amount,0);
+    const sub=D.subpays.filter(x=>x.projectId===p.id).reduce((s,x)=>s+spayPaidAmt(x),0);
     const exp=(D.expenses||[]).filter(x=>x.projectId===p.id&&(x.fundedBy||'contract')==='contract').reduce((s,x)=>s+expPaidAmt(x),0);
     const internal=sub+exp;
     const isReimbursedD=p.lumpSum;
@@ -3515,7 +3572,7 @@ function renderDash(){
   // Recent activity
   const acts=[
     ...D.cpays.map(x=>({type:'💳 Received',name:x.clientName,sub:x.projectName||'',amt:x.amount,date:x.date,clr:'var(--grn)'})),
-    ...D.subpays.map(x=>({type:'💸 Paid Out',name:x.subconName,sub:(x.phase||'')+(x.projectName?' · '+x.projectName:''),amt:x.amount,date:x.date,clr:'var(--red)'})),
+    ...D.subpays.map(x=>({type:'💸 Paid Out',name:x.subconName,sub:(x.phase||'')+(x.projectName?' · '+x.projectName:'')+(spayHasDue(x)?' · due':'') ,amt:spayPaidAmt(x),date:x.date,clr:'var(--red)'})),
     ...(D.expenses||[]).filter(e=>expHasDue(e)).slice(0,5).map(x=>({type:'📦 Expense',name:x.desc,sub:(x.projectName||'')+(expPayStatus(x)==='partial'?' · partial':''),amt:expDueAmt(x),date:x.date,clr:'var(--mut)'})),
   ].sort((a,b)=>(b.date||'').localeCompare(a.date||'')).slice(0,8);
   const al=e$('act-list');
@@ -3631,7 +3688,7 @@ function collapsibleSection(id,headerHTML,bodyHTML,open){
 
 function renderPay(){
   const tin=D.cpays.reduce((s,p)=>s+p.amount,0);
-  const tout=D.subpays.reduce((s,p)=>s+p.amount,0);
+  const tout=D.subpays.reduce((s,p)=>s+spayPaidAmt(p),0);
   e$('pay-in').textContent=fmt(tin);e$('pay-out').textContent=fmt(tout);
 
   // Per-project payment summary
@@ -3640,7 +3697,7 @@ function renderPay(){
     pps.innerHTML='<div style="font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:.8px;font-weight:700;margin-bottom:8px">Project Payment Summary</div>'+
     D.projects.map(p=>{
       const rec=D.cpays.filter(x=>x.projectId===p.id&&(x.payType||'contract')==='contract').reduce((s,x)=>s+x.amount,0);
-      const sub=D.subpays.filter(x=>x.projectId===p.id).reduce((s,x)=>s+x.amount,0);
+      const sub=D.subpays.filter(x=>x.projectId===p.id).reduce((s,x)=>s+spayPaidAmt(x),0);
       const cli=D.clients.find(x=>x.id===p.clientId);
       return`<div style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:12px 14px;margin-bottom:8px">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
@@ -3761,7 +3818,7 @@ async function pdfSubProjStatement(subconId,projectId){
   const pays=D.subpays.filter(x=>x.subconId===subconId&&x.projectId===projectId).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
   const contract=(D.subconContracts||[]).find(x=>x.subconId===subconId&&x.projectId===projectId);
   const contractVal=contract?.value||pays.reduce((m,p)=>Math.max(m,p.projContract||0),0);
-  const totalPaid=pays.reduce((s,p)=>s+p.amount,0);
+  const totalPaid=pays.reduce((s,p)=>s+spayPaidAmt(p),0);
   const remaining=contractVal>0?Math.max(0,contractVal-totalPaid):0;
   const c=co();const doc=bPDF();const pw=210;
   let y=drawHeader(doc,'PAYMENT STATEMENT',sc?.name||'Sub-Contractor',today(),'','');
@@ -3783,9 +3840,11 @@ async function pdfSubProjStatement(subconId,projectId){
   if(pays.length){
     let running=0;
     const body=pays.map((p,i)=>{
-      running+=p.amount;
+      running+=spayPaidAmt(p);
       const phaseBits=[p.phase||'—'];
       if(p.desc)phaseBits.push(p.desc);
+      const st=spayPayStatus(p);
+      if(st!=='paid')phaseBits.push(st==='partial'?`Partial paid ${fmt(spayPaidAmt(p))}`:'UNPAID');
       const work=phaseBits.join('\n');
       const bd=(p.breakdown||[]);
       const bdTotal=bd.reduce((s,b)=>s+(Number(b.amount)||0),0);
@@ -3796,7 +3855,7 @@ async function pdfSubProjStatement(subconId,projectId){
         if(kept>0.01)lines.push(`(kept / not distributed): ${fmt(kept)}`);
         forWhom=lines.join('\n');
       }
-      return[i+1,p.date||'—',work,forWhom,p.method||'Cash',fmt(p.amount),fmt(running)];
+      return[i+1,p.date||'—',work,forWhom,p.method||'Cash',fmt(spayPaidAmt(p)),fmt(running)];
     });
     doc.autoTable({
       startY:y,
@@ -3824,6 +3883,106 @@ async function pdfSubProjStatement(subconId,projectId){
   toast('Statement PDF ✓');
 }
 
+// ════ SUB-CON PAYMENT STATUS (paid / partial / unpaid) ════
+// amount = agreed milestone line; paidAmt = cash given so far.
+// Legacy records without paidAmt: treated as fully paid (old behaviour).
+let subFilter='all';
+function fSub(f,el){
+  subFilter=f;
+  document.querySelectorAll('#pg-sub .ftab').forEach(t=>t.classList.remove('on'));
+  if(el)el.classList.add('on');
+  const hint=e$('sub-filter-hint');
+  if(hint)hint.textContent=f==='paid'?'Only fully paid payment lines':f==='unpaid'?'Unpaid + partial — still due':'All payment lines — paid and still due';
+  renderSub();
+}
+function spayPaidAmt(r){
+  if(!r)return 0;
+  if(r.paidAmt!=null&&r.paidAmt!==''){
+    const n=parseFloat(r.paidAmt);
+    if(!isNaN(n))return Math.max(0,Math.min(r.amount||0,n));
+  }
+  // Legacy: no paidAmt field → full amount was already paid out
+  if(r.isPaid===false)return 0;
+  return r.amount||0;
+}
+function spayDueAmt(r){return Math.max(0,(r.amount||0)-spayPaidAmt(r));}
+function spayPayStatus(r){
+  const tot=r.amount||0,paid=spayPaidAmt(r);
+  if(paid<=0.005)return 'unpaid';
+  if(tot>0&&paid+0.005>=tot)return 'paid';
+  if(tot<=0&&paid>0)return 'paid';
+  return 'partial';
+}
+function spayIsFullyPaid(r){return spayPayStatus(r)==='paid';}
+function spayHasDue(r){return spayDueAmt(r)>0.005;}
+function spayPayBadge(r){
+  const st=spayPayStatus(r);
+  if(st==='paid')return'<span style="color:var(--grn);font-size:var(--fs-xs)">✅ Paid</span>';
+  if(st==='partial')return`<span style="color:var(--gold);font-size:var(--fs-xs)">🟡 Partial ${fmt(spayPaidAmt(r))}/${fmt(r.amount||0)}</span>`;
+  return'<span style="color:var(--ora);font-size:var(--fs-xs)">⏳ Unpaid</span>';
+}
+function syncSpayPayHint(){
+  const bill=parseFloat(e$('sp-amt')?.value)||0;
+  const raw=e$('sp-paid-amt')?.value;
+  const paid=(raw===''||raw==null)?bill:(parseFloat(raw)||0);
+  const due=Math.max(0,bill-Math.max(0,Math.min(bill,paid)));
+  const dueEl=e$('sp-due-amt');const hint=e$('sp-pay-hint');
+  if(dueEl){dueEl.textContent=fmt(due);dueEl.style.color=due>0?'var(--ora)':'var(--grn)';}
+  if(hint){
+    if(raw===''||raw==null)hint.textContent='Leave Paid So Far empty to mark the full amount as paid.';
+    else if(due<=0)hint.textContent='✅ Fully paid — counts in Total Paid.';
+    else if(paid<=0)hint.textContent='⏳ Unpaid — full amount still due (not in Total Paid until you pay).';
+    else hint.textContent=`🟡 Partial — PKR ${fmt(paid)} paid counts; PKR ${fmt(due)} still due.`;
+  }
+}
+function setSpPaidQuick(mode){
+  const bill=parseFloat(e$('sp-amt')?.value)||0;
+  if(mode==='all')sv('sp-paid-amt',bill?String(bill):'0');
+  else if(mode==='half')sv('sp-paid-amt',bill?String(Math.round(bill/2)):'0');
+  else sv('sp-paid-amt','0');
+  syncSpayPayHint();
+}
+function markSpayPaid(id){
+  const r=(D.subpays||[]).find(x=>x.id===id);if(!r)return;
+  const st=spayPayStatus(r);
+  if(st==='paid'){
+    r.paidAmt=0;r.isPaid=false;
+    r.updatedAt=new Date().toISOString();sched();renderSub();renderExp();renderLedger();renderDash();
+    toast('Marked as unpaid','info');return;
+  }
+  const due=spayDueAmt(r);
+  const raw=prompt('Pay amount now (still due PKR '+fmt(due)+').\nEnter '+fmt(due)+' to clear the balance.',String(due));
+  if(raw===null)return;
+  const add=parseFloat(raw);
+  if(!(add>0)){toast('Enter a valid payment amount','err');return;}
+  r.paidAmt=Math.min(r.amount||0,spayPaidAmt(r)+add);
+  r.isPaid=spayPaidAmt(r)+0.005>=(r.amount||0);
+  r.updatedAt=new Date().toISOString();sched();renderSub();renderExp();renderLedger();renderDash();
+  toast(r.isPaid?'Fully paid ✅':`Partial payment recorded · due PKR ${fmt(spayDueAmt(r))}`,'info');
+}
+function spayRowHtml(p){
+  const st=spayPayStatus(p);
+  const amtColor=st==='unpaid'?'var(--ora)':'var(--red)';
+  return`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:10px 13px;border-bottom:1px solid var(--bor)">
+    <div>
+      <div style="font-size:var(--fs-sm);font-weight:600">${p.phase||'—'} ${spayPayBadge(p)}</div>
+      <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">${p.date||'—'} · ${p.method||'Cash'}</div>
+      ${p.desc?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">${p.desc}</div>`:''}
+      ${st==='partial'?`<div style="font-size:var(--fs-xs);color:var(--ora);margin-top:3px">Due PKR ${fmt(spayDueAmt(p))}</div>`:''}
+      ${(p.breakdown||[]).length?`<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">${p.breakdown.map(b=>`<span style="font-size:9px;padding:2px 6px;border-radius:5px;background:var(--bg);border:1px solid var(--bor);color:var(--mut)">${b.trade||'Other'}${b.name?' · '+b.name:''}: <b style="color:var(--txt)">${fmt(b.amount)}</b></span>`).join('')}</div>`:''}
+    </div>
+    <div style="text-align:right;flex-shrink:0;margin-left:12px">
+      <div style="font-family:'JetBrains Mono',monospace;color:${amtColor}">${fmt(p.amount)}</div>
+      ${st==='partial'?`<div style="font-size:9px;color:var(--mut);margin-top:2px">Paid ${fmt(spayPaidAmt(p))}</div>`:''}
+      <div style="display:flex;gap:8px;margin-top:4px;justify-content:flex-end;flex-wrap:wrap">
+        <button style="font-size:var(--fs-xs);color:${spayIsFullyPaid(p)?'var(--mut)':'var(--grn)'};background:none;border:none;cursor:pointer;font-family:Inter,sans-serif;font-weight:600" onclick="markSpayPaid('${p.id}')">${spayIsFullyPaid(p)?'↩ Unpaid':(spayHasDue(p)?'💰 Pay':'✅ Paid')}</button>
+        <button style="font-size:var(--fs-xs);color:var(--blu);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="eSpay('${p.id}')">Edit</button>
+        <button style="font-size:var(--fs-xs);color:var(--red);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="del('subpays','${p.id}')">Del</button>
+      </div>
+    </div>
+  </div>`;
+}
+
 // ════ RENDER SUB-CON ════
 function renderSub(){
   const el=e$('list-sub');
@@ -3834,9 +3993,17 @@ function renderSub(){
     return pays.reduce((m,p)=>((p.date||'')>m?(p.date||''):m),'');
   };
   const ordered=[...D.subcons].sort((a,b)=>subRecency(b).localeCompare(subRecency(a)));
-  el.innerHTML=ordered.map(s=>{
-    const allPays=D.subpays.filter(p=>p.subconId===s.id);
-    const totalPaid=allPays.reduce((t,p)=>t+p.amount,0);
+  const matchFilter=p=>{
+    if(subFilter==='paid')return spayIsFullyPaid(p);
+    if(subFilter==='unpaid')return spayHasDue(p);
+    return true;
+  };
+  const html=ordered.map(s=>{
+    const allPaysRaw=D.subpays.filter(p=>p.subconId===s.id);
+    const allPays=allPaysRaw.filter(matchFilter);
+    if(subFilter!=='all'&&!allPays.length)return'';
+    const totalPaid=allPaysRaw.reduce((t,p)=>t+spayPaidAmt(p),0);
+    const totalDue=allPaysRaw.reduce((t,p)=>t+spayDueAmt(p),0);
     const projContracts=(D.subconContracts||[]).filter(x=>x.subconId===s.id);
     const totalContract=projContracts.length>0?projContracts.reduce((sum,x)=>sum+x.value,0):(s.contract||0);
     const rem=Math.max(0,totalContract-totalPaid);
@@ -3845,14 +4012,15 @@ function renderSub(){
     const unlinkedPays=allPays.filter(p=>!p.projectId).sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.createdAt||'').localeCompare(a.createdAt||''));
     const byProject=projIds.map(pid=>{
       const proj=D.projects.find(x=>x.id===pid);
+      const projPaysAll=allPaysRaw.filter(p=>(p.projectId||'__none__')===pid);
       const projPays=allPays.filter(p=>(p.projectId||'__none__')===pid).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
-      const projTotal=projPays.reduce((sum,p)=>sum+p.amount,0);
+      const projTotal=projPaysAll.reduce((sum,p)=>sum+spayPaidAmt(p),0);
       const scCon=(D.subconContracts||[]).find(x=>x.subconId===s.id&&x.projectId===pid);
-      const projContract=scCon?.value||projPays.filter(p=>p.projContract>0).reduce((max,p)=>Math.max(max,p.projContract),0);
+      const projContract=scCon?.value||projPaysAll.filter(p=>p.projContract>0).reduce((max,p)=>Math.max(max,p.projContract),0);
       const projRem=projContract>0?Math.max(0,projContract-projTotal):0;
       const projName=proj?proj.name:(pid==='__none__'?'No Project':projPays[0]?.projectName||'Unknown Project');
       return{pid,projName,projPays,projTotal,projContract,projRem};
-    });
+    }).filter(pg=>pg.projPays.length);
     // Sort projects by newest payment
     byProject.sort((a,b)=>{
       const ra=a.projPays[0]?.date||'';
@@ -3869,10 +4037,11 @@ function renderSub(){
       <div style="text-align:right;flex-shrink:0;font-size:var(--fs-xs);font-family:'JetBrains Mono',monospace">
         <div style="color:var(--red)">-${fmt(totalPaid)}</div>
         <div style="color:${rem>0?'var(--gold)':'var(--grn)'};margin-top:2px">${fmt(rem)} left</div>
+        ${totalDue>0?`<div style="color:var(--ora);margin-top:2px">${fmt(totalDue)} due</div>`:''}
       </div>
     </div>`;
     const projectsHtml=byProject.map(pg=>{
-      const showProjStats=byProject.length>1;
+      const showProjStats=byProject.length>1||unlinkedPays.length===0;
       const pgid='sub-proj-'+s.id+'-'+pg.pid;
       const pOpen=!collapsedGroups[pgid];
       const pHeader=`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
@@ -3898,31 +4067,13 @@ function renderSub(){
               </div>
             </div>`:''}
           <div style="background:var(--s1);border:1px solid var(--bor);border-radius:10px;overflow:hidden">
-          ${pg.projPays.map(p=>`
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:10px 13px;border-bottom:1px solid var(--bor)">
-            <div>
-              <div style="font-size:var(--fs-sm);font-weight:600">${p.phase}</div>
-              <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">${p.date} · ${p.method||'Cash'}</div>
-              ${p.desc?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">${p.desc}</div>`:''}
-              ${(p.breakdown||[]).length?`<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">${p.breakdown.map(b=>`<span style="font-size:9px;padding:2px 6px;border-radius:5px;background:var(--bg);border:1px solid var(--bor);color:var(--mut)">${b.trade||'Other'}${b.name?' · '+b.name:''}: <b style="color:var(--txt)">${fmt(b.amount)}</b></span>`).join('')}</div>`:''}
-            </div>
-            <div style="text-align:right;flex-shrink:0;margin-left:12px">
-              <div style="font-family:'JetBrains Mono',monospace;color:var(--red)">${fmt(p.amount)}</div>
-              <div style="display:flex;gap:8px;margin-top:4px;justify-content:flex-end">
-                <button style="font-size:var(--fs-xs);color:var(--blu);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="eSpay('${p.id}')">Edit</button>
-                <button style="font-size:var(--fs-xs);color:var(--red);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="del('subpays','${p.id}')">Del</button>
-              </div>
-            </div>
-          </div>`).join('')}
+          ${pg.projPays.map(spayRowHtml).join('')}
           </div>`;
       return collapsibleSection(pgid,pHeader,pBody,pOpen);
     }).join('');
     const unlinkedHtml=unlinkedPays.length?`<div style="background:var(--s2);border-radius:10px;overflow:hidden;margin-bottom:10px">
         <div style="padding:10px 13px;border-bottom:1px solid var(--bor);font-size:var(--fs-xs);color:var(--mut);font-weight:700;text-transform:uppercase">📌 Unlinked Payments (No Project)</div>
-        ${unlinkedPays.map(p=>`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:10px 13px;border-bottom:1px solid var(--bor)">
-          <div><div style="font-size:var(--fs-sm);font-weight:600">${p.phase}</div><div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">${p.date} · ${p.method||'Cash'}</div>${p.desc?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">${p.desc}</div>`:''}</div>
-          <div style="text-align:right"><div style="font-family:'JetBrains Mono',monospace;color:var(--red)">${fmt(p.amount)}</div><div style="display:flex;gap:8px;margin-top:4px;justify-content:flex-end"><button style="font-size:var(--fs-xs);color:var(--blu);background:none;border:none;cursor:pointer" onclick="eSpay('${p.id}')">Edit</button><button style="font-size:var(--fs-xs);color:var(--red);background:none;border:none;cursor:pointer" onclick="del('subpays','${p.id}')">Del</button></div></div>
-        </div>`).join('')}
+        ${unlinkedPays.map(spayRowHtml).join('')}
       </div>`:'';
     const body=`<div style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:12px 14px">
       <div class="sub-stats">
@@ -3930,6 +4081,7 @@ function renderSub(){
         <div class="sub-stat"><div class="sub-stat-val" style="color:var(--red)">${fmt(totalPaid)}</div><div class="sub-stat-lbl">Total Paid</div></div>
         <div class="sub-stat"><div class="sub-stat-val" style="color:${rem>0?'var(--gold)':'var(--grn)'}">${fmt(rem)}</div><div class="sub-stat-lbl">Remaining</div></div>
       </div>
+      ${totalDue>0?`<div style="font-size:var(--fs-xs);color:var(--ora);margin-bottom:8px">⏳ Pending on payment lines: PKR ${fmt(totalDue)} (not in Total Paid)</div>`:''}
       <div class="pbar-wrap"><div class="pbar" style="width:${pct}%"></div></div>
       <div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:14px">Paid ${pct}% of total contract</div>
       ${projectsHtml}
@@ -3941,7 +4093,8 @@ function renderSub(){
       </div>
     </div>`;
     return collapsibleSection(gid,header,body,open);
-  }).join('');
+  }).filter(Boolean).join('');
+  el.innerHTML=html||'<div class="empty"><div class="empty-i">🔎</div><div class="empty-t">No matching payments for this filter</div></div>';
 }
 
 // ════ RENDER AGREEMENTS ════
@@ -5298,7 +5451,7 @@ function renderExp(){
   const setV=(id,v)=>{const x=e$(id);if(x)x.textContent=fmt(v);};
 
   // Contractor stats = paid portion + sub-con (remaining due not in total)
-  const subTotalAll=allSubpays.reduce((s,p)=>s+p.amount,0);
+  const subTotalAll=allSubpays.reduce((s,p)=>s+spayPaidAmt(p),0);
   const expPaidAll=internalExps.reduce((s,e)=>s+expPaidAmt(e),0);
   const expPendingAll=internalExps.reduce((s,e)=>s+expDueAmt(e),0);
   setV('exp-int-spent',expPaidAll+subTotalAll);
@@ -5326,9 +5479,13 @@ function renderExp(){
   const isOwnerMode=mode==='owner';
   const modeExps=isOwnerMode?ownerExps:internalExps;
   const expsFiltered=expFilter==='all'?modeExps:expFilter==='unpaid'?modeExps.filter(r=>isOwnerMode&&r.fundedBy==='onbehalf'?rst(r)!=='paid':expHasDue(r)):expFilter==='paid'?modeExps.filter(r=>isOwnerMode&&r.fundedBy==='onbehalf'?rst(r)==='paid':expIsFullyPaid(r)):modeExps.filter(r=>r.cat===expFilter);
-  // Sub-con payments show on contractor tab for All / Paid (always paid). Hide on category filters except labour.
-  const showSubpays=!isOwnerMode&&(expFilter==='all'||expFilter==='paid'||expFilter==='labour');
-  const subpaysFiltered=showSubpays?allSubpays:[];
+  // Sub-con payments on contractor tab: All shows everything; Paid/Unpaid filter by status; labour shows all.
+  const showSubpays=!isOwnerMode&&(expFilter==='all'||expFilter==='paid'||expFilter==='unpaid'||expFilter==='labour');
+  const subpaysFiltered=showSubpays
+    ?(expFilter==='paid'?allSubpays.filter(spayIsFullyPaid)
+      :expFilter==='unpaid'?allSubpays.filter(spayHasDue)
+      :allSubpays)
+    :[];
   let rows=expsFiltered;
   const catIcon={material:'🧱',labour:'👷',equipment:'🔧',transport:'🚚',utility:'💡',other:'📦'};
   if(!rows.length&&!subpaysFiltered.length){
@@ -5369,7 +5526,7 @@ function renderExp(){
     const cashPending=cashRows.reduce((s,r)=>s+expDueAmt(r),0);
     const behalfSpent=behalfRows.reduce((s,r)=>s+r.amount,0);
     const behalfOwed=behalfRows.filter(r=>rst(r)!=='paid').reduce((s,r)=>s+r.amount,0);
-    const subSpent=projSubpays.reduce((s,p)=>s+p.amount,0);
+    const subSpent=projSubpays.reduce((s,p)=>s+spayPaidAmt(p),0);
     const expPaidDisplay=projRows.reduce((s,r)=>s+(r.fundedBy==='onbehalf'?(r.amount||0):expPaidAmt(r)),0);
     const expPendingDisplay=projRows.filter(r=>r.fundedBy!=='onbehalf').reduce((s,r)=>s+expDueAmt(r),0);
     const totalDisplay=isOwnerMode?expPaidDisplay:(expPaidDisplay+subSpent);
@@ -5479,14 +5636,17 @@ function renderExp(){
           html+=`<div style="padding:7px 14px;background:rgba(224,85,85,.08);border-bottom:1px solid var(--bor);font-size:var(--fs-xs);font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.5px">👷 Sub-Contractor Payments</div>`;
           html+=projSubpays.map(p=>`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:11px 14px;border-bottom:1px solid var(--bor)">
             <div>
-              <div style="font-size:var(--fs-sm);font-weight:600">💸 ${p.subconName||'Sub-Con'} <span style="color:var(--grn);font-size:var(--fs-xs)">✅ Paid</span></div>
+              <div style="font-size:var(--fs-sm);font-weight:600">💸 ${p.subconName||'Sub-Con'} ${spayPayBadge(p)}</div>
               <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">${p.date||'—'} · ${p.method||'Cash'} · <span class="b b-m" style="font-size:9px">${p.phase||'—'}</span></div>
               ${p.desc?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">${p.desc}</div>`:''}
+              ${spayPayStatus(p)==='partial'?`<div style="font-size:var(--fs-xs);color:var(--ora);margin-top:3px">Due PKR ${fmt(spayDueAmt(p))}</div>`:''}
               ${(p.breakdown||[]).length?`<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">${p.breakdown.map(b=>`<span style="font-size:9px;padding:2px 6px;border-radius:5px;background:var(--bg);border:1px solid var(--bor);color:var(--mut)">${b.trade||'Other'}${b.name?' · '+b.name:''}: <b style="color:var(--txt)">${fmt(b.amount)}</b></span>`).join('')}</div>`:''}
             </div>
             <div style="text-align:right;flex-shrink:0;margin-left:12px">
-              <div style="font-family:'JetBrains Mono',monospace;color:var(--red);font-size:var(--fs-md)">${fmt(p.amount)}</div>
+              <div style="font-family:'JetBrains Mono',monospace;color:${spayPayStatus(p)==='unpaid'?'var(--ora)':'var(--red)'};font-size:var(--fs-md)">${fmt(p.amount)}</div>
+              ${spayPayStatus(p)==='partial'?`<div style="font-size:9px;color:var(--mut);margin-top:2px">Paid ${fmt(spayPaidAmt(p))}</div>`:''}
               <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;justify-content:flex-end">
+                <button style="font-size:var(--fs-xs);color:${spayIsFullyPaid(p)?'var(--mut)':'var(--grn)'};background:none;border:none;cursor:pointer;font-family:Inter,sans-serif;font-weight:600" onclick="markSpayPaid('${p.id}')">${spayIsFullyPaid(p)?'↩ Unpaid':(spayHasDue(p)?'💰 Pay':'✅ Paid')}</button>
                 <button style="font-size:var(--fs-xs);color:var(--blu);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="eSpay('${p.id}')">Edit</button>
                 <button style="font-size:var(--fs-xs);color:var(--red);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="del('subpays','${p.id}')">Del</button>
               </div>
