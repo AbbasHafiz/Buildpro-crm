@@ -6,12 +6,12 @@
     "allowMixedContent": true
   },
   "server": {
-    "url": "https://buildpro-crm.wasmer.app",
+    "url": "https://abbashafiz.github.io/Buildpro-crm/",
     "cleartext": false,
     "errorPath": "offline.html",
     "allowNavigation": [
-      "buildpro-crm.wasmer.app",
       "abbashafiz.github.io",
+      "buildpro-crm.wasmer.app",
       "*.supabase.co",
       "accounts.google.com",
       "*.googleusercontent.com"

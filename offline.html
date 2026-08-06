@@ -29,15 +29,15 @@
       <button class="primary" type="button" id="retry">Retry live update</button>
       <a class="ghost" id="local" href="./index.html">Open offline copy</a>
     </div>
-    <p class="hint" id="status">OTA host: https://buildpro-crm.wasmer.app</p>
+    <p class="hint" id="status">OTA host: https://abbashafiz.github.io/Buildpro-crm/</p>
   </div>
   <script>
-    const OTA='https://buildpro-crm.wasmer.app/';
-    const MIRROR='https://abbashafiz.github.io/Buildpro-crm/';
+    const OTA='https://abbashafiz.github.io/Buildpro-crm/';
+    const MIRROR='https://buildpro-crm.wasmer.app/';
     const status=document.getElementById('status');
     async function ping(url){
       try{
-        const r=await fetch(url+(url.includes('?')?'&':'?')+'_ota='+Date.now(),{method:'HEAD',cache:'no-store',mode:'no-cors'});
+        await fetch(url+(url.includes('?')?'&':'?')+'_ota='+Date.now(),{method:'HEAD',cache:'no-store',mode:'no-cors'});
         return true;
       }catch(e){return false;}
     }
@@ -50,7 +50,6 @@
       status.textContent='Still offline — try again when you have internet.';
     }
     document.getElementById('retry').addEventListener('click',retry);
-    // Auto-retry once on open (covers brief blips).
     setTimeout(retry,600);
   </script>
 </body>

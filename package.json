@@ -1,6 +1,6 @@
 {
   "name": "buildpro-crm",
-  "version": "1.42.0",
+  "version": "1.43.0",
   "private": true,
   "license": "MIT",
   "description": "Open-source BuildPro CRM — construction business management (PWA + OTA Android app)",

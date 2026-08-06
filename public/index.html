@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-08-06-v42">
+<meta name="app-version" content="2026-08-06-v43">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -7465,15 +7465,16 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-08-06-v42';
+const APP_VERSION='2026-08-06-v43';
 // Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
-const OTA_ORIGIN='https://buildpro-crm.wasmer.app';
-const OTA_MIRROR='https://abbashafiz.github.io/Buildpro-crm';
+// GitHub Pages is the live OTA source of truth while Wasmer Edge GitHub deploys are failing.
+const OTA_ORIGIN='https://abbashafiz.github.io/Buildpro-crm';
+const OTA_MIRROR='https://buildpro-crm.wasmer.app';
 function appOrigin(){
   try{
     const h=location.hostname||'';
-    if(h==='buildpro-crm.wasmer.app')return location.origin;
     if(h==='abbashafiz.github.io')return location.origin+'/Buildpro-crm';
+    if(h==='buildpro-crm.wasmer.app')return location.origin;
     if(isNative())return OTA_ORIGIN;
   }catch(e){}
   return location.origin||OTA_ORIGIN;
