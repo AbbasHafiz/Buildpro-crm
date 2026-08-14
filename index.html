@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-08-06-v44">
+<meta name="app-version" content="2026-08-06-v45">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -5633,8 +5633,7 @@ function renderExp(){
         </div>`;
         let html='';
         if(!isOwnerMode&&projSubpays.length){
-          html+=`<div style="padding:7px 14px;background:rgba(224,85,85,.08);border-bottom:1px solid var(--bor);font-size:var(--fs-xs);font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.5px">👷 Sub-Contractor Payments</div>`;
-          html+=projSubpays.map(p=>`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:11px 14px;border-bottom:1px solid var(--bor)">
+          const subBody=projSubpays.map(p=>`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:11px 14px;border-bottom:1px solid var(--bor);background:var(--s1)">
             <div>
               <div style="font-size:var(--fs-sm);font-weight:600">💸 ${p.subconName||'Sub-Con'} ${spayPayBadge(p)}</div>
               <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">${p.date||'—'} · ${p.method||'Cash'} · <span class="b b-m" style="font-size:9px">${p.phase||'—'}</span></div>
@@ -5652,10 +5651,25 @@ function renderExp(){
               </div>
             </div>
           </div>`).join('');
+          const subDue=projSubpays.reduce((s,p)=>s+spayDueAmt(p),0);
+          html+=`<div style="padding:8px 10px 0">${collapsibleSection('exp-sub-'+pid,
+            `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%">
+              <span style="font-size:var(--fs-xs);font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.4px">👷 Sub-Contractor Payments · ${projSubpays.length}</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-xs);color:var(--red);flex-shrink:0">${fmt(subSpent)}${subDue>0?` · <span style="color:var(--ora)">${fmt(subDue)} due</span>`:''}</span>
+            </div>`,
+            `<div style="border:1px solid var(--bor);border-radius:8px;overflow:hidden">${subBody}</div>`,
+            true)}</div>`;
         }
         if(internalRows.length){
-          html+=`<div style="padding:7px 14px;background:rgba(201,123,58,.08);border-bottom:1px solid var(--bor);font-size:var(--fs-xs);font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.5px">💼 Contractor Expenses — material / supplier / other</div>`;
-          html+=internalRows.map(renderRow).join('');
+          const intPaid=internalRows.reduce((s,r)=>s+expPaidAmt(r),0);
+          const intDue=internalRows.reduce((s,r)=>s+expDueAmt(r),0);
+          html+=`<div style="padding:8px 10px 0">${collapsibleSection('exp-con-'+pid,
+            `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%">
+              <span style="font-size:var(--fs-xs);font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.4px">💼 Contractor Expenses · ${internalRows.length}</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-xs);color:var(--red);flex-shrink:0">${fmt(intPaid)}${intDue>0?` · <span style="color:var(--ora)">${fmt(intDue)} due</span>`:''}</span>
+            </div>`,
+            `<div style="border:1px solid var(--bor);border-radius:8px;overflow:hidden">${internalRows.map(renderRow).join('')}</div>`,
+            true)}</div>`;
         }
         if(ownerRows.length){
           html+=`<div style="padding:7px 14px;background:rgba(77,148,212,.08);border-bottom:1px solid var(--bor);font-size:var(--fs-xs);font-weight:700;color:#4D94D4;text-transform:uppercase;letter-spacing:.5px">🪣 Owner Misc Cash — spent from owner's advance</div>`;
@@ -7625,7 +7639,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-08-06-v44';
+const APP_VERSION='2026-08-06-v45';
 // Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
 // GitHub Pages is the live OTA source of truth while Wasmer Edge GitHub deploys are failing.
 const OTA_ORIGIN='https://abbashafiz.github.io/Buildpro-crm';
