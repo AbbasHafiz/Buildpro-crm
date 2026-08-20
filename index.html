@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-08-06-v52">
+<meta name="app-version" content="2026-08-06-v53">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -1256,9 +1256,11 @@ select option{background:var(--s2);}
     <div class="fg"><label>Project / Property</label>
       <div class="ds-wrap"><input class="ds-inp" id="a-proj-t" placeholder="Select project" readonly onclick="oDs('ds-a-proj')"><div class="ds-list" id="ds-a-proj"></div><input type="hidden" id="a-proj-id"></div>
     </div>
-    <div class="fg" id="agr-value-field"><label>Contract Value (PKR)</label><input type="number" id="a-val" placeholder="0"></div>
-    <div class="fg"><label>Status</label>
-      <select id="a-st"><option value="draft">Draft</option><option value="signed">Signed</option><option value="active">Active</option><option value="completed">Completed</option></select>
+    <div class="f2">
+      <div class="fg" id="agr-value-field"><label>Contract Value (PKR)</label><input type="number" id="a-val" placeholder="0"></div>
+      <div class="fg"><label>Status</label>
+        <select id="a-st"><option value="draft">Draft</option><option value="signed">Signed</option><option value="active">Active</option><option value="completed">Completed</option></select>
+      </div>
     </div>
     <label style="display:flex;align-items:center;gap:11px;font-size:var(--fs-sm);color:var(--txt);text-transform:none;letter-spacing:0;font-weight:400;cursor:pointer;background:var(--bg);border:1px solid var(--bor);border-radius:8px;padding:11px 13px;margin-bottom:14px">
       <input type="checkbox" id="a-hide-value" onchange="toggleHideValue()" style="width:18px;height:18px;accent-color:var(--gold);flex-shrink:0">
@@ -1309,17 +1311,19 @@ select option{background:var(--s2);}
     <div class="hdiv"></div>
 
     <!-- Agreement Type & Rate -->
-    <div class="fg" id="agr-type-field"><label>Agreement Type</label>
-      <select id="a-type" onchange="calcAgr();syncAgrRateLabel();toggleAgrCustomRow('a-type','a-type-custom','other')">
-        <option value="labour">Labour Rate (per sft)</option>
-        <option value="material">Labour + Material / With Material (per sft)</option>
-        <option value="costpct">Cost to Cost with %</option>
-        <option value="lump">Lump Sum (Fixed Price)</option>
-        <option value="other">Other / Custom</option>
-      </select>
-      <input id="a-type-custom" placeholder="Or type your own type name — e.g. Hybrid labour + selected material…" style="margin-top:7px">
+    <div class="f2">
+      <div class="fg" id="agr-type-field"><label>Agreement Type</label>
+        <select id="a-type" onchange="calcAgr();syncAgrRateLabel();toggleAgrCustomRow('a-type','a-type-custom','other')">
+          <option value="labour">Labour Rate (per sft)</option>
+          <option value="material">Labour + Material / With Material (per sft)</option>
+          <option value="costpct">Cost to Cost with %</option>
+          <option value="lump">Lump Sum (Fixed Price)</option>
+          <option value="other">Other / Custom</option>
+        </select>
+        <input id="a-type-custom" placeholder="Or type your own type name…" style="margin-top:7px">
+      </div>
+      <div class="fg"><label id="agr-rate-label">Rate / Amount (PKR)</label><input type="number" id="a-rate" placeholder="e.g. 650 per sft" oninput="calcAgr()"></div>
     </div>
-    <div class="fg"><label id="agr-rate-label">Rate / Amount (PKR)</label><input type="number" id="a-rate" placeholder="e.g. 650 per sft" oninput="calcAgr()"></div>
     <div class="fg"><label>Construction Scope</label>
       <select id="a-const-type" onchange="onAgrConstTypeChange();toggleAgrCustomRow('a-const-type','a-const-type-custom','Custom')">
         <optgroup label="Brown / Foundation">
@@ -1356,7 +1360,7 @@ select option{background:var(--s2);}
         <option value="other">Other / Custom start point</option>
       </select>
       <input id="a-start-after-custom" placeholder="Or type your own — e.g. After ground floor slab…" style="margin-top:7px">
-      <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:6px">Prior work is <b style="color:var(--txt)">removed</b> from this agreement (not listed as “Not Included”).</div>
+      <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:6px">Prior completed work is removed from Included (you can still add it under Not Included with a rate if needed).</div>
     </div>
     <div class="fg"><label>Prior work note (optional)</label><input id="a-prior-note" placeholder="e.g. Foundation & plinth completed by owner / previous contractor…"></div>
     <!-- Calculated value hint -->
@@ -1367,9 +1371,9 @@ select option{background:var(--s2);}
 
     <div class="hdiv"></div>
 
-    <!-- Scope of work — add / remove (removed items never appear as exclusions) -->
-    <div style="font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:.8px;font-weight:700;margin-bottom:6px">Scope of Work Items</div>
-    <div style="font-size:var(--fs-xs);color:var(--mut2);margin-bottom:10px;line-height:1.45">Works for <b style="color:var(--txt)">all agreement types</b>. Only items listed here appear in the PDF. <b style="color:var(--red)">Remove</b> deletes an item completely — it will not show under Not Included.</div>
+    <!-- Scope of work — editable names; ✕ moves to Not Included -->
+    <div style="font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:.8px;font-weight:700;margin-bottom:6px">Scope of Work — Included</div>
+    <div style="font-size:var(--fs-xs);color:var(--mut2);margin-bottom:10px;line-height:1.45">Edit any name in the text box. <b style="color:var(--red)">✕</b> moves an item to <b style="color:var(--txt)">Not Included</b> (with optional rate). Brown pack includes excavation, backfill, rafting, plinth, steel binding, etc.</div>
     <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
       <button type="button" class="btn btn-grey btn-sm" style="padding:6px 12px;font-size:var(--fs-xs)" onclick="applyAgrStructurePreset('brown')">🟤 Brown pack</button>
       <button type="button" class="btn btn-grey btn-sm" style="padding:6px 12px;font-size:var(--fs-xs)" onclick="applyAgrStructurePreset('grey')">⬜ Grey pack</button>
@@ -1383,20 +1387,44 @@ select option{background:var(--s2);}
     </div>
     <div id="agr-clauses" style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:10px"></div>
     <div style="background:var(--s2);border:1px solid var(--bor);border-radius:10px;padding:10px 12px;margin-bottom:14px">
-      <div style="font-size:var(--fs-xs);font-weight:700;color:var(--mut);margin-bottom:8px">＋ Custom work item</div>
+      <div style="font-size:var(--fs-xs);font-weight:700;color:var(--mut);margin-bottom:8px">＋ Custom included item</div>
       <div style="display:flex;gap:7px">
-        <input id="agr-custom-txt" placeholder="e.g. 2-room mumty on 2nd storey, Lift shaft…" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();addAgrCustomItem()}">
+        <input id="agr-custom-txt" placeholder="e.g. 2-room mumty, Lift shaft…" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();addAgrCustomItem()}">
         <button type="button" class="btn btn-grey btn-sm" style="padding:8px 12px;font-size:var(--fs-xs);flex:none" onclick="addAgrCustomItem()">+ Add</button>
       </div>
       <div id="agr-custom-list" style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px"></div>
     </div>
 
+    <!-- Not Included + rates -->
+    <div style="font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:.8px;font-weight:700;margin-bottom:6px">Not Included Items <span style="color:var(--mut2);font-weight:400;text-transform:none">(with rates)</span></div>
+    <div style="font-size:var(--fs-xs);color:var(--mut2);margin-bottom:8px;line-height:1.45">Items excluded from this agreement. Add a rate if the client pays separately / market reference.</div>
+    <div style="display:flex;gap:7px;margin-bottom:8px;flex-wrap:wrap">
+      <input id="agr-ni-txt" placeholder="Item name — e.g. Excavation" style="flex:1;min-width:140px" onkeydown="if(event.key==='Enter'){event.preventDefault();addAgrNotIncluded()}">
+      <input id="agr-ni-rate" type="number" placeholder="Rate PKR" style="width:110px" onkeydown="if(event.key==='Enter'){event.preventDefault();addAgrNotIncluded()}">
+      <button type="button" class="btn btn-grey btn-sm" style="padding:8px 12px;font-size:var(--fs-xs);flex:none" onclick="addAgrNotIncluded()">+ Add</button>
+    </div>
+    <div id="agr-notincl" style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:14px"></div>
+
     <div class="hdiv"></div>
 
     <!-- Scope & Terms -->
-    <div class="fg"><label>Scope of Work <span style="color:var(--mut2);font-weight:400;text-transform:none">(extra detail)</span></label><textarea id="a-scope" placeholder="e.g. Grey structure as per CDA approved drawing. Extra notes beyond the checkboxes above…" style="min-height:70px"></textarea></div>
-    <div class="fg"><label>Payment Schedule</label><textarea id="a-terms" placeholder="e.g. 30% advance, 30% at slab level, 20% at roof, 20% on completion…"></textarea></div>
-    <div class="fg"><label>Special Conditions</label><textarea id="a-conditions" placeholder="e.g. CDA approved drawings by client. Water + electricity by client. Work hours 7am–6pm…" style="min-height:60px"></textarea></div>
+    <div class="f2">
+      <div class="fg"><label>Scope of Work <span style="color:var(--mut2);font-weight:400;text-transform:none">(extra detail)</span></label><textarea id="a-scope" placeholder="Extra notes beyond the items above…" style="min-height:70px"></textarea></div>
+      <div class="fg"><label>Special Conditions</label><textarea id="a-conditions" placeholder="e.g. Drawings by client. Water + electricity by client…" style="min-height:70px"></textarea></div>
+    </div>
+
+    <div style="font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:.8px;font-weight:700;margin-bottom:6px">Custom Payment Schedule</div>
+    <div style="font-size:var(--fs-xs);color:var(--mut2);margin-bottom:8px;line-height:1.45">Set how much is due at each stage or per work done. Amount can be PKR or %.</div>
+    <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+      <button type="button" class="btn btn-grey btn-sm" style="padding:5px 10px;font-size:var(--fs-xs)" onclick="addAgrPayRow({stage:'Advance / Mobilization'})">+ Advance</button>
+      <button type="button" class="btn btn-grey btn-sm" style="padding:5px 10px;font-size:var(--fs-xs)" onclick="addAgrPayRow({stage:'At DPC / Plinth'})">+ DPC</button>
+      <button type="button" class="btn btn-grey btn-sm" style="padding:5px 10px;font-size:var(--fs-xs)" onclick="addAgrPayRow({stage:'At Slab / Roof'})">+ Slab</button>
+      <button type="button" class="btn btn-grey btn-sm" style="padding:5px 10px;font-size:var(--fs-xs)" onclick="addAgrPayRow({stage:'Brickwork / Grey'})">+ Brickwork</button>
+      <button type="button" class="btn btn-grey btn-sm" style="padding:5px 10px;font-size:var(--fs-xs)" onclick="addAgrPayRow({stage:'On Completion'})">+ Completion</button>
+      <button type="button" class="btn btn-grey btn-sm" style="padding:5px 10px;font-size:var(--fs-xs)" onclick="addAgrPayRow({})">+ Custom stage</button>
+    </div>
+    <div id="agr-pay-rows" style="display:flex;flex-direction:column;gap:7px;margin-bottom:10px"></div>
+    <div class="fg"><label>Payment notes <span style="color:var(--mut2);font-weight:400;text-transform:none">(optional)</span></label><textarea id="a-terms" placeholder="Extra payment terms…" style="min-height:54px"></textarea></div>
     <div class="f2">
       <div class="fg"><label>CDA / Permit No.</label><input id="a-permit" placeholder="Optional"></div>
       <div class="fg"><label>Architect / Engineer</label><input id="a-arch" placeholder="Name optional"></div>
@@ -2731,18 +2759,21 @@ function toggleHideValue(){
 const BOQ_SCOPE_ITEMS=[
   // ── BROWN STRUCTURE ──
   {id:'elec_meter',label:'Electricity Meter / Temporary Power',unit:'job',stage:'brown',def:true},
-  {id:'digging',label:'Digging / Excavation',unit:'cft',stage:'brown',def:true},
+  {id:'digging',label:'Excavation / Digging',unit:'cft',stage:'brown',def:true},
   {id:'boring',label:'Boring / Soil Investigation',unit:'job',stage:'brown',def:true},
   {id:'backfill',label:'Back Filling',unit:'cft',stage:'brown',def:true},
   {id:'termite',label:'Termite Proofing',unit:'sft',stage:'brown',def:true},
   {id:'foundation',label:'Foundation / Footing',unit:'cft',stage:'brown',def:true},
+  {id:'raft',label:'Rafting / Raft Foundation',unit:'cft',stage:'brown',def:true},
   {id:'bricks',label:'Bricks',unit:'nos',stage:'brown',def:true},
   {id:'steel',label:'Steel / Tor Steel',unit:'ton',stage:'brown',def:true},
+  {id:'steel_bind',label:'Steel Binding',unit:'job',stage:'brown',def:true},
   {id:'sand',label:'Sand',unit:'cft',stage:'brown',def:true},
   {id:'crush',label:'Crush / Aggregate',unit:'cft',stage:'brown',def:true},
   {id:'cement',label:'Cement',unit:'bags',stage:'brown',def:true},
   {id:'shuttering',label:'Shuttering Work',unit:'sft',stage:'brown',def:true},
   {id:'dpc',label:'DPC / Plinth Beam',unit:'rft',stage:'brown',def:true},
+  {id:'plinth_beam',label:'Plinth Beam / Plinth Level',unit:'rft',stage:'brown',def:true},
   {id:'rcc',label:'RCC Columns / Beams / Slab',unit:'cft',stage:'brown',def:true},
   {id:'water_conn',label:'Water Connection',unit:'job',stage:'brown',def:false},
   // ── GREY STRUCTURE (adds to Brown) ──
@@ -2776,6 +2807,7 @@ const BOQ_SCOPE_ITEMS=[
 // Legacy short labels from older agreements map onto these ids when editing.
 const AGR_LEGACY_LABEL_TO_ID={
   'excavation / digging':'digging',
+  'digging / excavation':'digging',
   'electrician works':'electric_conduit',
   'plumber works':'plumber_rough',
   'tile / flooring':'tiles',
@@ -2791,10 +2823,14 @@ const AGR_LEGACY_LABEL_TO_ID={
   'termite proofing':'termite',
   'foundation / footing':'foundation',
   'dpc / plinth beam':'dpc',
+  'plinth beam':'plinth_beam',
+  'rafting':'raft',
+  'raft foundation':'raft',
   'shuttering':'shuttering',
-  'steel binding':'steel',
+  'steel binding':'steel_bind',
   'rcc columns / beams / slab':'rcc',
   'brickwork / chuuni':'brickwork',
+  'bricks chuuni':'brickwork',
   'plaster (internal / external)':'plaster',
   'back filling':'backfill'
 };
@@ -2952,8 +2988,8 @@ function agrStructureLevel(constType){
 // Items already completed before this agreement — removed entirely (not listed as exclusions).
 const AGR_PRIOR_REMOVE={
   none:[],
-  footing:['elec_meter','digging','boring','backfill','termite','foundation'],
-  plinth:['elec_meter','digging','boring','backfill','termite','foundation','dpc','water_conn'],
+  footing:['elec_meter','digging','boring','backfill','termite','foundation','raft'],
+  plinth:['elec_meter','digging','boring','backfill','termite','foundation','raft','dpc','plinth_beam','water_conn'],
   brown:null, // all brown-stage ids
   grey:null   // brown + grey stage ids
 };
@@ -2974,6 +3010,9 @@ function agrPresetSet(level){
   return set;
 }
 let agrActiveIds={}; // premade item ids currently ON this agreement
+let agrLabelOverrides={}; // id -> custom display name
+let agrNotIncluded=[]; // {key,label,rate,unit} — excluded with optional rate
+let agrPaySched=[]; // {id,stage,amount,note}
 function agrApplyStartAfterFilter(set){
   const start=e$('a-start-after')?.value||'none';
   const remove=new Set(agrPriorRemoveIds(start));
@@ -2982,17 +3021,22 @@ function agrApplyStartAfterFilter(set){
   return out;
 }
 function applyAgrStructurePreset(level){
+  syncAgrFormFromDom();
   const base=agrPresetSet(level==='finishing'?'finishing':level);
-  renderAgrClauses(agrApplyStartAfterFilter(base));
+  const filtered=agrApplyStartAfterFilter(base);
+  agrNotIncluded=agrNotIncluded.filter(x=>!filtered[x.key]);
+  renderAgrClauses(filtered);
   toast('Scope set for '+BOQ_STAGE_LABEL[level==='finishing_only'?'finishing':level],'info');
 }
 function onAgrConstTypeChange(){
+  syncAgrFormFromDom();
   const level=agrStructureLevel(e$('a-const-type')?.value);
   renderAgrClauses(agrApplyStartAfterFilter(agrPresetSet(level)));
   const label=level==='finishing_only'?'Finishing Only':(BOQ_STAGE_LABEL[level]||level);
   toast('Scope set for '+label,'info');
 }
 function onAgrStartAfterChange(){
+  syncAgrFormFromDom();
   const level=agrStructureLevel(e$('a-const-type')?.value);
   renderAgrClauses(agrApplyStartAfterFilter(agrPresetSet(level)));
   const labels={none:'Full start',footing:'After foundation',plinth:'After plinth / DPC',brown:'After brown structure',grey:'After grey structure',other:'Custom start'};
@@ -3040,23 +3084,36 @@ function agrDisplayStartAfter(r){
   return (r.startAfterCustom||map[r.startAfter]||r.startAfter||'').trim();
 }
 function clearAgrScopeItems(){
+  syncAgrFormFromDom();
   agrActiveIds={};
   agrCustomItems=[];
+  agrLabelOverrides={};
+  agrNotIncluded=[];
   renderAgrClauses();
 }
 function addAgrScopeItem(id){
   if(!id)return;
+  syncAgrFormFromDom();
   agrActiveIds[id]=true;
+  agrNotIncluded=agrNotIncluded.filter(x=>x.key!==id);
   renderAgrClauses();
   toast('Work item added ✓');
 }
 function removeAgrScopeItem(id){
+  syncAgrFormFromDom();
+  const c=BOQ_SCOPE_ITEMS.find(x=>x.id===id);
+  const label=(agrLabelOverrides[id]||c?.label||id).trim();
   delete agrActiveIds[id];
+  delete agrLabelOverrides[id];
+  if(label&&!agrNotIncluded.some(x=>x.key===id||x.label.toLowerCase()===label.toLowerCase())){
+    agrNotIncluded.push({key:id,label,rate:'',unit:c?.unit||'job'});
+  }
   renderAgrClauses();
+  toast('Moved to Not Included','info');
 }
 function refreshAgrAddPicker(){
   const sel=e$('agr-add-item');if(!sel)return;
-  const avail=BOQ_SCOPE_ITEMS.filter(c=>!agrActiveIds[c.id]);
+  const avail=BOQ_SCOPE_ITEMS.filter(c=>!agrActiveIds[c.id]&&!agrNotIncluded.some(x=>x.key===c.id));
   let html='<option value="">+ Add work item…</option>';
   let stage='';
   avail.forEach(c=>{
@@ -3068,8 +3125,38 @@ function refreshAgrAddPicker(){
     html+=`<option value="${c.id}">${c.label}</option>`;
   });
   if(stage)html+='</optgroup>';
-  if(!avail.length)html+='<option value="" disabled>All catalogue items already added</option>';
+  if(!avail.length)html+='<option value="" disabled>All catalogue items already listed</option>';
   sel.innerHTML=html;
+}
+function syncAgrFormFromDom(){
+  document.querySelectorAll('#agr-clauses input.agr-lbl').forEach(inp=>{
+    const id=inp.dataset.id;if(!id)return;
+    const base=BOQ_SCOPE_ITEMS.find(c=>c.id===id)?.label||'';
+    const v=(inp.value||'').trim();
+    if(v&&v!==base)agrLabelOverrides[id]=v;else delete agrLabelOverrides[id];
+  });
+  document.querySelectorAll('#agr-custom-list input.agr-lbl').forEach(inp=>{
+    const id=inp.dataset.id;const c=agrCustomItems.find(x=>x.id===id);if(!c)return;
+    const v=(inp.value||'').trim();if(v)c.label=v;
+  });
+  document.querySelectorAll('#agr-notincl .agr-ni-row').forEach(row=>{
+    const key=row.dataset.key;
+    const item=agrNotIncluded.find(x=>x.key===key);if(!item)return;
+    const lbl=row.querySelector('.agr-ni-lbl');
+    const rate=row.querySelector('.agr-ni-rate');
+    if(lbl)item.label=(lbl.value||'').trim()||item.label;
+    if(rate)item.rate=(rate.value||'').trim();
+  });
+  document.querySelectorAll('#agr-pay-rows .agr-pay-row').forEach(row=>{
+    const id=row.dataset.id;
+    const item=agrPaySched.find(x=>x.id===id);if(!item)return;
+    const st=row.querySelector('.agr-pay-stage');
+    const am=row.querySelector('.agr-pay-amt');
+    const nt=row.querySelector('.agr-pay-note');
+    if(st)item.stage=(st.value||'').trim();
+    if(am)item.amount=(am.value||'').trim();
+    if(nt)item.note=(nt.value||'').trim();
+  });
 }
 function renderAgrClauses(selected){
   const el=e$('agr-clauses');if(!el)return;
@@ -3087,26 +3174,33 @@ function renderAgrClauses(selected){
         ?`<div style="grid-column:1/-1;font-size:10px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.6px;margin:${lastStage?'8px':0} 0 2px">${BOQ_STAGE_LABEL[c.stage]||c.stage}</div>`
         :'';
       lastStage=c.stage;
-      return stageHdr+`<div style="display:flex;align-items:flex-start;gap:8px;background:var(--bg);border:1px solid rgba(82,181,106,.35);border-radius:8px;padding:9px 10px">
-        <span style="font-size:var(--fs-xs);color:var(--txt);line-height:1.35;font-weight:500;flex:1">${c.label}<span style="color:var(--mut2);font-weight:400"> · ${c.unit||'job'}</span></span>
-        <button type="button" title="Remove from agreement" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;flex-shrink:0;padding:0 2px;font-weight:700" onclick="removeAgrScopeItem('${c.id}')">✕</button>
+      const val=agrLabelOverrides[c.id]||c.label;
+      const esc=val.replace(/"/g,'&quot;');
+      return stageHdr+`<div style="display:flex;align-items:center;gap:6px;background:var(--bg);border:1px solid rgba(82,181,106,.35);border-radius:8px;padding:6px 8px">
+        <input class="agr-lbl" data-id="${c.id}" value="${esc}" title="${c.unit||'job'}" style="flex:1;min-width:0;font-size:var(--fs-xs);padding:6px 8px;background:var(--s2);border:1px solid var(--bor);border-radius:6px;color:var(--txt)">
+        <button type="button" title="Move to Not Included" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;flex-shrink:0;padding:0 2px;font-weight:700" onclick="removeAgrScopeItem('${c.id}')">✕</button>
       </div>`;
     }).join('');
   }
   refreshAgrAddPicker();
   renderAgrCustomList();
+  renderAgrNotIncluded();
 }
 function renderAgrCustomList(){
   const el=e$('agr-custom-list');if(!el)return;
   if(!agrCustomItems.length){el.innerHTML='';return;}
-  el.innerHTML=agrCustomItems.map(c=>`<div style="display:flex;align-items:flex-start;gap:8px;background:var(--bg);border:1px solid rgba(82,181,106,.35);border-radius:8px;padding:9px 10px">
-    <span style="font-size:var(--fs-xs);color:var(--txt);line-height:1.35;font-weight:500;flex:1">${c.label}</span>
-    <button type="button" title="Remove from agreement" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;flex-shrink:0;padding:0 2px;font-weight:700" onclick="delAgrCustomItem('${c.id}')">✕</button>
-  </div>`).join('');
+  el.innerHTML=agrCustomItems.map(c=>{
+    const esc=(c.label||'').replace(/"/g,'&quot;');
+    return `<div style="display:flex;align-items:center;gap:6px;background:var(--bg);border:1px solid rgba(82,181,106,.35);border-radius:8px;padding:6px 8px">
+    <input class="agr-lbl" data-id="${c.id}" value="${esc}" style="flex:1;min-width:0;font-size:var(--fs-xs);padding:6px 8px;background:var(--s2);border:1px solid var(--bor);border-radius:6px;color:var(--txt)">
+    <button type="button" title="Move to Not Included" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;flex-shrink:0;padding:0 2px;font-weight:700" onclick="delAgrCustomItem('${c.id}')">✕</button>
+  </div>`;
+  }).join('');
 }
 function addAgrCustomItem(){
   const label=(e$('agr-custom-txt')?.value||'').trim();
   if(!label){toast('Enter a custom work item','err');return;}
+  syncAgrFormFromDom();
   if(agrCustomItems.some(x=>x.label.toLowerCase()===label.toLowerCase())||BOQ_SCOPE_ITEMS.some(x=>x.label.toLowerCase()===label.toLowerCase())){
     toast('Item already in list — add from catalogue or rename','err');return;
   }
@@ -3116,8 +3210,103 @@ function addAgrCustomItem(){
   toast('Custom work item added ✓');
 }
 function delAgrCustomItem(id){
+  syncAgrFormFromDom();
+  const c=agrCustomItems.find(x=>x.id===id);
+  if(c&&c.label&&!agrNotIncluded.some(x=>x.label.toLowerCase()===c.label.toLowerCase())){
+    agrNotIncluded.push({key:id,label:c.label,rate:'',unit:'job'});
+  }
   agrCustomItems=agrCustomItems.filter(x=>x.id!==id);
   renderAgrCustomList();
+  renderAgrNotIncluded();
+  toast('Moved to Not Included','info');
+}
+function renderAgrNotIncluded(){
+  const el=e$('agr-notincl');if(!el)return;
+  if(!agrNotIncluded.length){
+    el.innerHTML='<div style="grid-column:1/-1;font-size:var(--fs-xs);color:var(--mut);padding:8px;text-align:center">No exclusions yet — ✕ an included item or add below</div>';
+    return;
+  }
+  el.innerHTML=agrNotIncluded.map(c=>{
+    const esc=(c.label||'').replace(/"/g,'&quot;');
+    const rateEsc=String(c.rate??'').replace(/"/g,'&quot;');
+    return `<div class="agr-ni-row" data-key="${c.key}" style="display:flex;flex-direction:column;gap:5px;background:var(--bg);border:1px solid rgba(224,85,85,.35);border-radius:8px;padding:7px 8px">
+      <div style="display:flex;align-items:center;gap:6px">
+        <input class="agr-ni-lbl" value="${esc}" style="flex:1;min-width:0;font-size:var(--fs-xs);padding:6px 8px;background:var(--s2);border:1px solid var(--bor);border-radius:6px;color:var(--txt)">
+        <button type="button" title="Restore to Included" style="background:none;border:none;color:var(--grn);cursor:pointer;font-size:12px;flex-shrink:0;padding:0 2px;font-weight:700" onclick="restoreAgrNotIncluded('${c.key}')">↩</button>
+        <button type="button" title="Delete" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;flex-shrink:0;padding:0 2px;font-weight:700" onclick="delAgrNotIncluded('${c.key}')">✕</button>
+      </div>
+      <input class="agr-ni-rate" type="text" value="${rateEsc}" placeholder="Rate (PKR / note)" style="font-size:var(--fs-xs);padding:5px 8px;background:var(--s2);border:1px solid var(--bor);border-radius:6px;color:var(--mut)">
+    </div>`;
+  }).join('');
+}
+function addAgrNotIncluded(){
+  const label=(e$('agr-ni-txt')?.value||'').trim();
+  const rate=(e$('agr-ni-rate')?.value||'').trim();
+  if(!label){toast('Enter item name','err');return;}
+  syncAgrFormFromDom();
+  if(agrNotIncluded.some(x=>x.label.toLowerCase()===label.toLowerCase())){toast('Already in Not Included','err');return;}
+  const cat=BOQ_SCOPE_ITEMS.find(x=>x.label.toLowerCase()===label.toLowerCase());
+  if(cat){delete agrActiveIds[cat.id];delete agrLabelOverrides[cat.id];}
+  agrCustomItems=agrCustomItems.filter(x=>x.label.toLowerCase()!==label.toLowerCase());
+  agrNotIncluded.push({key:cat?cat.id:('ni_'+uid()),label,rate,unit:cat?.unit||'job'});
+  sv('agr-ni-txt','');sv('agr-ni-rate','');
+  renderAgrClauses();
+  toast('Added to Not Included ✓');
+}
+function restoreAgrNotIncluded(key){
+  syncAgrFormFromDom();
+  const item=agrNotIncluded.find(x=>x.key===key);if(!item)return;
+  agrNotIncluded=agrNotIncluded.filter(x=>x.key!==key);
+  if(BOQ_SCOPE_ITEMS.some(c=>c.id===key)){
+    agrActiveIds[key]=true;
+    if(item.label&&item.label!==BOQ_SCOPE_ITEMS.find(c=>c.id===key).label)agrLabelOverrides[key]=item.label;
+  }else{
+    agrCustomItems.push({id:'ac_'+uid(),label:item.label,included:true});
+  }
+  renderAgrClauses();
+  toast('Restored to Included ✓');
+}
+function delAgrNotIncluded(key){
+  syncAgrFormFromDom();
+  agrNotIncluded=agrNotIncluded.filter(x=>x.key!==key);
+  renderAgrNotIncluded();
+  refreshAgrAddPicker();
+}
+function renderAgrPayRows(){
+  const el=e$('agr-pay-rows');if(!el)return;
+  if(!agrPaySched.length){
+    el.innerHTML='<div style="font-size:var(--fs-xs);color:var(--mut);padding:6px 0">No stages yet — tap a chip above to add</div>';
+    return;
+  }
+  el.innerHTML=agrPaySched.map(p=>{
+    const st=(p.stage||'').replace(/"/g,'&quot;');
+    const am=String(p.amount??'').replace(/"/g,'&quot;');
+    const nt=(p.note||'').replace(/"/g,'&quot;');
+    return `<div class="agr-pay-row" data-id="${p.id}" style="display:grid;grid-template-columns:1.4fr 0.9fr 1fr 28px;gap:6px;align-items:center">
+      <input class="agr-pay-stage" value="${st}" placeholder="Stage / work done" style="font-size:var(--fs-xs);padding:8px 9px">
+      <input class="agr-pay-amt" value="${am}" placeholder="Amount / %" style="font-size:var(--fs-xs);padding:8px 9px">
+      <input class="agr-pay-note" value="${nt}" placeholder="Note" style="font-size:var(--fs-xs);padding:8px 9px">
+      <button type="button" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;font-weight:700" onclick="delAgrPayRow('${p.id}')">✕</button>
+    </div>`;
+  }).join('');
+}
+function addAgrPayRow(preset){
+  syncAgrFormFromDom();
+  agrPaySched.push({id:'ap_'+uid(),stage:preset?.stage||'',amount:preset?.amount||'',note:preset?.note||''});
+  renderAgrPayRows();
+}
+function delAgrPayRow(id){
+  syncAgrFormFromDom();
+  agrPaySched=agrPaySched.filter(x=>x.id!==id);
+  renderAgrPayRows();
+}
+function defaultAgrPaySched(){
+  return [
+    {id:'ap_'+uid(),stage:'Advance / Mobilization',amount:'',note:''},
+    {id:'ap_'+uid(),stage:'At DPC / Plinth',amount:'',note:''},
+    {id:'ap_'+uid(),stage:'At Slab / Roof',amount:'',note:''},
+    {id:'ap_'+uid(),stage:'On Completion',amount:'',note:''}
+  ];
 }
 function agrMatchLabel(list,c){
   if(!list||!list.length)return null;
@@ -3129,35 +3318,62 @@ function agrMatchLabel(list,c){
   return false;
 }
 function getAgrClauses(){
-  // Only active items are saved as inclusions. Removed items are omitted entirely
-  // (never written to exclusions / "Not Included").
+  syncAgrFormFromDom();
   const included=[];
-  BOQ_SCOPE_ITEMS.forEach(c=>{ if(agrActiveIds[c.id]) included.push(c.label); });
+  BOQ_SCOPE_ITEMS.forEach(c=>{
+    if(!agrActiveIds[c.id])return;
+    included.push(agrLabelOverrides[c.id]||c.label);
+  });
   const custom=[];
   agrCustomItems.forEach(c=>{
     custom.push({label:c.label,included:true});
     included.push(c.label);
   });
-  return{included,excluded:[],custom};
+  const excluded=agrNotIncluded.map(x=>x.label).filter(Boolean);
+  const notIncluded=agrNotIncluded.map(x=>({id:x.key,label:x.label,rate:x.rate||'',unit:x.unit||'job'}));
+  return{included,excluded,custom,notIncluded};
 }
-function applyAgrClauses(included,excluded,custom){
-  // New model: inclusions = active list. Old exclusions are ignored (treated as removed).
+function applyAgrClauses(included,excluded,custom,notIncluded){
   const set={};
   if(included&&included.length){
     BOQ_SCOPE_ITEMS.forEach(c=>{ set[c.id]=agrMatchLabel(included,c)===true; });
+    // Capture label overrides when saved label differs from catalogue
+    agrLabelOverrides={};
+    (included||[]).forEach(lab=>{
+      const c=BOQ_SCOPE_ITEMS.find(x=>agrMatchLabel([lab],x));
+      if(c&&lab&&lab!==c.label&&!AGR_LEGACY_LABEL_TO_ID[String(lab).toLowerCase()])agrLabelOverrides[c.id]=lab;
+    });
   }else{
     BOQ_SCOPE_ITEMS.forEach(c=>{ set[c.id]=!!c.def; });
+    agrLabelOverrides={};
   }
   const premadeLabels=new Set(BOQ_SCOPE_ITEMS.map(x=>x.label.toLowerCase()));
   Object.keys(AGR_LEGACY_LABEL_TO_ID||{}).forEach(l=>premadeLabels.add(l));
   if(Array.isArray(custom)&&custom.length){
     agrCustomItems=custom.filter(c=>c.included!==false).map(c=>({id:'ac_'+uid(),label:c.label,included:true}));
   }else if(included&&included.length){
-    agrCustomItems=included.filter(l=>!premadeLabels.has((l||'').toLowerCase()))
+    agrCustomItems=included.filter(l=>!premadeLabels.has((l||'').toLowerCase())&&!BOQ_SCOPE_ITEMS.some(c=>agrMatchLabel([l],c)))
       .map(l=>({id:'ac_'+uid(),label:l,included:true}));
   }else{
     agrCustomItems=[];
   }
+  if(Array.isArray(notIncluded)&&notIncluded.length){
+    agrNotIncluded=notIncluded.map(x=>({
+      key:x.id||x.key||('ni_'+uid()),
+      label:x.label||'',
+      rate:x.rate!=null?String(x.rate):'',
+      unit:x.unit||'job'
+    })).filter(x=>x.label);
+  }else if(Array.isArray(excluded)&&excluded.length){
+    agrNotIncluded=excluded.map(lab=>{
+      const c=BOQ_SCOPE_ITEMS.find(x=>agrMatchLabel([lab],x));
+      return {key:c?c.id:('ni_'+uid()),label:lab,rate:'',unit:c?.unit||'job'};
+    });
+  }else{
+    agrNotIncluded=[];
+  }
+  // Ensure NI items aren't also active
+  agrNotIncluded.forEach(x=>{ if(x.key) delete set[x.key]; delete agrActiveIds[x.key]; });
   renderAgrClauses(set);
 }
 function syncAgrRateLabel(){
@@ -3204,12 +3420,15 @@ function iAgr(){
   const num=nxt('AGR',D.agreements);sv('a-num',num);sv('a-date',today());
   ['a-cli-t','a-cli-id','a-proj-t','a-proj-id','a-terms','a-scope','a-conditions',
    'a-s','a-e','a-val','a-rate','a-covered','a-dims','a-permit','a-arch','a-footer',
-   'a-plot-size-custom','a-storeys-custom','a-type-custom','a-const-type-custom','a-start-after-custom'].forEach(id=>sv(id,''));
+   'a-plot-size-custom','a-storeys-custom','a-type-custom','a-const-type-custom','a-start-after-custom',
+   'agr-custom-txt','agr-ni-txt','agr-ni-rate'].forEach(id=>sv(id,''));
   const sd=e$('a-style-digital');if(sd)sd.checked=true;const hv=e$('a-hide-value');if(hv)hv.checked=false;toggleHideValue();
   sv('a-st','draft');sv('a-type','labour');sv('a-const-type','Grey Structure');
   sv('a-start-after','none');sv('a-prior-note','');sv('a-storeys','single');sv('a-plot-size','');
-  agrCustomItems=[];sv('agr-custom-txt','');
+  agrCustomItems=[];agrLabelOverrides={};agrNotIncluded=[];
+  agrPaySched=defaultAgrPaySched();
   renderAgrClauses(agrApplyStartAfterFilter(agrPresetSet('grey')));
+  renderAgrPayRows();
   syncAgrRateLabel();
   toggleAgrCustomRow('a-plot-size','a-plot-size-custom','Custom');
   toggleAgrCustomRow('a-storeys','a-storeys-custom','custom');
@@ -3283,8 +3502,13 @@ function eAgr(id){
   setAgrSelectOrCustom('a-storeys','a-storeys-custom',r.storeys||'single',r.storeysCustom||'','custom');
   setAgrSelectOrCustom('a-start-after','a-start-after-custom',r.startAfter||'none',r.startAfterCustom||'','other');
   sv('a-prior-note',r.priorNote||'');
-  // Active-only scope: inclusions are on the agreement; old exclusions are dropped (not shown as Not Included).
-  applyAgrClauses(r.inclusions||[], [], r.customScope||null);
+  applyAgrClauses(r.inclusions||[], r.exclusions||[], r.customScope||null, r.notIncluded||null);
+  if(Array.isArray(r.paySchedule)&&r.paySchedule.length){
+    agrPaySched=r.paySchedule.map(p=>({id:p.id||('ap_'+uid()),stage:p.stage||'',amount:p.amount!=null?String(p.amount):'',note:p.note||''}));
+  }else{
+    agrPaySched=defaultAgrPaySched();
+  }
+  renderAgrPayRows();
   syncAgrRateLabel();
   calcAgr();O('sh-agr');
 }
@@ -3430,12 +3654,15 @@ function saveEst(){const eid=e$('est-eid').value;const items=gLI('e'),total=totL
 function saveAgr(){
   const eid=e$('agr-eid').value;
   const clauses=getAgrClauses();
+  syncAgrFormFromDom();
   const plotSizeCustom=agrTxt('a-plot-size-custom');
   const storeysCustom=agrTxt('a-storeys-custom');
   const agrTypeCustom=agrTxt('a-type-custom');
   const constTypeCustom=agrTxt('a-const-type-custom');
   const startAfterCustom=agrTxt('a-start-after-custom');
   const plotSel=e$('a-plot-size')?.value||'';
+  const paySchedule=agrPaySched.filter(p=>(p.stage||'').trim()||(p.amount||'').trim()||(p.note||'').trim())
+    .map(p=>({stage:(p.stage||'').trim(),amount:(p.amount||'').trim(),note:(p.note||'').trim()}));
   const doc={
     id:eid||uid(),
     num:e$('a-num').value||nxt('AGR',D.agreements),
@@ -3462,8 +3689,10 @@ function saveAgr(){
     arch:e$('a-arch')?.value||'',
     scope:e$('a-scope').value,
     inclusions:clauses.included,
-    exclusions:[], // removed items are omitted — never listed as Not Included
+    exclusions:clauses.excluded||[],
+    notIncluded:clauses.notIncluded||[],
     customScope:clauses.custom||[],
+    paySchedule,
     terms:e$('a-terms').value,
     conditions:e$('a-conditions').value,
     general:e$('a-general')?.value||'',
@@ -5004,15 +5233,51 @@ async function pdfAgr(id){
   if(r.inclusions&&r.inclusions.length){
     drawAgrScopeRows('Work Included in Contract',r.inclusions);
   }
+  // Not Included — with rates when provided
+  const niList=(Array.isArray(r.notIncluded)&&r.notIncluded.length)
+    ?r.notIncluded
+    :(Array.isArray(r.exclusions)?r.exclusions.map(lab=>({label:lab,rate:''})):[]);
+  if(niList.length){
+    if(y>252){doc.addPage();y=20;}
+    doc.setFillColor(242,240,235);doc.rect(14,y-4,182,8,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(110,105,98);
+    doc.text('NOT INCLUDED (EXCLUSIONS)',16,y+1);y+=10;
+    doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(30,30,30);
+    const cols=2;const colW=88;const xs=[14,14+94];
+    for(let i=0;i<niList.length;i+=cols){
+      if(y>280){doc.addPage();y=20;}
+      let rowH=4.8;
+      for(let c=0;c<cols;c++){
+        if(i+c>=niList.length)break;
+        const it=niList[i+c];
+        const lab=typeof it==='string'?it:(it.label||'');
+        const rate=(typeof it==='object'&&it.rate)?String(it.rate).trim():'';
+        const cell=(i+c+1)+'. '+lab+(rate?' — Rate: '+rate:'');
+        const lines=doc.splitTextToSize(cell,colW);
+        doc.text(lines,xs[c],y);
+        rowH=Math.max(rowH,lines.length*4.4);
+      }
+      y+=rowH+1.2;
+    }
+    y+=3;
+  }
   if(r.scope)sec('Detailed Scope of Work',r.scope);
-  // Removals are omitted entirely — do not print a Not Included section from leftover exclusions.
   // 7. Payment schedule
   let payDetail='';
+  if(Array.isArray(r.paySchedule)&&r.paySchedule.length){
+    r.paySchedule.forEach((p,idx)=>{
+      if(!p||(!(p.stage||'').trim()&&!(p.amount||'').trim()))return;
+      payDetail+=(idx+1)+'. '+(p.stage||'Stage');
+      if(p.amount)payDetail+=': '+p.amount;
+      if(p.note)payDetail+=' ('+p.note+')';
+      payDetail+='\n';
+    });
+  }
   if(r.pay1)payDetail+='Advance: '+r.pay1+'\n';
   if(r.pay2)payDetail+='At DPC/Slab Level: '+r.pay2+'\n';
   if(r.pay3)payDetail+='At Roof/Structure: '+r.pay3+'\n';
   if(r.pay4)payDetail+='Final on Completion: '+r.pay4+'\n';
-  if(r.terms)payDetail+=r.terms;
+  if(r.terms)payDetail+=(payDetail?'\n':'')+r.terms;
   if(payDetail)sec('Payment Schedule',payDetail.trim());
 
   // 8. Compliance
@@ -8122,7 +8387,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-08-06-v52';
+const APP_VERSION='2026-08-06-v53';
 // Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
 // GitHub Pages is the live OTA source of truth while Wasmer Edge GitHub deploys are failing.
 const OTA_ORIGIN='https://abbashafiz.github.io/Buildpro-crm';
