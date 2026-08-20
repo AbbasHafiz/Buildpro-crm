@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-08-06-v46">
+<meta name="app-version" content="2026-08-06-v47">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -212,6 +212,7 @@ body{color:var(--txt);font-family:'Inter',sans-serif;overscroll-behavior:none;fo
 
 /* FAB */
 .fab{position:fixed;right:16px;bottom:calc(68px + var(--safe-b));width:54px;height:54px;border-radius:50%;background:var(--gold);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 28px rgba(232,184,75,.5);z-index:60;transition:all .18s;}
+.fab.fab-select-up{bottom:calc(148px + var(--safe-b));}
 .fab:active{transform:scale(.91);}
 .fab svg{width:24px;height:24px;color:#0a0908;}
 
@@ -694,15 +695,15 @@ select option{background:var(--s2);}
       <div style="font-size:var(--fs-xs);color:var(--mut);margin:-2px 0 10px;padding:0 2px">Tick similar items (e.g. sand, crush) to see their sum and export a PDF.</div>
       <div id="list-exp"></div>
       <div id="exp-select-bar" style="display:none;position:fixed;left:12px;right:12px;bottom:calc(72px + var(--safe-b));z-index:55;background:var(--s2);border:1px solid var(--bor2);border-radius:14px;padding:11px 13px;box-shadow:0 10px 32px rgba(0,0,0,.55)">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
-          <div style="min-width:0">
+        <div style="display:flex;flex-direction:column;gap:9px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px">
             <div style="font-size:var(--fs-sm);font-weight:700;color:var(--txt)" id="exp-select-count">0 selected</div>
-            <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Sum <span style="font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--gold)" id="exp-select-sum">PKR 0</span></div>
+            <div style="font-size:var(--fs-xs);color:var(--mut)">Sum <span style="font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--gold)" id="exp-select-sum">PKR 0</span></div>
           </div>
-          <div style="display:flex;gap:7px;flex-wrap:wrap;flex-shrink:0">
-            <button type="button" class="btn btn-grey btn-sm" style="padding:7px 10px;font-size:var(--fs-xs)" onclick="selectSimilarExps()">Similar</button>
-            <button type="button" class="btn btn-grey btn-sm" style="padding:7px 10px;font-size:var(--fs-xs)" onclick="clearExpSelect()">Clear</button>
-            <button type="button" class="btn btn-gold btn-sm" style="padding:7px 12px;font-size:var(--fs-xs)" onclick="pdfExpSelected()">⬇ PDF</button>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1.2fr;gap:7px">
+            <button type="button" class="btn btn-grey btn-sm" style="padding:9px 8px;font-size:var(--fs-xs);width:100%" onclick="selectSimilarExps()">Similar</button>
+            <button type="button" class="btn btn-grey btn-sm" style="padding:9px 8px;font-size:var(--fs-xs);width:100%" onclick="clearExpSelect()">Clear</button>
+            <button type="button" class="btn btn-gold btn-sm" style="padding:9px 8px;font-size:var(--fs-xs);width:100%" onclick="pdfExpSelected()">⬇ PDF</button>
           </div>
         </div>
       </div>
@@ -2326,6 +2327,7 @@ function goPage(p,el,title){
   document.getElementById('pg-'+p).classList.add('on');
   if(el)el.classList.add('on');
   curPg=p;e$('tb-pg').textContent=title;cMenu();
+  if(typeof updateExpSelectBar==='function')updateExpSelectBar();
   if(p==='profile')refreshProfileUI();
   else renderPage(p);
 }
@@ -2636,6 +2638,7 @@ function navTo(page, title){
     if(b.getAttribute('onclick')&&b.getAttribute('onclick').includes("'"+page+"'")){b.classList.add('on');}
   });
   curPg=page;e$('tb-pg').textContent=title;cMenu();
+  if(typeof updateExpSelectBar==='function')updateExpSelectBar();
   renderPage(page);
 }
 function scrollToProjects(){
@@ -5307,9 +5310,13 @@ function updateExpSelectBar(){
   const rows=getSelectedExps();
   const n=rows.length;
   const sum=rows.reduce((s,r)=>s+(+r.amount||0),0);
-  bar.style.display=n?'block':'none';
+  const onExp=typeof curPg==='undefined'||curPg==='exp';
+  const show=!!(n&&onExp);
+  bar.style.display=show?'block':'none';
   const c=e$('exp-select-count');if(c)c.textContent=n+' selected';
   const s=e$('exp-select-sum');if(s)s.textContent='PKR '+fmt(sum);
+  // Keep + FAB above the select bar so it does not cover Similar / Clear / PDF
+  document.querySelectorAll('.fab').forEach(fab=>fab.classList.toggle('fab-select-up',show));
   // Keep checkbox UI in sync without full re-render when toggling one
   document.querySelectorAll('#list-exp input.exp-sel[data-eid]').forEach(inp=>{
     const id=inp.getAttribute('data-eid');
@@ -7788,7 +7795,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-08-06-v46';
+const APP_VERSION='2026-08-06-v47';
 // Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
 // GitHub Pages is the live OTA source of truth while Wasmer Edge GitHub deploys are failing.
 const OTA_ORIGIN='https://abbashafiz.github.io/Buildpro-crm';
