@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-08-06-v49">
+<meta name="app-version" content="2026-08-06-v50">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -1289,10 +1289,13 @@ select option{background:var(--s2);}
         <select id="a-storeys">
           <option value="foundation">Only Foundation</option>
           <option value="single">Single Storey</option>
+          <option value="single_mumty">Single Storey + Mumty (2 rooms)</option>
           <option value="double">Double Storey</option>
+          <option value="double_partial">Double (partial 2nd / rooms only)</option>
           <option value="triple">Triple Storey</option>
           <option value="b_single">Basement + Single</option>
           <option value="b_double">Basement + Double</option>
+          <option value="custom">Custom (describe in Scope)</option>
         </select>
       </div>
     </div>
@@ -1338,6 +1341,17 @@ select option{background:var(--s2);}
         <option value="Custom">Custom (specify in Scope of Work)</option>
       </select>
     </div>
+    <div class="fg"><label>Work already done — start after</label>
+      <select id="a-start-after" onchange="onAgrStartAfterChange()">
+        <option value="none" selected>Full start (nothing already done)</option>
+        <option value="footing">After Foundation / Footing</option>
+        <option value="plinth">After DPC / Plinth Beam (foundation → plinth already done)</option>
+        <option value="brown">After Brown Structure</option>
+        <option value="grey">After Grey Structure (finishing left)</option>
+      </select>
+      <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:6px">Prior work is <b style="color:var(--txt)">removed</b> from this agreement (not listed as “Not Included”).</div>
+    </div>
+    <div class="fg"><label>Prior work note (optional)</label><input id="a-prior-note" placeholder="e.g. Foundation & plinth completed by owner / previous contractor…"></div>
     <!-- Calculated value hint -->
     <div id="agr-calc-row" style="background:var(--s2);border-radius:9px;padding:11px 13px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
       <span style="font-size:var(--fs-xs);color:var(--mut)" id="agr-formula">Enter area × rate to auto-calculate</span>
@@ -1346,21 +1360,25 @@ select option{background:var(--s2);}
 
     <div class="hdiv"></div>
 
-    <!-- Premade scope clauses — same staged list as BOQ (Brown ⊂ Grey ⊂ Finishing) -->
-    <div style="font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:.8px;font-weight:700;margin-bottom:6px">Work Items — Include / Exclude</div>
-    <div style="font-size:var(--fs-xs);color:var(--mut2);margin-bottom:10px;line-height:1.45">Same stage list as Estimates / BOQ: <b style="color:var(--txt)">Brown → Grey → Finishing</b>. Tick = <b style="color:var(--grn)">Included</b> · Untick = <b style="color:var(--red)">Excluded</b> (shown in PDF). Changing Construction Scope presets the ticks.</div>
+    <!-- Scope of work — add / remove (removed items never appear as exclusions) -->
+    <div style="font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:.8px;font-weight:700;margin-bottom:6px">Scope of Work Items</div>
+    <div style="font-size:var(--fs-xs);color:var(--mut2);margin-bottom:10px;line-height:1.45">Works for <b style="color:var(--txt)">all agreement types</b>. Only items listed here appear in the PDF. <b style="color:var(--red)">Remove</b> deletes an item completely — it will not show under Not Included.</div>
     <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
-      <button type="button" class="btn btn-grey btn-sm" style="padding:6px 12px;font-size:var(--fs-xs)" onclick="applyAgrStructurePreset('brown')">🟤 Brown</button>
-      <button type="button" class="btn btn-grey btn-sm" style="padding:6px 12px;font-size:var(--fs-xs)" onclick="applyAgrStructurePreset('grey')">⬜ Grey</button>
-      <button type="button" class="btn btn-grey btn-sm" style="padding:6px 12px;font-size:var(--fs-xs)" onclick="applyAgrStructurePreset('finishing')">✨ Finishing</button>
-      <button type="button" class="btn btn-grey btn-sm" style="padding:6px 12px;font-size:var(--fs-xs)" onclick="setAllAgrClauses(true)">✓ Include All</button>
-      <button type="button" class="btn btn-grey btn-sm" style="padding:6px 12px;font-size:var(--fs-xs)" onclick="setAllAgrClauses(false)">✕ Exclude All</button>
+      <button type="button" class="btn btn-grey btn-sm" style="padding:6px 12px;font-size:var(--fs-xs)" onclick="applyAgrStructurePreset('brown')">🟤 Brown pack</button>
+      <button type="button" class="btn btn-grey btn-sm" style="padding:6px 12px;font-size:var(--fs-xs)" onclick="applyAgrStructurePreset('grey')">⬜ Grey pack</button>
+      <button type="button" class="btn btn-grey btn-sm" style="padding:6px 12px;font-size:var(--fs-xs)" onclick="applyAgrStructurePreset('finishing')">✨ Finishing pack</button>
+      <button type="button" class="btn btn-grey btn-sm" style="padding:6px 12px;font-size:var(--fs-xs)" onclick="clearAgrScopeItems()">Clear list</button>
+    </div>
+    <div style="display:flex;gap:7px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
+      <select id="agr-add-item" onchange="if(this.value){addAgrScopeItem(this.value);this.value='';}" style="flex:1;min-width:180px">
+        <option value="">+ Add work item…</option>
+      </select>
     </div>
     <div id="agr-clauses" style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:10px"></div>
     <div style="background:var(--s2);border:1px solid var(--bor);border-radius:10px;padding:10px 12px;margin-bottom:14px">
-      <div style="font-size:var(--fs-xs);font-weight:700;color:var(--mut);margin-bottom:8px">＋ Custom / Missing Work Items</div>
+      <div style="font-size:var(--fs-xs);font-weight:700;color:var(--mut);margin-bottom:8px">＋ Custom work item</div>
       <div style="display:flex;gap:7px">
-        <input id="agr-custom-txt" placeholder="e.g. Lift shaft, Solar, Rain water harvesting…" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();addAgrCustomItem()}">
+        <input id="agr-custom-txt" placeholder="e.g. 2-room mumty on 2nd storey, Lift shaft…" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();addAgrCustomItem()}">
         <button type="button" class="btn btn-grey btn-sm" style="padding:8px 12px;font-size:var(--fs-xs);flex:none" onclick="addAgrCustomItem()">+ Add</button>
       </div>
       <div id="agr-custom-list" style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px"></div>
@@ -2924,6 +2942,20 @@ function agrStructureLevel(constType){
   if(t.includes('finish')||t.includes('complete')||t.includes('turnkey'))return 'finishing';
   return 'grey';
 }
+// Items already completed before this agreement — removed entirely (not listed as exclusions).
+const AGR_PRIOR_REMOVE={
+  none:[],
+  footing:['elec_meter','digging','boring','backfill','termite','foundation'],
+  plinth:['elec_meter','digging','boring','backfill','termite','foundation','dpc','water_conn'],
+  brown:null, // all brown-stage ids
+  grey:null   // brown + grey stage ids
+};
+function agrPriorRemoveIds(startAfter){
+  const key=startAfter||'none';
+  if(key==='brown')return BOQ_SCOPE_ITEMS.filter(c=>c.stage==='brown').map(c=>c.id);
+  if(key==='grey')return BOQ_SCOPE_ITEMS.filter(c=>c.stage==='brown'||c.stage==='grey').map(c=>c.id);
+  return (AGR_PRIOR_REMOVE[key]||[]).slice();
+}
 function agrPresetSet(level){
   const set={};
   const finishOnly=level==='finishing_only';
@@ -2934,117 +2966,147 @@ function agrPresetSet(level){
   });
   return set;
 }
+let agrActiveIds={}; // premade item ids currently ON this agreement
+function agrApplyStartAfterFilter(set){
+  const start=e$('a-start-after')?.value||'none';
+  const remove=new Set(agrPriorRemoveIds(start));
+  const out={};
+  Object.keys(set||{}).forEach(id=>{ if(set[id]&&!remove.has(id)) out[id]=true; });
+  return out;
+}
 function applyAgrStructurePreset(level){
-  renderAgrClauses(agrPresetSet(level==='finishing'?'finishing':level));
+  const base=agrPresetSet(level==='finishing'?'finishing':level);
+  renderAgrClauses(agrApplyStartAfterFilter(base));
   toast('Scope set for '+BOQ_STAGE_LABEL[level==='finishing_only'?'finishing':level],'info');
 }
 function onAgrConstTypeChange(){
   const level=agrStructureLevel(e$('a-const-type')?.value);
-  renderAgrClauses(agrPresetSet(level));
+  renderAgrClauses(agrApplyStartAfterFilter(agrPresetSet(level)));
   const label=level==='finishing_only'?'Finishing Only':(BOQ_STAGE_LABEL[level]||level);
-  toast('Scope checkboxes set for '+label,'info');
+  toast('Scope set for '+label,'info');
+}
+function onAgrStartAfterChange(){
+  const level=agrStructureLevel(e$('a-const-type')?.value);
+  renderAgrClauses(agrApplyStartAfterFilter(agrPresetSet(level)));
+  const labels={none:'Full start',footing:'After foundation',plinth:'After plinth / DPC',brown:'After brown structure',grey:'After grey structure'};
+  toast((labels[e$('a-start-after')?.value]||'Start point')+' — prior items removed from list','info');
+}
+function clearAgrScopeItems(){
+  agrActiveIds={};
+  agrCustomItems=[];
+  renderAgrClauses();
+}
+function addAgrScopeItem(id){
+  if(!id)return;
+  agrActiveIds[id]=true;
+  renderAgrClauses();
+  toast('Work item added ✓');
+}
+function removeAgrScopeItem(id){
+  delete agrActiveIds[id];
+  renderAgrClauses();
+}
+function refreshAgrAddPicker(){
+  const sel=e$('agr-add-item');if(!sel)return;
+  const avail=BOQ_SCOPE_ITEMS.filter(c=>!agrActiveIds[c.id]);
+  let html='<option value="">+ Add work item…</option>';
+  let stage='';
+  avail.forEach(c=>{
+    if(c.stage!==stage){
+      if(stage)html+='</optgroup>';
+      stage=c.stage;
+      html+=`<optgroup label="${BOQ_STAGE_LABEL[stage]||stage}">`;
+    }
+    html+=`<option value="${c.id}">${c.label}</option>`;
+  });
+  if(stage)html+='</optgroup>';
+  if(!avail.length)html+='<option value="" disabled>All catalogue items already added</option>';
+  sel.innerHTML=html;
 }
 function renderAgrClauses(selected){
   const el=e$('agr-clauses');if(!el)return;
-  let lastStage='';
-  el.innerHTML=BOQ_SCOPE_ITEMS.map(c=>{
-    const on=selected?!!selected[c.id]:!!c.def;
-    const stageHdr=c.stage!==lastStage
-      ?`<div style="grid-column:1/-1;font-size:10px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.6px;margin:${lastStage?'8px':0} 0 2px">${BOQ_STAGE_LABEL[c.stage]||c.stage}</div>`
-      :'';
-    lastStage=c.stage;
-    return stageHdr+`<label style="display:flex;align-items:flex-start;gap:8px;background:var(--bg);border:1px solid ${on?'rgba(82,181,106,.35)':'rgba(224,85,85,.28)'};border-radius:8px;padding:9px 10px;cursor:pointer">
-      <input type="checkbox" class="agr-clause" data-id="${c.id}" ${on?'checked':''} onchange="refreshAgrClauseStyles()" style="width:16px;height:16px;accent-color:var(--grn);flex-shrink:0;margin-top:1px">
-      <span style="font-size:var(--fs-xs);color:var(--txt);line-height:1.35;font-weight:500">${c.label}<span style="color:var(--mut2);font-weight:400"> · ${c.unit||'job'}</span></span>
-    </label>`;
-  }).join('');
+  if(selected){
+    agrActiveIds={};
+    Object.keys(selected).forEach(id=>{ if(selected[id]) agrActiveIds[id]=true; });
+  }
+  const active=BOQ_SCOPE_ITEMS.filter(c=>agrActiveIds[c.id]);
+  if(!active.length&&!agrCustomItems.length){
+    el.innerHTML='<div style="grid-column:1/-1;font-size:var(--fs-xs);color:var(--mut);padding:10px;text-align:center">No work items yet — use a pack above or + Add work item</div>';
+  }else{
+    let lastStage='';
+    el.innerHTML=active.map(c=>{
+      const stageHdr=c.stage!==lastStage
+        ?`<div style="grid-column:1/-1;font-size:10px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.6px;margin:${lastStage?'8px':0} 0 2px">${BOQ_STAGE_LABEL[c.stage]||c.stage}</div>`
+        :'';
+      lastStage=c.stage;
+      return stageHdr+`<div style="display:flex;align-items:flex-start;gap:8px;background:var(--bg);border:1px solid rgba(82,181,106,.35);border-radius:8px;padding:9px 10px">
+        <span style="font-size:var(--fs-xs);color:var(--txt);line-height:1.35;font-weight:500;flex:1">${c.label}<span style="color:var(--mut2);font-weight:400"> · ${c.unit||'job'}</span></span>
+        <button type="button" title="Remove from agreement" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;flex-shrink:0;padding:0 2px;font-weight:700" onclick="removeAgrScopeItem('${c.id}')">✕</button>
+      </div>`;
+    }).join('');
+  }
+  refreshAgrAddPicker();
   renderAgrCustomList();
 }
 function renderAgrCustomList(){
   const el=e$('agr-custom-list');if(!el)return;
   if(!agrCustomItems.length){el.innerHTML='';return;}
-  el.innerHTML=agrCustomItems.map(c=>`<label style="display:flex;align-items:flex-start;gap:8px;background:var(--bg);border:1px solid ${c.included?'rgba(82,181,106,.35)':'rgba(224,85,85,.28)'};border-radius:8px;padding:9px 10px;cursor:pointer">
-    <input type="checkbox" class="agr-custom" data-id="${c.id}" ${c.included?'checked':''} onchange="toggleAgrCustom('${c.id}',this.checked)" style="width:16px;height:16px;accent-color:var(--grn);flex-shrink:0;margin-top:1px">
+  el.innerHTML=agrCustomItems.map(c=>`<div style="display:flex;align-items:flex-start;gap:8px;background:var(--bg);border:1px solid rgba(82,181,106,.35);border-radius:8px;padding:9px 10px">
     <span style="font-size:var(--fs-xs);color:var(--txt);line-height:1.35;font-weight:500;flex:1">${c.label}</span>
-    <button type="button" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;flex-shrink:0;padding:0 2px" onclick="event.preventDefault();delAgrCustomItem('${c.id}')">×</button>
-  </label>`).join('');
+    <button type="button" title="Remove from agreement" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;flex-shrink:0;padding:0 2px;font-weight:700" onclick="delAgrCustomItem('${c.id}')">✕</button>
+  </div>`).join('');
 }
 function addAgrCustomItem(){
   const label=(e$('agr-custom-txt')?.value||'').trim();
   if(!label){toast('Enter a custom work item','err');return;}
   if(agrCustomItems.some(x=>x.label.toLowerCase()===label.toLowerCase())||BOQ_SCOPE_ITEMS.some(x=>x.label.toLowerCase()===label.toLowerCase())){
-    toast('Item already in list','err');return;
+    toast('Item already in list — add from catalogue or rename','err');return;
   }
   agrCustomItems.push({id:'ac_'+uid(),label,included:true});
   sv('agr-custom-txt','');
   renderAgrCustomList();
   toast('Custom work item added ✓');
 }
-function toggleAgrCustom(id,on){
-  const c=agrCustomItems.find(x=>x.id===id);if(!c)return;
-  c.included=!!on;renderAgrCustomList();
-}
 function delAgrCustomItem(id){
   agrCustomItems=agrCustomItems.filter(x=>x.id!==id);
-  renderAgrCustomList();
-}
-function refreshAgrClauseStyles(){
-  document.querySelectorAll('#agr-clauses label').forEach(lab=>{
-    const cb=lab.querySelector('input.agr-clause');
-    const on=!!cb?.checked;
-    lab.style.borderColor=on?'rgba(82,181,106,.35)':'rgba(224,85,85,.28)';
-  });
-}
-function setAllAgrClauses(on){
-  document.querySelectorAll('input.agr-clause').forEach(cb=>{cb.checked=!!on;});
-  agrCustomItems.forEach(c=>{c.included=!!on;});
-  refreshAgrClauseStyles();
   renderAgrCustomList();
 }
 function agrMatchLabel(list,c){
   if(!list||!list.length)return null;
   const low=(c.label||'').toLowerCase();
   if(list.some(x=>x===c.label||x===c.id||String(x).toLowerCase()===low))return true;
-  // Legacy short-list labels from older agreements
   for(const [legacy,id] of Object.entries(AGR_LEGACY_LABEL_TO_ID||{})){
     if(id===c.id&&list.some(x=>String(x).toLowerCase()===legacy||String(x).toLowerCase()===id))return true;
   }
   return false;
 }
 function getAgrClauses(){
-  const included=[];const excluded=[];
-  BOQ_SCOPE_ITEMS.forEach(c=>{
-    const cb=document.querySelector('input.agr-clause[data-id="'+c.id+'"]');
-    if(cb?.checked)included.push(c.label);
-    else excluded.push(c.label);
-  });
+  // Only active items are saved as inclusions. Removed items are omitted entirely
+  // (never written to exclusions / "Not Included").
+  const included=[];
+  BOQ_SCOPE_ITEMS.forEach(c=>{ if(agrActiveIds[c.id]) included.push(c.label); });
   const custom=[];
   agrCustomItems.forEach(c=>{
-    custom.push({label:c.label,included:!!c.included});
-    if(c.included)included.push(c.label);else excluded.push(c.label);
+    custom.push({label:c.label,included:true});
+    included.push(c.label);
   });
-  return{included,excluded,custom};
+  return{included,excluded:[],custom};
 }
 function applyAgrClauses(included,excluded,custom){
+  // New model: inclusions = active list. Old exclusions are ignored (treated as removed).
   const set={};
-  BOQ_SCOPE_ITEMS.forEach(c=>{
-    const hitInc=agrMatchLabel(included,c);
-    const hitExc=agrMatchLabel(excluded,c);
-    if(hitInc===true)set[c.id]=true;
-    else if(hitExc===true)set[c.id]=false;
-    else if(included&&included.length)set[c.id]=false;
-    else if(excluded&&excluded.length)set[c.id]=true;
-    else set[c.id]=!!c.def;
-  });
+  if(included&&included.length){
+    BOQ_SCOPE_ITEMS.forEach(c=>{ set[c.id]=agrMatchLabel(included,c)===true; });
+  }else{
+    BOQ_SCOPE_ITEMS.forEach(c=>{ set[c.id]=!!c.def; });
+  }
   const premadeLabels=new Set(BOQ_SCOPE_ITEMS.map(x=>x.label.toLowerCase()));
   Object.keys(AGR_LEGACY_LABEL_TO_ID||{}).forEach(l=>premadeLabels.add(l));
   if(Array.isArray(custom)&&custom.length){
-    agrCustomItems=custom.map(c=>({id:'ac_'+uid(),label:c.label,included:c.included!==false}));
+    agrCustomItems=custom.filter(c=>c.included!==false).map(c=>({id:'ac_'+uid(),label:c.label,included:true}));
   }else if(included&&included.length){
     agrCustomItems=included.filter(l=>!premadeLabels.has((l||'').toLowerCase()))
       .map(l=>({id:'ac_'+uid(),label:l,included:true}));
-    (excluded||[]).filter(l=>!premadeLabels.has((l||'').toLowerCase()))
-      .forEach(l=>{if(!agrCustomItems.some(x=>x.label.toLowerCase()===l.toLowerCase()))agrCustomItems.push({id:'ac_'+uid(),label:l,included:false});});
   }else{
     agrCustomItems=[];
   }
@@ -3092,8 +3154,9 @@ function iAgr(){
    'a-s','a-e','a-val','a-rate','a-covered','a-dims','a-permit','a-arch','a-footer'].forEach(id=>sv(id,''));
   const sd=e$('a-style-digital');if(sd)sd.checked=true;const hv=e$('a-hide-value');if(hv)hv.checked=false;toggleHideValue();
   sv('a-st','draft');sv('a-type','labour');sv('a-const-type','Grey Structure');
+  sv('a-start-after','none');sv('a-prior-note','');sv('a-storeys','single');
   agrCustomItems=[];sv('agr-custom-txt','');
-  renderAgrClauses(agrPresetSet('grey'));
+  renderAgrClauses(agrApplyStartAfterFilter(agrPresetSet('grey')));
   syncAgrRateLabel();
   // Default general conditions — editable
   sv('a-general',
@@ -3159,7 +3222,10 @@ function eAgr(id){
   const ts=e$('a-type');if(ts&&r.agrType)ts.value=r.agrType;const ct=e$('a-const-type');if(ct&&r.constType)ct.value=r.constType;
   const ps=e$('a-plot-size');if(ps&&r.plotSize)ps.value=r.plotSize;
   const ss=e$('a-storeys');if(ss&&r.storeys)ss.value=r.storeys;
-  applyAgrClauses(r.inclusions||[], Array.isArray(r.exclusions)?r.exclusions:(r.exclusions?String(r.exclusions).split(/\s*[·,]\s*/):[]), r.customScope||null);
+  const sa=e$('a-start-after');if(sa)sa.value=r.startAfter||'none';
+  sv('a-prior-note',r.priorNote||'');
+  // Active-only scope: inclusions are on the agreement; old exclusions are dropped (not shown as Not Included).
+  applyAgrClauses(r.inclusions||[], [], r.customScope||null);
   syncAgrRateLabel();
   calcAgr();O('sh-agr');
 }
@@ -3320,11 +3386,13 @@ function saveAgr(){
     dims:e$('a-dims')?.value||'',
     plotSize:e$('a-plot-size')?.value||'',
     storeys:e$('a-storeys')?.value||'single',
+    startAfter:e$('a-start-after')?.value||'none',
+    priorNote:e$('a-prior-note')?.value||'',
     permit:e$('a-permit')?.value||'',
     arch:e$('a-arch')?.value||'',
     scope:e$('a-scope').value,
     inclusions:clauses.included,
-    exclusions:clauses.excluded,
+    exclusions:[], // removed items are omitted — never listed as Not Included
     customScope:clauses.custom||[],
     terms:e$('a-terms').value,
     conditions:e$('a-conditions').value,
@@ -4739,7 +4807,17 @@ async function pdfAgr(id){
   sec('Project / Property',projDetail);
 
   // 3. House specs
-  const storeyMap={single:'Single Storey',double:'Double Storey',triple:'Triple Storey',b_single:'Basement + Single Storey',b_double:'Basement + Double Storey'};
+  const storeyMap={
+    foundation:'Only Foundation',
+    single:'Single Storey',
+    single_mumty:'Single Storey + Mumty (2 rooms)',
+    double:'Double Storey',
+    double_partial:'Double Storey (partial 2nd / rooms only)',
+    triple:'Triple Storey',
+    b_single:'Basement + Single Storey',
+    b_double:'Basement + Double Storey',
+    custom:'Custom'
+  };
   let specs='Structure: '+(storeyMap[r.storeys]||r.storeys||'—');
   if(r.plotSize)specs+='\nPlot Size: '+r.plotSize;
   if(r.dims)specs+='\nPlot Dimensions: '+r.dims;
@@ -4752,6 +4830,16 @@ async function pdfAgr(id){
   if(r.drawing)specs+='\nApproved Drawing No.: '+r.drawing;
   if(r.permit)specs+='\nCDA/Society Permit No.: '+r.permit;
   sec('House / Structure Specifications',specs);
+
+  const startAfterLbl={none:'Full start (nothing already done)',footing:'After Foundation / Footing',plinth:'After DPC / Plinth Beam',brown:'After Brown Structure',grey:'After Grey Structure'};
+  if(r.startAfter&&r.startAfter!=='none'){
+    let prior='Work under this agreement starts: '+(startAfterLbl[r.startAfter]||r.startAfter);
+    if(r.priorNote)prior+='\nNote: '+r.priorNote;
+    prior+='\n(Prior completed work is not part of this agreement.)';
+    sec('Prior Work / Start Point',prior);
+  }else if(r.priorNote){
+    sec('Prior Work / Start Point',r.priorNote);
+  }
 
   // 4. Agreement type & contract value
   const typeLabel={labour:'Labour Rate Contract',material:'Labour + Material (With Material) Contract',costpct:'Cost to Cost with % Contract',lump:'Lump Sum Contract',phase:'Phase-wise Contract'};
@@ -4821,9 +4909,7 @@ async function pdfAgr(id){
     sec('Work Included in Contract',formatScopeList(r.inclusions));
   }
   if(r.scope)sec('Detailed Scope of Work',r.scope);
-  const exclList=Array.isArray(r.exclusions)?r.exclusions:(r.exclusions?String(r.exclusions).split(/\s*[·,]\s*/).filter(Boolean):[]);
-  if(exclList.length)sec('Exclusions (Not Included)',formatScopeList(exclList));
-
+  // Removals are omitted entirely — do not print a Not Included section from leftover exclusions.
   // 7. Payment schedule
   let payDetail='';
   if(r.pay1)payDetail+='Advance: '+r.pay1+'\n';
@@ -7940,7 +8026,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-08-06-v49';
+const APP_VERSION='2026-08-06-v50';
 // Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
 // GitHub Pages is the live OTA source of truth while Wasmer Edge GitHub deploys are failing.
 const OTA_ORIGIN='https://abbashafiz.github.io/Buildpro-crm';
