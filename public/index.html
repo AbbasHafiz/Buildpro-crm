@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-08-06-v53">
+<meta name="app-version" content="2026-08-06-v54">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -1373,7 +1373,7 @@ select option{background:var(--s2);}
 
     <!-- Scope of work — editable names; ✕ moves to Not Included -->
     <div style="font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:.8px;font-weight:700;margin-bottom:6px">Scope of Work — Included</div>
-    <div style="font-size:var(--fs-xs);color:var(--mut2);margin-bottom:10px;line-height:1.45">Edit any name in the text box. <b style="color:var(--red)">✕</b> moves an item to <b style="color:var(--txt)">Not Included</b> (with optional rate). Brown pack includes excavation, backfill, rafting, plinth, steel binding, etc.</div>
+    <div style="font-size:var(--fs-xs);color:var(--mut2);margin-bottom:10px;line-height:1.45">Every field is editable — name, unit, and optional rate. Edit section titles too. <b style="color:var(--red)">✕</b> moves an item to <b style="color:var(--txt)">Not Included</b>.</div>
     <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
       <button type="button" class="btn btn-grey btn-sm" style="padding:6px 12px;font-size:var(--fs-xs)" onclick="applyAgrStructurePreset('brown')">🟤 Brown pack</button>
       <button type="button" class="btn btn-grey btn-sm" style="padding:6px 12px;font-size:var(--fs-xs)" onclick="applyAgrStructurePreset('grey')">⬜ Grey pack</button>
@@ -1385,25 +1385,28 @@ select option{background:var(--s2);}
         <option value="">+ Add work item…</option>
       </select>
     </div>
-    <div id="agr-clauses" style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:10px"></div>
+    <div id="agr-clauses" style="display:grid;grid-template-columns:1fr;gap:7px;margin-bottom:10px"></div>
     <div style="background:var(--s2);border:1px solid var(--bor);border-radius:10px;padding:10px 12px;margin-bottom:14px">
       <div style="font-size:var(--fs-xs);font-weight:700;color:var(--mut);margin-bottom:8px">＋ Custom included item</div>
-      <div style="display:flex;gap:7px">
-        <input id="agr-custom-txt" placeholder="e.g. 2-room mumty, Lift shaft…" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();addAgrCustomItem()}">
+      <div style="display:grid;grid-template-columns:1fr 72px 90px auto;gap:7px;align-items:center">
+        <input id="agr-custom-txt" placeholder="Item name — e.g. Lift shaft…" onkeydown="if(event.key==='Enter'){event.preventDefault();addAgrCustomItem()}">
+        <input id="agr-custom-unit" placeholder="unit" value="job">
+        <input id="agr-custom-rate" placeholder="rate" onkeydown="if(event.key==='Enter'){event.preventDefault();addAgrCustomItem()}">
         <button type="button" class="btn btn-grey btn-sm" style="padding:8px 12px;font-size:var(--fs-xs);flex:none" onclick="addAgrCustomItem()">+ Add</button>
       </div>
-      <div id="agr-custom-list" style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px"></div>
+      <div id="agr-custom-list" style="display:grid;grid-template-columns:1fr;gap:7px;margin-top:8px"></div>
     </div>
 
     <!-- Not Included + rates -->
-    <div style="font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:.8px;font-weight:700;margin-bottom:6px">Not Included Items <span style="color:var(--mut2);font-weight:400;text-transform:none">(with rates)</span></div>
-    <div style="font-size:var(--fs-xs);color:var(--mut2);margin-bottom:8px;line-height:1.45">Items excluded from this agreement. Add a rate if the client pays separately / market reference.</div>
-    <div style="display:flex;gap:7px;margin-bottom:8px;flex-wrap:wrap">
-      <input id="agr-ni-txt" placeholder="Item name — e.g. Excavation" style="flex:1;min-width:140px" onkeydown="if(event.key==='Enter'){event.preventDefault();addAgrNotIncluded()}">
-      <input id="agr-ni-rate" type="number" placeholder="Rate PKR" style="width:110px" onkeydown="if(event.key==='Enter'){event.preventDefault();addAgrNotIncluded()}">
+    <div style="font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:.8px;font-weight:700;margin-bottom:6px">Not Included Items <span style="color:var(--mut2);font-weight:400;text-transform:none">(editable + rates)</span></div>
+    <div style="font-size:var(--fs-xs);color:var(--mut2);margin-bottom:8px;line-height:1.45">Excluded items — edit name, unit, and rate as needed.</div>
+    <div style="display:grid;grid-template-columns:1fr 72px 90px auto;gap:7px;margin-bottom:8px;align-items:center">
+      <input id="agr-ni-txt" placeholder="Item name — e.g. Excavation" onkeydown="if(event.key==='Enter'){event.preventDefault();addAgrNotIncluded()}">
+      <input id="agr-ni-unit" placeholder="unit" value="job">
+      <input id="agr-ni-rate" placeholder="Rate" onkeydown="if(event.key==='Enter'){event.preventDefault();addAgrNotIncluded()}">
       <button type="button" class="btn btn-grey btn-sm" style="padding:8px 12px;font-size:var(--fs-xs);flex:none" onclick="addAgrNotIncluded()">+ Add</button>
     </div>
-    <div id="agr-notincl" style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:14px"></div>
+    <div id="agr-notincl" style="display:grid;grid-template-columns:1fr;gap:7px;margin-bottom:14px"></div>
 
     <div class="hdiv"></div>
 
@@ -3010,9 +3013,40 @@ function agrPresetSet(level){
   return set;
 }
 let agrActiveIds={}; // premade item ids currently ON this agreement
-let agrLabelOverrides={}; // id -> custom display name
-let agrNotIncluded=[]; // {key,label,rate,unit} — excluded with optional rate
+let agrItemMeta={}; // id -> {label, unit, rate} overrides for catalogue items
+let agrStageLabels={brown:'',grey:'',finishing:''}; // editable section titles
+let agrNotIncluded=[]; // {key,label,rate,unit}
 let agrPaySched=[]; // {id,stage,amount,note}
+function agrEsc(s){return String(s??'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');}
+function agrStageTitle(stage){
+  return (agrStageLabels[stage]||BOQ_STAGE_LABEL[stage]||stage).trim();
+}
+function agrCatLabel(id){
+  const c=BOQ_SCOPE_ITEMS.find(x=>x.id===id);
+  return (agrItemMeta[id]?.label||c?.label||id).trim();
+}
+function agrCatUnit(id){
+  const c=BOQ_SCOPE_ITEMS.find(x=>x.id===id);
+  return (agrItemMeta[id]?.unit||c?.unit||'job').trim();
+}
+function agrCatRate(id){
+  return String(agrItemMeta[id]?.rate??'').trim();
+}
+function agrItemRowHtml(opts){
+  // opts: {key,label,unit,rate,kind:'cat'|'custom'|'ni', border, actions}
+  const border=opts.border||'rgba(82,181,106,.35)';
+  const actions=opts.actions||'';
+  return `<div class="agr-item-row" data-kind="${opts.kind}" data-key="${opts.key}" style="background:var(--bg);border:1px solid ${border};border-radius:8px;padding:7px 8px">
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">
+      <input class="agr-fld-lbl" value="${agrEsc(opts.label)}" placeholder="Item name" style="flex:1;min-width:0;font-size:var(--fs-xs);padding:6px 8px;background:var(--s2);border:1px solid var(--bor);border-radius:6px;color:var(--txt)">
+      ${actions}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+      <input class="agr-fld-unit" value="${agrEsc(opts.unit||'job')}" placeholder="Unit" style="font-size:var(--fs-xs);padding:5px 8px;background:var(--s2);border:1px solid var(--bor);border-radius:6px;color:var(--mut)">
+      <input class="agr-fld-rate" value="${agrEsc(opts.rate||'')}" placeholder="Rate (optional)" style="font-size:var(--fs-xs);padding:5px 8px;background:var(--s2);border:1px solid var(--bor);border-radius:6px;color:var(--mut)">
+    </div>
+  </div>`;
+}
 function agrApplyStartAfterFilter(set){
   const start=e$('a-start-after')?.value||'none';
   const remove=new Set(agrPriorRemoveIds(start));
@@ -3087,7 +3121,8 @@ function clearAgrScopeItems(){
   syncAgrFormFromDom();
   agrActiveIds={};
   agrCustomItems=[];
-  agrLabelOverrides={};
+  agrItemMeta={};
+  agrStageLabels={brown:'',grey:'',finishing:''};
   agrNotIncluded=[];
   renderAgrClauses();
 }
@@ -3102,11 +3137,13 @@ function addAgrScopeItem(id){
 function removeAgrScopeItem(id){
   syncAgrFormFromDom();
   const c=BOQ_SCOPE_ITEMS.find(x=>x.id===id);
-  const label=(agrLabelOverrides[id]||c?.label||id).trim();
+  const label=agrCatLabel(id);
+  const unit=agrCatUnit(id);
+  const rate=agrCatRate(id);
   delete agrActiveIds[id];
-  delete agrLabelOverrides[id];
+  delete agrItemMeta[id];
   if(label&&!agrNotIncluded.some(x=>x.key===id||x.label.toLowerCase()===label.toLowerCase())){
-    agrNotIncluded.push({key:id,label,rate:'',unit:c?.unit||'job'});
+    agrNotIncluded.push({key:id,label,rate,unit:unit||c?.unit||'job'});
   }
   renderAgrClauses();
   toast('Moved to Not Included','info');
@@ -3120,7 +3157,7 @@ function refreshAgrAddPicker(){
     if(c.stage!==stage){
       if(stage)html+='</optgroup>';
       stage=c.stage;
-      html+=`<optgroup label="${BOQ_STAGE_LABEL[stage]||stage}">`;
+      html+=`<optgroup label="${agrStageTitle(stage)}">`;
     }
     html+=`<option value="${c.id}">${c.label}</option>`;
   });
@@ -3129,23 +3166,37 @@ function refreshAgrAddPicker(){
   sel.innerHTML=html;
 }
 function syncAgrFormFromDom(){
-  document.querySelectorAll('#agr-clauses input.agr-lbl').forEach(inp=>{
-    const id=inp.dataset.id;if(!id)return;
-    const base=BOQ_SCOPE_ITEMS.find(c=>c.id===id)?.label||'';
+  document.querySelectorAll('#agr-clauses .agr-stage-lbl').forEach(inp=>{
+    const stage=inp.dataset.stage;
+    if(!stage)return;
     const v=(inp.value||'').trim();
-    if(v&&v!==base)agrLabelOverrides[id]=v;else delete agrLabelOverrides[id];
+    const def=BOQ_STAGE_LABEL[stage]||stage;
+    agrStageLabels[stage]=(v&&v!==def)?v:'';
   });
-  document.querySelectorAll('#agr-custom-list input.agr-lbl').forEach(inp=>{
-    const id=inp.dataset.id;const c=agrCustomItems.find(x=>x.id===id);if(!c)return;
-    const v=(inp.value||'').trim();if(v)c.label=v;
+  document.querySelectorAll('#agr-clauses .agr-item-row[data-kind="cat"]').forEach(row=>{
+    const id=row.dataset.key;if(!id)return;
+    const c=BOQ_SCOPE_ITEMS.find(x=>x.id===id);if(!c)return;
+    const lbl=(row.querySelector('.agr-fld-lbl')?.value||'').trim();
+    const unit=(row.querySelector('.agr-fld-unit')?.value||'').trim();
+    const rate=(row.querySelector('.agr-fld-rate')?.value||'').trim();
+    const meta={};
+    if(lbl&&lbl!==c.label)meta.label=lbl;
+    if(unit&&unit!==(c.unit||'job'))meta.unit=unit;
+    if(rate)meta.rate=rate;
+    if(Object.keys(meta).length)agrItemMeta[id]=meta;else delete agrItemMeta[id];
   });
-  document.querySelectorAll('#agr-notincl .agr-ni-row').forEach(row=>{
+  document.querySelectorAll('#agr-custom-list .agr-item-row').forEach(row=>{
+    const id=row.dataset.key;const c=agrCustomItems.find(x=>x.id===id);if(!c)return;
+    c.label=(row.querySelector('.agr-fld-lbl')?.value||'').trim()||c.label;
+    c.unit=(row.querySelector('.agr-fld-unit')?.value||'').trim()||'job';
+    c.rate=(row.querySelector('.agr-fld-rate')?.value||'').trim();
+  });
+  document.querySelectorAll('#agr-notincl .agr-item-row').forEach(row=>{
     const key=row.dataset.key;
     const item=agrNotIncluded.find(x=>x.key===key);if(!item)return;
-    const lbl=row.querySelector('.agr-ni-lbl');
-    const rate=row.querySelector('.agr-ni-rate');
-    if(lbl)item.label=(lbl.value||'').trim()||item.label;
-    if(rate)item.rate=(rate.value||'').trim();
+    item.label=(row.querySelector('.agr-fld-lbl')?.value||'').trim()||item.label;
+    item.unit=(row.querySelector('.agr-fld-unit')?.value||'').trim()||'job';
+    item.rate=(row.querySelector('.agr-fld-rate')?.value||'').trim();
   });
   document.querySelectorAll('#agr-pay-rows .agr-pay-row').forEach(row=>{
     const id=row.dataset.id;
@@ -3166,20 +3217,26 @@ function renderAgrClauses(selected){
   }
   const active=BOQ_SCOPE_ITEMS.filter(c=>agrActiveIds[c.id]);
   if(!active.length&&!agrCustomItems.length){
-    el.innerHTML='<div style="grid-column:1/-1;font-size:var(--fs-xs);color:var(--mut);padding:10px;text-align:center">No work items yet — use a pack above or + Add work item</div>';
+    el.innerHTML='<div style="font-size:var(--fs-xs);color:var(--mut);padding:10px;text-align:center">No work items yet — use a pack above or + Add work item</div>';
   }else{
     let lastStage='';
     el.innerHTML=active.map(c=>{
-      const stageHdr=c.stage!==lastStage
-        ?`<div style="grid-column:1/-1;font-size:10px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.6px;margin:${lastStage?'8px':0} 0 2px">${BOQ_STAGE_LABEL[c.stage]||c.stage}</div>`
-        :'';
-      lastStage=c.stage;
-      const val=agrLabelOverrides[c.id]||c.label;
-      const esc=val.replace(/"/g,'&quot;');
-      return stageHdr+`<div style="display:flex;align-items:center;gap:6px;background:var(--bg);border:1px solid rgba(82,181,106,.35);border-radius:8px;padding:6px 8px">
-        <input class="agr-lbl" data-id="${c.id}" value="${esc}" title="${c.unit||'job'}" style="flex:1;min-width:0;font-size:var(--fs-xs);padding:6px 8px;background:var(--s2);border:1px solid var(--bor);border-radius:6px;color:var(--txt)">
-        <button type="button" title="Move to Not Included" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;flex-shrink:0;padding:0 2px;font-weight:700" onclick="removeAgrScopeItem('${c.id}')">✕</button>
-      </div>`;
+      let hdr='';
+      if(c.stage!==lastStage){
+        const title=agrStageTitle(c.stage);
+        hdr=`<div style="margin:${lastStage?'10px':0} 0 4px">
+          <input class="agr-stage-lbl" data-stage="${c.stage}" value="${agrEsc(title)}" style="width:100%;font-size:10px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.6px;padding:5px 8px;background:transparent;border:1px dashed rgba(232,184,75,.35);border-radius:6px">
+        </div>`;
+        lastStage=c.stage;
+      }
+      const actions=`<button type="button" title="Move to Not Included" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;flex-shrink:0;padding:0 2px;font-weight:700" onclick="removeAgrScopeItem('${c.id}')">✕</button>`;
+      return hdr+agrItemRowHtml({
+        kind:'cat',key:c.id,
+        label:agrCatLabel(c.id),
+        unit:agrCatUnit(c.id),
+        rate:agrCatRate(c.id),
+        actions
+      });
     }).join('');
   }
   refreshAgrAddPicker();
@@ -3190,22 +3247,21 @@ function renderAgrCustomList(){
   const el=e$('agr-custom-list');if(!el)return;
   if(!agrCustomItems.length){el.innerHTML='';return;}
   el.innerHTML=agrCustomItems.map(c=>{
-    const esc=(c.label||'').replace(/"/g,'&quot;');
-    return `<div style="display:flex;align-items:center;gap:6px;background:var(--bg);border:1px solid rgba(82,181,106,.35);border-radius:8px;padding:6px 8px">
-    <input class="agr-lbl" data-id="${c.id}" value="${esc}" style="flex:1;min-width:0;font-size:var(--fs-xs);padding:6px 8px;background:var(--s2);border:1px solid var(--bor);border-radius:6px;color:var(--txt)">
-    <button type="button" title="Move to Not Included" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;flex-shrink:0;padding:0 2px;font-weight:700" onclick="delAgrCustomItem('${c.id}')">✕</button>
-  </div>`;
+    const actions=`<button type="button" title="Move to Not Included" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;flex-shrink:0;padding:0 2px;font-weight:700" onclick="delAgrCustomItem('${c.id}')">✕</button>`;
+    return agrItemRowHtml({kind:'custom',key:c.id,label:c.label,unit:c.unit||'job',rate:c.rate||'',actions});
   }).join('');
 }
 function addAgrCustomItem(){
   const label=(e$('agr-custom-txt')?.value||'').trim();
+  const unit=(e$('agr-custom-unit')?.value||'job').trim()||'job';
+  const rate=(e$('agr-custom-rate')?.value||'').trim();
   if(!label){toast('Enter a custom work item','err');return;}
   syncAgrFormFromDom();
   if(agrCustomItems.some(x=>x.label.toLowerCase()===label.toLowerCase())||BOQ_SCOPE_ITEMS.some(x=>x.label.toLowerCase()===label.toLowerCase())){
     toast('Item already in list — add from catalogue or rename','err');return;
   }
-  agrCustomItems.push({id:'ac_'+uid(),label,included:true});
-  sv('agr-custom-txt','');
+  agrCustomItems.push({id:'ac_'+uid(),label,unit,rate,included:true});
+  sv('agr-custom-txt','');sv('agr-custom-unit','job');sv('agr-custom-rate','');
   renderAgrCustomList();
   toast('Custom work item added ✓');
 }
@@ -3213,7 +3269,7 @@ function delAgrCustomItem(id){
   syncAgrFormFromDom();
   const c=agrCustomItems.find(x=>x.id===id);
   if(c&&c.label&&!agrNotIncluded.some(x=>x.label.toLowerCase()===c.label.toLowerCase())){
-    agrNotIncluded.push({key:id,label:c.label,rate:'',unit:'job'});
+    agrNotIncluded.push({key:id,label:c.label,rate:c.rate||'',unit:c.unit||'job'});
   }
   agrCustomItems=agrCustomItems.filter(x=>x.id!==id);
   renderAgrCustomList();
@@ -3223,33 +3279,27 @@ function delAgrCustomItem(id){
 function renderAgrNotIncluded(){
   const el=e$('agr-notincl');if(!el)return;
   if(!agrNotIncluded.length){
-    el.innerHTML='<div style="grid-column:1/-1;font-size:var(--fs-xs);color:var(--mut);padding:8px;text-align:center">No exclusions yet — ✕ an included item or add below</div>';
+    el.innerHTML='<div style="font-size:var(--fs-xs);color:var(--mut);padding:8px;text-align:center">No exclusions yet — ✕ an included item or add below</div>';
     return;
   }
   el.innerHTML=agrNotIncluded.map(c=>{
-    const esc=(c.label||'').replace(/"/g,'&quot;');
-    const rateEsc=String(c.rate??'').replace(/"/g,'&quot;');
-    return `<div class="agr-ni-row" data-key="${c.key}" style="display:flex;flex-direction:column;gap:5px;background:var(--bg);border:1px solid rgba(224,85,85,.35);border-radius:8px;padding:7px 8px">
-      <div style="display:flex;align-items:center;gap:6px">
-        <input class="agr-ni-lbl" value="${esc}" style="flex:1;min-width:0;font-size:var(--fs-xs);padding:6px 8px;background:var(--s2);border:1px solid var(--bor);border-radius:6px;color:var(--txt)">
-        <button type="button" title="Restore to Included" style="background:none;border:none;color:var(--grn);cursor:pointer;font-size:12px;flex-shrink:0;padding:0 2px;font-weight:700" onclick="restoreAgrNotIncluded('${c.key}')">↩</button>
-        <button type="button" title="Delete" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;flex-shrink:0;padding:0 2px;font-weight:700" onclick="delAgrNotIncluded('${c.key}')">✕</button>
-      </div>
-      <input class="agr-ni-rate" type="text" value="${rateEsc}" placeholder="Rate (PKR / note)" style="font-size:var(--fs-xs);padding:5px 8px;background:var(--s2);border:1px solid var(--bor);border-radius:6px;color:var(--mut)">
-    </div>`;
+    const actions=`<button type="button" title="Restore to Included" style="background:none;border:none;color:var(--grn);cursor:pointer;font-size:12px;flex-shrink:0;padding:0 2px;font-weight:700" onclick="restoreAgrNotIncluded('${c.key}')">↩</button>
+      <button type="button" title="Delete" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;flex-shrink:0;padding:0 2px;font-weight:700" onclick="delAgrNotIncluded('${c.key}')">✕</button>`;
+    return agrItemRowHtml({kind:'ni',key:c.key,label:c.label,unit:c.unit||'job',rate:c.rate||'',border:'rgba(224,85,85,.35)',actions});
   }).join('');
 }
 function addAgrNotIncluded(){
   const label=(e$('agr-ni-txt')?.value||'').trim();
+  const unit=(e$('agr-ni-unit')?.value||'job').trim()||'job';
   const rate=(e$('agr-ni-rate')?.value||'').trim();
   if(!label){toast('Enter item name','err');return;}
   syncAgrFormFromDom();
   if(agrNotIncluded.some(x=>x.label.toLowerCase()===label.toLowerCase())){toast('Already in Not Included','err');return;}
   const cat=BOQ_SCOPE_ITEMS.find(x=>x.label.toLowerCase()===label.toLowerCase());
-  if(cat){delete agrActiveIds[cat.id];delete agrLabelOverrides[cat.id];}
+  if(cat){delete agrActiveIds[cat.id];delete agrItemMeta[cat.id];}
   agrCustomItems=agrCustomItems.filter(x=>x.label.toLowerCase()!==label.toLowerCase());
-  agrNotIncluded.push({key:cat?cat.id:('ni_'+uid()),label,rate,unit:cat?.unit||'job'});
-  sv('agr-ni-txt','');sv('agr-ni-rate','');
+  agrNotIncluded.push({key:cat?cat.id:('ni_'+uid()),label,rate,unit});
+  sv('agr-ni-txt','');sv('agr-ni-unit','job');sv('agr-ni-rate','');
   renderAgrClauses();
   toast('Added to Not Included ✓');
 }
@@ -3259,9 +3309,14 @@ function restoreAgrNotIncluded(key){
   agrNotIncluded=agrNotIncluded.filter(x=>x.key!==key);
   if(BOQ_SCOPE_ITEMS.some(c=>c.id===key)){
     agrActiveIds[key]=true;
-    if(item.label&&item.label!==BOQ_SCOPE_ITEMS.find(c=>c.id===key).label)agrLabelOverrides[key]=item.label;
+    const base=BOQ_SCOPE_ITEMS.find(c=>c.id===key);
+    const meta={};
+    if(item.label&&item.label!==base.label)meta.label=item.label;
+    if(item.unit&&item.unit!==(base.unit||'job'))meta.unit=item.unit;
+    if(item.rate)meta.rate=item.rate;
+    if(Object.keys(meta).length)agrItemMeta[key]=meta;
   }else{
-    agrCustomItems.push({id:'ac_'+uid(),label:item.label,included:true});
+    agrCustomItems.push({id:'ac_'+uid(),label:item.label,unit:item.unit||'job',rate:item.rate||'',included:true});
   }
   renderAgrClauses();
   toast('Restored to Included ✓');
@@ -3279,13 +3334,10 @@ function renderAgrPayRows(){
     return;
   }
   el.innerHTML=agrPaySched.map(p=>{
-    const st=(p.stage||'').replace(/"/g,'&quot;');
-    const am=String(p.amount??'').replace(/"/g,'&quot;');
-    const nt=(p.note||'').replace(/"/g,'&quot;');
     return `<div class="agr-pay-row" data-id="${p.id}" style="display:grid;grid-template-columns:1.4fr 0.9fr 1fr 28px;gap:6px;align-items:center">
-      <input class="agr-pay-stage" value="${st}" placeholder="Stage / work done" style="font-size:var(--fs-xs);padding:8px 9px">
-      <input class="agr-pay-amt" value="${am}" placeholder="Amount / %" style="font-size:var(--fs-xs);padding:8px 9px">
-      <input class="agr-pay-note" value="${nt}" placeholder="Note" style="font-size:var(--fs-xs);padding:8px 9px">
+      <input class="agr-pay-stage" value="${agrEsc(p.stage)}" placeholder="Stage / work done" style="font-size:var(--fs-xs);padding:8px 9px">
+      <input class="agr-pay-amt" value="${agrEsc(p.amount)}" placeholder="Amount / %" style="font-size:var(--fs-xs);padding:8px 9px">
+      <input class="agr-pay-note" value="${agrEsc(p.note)}" placeholder="Note" style="font-size:var(--fs-xs);padding:8px 9px">
       <button type="button" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;font-weight:700" onclick="delAgrPayRow('${p.id}')">✕</button>
     </div>`;
   }).join('');
@@ -3311,49 +3363,80 @@ function defaultAgrPaySched(){
 function agrMatchLabel(list,c){
   if(!list||!list.length)return null;
   const low=(c.label||'').toLowerCase();
-  if(list.some(x=>x===c.label||x===c.id||String(x).toLowerCase()===low))return true;
+  if(list.some(x=>{
+    if(typeof x==='object'&&x)return x.id===c.id||String(x.label||'').toLowerCase()===low||x.label===c.label;
+    return x===c.label||x===c.id||String(x).toLowerCase()===low;
+  }))return true;
   for(const [legacy,id] of Object.entries(AGR_LEGACY_LABEL_TO_ID||{})){
-    if(id===c.id&&list.some(x=>String(x).toLowerCase()===legacy||String(x).toLowerCase()===id))return true;
+    if(id===c.id&&list.some(x=>{
+      const s=typeof x==='object'?String(x.label||x.id||''):String(x);
+      return s.toLowerCase()===legacy||s.toLowerCase()===id;
+    }))return true;
   }
   return false;
 }
 function getAgrClauses(){
   syncAgrFormFromDom();
   const included=[];
+  const includedDetails=[];
   BOQ_SCOPE_ITEMS.forEach(c=>{
     if(!agrActiveIds[c.id])return;
-    included.push(agrLabelOverrides[c.id]||c.label);
+    const label=agrCatLabel(c.id);
+    const unit=agrCatUnit(c.id);
+    const rate=agrCatRate(c.id);
+    included.push(label);
+    includedDetails.push({id:c.id,label,unit,rate});
   });
   const custom=[];
   agrCustomItems.forEach(c=>{
-    custom.push({label:c.label,included:true});
+    custom.push({label:c.label,unit:c.unit||'job',rate:c.rate||'',included:true});
     included.push(c.label);
+    includedDetails.push({id:c.id,label:c.label,unit:c.unit||'job',rate:c.rate||'',custom:true});
   });
   const excluded=agrNotIncluded.map(x=>x.label).filter(Boolean);
   const notIncluded=agrNotIncluded.map(x=>({id:x.key,label:x.label,rate:x.rate||'',unit:x.unit||'job'}));
-  return{included,excluded,custom,notIncluded};
+  return{
+    included,excluded,custom,notIncluded,includedDetails,
+    scopeMeta:{...agrItemMeta},
+    stageLabels:{...agrStageLabels}
+  };
 }
-function applyAgrClauses(included,excluded,custom,notIncluded){
+function applyAgrClauses(included,excluded,custom,notIncluded,scopeMeta,stageLabels){
   const set={};
+  agrItemMeta=(scopeMeta&&typeof scopeMeta==='object')?{...scopeMeta}:{};
+  agrStageLabels={
+    brown:(stageLabels&&stageLabels.brown)||'',
+    grey:(stageLabels&&stageLabels.grey)||'',
+    finishing:(stageLabels&&stageLabels.finishing)||''
+  };
   if(included&&included.length){
     BOQ_SCOPE_ITEMS.forEach(c=>{ set[c.id]=agrMatchLabel(included,c)===true; });
-    // Capture label overrides when saved label differs from catalogue
-    agrLabelOverrides={};
-    (included||[]).forEach(lab=>{
-      const c=BOQ_SCOPE_ITEMS.find(x=>agrMatchLabel([lab],x));
-      if(c&&lab&&lab!==c.label&&!AGR_LEGACY_LABEL_TO_ID[String(lab).toLowerCase()])agrLabelOverrides[c.id]=lab;
-    });
+    if(!scopeMeta){
+      (included||[]).forEach(lab=>{
+        const s=typeof lab==='object'?lab.label:lab;
+        const c=BOQ_SCOPE_ITEMS.find(x=>agrMatchLabel([s],x));
+        if(c&&s&&s!==c.label&&!AGR_LEGACY_LABEL_TO_ID[String(s).toLowerCase()]){
+          agrItemMeta[c.id]={...(agrItemMeta[c.id]||{}),label:s};
+        }
+      });
+    }
   }else{
     BOQ_SCOPE_ITEMS.forEach(c=>{ set[c.id]=!!c.def; });
-    agrLabelOverrides={};
   }
   const premadeLabels=new Set(BOQ_SCOPE_ITEMS.map(x=>x.label.toLowerCase()));
   Object.keys(AGR_LEGACY_LABEL_TO_ID||{}).forEach(l=>premadeLabels.add(l));
   if(Array.isArray(custom)&&custom.length){
-    agrCustomItems=custom.filter(c=>c.included!==false).map(c=>({id:'ac_'+uid(),label:c.label,included:true}));
+    agrCustomItems=custom.filter(c=>c.included!==false).map(c=>({
+      id:'ac_'+uid(),label:c.label,unit:c.unit||'job',rate:c.rate||'',included:true
+    }));
   }else if(included&&included.length){
-    agrCustomItems=included.filter(l=>!premadeLabels.has((l||'').toLowerCase())&&!BOQ_SCOPE_ITEMS.some(c=>agrMatchLabel([l],c)))
-      .map(l=>({id:'ac_'+uid(),label:l,included:true}));
+    agrCustomItems=included.filter(l=>{
+      const s=typeof l==='object'?l.label:l;
+      return !premadeLabels.has((s||'').toLowerCase())&&!BOQ_SCOPE_ITEMS.some(c=>agrMatchLabel([s],c));
+    }).map(l=>{
+      if(typeof l==='object')return {id:'ac_'+uid(),label:l.label,unit:l.unit||'job',rate:l.rate||'',included:true};
+      return {id:'ac_'+uid(),label:l,unit:'job',rate:'',included:true};
+    });
   }else{
     agrCustomItems=[];
   }
@@ -3366,14 +3449,14 @@ function applyAgrClauses(included,excluded,custom,notIncluded){
     })).filter(x=>x.label);
   }else if(Array.isArray(excluded)&&excluded.length){
     agrNotIncluded=excluded.map(lab=>{
-      const c=BOQ_SCOPE_ITEMS.find(x=>agrMatchLabel([lab],x));
-      return {key:c?c.id:('ni_'+uid()),label:lab,rate:'',unit:c?.unit||'job'};
+      const s=typeof lab==='object'?lab.label:lab;
+      const c=BOQ_SCOPE_ITEMS.find(x=>agrMatchLabel([s],x));
+      return {key:c?c.id:('ni_'+uid()),label:s,rate:(typeof lab==='object'?lab.rate:'')||'',unit:(typeof lab==='object'?lab.unit:c?.unit)||'job'};
     });
   }else{
     agrNotIncluded=[];
   }
-  // Ensure NI items aren't also active
-  agrNotIncluded.forEach(x=>{ if(x.key) delete set[x.key]; delete agrActiveIds[x.key]; });
+  agrNotIncluded.forEach(x=>{ if(x.key) set[x.key]=false; });
   renderAgrClauses(set);
 }
 function syncAgrRateLabel(){
@@ -3421,11 +3504,12 @@ function iAgr(){
   ['a-cli-t','a-cli-id','a-proj-t','a-proj-id','a-terms','a-scope','a-conditions',
    'a-s','a-e','a-val','a-rate','a-covered','a-dims','a-permit','a-arch','a-footer',
    'a-plot-size-custom','a-storeys-custom','a-type-custom','a-const-type-custom','a-start-after-custom',
-   'agr-custom-txt','agr-ni-txt','agr-ni-rate'].forEach(id=>sv(id,''));
+   'agr-custom-txt','agr-custom-unit','agr-custom-rate','agr-ni-txt','agr-ni-unit','agr-ni-rate'].forEach(id=>sv(id,''));
   const sd=e$('a-style-digital');if(sd)sd.checked=true;const hv=e$('a-hide-value');if(hv)hv.checked=false;toggleHideValue();
   sv('a-st','draft');sv('a-type','labour');sv('a-const-type','Grey Structure');
   sv('a-start-after','none');sv('a-prior-note','');sv('a-storeys','single');sv('a-plot-size','');
-  agrCustomItems=[];agrLabelOverrides={};agrNotIncluded=[];
+  sv('agr-custom-unit','job');sv('agr-ni-unit','job');
+  agrCustomItems=[];agrItemMeta={};agrStageLabels={brown:'',grey:'',finishing:''};agrNotIncluded=[];
   agrPaySched=defaultAgrPaySched();
   renderAgrClauses(agrApplyStartAfterFilter(agrPresetSet('grey')));
   renderAgrPayRows();
@@ -3502,7 +3586,7 @@ function eAgr(id){
   setAgrSelectOrCustom('a-storeys','a-storeys-custom',r.storeys||'single',r.storeysCustom||'','custom');
   setAgrSelectOrCustom('a-start-after','a-start-after-custom',r.startAfter||'none',r.startAfterCustom||'','other');
   sv('a-prior-note',r.priorNote||'');
-  applyAgrClauses(r.inclusions||[], r.exclusions||[], r.customScope||null, r.notIncluded||null);
+  applyAgrClauses(r.inclusions||[], r.exclusions||[], r.customScope||null, r.notIncluded||null, r.scopeMeta||null, r.stageLabels||null);
   if(Array.isArray(r.paySchedule)&&r.paySchedule.length){
     agrPaySched=r.paySchedule.map(p=>({id:p.id||('ap_'+uid()),stage:p.stage||'',amount:p.amount!=null?String(p.amount):'',note:p.note||''}));
   }else{
@@ -3691,6 +3775,9 @@ function saveAgr(){
     inclusions:clauses.included,
     exclusions:clauses.excluded||[],
     notIncluded:clauses.notIncluded||[],
+    includedDetails:clauses.includedDetails||[],
+    scopeMeta:clauses.scopeMeta||{},
+    stageLabels:clauses.stageLabels||{},
     customScope:clauses.custom||[],
     paySchedule,
     terms:e$('a-terms').value,
@@ -5190,28 +5277,47 @@ async function pdfAgr(id){
   // 5. Duration
   sec('Contract Duration','Start Date: '+(r.start||'—')+'          Expected Completion: '+(r.end||'—'));
 
-  // 6. Scope — compact numbered rows (2 columns) to shorten the PDF
-  const drawAgrScopeRows=(title,labels)=>{
+  // 6. Scope — compact numbered rows; shows editable name / unit / rate
+  const drawAgrScopeRows=(title,labels,details,stageLbl)=>{
     if(!labels||!labels.length)return;
+    const detMap={};
+    (details||[]).forEach(d=>{ if(d&&d.label) detMap[String(d.label).toLowerCase()]=d; if(d&&d.id) detMap['id:'+d.id]=d; });
     const by={brown:[],grey:[],finishing:[],other:[]};
     const used=new Set();
+    const fmtItem=(lab,d0)=>{
+      const d=d0||detMap[String(lab).toLowerCase()]||{};
+      let s=lab;
+      if(d.unit) s+=' ('+d.unit+')';
+      if(d.rate) s+=' — '+d.rate;
+      return s;
+    };
     BOQ_SCOPE_ITEMS.forEach(c=>{
-      if(labels.some(x=>x===c.label||x===c.id)){by[c.stage].push(c.label);used.add(c.label.toLowerCase());}
+      if(labels.some(x=>x===c.label||x===c.id||(detMap['id:'+c.id]&&x===detMap['id:'+c.id].label))){
+        const d=detMap['id:'+c.id]||detMap[c.label.toLowerCase()]||{};
+        const show=d.label||c.label;
+        by[c.stage].push(fmtItem(show,d));
+        used.add(String(show).toLowerCase());
+        used.add(c.label.toLowerCase());
+      }
     });
-    labels.forEach(l=>{if(!used.has(String(l).toLowerCase()))by.other.push(l);});
+    labels.forEach(l=>{if(!used.has(String(l).toLowerCase()))by.other.push(fmtItem(l));});
     if(y>252){doc.addPage();y=20;}
     doc.setFillColor(242,240,235);doc.rect(14,y-4,182,8,'F');
     doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(110,105,98);
     doc.text(title.toUpperCase(),16,y+1);y+=10;
-    const cols=2;
-    const colW=88;
-    const xs=[14,14+94];
+    const cols=2;const colW=88;const xs=[14,14+94];
     let n=0;
-    [['brown','Brown Structure'],['grey','Grey Structure'],['finishing','Finishing'],['other','Other']].forEach(([k,gTitle])=>{
+    const titles={
+      brown:(stageLbl&&stageLbl.brown)||'Brown Structure',
+      grey:(stageLbl&&stageLbl.grey)||'Grey Structure',
+      finishing:(stageLbl&&stageLbl.finishing)||'Finishing',
+      other:'Other'
+    };
+    ['brown','grey','finishing','other'].forEach(k=>{
       const items=by[k];if(!items.length)return;
       if(y>270){doc.addPage();y=20;}
       doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(30,30,30);
-      doc.text(gTitle,14,y);y+=5.5;
+      doc.text(titles[k],14,y);y+=5.5;
       doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(30,30,30);
       for(let i=0;i<items.length;i+=cols){
         if(y>280){doc.addPage();y=20;}
@@ -5219,8 +5325,7 @@ async function pdfAgr(id){
         for(let c=0;c<cols;c++){
           if(i+c>=items.length)break;
           n++;
-          const cell=n+'. '+items[i+c];
-          const lines=doc.splitTextToSize(cell,colW);
+          const lines=doc.splitTextToSize(n+'. '+items[i+c],colW);
           doc.text(lines,xs[c],y);
           rowH=Math.max(rowH,lines.length*4.4);
         }
@@ -5231,7 +5336,7 @@ async function pdfAgr(id){
     y+=2;
   };
   if(r.inclusions&&r.inclusions.length){
-    drawAgrScopeRows('Work Included in Contract',r.inclusions);
+    drawAgrScopeRows('Work Included in Contract',r.inclusions,r.includedDetails||null,r.stageLabels||null);
   }
   // Not Included — with rates when provided
   const niList=(Array.isArray(r.notIncluded)&&r.notIncluded.length)
@@ -5251,8 +5356,9 @@ async function pdfAgr(id){
         if(i+c>=niList.length)break;
         const it=niList[i+c];
         const lab=typeof it==='string'?it:(it.label||'');
+        const unit=(typeof it==='object'&&it.unit)?String(it.unit).trim():'';
         const rate=(typeof it==='object'&&it.rate)?String(it.rate).trim():'';
-        const cell=(i+c+1)+'. '+lab+(rate?' — Rate: '+rate:'');
+        const cell=(i+c+1)+'. '+lab+(unit?' ('+unit+')':'')+(rate?' — '+rate:'');
         const lines=doc.splitTextToSize(cell,colW);
         doc.text(lines,xs[c],y);
         rowH=Math.max(rowH,lines.length*4.4);
@@ -8387,7 +8493,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-08-06-v53';
+const APP_VERSION='2026-08-06-v54';
 // Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
 // GitHub Pages is the live OTA source of truth while Wasmer Edge GitHub deploys are failing.
 const OTA_ORIGIN='https://abbashafiz.github.io/Buildpro-crm';
