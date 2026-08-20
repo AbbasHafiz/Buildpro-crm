@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-08-06-v51">
+<meta name="app-version" content="2026-08-06-v52">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -4961,25 +4961,48 @@ async function pdfAgr(id){
   // 5. Duration
   sec('Contract Duration','Start Date: '+(r.start||'—')+'          Expected Completion: '+(r.end||'—'));
 
-  // 6. Scope — checkbox inclusions / exclusions (grouped by Brown / Grey / Finishing)
-  const formatScopeList=(labels)=>{
-    if(!labels||!labels.length)return '';
+  // 6. Scope — compact numbered rows (2 columns) to shorten the PDF
+  const drawAgrScopeRows=(title,labels)=>{
+    if(!labels||!labels.length)return;
     const by={brown:[],grey:[],finishing:[],other:[]};
     const used=new Set();
     BOQ_SCOPE_ITEMS.forEach(c=>{
       if(labels.some(x=>x===c.label||x===c.id)){by[c.stage].push(c.label);used.add(c.label.toLowerCase());}
     });
     labels.forEach(l=>{if(!used.has(String(l).toLowerCase()))by.other.push(l);});
-    let n=0,out='';
-    [['brown','Brown Structure'],['grey','Grey Structure'],['finishing','Finishing'],['other','Other']].forEach(([k,title])=>{
-      if(!by[k].length)return;
-      out+=(out?'\n':'')+title+'\n';
-      by[k].forEach(x=>{n++;out+=n+'. '+x+'\n';});
+    if(y>252){doc.addPage();y=20;}
+    doc.setFillColor(242,240,235);doc.rect(14,y-4,182,8,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(110,105,98);
+    doc.text(title.toUpperCase(),16,y+1);y+=10;
+    const cols=2;
+    const colW=88;
+    const xs=[14,14+94];
+    let n=0;
+    [['brown','Brown Structure'],['grey','Grey Structure'],['finishing','Finishing'],['other','Other']].forEach(([k,gTitle])=>{
+      const items=by[k];if(!items.length)return;
+      if(y>270){doc.addPage();y=20;}
+      doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(30,30,30);
+      doc.text(gTitle,14,y);y+=5.5;
+      doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(30,30,30);
+      for(let i=0;i<items.length;i+=cols){
+        if(y>280){doc.addPage();y=20;}
+        let rowH=4.8;
+        for(let c=0;c<cols;c++){
+          if(i+c>=items.length)break;
+          n++;
+          const cell=n+'. '+items[i+c];
+          const lines=doc.splitTextToSize(cell,colW);
+          doc.text(lines,xs[c],y);
+          rowH=Math.max(rowH,lines.length*4.4);
+        }
+        y+=rowH+1.2;
+      }
+      y+=2.5;
     });
-    return out.trim();
+    y+=2;
   };
   if(r.inclusions&&r.inclusions.length){
-    sec('Work Included in Contract',formatScopeList(r.inclusions));
+    drawAgrScopeRows('Work Included in Contract',r.inclusions);
   }
   if(r.scope)sec('Detailed Scope of Work',r.scope);
   // Removals are omitted entirely — do not print a Not Included section from leftover exclusions.
@@ -8099,7 +8122,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-08-06-v51';
+const APP_VERSION='2026-08-06-v52';
 // Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
 // GitHub Pages is the live OTA source of truth while Wasmer Edge GitHub deploys are failing.
 const OTA_ORIGIN='https://abbashafiz.github.io/Buildpro-crm';
