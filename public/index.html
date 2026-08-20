@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-08-06-v47">
+<meta name="app-version" content="2026-08-06-v48">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -1593,7 +1593,7 @@ select option{background:var(--s2);}
     </div>
     <div class="f2">
       <div class="fg"><label>Category</label>
-        <select id="ex-cat">
+        <select id="ex-cat" onchange="toggleExpCat()">
           <option value="material">🧱 Material</option>
           <option value="labour">👷 Labour</option>
           <option value="equipment">🔧 Equipment</option>
@@ -1603,6 +1603,26 @@ select option{background:var(--s2);}
         </select>
       </div>
       <div class="fg"><label>Date</label><input type="date" id="ex-date"></div>
+    </div>
+    <div class="fg" id="ex-mat-row" style="display:none">
+      <label>Material Type</label>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px" id="ex-mat-chips">
+        <button type="button" class="ca" data-mat="Sand" style="padding:6px 11px;font-size:var(--fs-xs)" onclick="pickExpMat('Sand')">🏖 Sand</button>
+        <button type="button" class="ca" data-mat="Crush" style="padding:6px 11px;font-size:var(--fs-xs)" onclick="pickExpMat('Crush')">🪨 Crush</button>
+        <button type="button" class="ca" data-mat="Bricks" style="padding:6px 11px;font-size:var(--fs-xs)" onclick="pickExpMat('Bricks')">🧱 Bricks</button>
+        <button type="button" class="ca" data-mat="Steel" style="padding:6px 11px;font-size:var(--fs-xs)" onclick="pickExpMat('Steel')">🔩 Steel</button>
+        <button type="button" class="ca" data-mat="Cement" style="padding:6px 11px;font-size:var(--fs-xs)" onclick="pickExpMat('Cement')">🏗 Cement</button>
+        <button type="button" class="ca" data-mat="Blocks" style="padding:6px 11px;font-size:var(--fs-xs)" onclick="pickExpMat('Blocks')">⬜ Blocks</button>
+        <button type="button" class="ca" data-mat="Tiles" style="padding:6px 11px;font-size:var(--fs-xs)" onclick="pickExpMat('Tiles')">🔲 Tiles</button>
+        <button type="button" class="ca" data-mat="Paint" style="padding:6px 11px;font-size:var(--fs-xs)" onclick="pickExpMat('Paint')">🎨 Paint</button>
+      </div>
+      <input id="ex-mat" list="ex-mat-list" placeholder="Or type material name…" oninput="syncExpMatChips()">
+      <datalist id="ex-mat-list">
+        <option value="Sand"><option value="Crush"><option value="Bricks"><option value="Steel">
+        <option value="Cement"><option value="Blocks"><option value="Tiles"><option value="Paint">
+        <option value="Binding Wire"><option value="PVC Pipe"><option value="Electrical Cable">
+      </datalist>
+      <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:6px">Pick a chip or type a name — used for grouping similar expenses &amp; PDF export.</div>
     </div>
     <div class="f2">
       <div class="fg"><label>Bill Amount (PKR)</label><input type="number" id="ex-amount" placeholder="e.g. 20000" oninput="syncExpPayHint()"></div>
@@ -5297,10 +5317,18 @@ function clearExpSelect(){
 function selectSimilarExps(){
   const picked=getSelectedExps();
   if(!picked.length){toast('Select at least one expense first','info');return;}
-  const keys=new Set(picked.map(r=>normExpDesc(r.desc)).filter(Boolean));
+  const keys=new Set();
+  picked.forEach(r=>{
+    const mat=normExpDesc(r.matItem||resolveExpMatItem(r)||'');
+    const desc=normExpDesc(r.desc||'');
+    if(mat)keys.add(mat);
+    if(desc)keys.add(desc);
+  });
   let n=0;
   (D.expenses||[]).forEach(r=>{
-    if(keys.has(normExpDesc(r.desc))){selectedExpIds[r.id]=true;n++;}
+    const mat=normExpDesc(r.matItem||resolveExpMatItem(r)||'');
+    const desc=normExpDesc(r.desc||'');
+    if((mat&&keys.has(mat))||(desc&&keys.has(desc))){selectedExpIds[r.id]=true;n++;}
   });
   renderExp();
   toast(n+' similar item'+(n===1?'':'s')+' selected ✓');
@@ -5392,9 +5420,70 @@ function toggleExpFunded(){
   syncExpPayHint();
 }
 
-function iExp(){sv('exp-eid','');const eb=e$('exp-eb');if(eb)eb.classList.remove('on');const sh=e$('exp-sh-t');if(sh)sh.textContent='New Expense';['ex-desc','ex-paid-to','ex-proj-t','ex-proj-id','ex-notes','ex-paid-amt'].forEach(id=>sv(id,''));sv('ex-amount','');sv('ex-date',today());sv('ex-cat','material');sv('ex-paid','Cash');sv('ex-funded','contract');const ip=e$('ex-ispaid');if(ip)ip.checked=true;sv('ex-rstatus','unpaid');toggleExpFunded();syncExpPayHint();}
+const EXP_MAT_PRESETS=['Sand','Crush','Bricks','Steel','Cement','Blocks','Tiles','Paint'];
+function toggleExpCat(){
+  const cat=e$('ex-cat')?.value||'';
+  const row=e$('ex-mat-row');
+  if(row)row.style.display=cat==='material'?'block':'none';
+  if(cat!=='material'){
+    sv('ex-mat','');
+    syncExpMatChips();
+  }
+  const desc=e$('ex-desc');
+  if(desc){
+    if(cat==='material')desc.placeholder='e.g. Sand 2 trucks, Cement 50 bags…';
+    else if(cat==='labour')desc.placeholder='e.g. Mason wages, Labour payment…';
+    else desc.placeholder='e.g. Cement 50 bags, Steel bars, Labour payment…';
+  }
+}
+function syncExpMatChips(){
+  const val=normExpDesc(e$('ex-mat')?.value||'');
+  document.querySelectorAll('#ex-mat-chips button[data-mat]').forEach(b=>{
+    const on=normExpDesc(b.dataset.mat)===val&&!!val;
+    b.style.background=on?'rgba(232,184,75,.22)':'';
+    b.style.borderColor=on?'var(--gold)':'';
+    b.style.color=on?'var(--gold)':'';
+  });
+}
+function pickExpMat(name){
+  sv('ex-mat',name||'');
+  syncExpMatChips();
+  const descEl=e$('ex-desc');
+  const desc=(descEl?.value||'').trim();
+  const wasPreset=!desc||EXP_MAT_PRESETS.some(m=>normExpDesc(m)===normExpDesc(desc));
+  if(wasPreset&&name)sv('ex-desc',name);
+}
+function resolveExpMatItem(r){
+  if(!r)return '';
+  if(r.matItem)return String(r.matItem).trim();
+  if((r.cat||'')!=='material')return '';
+  const d=String(r.desc||'').trim();
+  const hit=EXP_MAT_PRESETS.find(m=>normExpDesc(d)===normExpDesc(m)||normExpDesc(d).startsWith(normExpDesc(m)+' '));
+  return hit||'';
+}
 
-function eExp(id){const r=(D.expenses||[]).find(x=>x.id===id);if(!r)return;sv('exp-eid',id);const eb=e$('exp-eb');if(eb)eb.classList.add('on');const sh=e$('exp-sh-t');if(sh)sh.textContent='Edit Expense';sv('ex-desc',r.desc);sv('ex-paid-to',r.paidTo||'');sv('ex-amount',r.amount);sv('ex-date',r.date||'');sv('ex-cat',r.cat||'material');sv('ex-paid',r.paid||'Cash');sv('ex-funded',r.fundedBy||'contract');sv('ex-notes',r.notes||'');sv('ex-paid-amt',String(expPaidAmt(r)));const ip=e$('ex-ispaid');if(ip)ip.checked=expIsFullyPaid(r);sv('ex-rstatus',rst(r));toggleExpFunded();const p=D.projects.find(x=>x.id===r.projectId);sv('ex-proj-t',p?p.name:'');sv('ex-proj-id',r.projectId||'');syncExpPayHint();O('sh-exp');}
+function iExp(){
+  sv('exp-eid','');const eb=e$('exp-eb');if(eb)eb.classList.remove('on');
+  const sh=e$('exp-sh-t');if(sh)sh.textContent='New Expense';
+  ['ex-desc','ex-paid-to','ex-proj-t','ex-proj-id','ex-notes','ex-paid-amt','ex-mat'].forEach(id=>sv(id,''));
+  sv('ex-amount','');sv('ex-date',today());sv('ex-cat','material');sv('ex-paid','Cash');sv('ex-funded','contract');
+  const ip=e$('ex-ispaid');if(ip)ip.checked=true;sv('ex-rstatus','unpaid');
+  toggleExpFunded();toggleExpCat();syncExpMatChips();syncExpPayHint();
+}
+
+function eExp(id){
+  const r=(D.expenses||[]).find(x=>x.id===id);if(!r)return;
+  sv('exp-eid',id);const eb=e$('exp-eb');if(eb)eb.classList.add('on');
+  const sh=e$('exp-sh-t');if(sh)sh.textContent='Edit Expense';
+  sv('ex-desc',r.desc);sv('ex-paid-to',r.paidTo||'');sv('ex-amount',r.amount);sv('ex-date',r.date||'');
+  sv('ex-cat',r.cat||'material');sv('ex-paid',r.paid||'Cash');sv('ex-funded',r.fundedBy||'contract');
+  sv('ex-notes',r.notes||'');sv('ex-paid-amt',String(expPaidAmt(r)));
+  sv('ex-mat',r.matItem||resolveExpMatItem(r)||'');
+  const ip=e$('ex-ispaid');if(ip)ip.checked=expIsFullyPaid(r);sv('ex-rstatus',rst(r));
+  toggleExpFunded();toggleExpCat();syncExpMatChips();
+  const p=D.projects.find(x=>x.id===r.projectId);sv('ex-proj-t',p?p.name:'');sv('ex-proj-id',r.projectId||'');
+  syncExpPayHint();O('sh-exp');
+}
 
 function saveExp(){
   const eid=e$('exp-eid').value;
@@ -5404,9 +5493,15 @@ function saveExp(){
   // Empty Paid So Far = treat as fully paid (same default as old checkbox-on)
   let paidAmt=(paidRaw===''||paidRaw==null)?amount:(parseFloat(paidRaw)||0);
   paidAmt=Math.max(0,Math.min(amount,paidAmt));
-  const doc={id:eid||uid(),desc:e$('ex-desc').value,paidTo:e$('ex-paid-to')?.value||'',projectId:e$('ex-proj-id').value,projectName:e$('ex-proj-t').value,cat:e$('ex-cat').value,date:e$('ex-date').value||today(),amount,paidAmt,paid:e$('ex-paid').value,fundedBy:funded,notes:e$('ex-notes').value,isPaid:amount>0?paidAmt+0.005>=amount:paidAmt>0};
+  const cat=e$('ex-cat').value;
+  let matItem=(e$('ex-mat')?.value||'').trim();
+  if(cat!=='material')matItem='';
+  let desc=(e$('ex-desc').value||'').trim();
+  if(!desc&&matItem)desc=matItem;
+  const doc={id:eid||uid(),desc,paidTo:e$('ex-paid-to')?.value||'',projectId:e$('ex-proj-id').value,projectName:e$('ex-proj-t').value,cat,matItem,date:e$('ex-date').value||today(),amount,paidAmt,paid:e$('ex-paid').value,fundedBy:funded,notes:e$('ex-notes').value,isPaid:amount>0?paidAmt+0.005>=amount:paidAmt>0};
   if(funded==='onbehalf'){doc.rstatus=e$('ex-rstatus')?.value||'unpaid';}
-  if(!doc.desc||!doc.amount){toast('Enter description and bill amount','err');return;}
+  if(!doc.desc||!doc.amount){toast(cat==='material'?'Enter material name (or description) and bill amount':'Enter description and bill amount','err');return;}
+  if(cat==='material'&&!matItem){toast('Pick or type a material (Sand, Crush, Bricks…)','err');return;}
   if(!D.expenses)D.expenses=[];
   ups('expenses',doc);X('sh-exp');renderExp();updateDots();renderDash();renderLedger();
   const st=expPayStatus(doc);
@@ -5684,7 +5779,7 @@ function renderExp(){
           </label>
           <div style="flex:1;min-width:0">
             <div style="font-size:var(--fs-sm);font-weight:600">${catIcon[r.cat]||'📦'} ${r.desc} ${expPayBadge(r)}</div>
-            <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">${r.date} · ${r.paid} · <span class="b b-m" style="font-size:9px">${r.cat}</span>${expHasDue(r)?` · <span style="color:var(--ora)">Due ${fmt(expDueAmt(r))}</span>`:''}</div>
+            <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">${r.date} · ${r.paid} · <span class="b b-m" style="font-size:9px">${(r.cat==='material'&&(r.matItem||resolveExpMatItem(r)))?(r.matItem||resolveExpMatItem(r)):r.cat}</span>${expHasDue(r)?` · <span style="color:var(--ora)">Due ${fmt(expDueAmt(r))}</span>`:''}</div>
             ${r.paidTo?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">To: ${r.paidTo}</div>`:''}
             ${r.notes?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">${r.notes}</div>`:''}
             <div style="display:flex;gap:5px;margin-top:6px;flex-wrap:wrap">
@@ -6372,8 +6467,9 @@ async function pdfExpSelected(){
   const billTotal=rows.reduce((s,r)=>s+(+r.amount||0),0);
   const paidTotal=rows.reduce((s,r)=>s+expPaidAmt(r),0);
   const dueTotal=rows.reduce((s,r)=>s+expDueAmt(r),0);
-  const uniqDesc=[...new Set(rows.map(r=>normExpDesc(r.desc)).filter(Boolean))];
-  const titleLabel=uniqDesc.length===1?(rows[0].desc||'Selected Items'):(uniqDesc.length<=3?uniqDesc.map(d=>d.replace(/\b\w/g,c=>c.toUpperCase())).join(' + '):'Selected Expenses');
+  const labelOf=r=>(r.matItem||resolveExpMatItem(r)||r.desc||'').trim();
+  const uniqMat=[...new Set(rows.map(r=>normExpDesc(labelOf(r))).filter(Boolean))];
+  const titleLabel=uniqMat.length===1?(labelOf(rows[0])||'Selected Items'):(uniqMat.length<=3?uniqMat.map(d=>d.replace(/\b\w/g,c=>c.toUpperCase())).join(' + '):'Selected Expenses');
   const refLabel=rows.length+' item'+(rows.length===1?'':'s');
   const doc=bPDF();const pw=210;
   let y=drawHeader(doc,'SELECTED EXPENSES PDF',refLabel,'Date: '+today(),'','');
@@ -6394,17 +6490,14 @@ async function pdfExpSelected(){
   doc.text('Due  PKR '+fmt(dueTotal),190,y+9,{align:'right'});
   y+=20;
   const fundLabel=r=>({contract:'Contractor',cashinhand:'Owner Misc',onbehalf:'On Behalf'}[r.fundedBy||'contract']||'Contractor');
-  const body=rows.map(r=>[
-    r.date||'—',
-    (r.desc||'—')+(r.paidTo?'\nTo: '+r.paidTo:'')+(r.notes?'\n'+r.notes:''),
-    r.projectName||(D.projects.find(p=>p.id===r.projectId)?.name)||'—',
-    (r.cat||'other')+' · '+fundLabel(r),
-    fmt(r.amount),
-    fmt(expPaidAmt(r))
-  ]);
+  const body=rows.map(r=>{
+    const mat=r.matItem||resolveExpMatItem(r)||'';
+    const desc=(mat&&normExpDesc(r.desc)!==normExpDesc(mat)?(mat+' — '+r.desc): (r.desc||mat||'—'))+(r.paidTo?'\nTo: '+r.paidTo:'')+(r.notes?'\n'+r.notes:'');
+    return [r.date||'—',desc,r.projectName||(D.projects.find(p=>p.id===r.projectId)?.name)||'—',(mat||r.cat||'other')+' · '+fundLabel(r),fmt(r.amount),fmt(expPaidAmt(r))];
+  });
   doc.autoTable({
     startY:y,
-    head:[['Date','Description','Project','Category','Bill','Paid']],
+    head:[['Date','Description','Project','Material / Cat','Bill','Paid']],
     body,
     foot:[['','','','TOTAL',fmt(billTotal),fmt(paidTotal)]],
     styles:{fontSize:8.5,cellPadding:2.6,textColor:[30,30,30]},
@@ -6417,7 +6510,7 @@ async function pdfExpSelected(){
   if(y>250){doc.addPage();y=20;}
   drawPdfGrandTotal(doc,y,'SELECTED TOTAL (BILL)','PKR '+fmt(billTotal),{tone:'gold',h:18});
   drawBankFooter(doc);
-  const slug=(uniqDesc.length===1?(rows[0].desc||'items'):'selected').replace(/[^a-zA-Z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,40)||'selected';
+  const slug=(uniqMat.length===1?(labelOf(rows[0])||'items'):'selected').replace(/[^a-zA-Z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,40)||'selected';
   savePdf(doc,'Expenses-'+slug+'-'+today()+'.pdf');
   toast(rows.length+' expense'+(rows.length===1?'':'s')+' PDF ✓ · PKR '+fmt(billTotal));
 }
@@ -7795,7 +7888,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-08-06-v47';
+const APP_VERSION='2026-08-06-v48';
 // Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
 // GitHub Pages is the live OTA source of truth while Wasmer Edge GitHub deploys are failing.
 const OTA_ORIGIN='https://abbashafiz.github.io/Buildpro-crm';
