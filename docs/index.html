@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-08-06-v48">
+<meta name="app-version" content="2026-08-06-v49">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -1315,17 +1315,26 @@ select option{background:var(--s2);}
     <div class="fg"><label id="agr-rate-label">Rate / Amount (PKR)</label><input type="number" id="a-rate" placeholder="e.g. 650 per sft" oninput="calcAgr()"></div>
     <div class="fg"><label>Construction Scope</label>
       <select id="a-const-type" onchange="onAgrConstTypeChange()">
-        <option value="Brown Structure">🟤 Brown Structure</option>
-        <option value="Foundation Only">Foundation Only</option>
-        <option value="Foundation + Material">Foundation + Material</option>
-        <option value="Grey Structure" selected>⬜ Grey Structure</option>
-        <option value="Single Storey Grey Structure">Single Storey Grey Structure</option>
-        <option value="Double Storey Grey Structure">Double Storey Grey Structure</option>
-        <option value="Grey Structure + Finishing">Grey Structure + Finishing</option>
-        <option value="Finishing Only">✨ Finishing Only</option>
-        <option value="Single Storey Complete">Single Storey Complete (Finishing)</option>
-        <option value="Double Storey Complete">Double Storey Complete (Finishing)</option>
-        <option value="Turnkey / Complete">Turnkey / Complete</option>
+        <optgroup label="Brown / Foundation">
+          <option value="Brown Structure">🟤 Brown Structure</option>
+          <option value="Foundation Only">Foundation Only</option>
+          <option value="Foundation + Material">Foundation + Material</option>
+        </optgroup>
+        <optgroup label="Grey Structure">
+          <option value="Grey Structure" selected>⬜ Grey Structure</option>
+          <option value="Single Storey Grey Structure">Single Storey Grey Structure</option>
+          <option value="Double Storey Grey Structure">Double Storey Grey Structure</option>
+          <option value="Triple Storey Grey Structure">Triple Storey Grey Structure</option>
+          <option value="Basement + Grey Structure">Basement + Grey Structure</option>
+        </optgroup>
+        <optgroup label="Finishing / Complete">
+          <option value="Grey Structure + Finishing">Grey Structure + Finishing</option>
+          <option value="Finishing Only">✨ Finishing Only</option>
+          <option value="Single Storey Complete">Single Storey Complete</option>
+          <option value="Double Storey Complete">Double Storey Complete</option>
+          <option value="Triple Storey Complete">Triple Storey Complete</option>
+          <option value="Turnkey / Complete">Turnkey / Complete</option>
+        </optgroup>
         <option value="Custom">Custom (specify in Scope of Work)</option>
       </select>
     </div>
@@ -1337,10 +1346,13 @@ select option{background:var(--s2);}
 
     <div class="hdiv"></div>
 
-    <!-- Premade scope clauses — include / exclude -->
+    <!-- Premade scope clauses — same staged list as BOQ (Brown ⊂ Grey ⊂ Finishing) -->
     <div style="font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:.8px;font-weight:700;margin-bottom:6px">Work Items — Include / Exclude</div>
-    <div style="font-size:var(--fs-xs);color:var(--mut2);margin-bottom:10px;line-height:1.45">Tick = <b style="color:var(--grn)">Included</b> in contract · Untick = <b style="color:var(--red)">Excluded</b> (shown in PDF). Works for Labour Rate, With Material, and Cost-to-Cost %.</div>
-    <div style="display:flex;gap:8px;margin-bottom:10px">
+    <div style="font-size:var(--fs-xs);color:var(--mut2);margin-bottom:10px;line-height:1.45">Same stage list as Estimates / BOQ: <b style="color:var(--txt)">Brown → Grey → Finishing</b>. Tick = <b style="color:var(--grn)">Included</b> · Untick = <b style="color:var(--red)">Excluded</b> (shown in PDF). Changing Construction Scope presets the ticks.</div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+      <button type="button" class="btn btn-grey btn-sm" style="padding:6px 12px;font-size:var(--fs-xs)" onclick="applyAgrStructurePreset('brown')">🟤 Brown</button>
+      <button type="button" class="btn btn-grey btn-sm" style="padding:6px 12px;font-size:var(--fs-xs)" onclick="applyAgrStructurePreset('grey')">⬜ Grey</button>
+      <button type="button" class="btn btn-grey btn-sm" style="padding:6px 12px;font-size:var(--fs-xs)" onclick="applyAgrStructurePreset('finishing')">✨ Finishing</button>
       <button type="button" class="btn btn-grey btn-sm" style="padding:6px 12px;font-size:var(--fs-xs)" onclick="setAllAgrClauses(true)">✓ Include All</button>
       <button type="button" class="btn btn-grey btn-sm" style="padding:6px 12px;font-size:var(--fs-xs)" onclick="setAllAgrClauses(false)">✕ Exclude All</button>
     </div>
@@ -2690,32 +2702,6 @@ function toggleHideValue(){
   }
 }
 
-// Premade agreement work-item clauses (tick = include, untick = exclude)
-const AGR_SCOPE_CLAUSES=[
-  {id:'excavation',label:'Excavation / Digging',def:true},
-  {id:'backfill',label:'Back Filling',def:true},
-  {id:'foundation',label:'Foundation / Footing',def:true},
-  {id:'dpc',label:'DPC / Plinth Beam',def:true},
-  {id:'shuttering',label:'Shuttering',def:true},
-  {id:'steel',label:'Steel Binding',def:true},
-  {id:'rcc',label:'RCC Columns / Beams / Slab',def:true},
-  {id:'brickwork',label:'Brickwork / Chuuni',def:true},
-  {id:'boundary',label:'Boundary Wall',def:false},
-  {id:'pardi',label:'Pardi / Parapet Wall',def:false},
-  {id:'plaster',label:'Plaster (Internal / External)',def:true},
-  {id:'electrician',label:'Electrician Works',def:false},
-  {id:'plumber',label:'Plumber Works',def:false},
-  {id:'tile',label:'Tile / Flooring',def:false},
-  {id:'paint',label:'Paint / Polish',def:false},
-  {id:'doors',label:'Doors / Windows Fixing',def:false},
-  {id:'septic',label:'Septic Tank',def:false},
-  {id:'watertank',label:'Overhead / Underground Water Tank',def:false},
-  {id:'stair',label:'Stair Railing',def:false},
-  {id:'roof',label:'Roof Treatment / Waterproofing',def:false},
-  {id:'gate',label:'Main Gate / Grill',def:false},
-  {id:'termite',label:'Termite Proofing',def:true}
-];
-
 // BOQ structure packages — Brown ⊂ Grey ⊂ Finishing
 const BOQ_SCOPE_ITEMS=[
   // ── BROWN STRUCTURE ──
@@ -2746,6 +2732,7 @@ const BOQ_SCOPE_ITEMS=[
   {id:'septic',label:'Septic Tank',unit:'job',stage:'grey',def:false},
   {id:'pardi',label:'Pardi / Parapet',unit:'rft',stage:'grey',def:false},
   {id:'plaster',label:'Plaster (Internal / External)',unit:'sft',stage:'grey',def:true},
+  {id:'roof',label:'Roof Treatment / Waterproofing',unit:'sft',stage:'grey',def:false},
   // ── FINISHING (adds to Grey) ──
   {id:'tiles',label:'Tiles / Flooring',unit:'sft',stage:'finishing',def:true},
   {id:'marble',label:'Marble / Granite',unit:'sft',stage:'finishing',def:false},
@@ -2760,6 +2747,33 @@ const BOQ_SCOPE_ITEMS=[
   {id:'sanitary',label:'Sanitary Fittings',unit:'job',stage:'finishing',def:true},
   {id:'gate',label:'Main Gate / Grill',unit:'job',stage:'finishing',def:false}
 ];
+// Agreements reuse the same staged BOQ work-item list (Brown ⊂ Grey ⊂ Finishing).
+// Legacy short labels from older agreements map onto these ids when editing.
+const AGR_LEGACY_LABEL_TO_ID={
+  'excavation / digging':'digging',
+  'electrician works':'electric_conduit',
+  'plumber works':'plumber_rough',
+  'tile / flooring':'tiles',
+  'doors / windows fixing':'wood',
+  'stair railing':'stair',
+  'roof treatment / waterproofing':'roof',
+  'main gate / grill':'gate',
+  'overhead / underground water tank':'watertank',
+  'pardi / parapet wall':'pardi',
+  'paint / polish':'paint',
+  'boundary wall':'boundary',
+  'septic tank':'septic',
+  'termite proofing':'termite',
+  'foundation / footing':'foundation',
+  'dpc / plinth beam':'dpc',
+  'shuttering':'shuttering',
+  'steel binding':'steel',
+  'rcc columns / beams / slab':'rcc',
+  'brickwork / chuuni':'brickwork',
+  'plaster (internal / external)':'plaster',
+  'back filling':'backfill'
+};
+const AGR_SCOPE_CLAUSES=BOQ_SCOPE_ITEMS; // alias — agreements share BOQ stages
 const BOQ_STAGE_ORDER={brown:0,grey:1,finishing:2};
 const BOQ_STAGE_LABEL={brown:'Brown Structure',grey:'Grey Structure',finishing:'Finishing'};
 let boqCustomItems=[]; // {id,label,unit,included}
@@ -2905,32 +2919,43 @@ function fillBoqFromScope(){
 }
 function agrStructureLevel(constType){
   const t=(constType||'').toLowerCase();
+  if(/finish(ing)? only/.test(t))return 'finishing_only';
   if(t.includes('brown')||t==='foundation only'||t==='foundation + material')return 'brown';
   if(t.includes('finish')||t.includes('complete')||t.includes('turnkey'))return 'finishing';
   return 'grey';
 }
+function agrPresetSet(level){
+  const set={};
+  const finishOnly=level==='finishing_only';
+  const max=finishOnly?2:(BOQ_STAGE_ORDER[level]??1);
+  BOQ_SCOPE_ITEMS.forEach(c=>{
+    if(finishOnly)set[c.id]=c.stage==='finishing'?!!c.def:false;
+    else set[c.id]=(BOQ_STAGE_ORDER[c.stage]??0)<=max?!!c.def:false;
+  });
+  return set;
+}
+function applyAgrStructurePreset(level){
+  renderAgrClauses(agrPresetSet(level==='finishing'?'finishing':level));
+  toast('Scope set for '+BOQ_STAGE_LABEL[level==='finishing_only'?'finishing':level],'info');
+}
 function onAgrConstTypeChange(){
   const level=agrStructureLevel(e$('a-const-type')?.value);
-  const set={};
-  AGR_SCOPE_CLAUSES.forEach(c=>{set[c.id]=false;});
-  if(level==='brown'){
-    ['excavation','backfill','foundation','dpc','shuttering','steel','termite','rcc'].forEach(id=>set[id]=true);
-  }else if(level==='grey'){
-    ['excavation','backfill','foundation','dpc','shuttering','steel','termite','rcc','brickwork','plaster','electrician','plumber','boundary','pardi','septic','watertank','stair','roof'].forEach(id=>set[id]=true);
-  }else{
-    AGR_SCOPE_CLAUSES.forEach(c=>{set[c.id]=true;});
-  }
-  renderAgrClauses(set);
-  toast('Scope checkboxes set for '+BOQ_STAGE_LABEL[level],'info');
+  renderAgrClauses(agrPresetSet(level));
+  const label=level==='finishing_only'?'Finishing Only':(BOQ_STAGE_LABEL[level]||level);
+  toast('Scope checkboxes set for '+label,'info');
 }
 function renderAgrClauses(selected){
   const el=e$('agr-clauses');if(!el)return;
-  // selected: {id:true/false} — if null, use defaults
-  el.innerHTML=AGR_SCOPE_CLAUSES.map(c=>{
+  let lastStage='';
+  el.innerHTML=BOQ_SCOPE_ITEMS.map(c=>{
     const on=selected?!!selected[c.id]:!!c.def;
-    return`<label style="display:flex;align-items:flex-start;gap:8px;background:var(--bg);border:1px solid ${on?'rgba(82,181,106,.35)':'rgba(224,85,85,.28)'};border-radius:8px;padding:9px 10px;cursor:pointer">
+    const stageHdr=c.stage!==lastStage
+      ?`<div style="grid-column:1/-1;font-size:10px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.6px;margin:${lastStage?'8px':0} 0 2px">${BOQ_STAGE_LABEL[c.stage]||c.stage}</div>`
+      :'';
+    lastStage=c.stage;
+    return stageHdr+`<label style="display:flex;align-items:flex-start;gap:8px;background:var(--bg);border:1px solid ${on?'rgba(82,181,106,.35)':'rgba(224,85,85,.28)'};border-radius:8px;padding:9px 10px;cursor:pointer">
       <input type="checkbox" class="agr-clause" data-id="${c.id}" ${on?'checked':''} onchange="refreshAgrClauseStyles()" style="width:16px;height:16px;accent-color:var(--grn);flex-shrink:0;margin-top:1px">
-      <span style="font-size:var(--fs-xs);color:var(--txt);line-height:1.35;font-weight:500">${c.label}</span>
+      <span style="font-size:var(--fs-xs);color:var(--txt);line-height:1.35;font-weight:500">${c.label}<span style="color:var(--mut2);font-weight:400"> · ${c.unit||'job'}</span></span>
     </label>`;
   }).join('');
   renderAgrCustomList();
@@ -2947,7 +2972,7 @@ function renderAgrCustomList(){
 function addAgrCustomItem(){
   const label=(e$('agr-custom-txt')?.value||'').trim();
   if(!label){toast('Enter a custom work item','err');return;}
-  if(agrCustomItems.some(x=>x.label.toLowerCase()===label.toLowerCase())||AGR_SCOPE_CLAUSES.some(x=>x.label.toLowerCase()===label.toLowerCase())){
+  if(agrCustomItems.some(x=>x.label.toLowerCase()===label.toLowerCase())||BOQ_SCOPE_ITEMS.some(x=>x.label.toLowerCase()===label.toLowerCase())){
     toast('Item already in list','err');return;
   }
   agrCustomItems.push({id:'ac_'+uid(),label,included:true});
@@ -2976,9 +3001,19 @@ function setAllAgrClauses(on){
   refreshAgrClauseStyles();
   renderAgrCustomList();
 }
+function agrMatchLabel(list,c){
+  if(!list||!list.length)return null;
+  const low=(c.label||'').toLowerCase();
+  if(list.some(x=>x===c.label||x===c.id||String(x).toLowerCase()===low))return true;
+  // Legacy short-list labels from older agreements
+  for(const [legacy,id] of Object.entries(AGR_LEGACY_LABEL_TO_ID||{})){
+    if(id===c.id&&list.some(x=>String(x).toLowerCase()===legacy||String(x).toLowerCase()===id))return true;
+  }
+  return false;
+}
 function getAgrClauses(){
   const included=[];const excluded=[];
-  AGR_SCOPE_CLAUSES.forEach(c=>{
+  BOQ_SCOPE_ITEMS.forEach(c=>{
     const cb=document.querySelector('input.agr-clause[data-id="'+c.id+'"]');
     if(cb?.checked)included.push(c.label);
     else excluded.push(c.label);
@@ -2992,16 +3027,17 @@ function getAgrClauses(){
 }
 function applyAgrClauses(included,excluded,custom){
   const set={};
-  AGR_SCOPE_CLAUSES.forEach(c=>{
-    if(included&&included.length){
-      set[c.id]=included.some(x=>x===c.label||x===c.id);
-    }else if(excluded&&excluded.length){
-      set[c.id]=!excluded.some(x=>x===c.label||x===c.id);
-    }else{
-      set[c.id]=!!c.def;
-    }
+  BOQ_SCOPE_ITEMS.forEach(c=>{
+    const hitInc=agrMatchLabel(included,c);
+    const hitExc=agrMatchLabel(excluded,c);
+    if(hitInc===true)set[c.id]=true;
+    else if(hitExc===true)set[c.id]=false;
+    else if(included&&included.length)set[c.id]=false;
+    else if(excluded&&excluded.length)set[c.id]=true;
+    else set[c.id]=!!c.def;
   });
-  const premadeLabels=new Set(AGR_SCOPE_CLAUSES.map(x=>x.label.toLowerCase()));
+  const premadeLabels=new Set(BOQ_SCOPE_ITEMS.map(x=>x.label.toLowerCase()));
+  Object.keys(AGR_LEGACY_LABEL_TO_ID||{}).forEach(l=>premadeLabels.add(l));
   if(Array.isArray(custom)&&custom.length){
     agrCustomItems=custom.map(c=>({id:'ac_'+uid(),label:c.label,included:c.included!==false}));
   }else if(included&&included.length){
@@ -3055,9 +3091,9 @@ function iAgr(){
   ['a-cli-t','a-cli-id','a-proj-t','a-proj-id','a-terms','a-scope','a-conditions',
    'a-s','a-e','a-val','a-rate','a-covered','a-dims','a-permit','a-arch','a-footer'].forEach(id=>sv(id,''));
   const sd=e$('a-style-digital');if(sd)sd.checked=true;const hv=e$('a-hide-value');if(hv)hv.checked=false;toggleHideValue();
-  sv('a-st','draft');sv('a-type','labour');
+  sv('a-st','draft');sv('a-type','labour');sv('a-const-type','Grey Structure');
   agrCustomItems=[];sv('agr-custom-txt','');
-  renderAgrClauses(null);
+  renderAgrClauses(agrPresetSet('grey'));
   syncAgrRateLabel();
   // Default general conditions — editable
   sv('a-general',
@@ -4764,13 +4800,29 @@ async function pdfAgr(id){
   // 5. Duration
   sec('Contract Duration','Start Date: '+(r.start||'—')+'          Expected Completion: '+(r.end||'—'));
 
-  // 6. Scope — checkbox inclusions / exclusions
+  // 6. Scope — checkbox inclusions / exclusions (grouped by Brown / Grey / Finishing)
+  const formatScopeList=(labels)=>{
+    if(!labels||!labels.length)return '';
+    const by={brown:[],grey:[],finishing:[],other:[]};
+    const used=new Set();
+    BOQ_SCOPE_ITEMS.forEach(c=>{
+      if(labels.some(x=>x===c.label||x===c.id)){by[c.stage].push(c.label);used.add(c.label.toLowerCase());}
+    });
+    labels.forEach(l=>{if(!used.has(String(l).toLowerCase()))by.other.push(l);});
+    let n=0,out='';
+    [['brown','Brown Structure'],['grey','Grey Structure'],['finishing','Finishing'],['other','Other']].forEach(([k,title])=>{
+      if(!by[k].length)return;
+      out+=(out?'\n':'')+title+'\n';
+      by[k].forEach(x=>{n++;out+=n+'. '+x+'\n';});
+    });
+    return out.trim();
+  };
   if(r.inclusions&&r.inclusions.length){
-    sec('Work Included in Contract',r.inclusions.map((x,i)=>(i+1)+'. '+x).join('\n'));
+    sec('Work Included in Contract',formatScopeList(r.inclusions));
   }
   if(r.scope)sec('Detailed Scope of Work',r.scope);
   const exclList=Array.isArray(r.exclusions)?r.exclusions:(r.exclusions?String(r.exclusions).split(/\s*[·,]\s*/).filter(Boolean):[]);
-  if(exclList.length)sec('Exclusions (Not Included)',exclList.map((x,i)=>(i+1)+'. '+x).join('\n'));
+  if(exclList.length)sec('Exclusions (Not Included)',formatScopeList(exclList));
 
   // 7. Payment schedule
   let payDetail='';
@@ -7888,7 +7940,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-08-06-v48';
+const APP_VERSION='2026-08-06-v49';
 // Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
 // GitHub Pages is the live OTA source of truth while Wasmer Edge GitHub deploys are failing.
 const OTA_ORIGIN='https://abbashafiz.github.io/Buildpro-crm';
