@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-08-06-v45">
+<meta name="app-version" content="2026-08-06-v46">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -691,7 +691,21 @@ select option{background:var(--s2);}
         <div class="ftab" onclick="fExp('equipment',this)">Equipment</div>
         <div class="ftab" onclick="fExp('other',this)">Other</div>
       </div>
+      <div style="font-size:var(--fs-xs);color:var(--mut);margin:-2px 0 10px;padding:0 2px">Tick similar items (e.g. sand, crush) to see their sum and export a PDF.</div>
       <div id="list-exp"></div>
+      <div id="exp-select-bar" style="display:none;position:fixed;left:12px;right:12px;bottom:calc(72px + var(--safe-b));z-index:55;background:var(--s2);border:1px solid var(--bor2);border-radius:14px;padding:11px 13px;box-shadow:0 10px 32px rgba(0,0,0,.55)">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+          <div style="min-width:0">
+            <div style="font-size:var(--fs-sm);font-weight:700;color:var(--txt)" id="exp-select-count">0 selected</div>
+            <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Sum <span style="font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--gold)" id="exp-select-sum">PKR 0</span></div>
+          </div>
+          <div style="display:flex;gap:7px;flex-wrap:wrap;flex-shrink:0">
+            <button type="button" class="btn btn-grey btn-sm" style="padding:7px 10px;font-size:var(--fs-xs)" onclick="selectSimilarExps()">Similar</button>
+            <button type="button" class="btn btn-grey btn-sm" style="padding:7px 10px;font-size:var(--fs-xs)" onclick="clearExpSelect()">Clear</button>
+            <button type="button" class="btn btn-gold btn-sm" style="padding:7px 12px;font-size:var(--fs-xs)" onclick="pdfExpSelected()">⬇ PDF</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- PROFILE -->
@@ -5255,6 +5269,54 @@ function switchExpTab(mode){
 let expFilter='all';
 function fExp(f,el){expFilter=f;document.querySelectorAll('#pg-exp .ftab').forEach(t=>t.classList.remove('on'));el.classList.add('on');renderExp();}
 
+// Multi-select expenses for sum + PDF (persists across re-renders).
+let selectedExpIds={};
+function normExpDesc(s){return String(s||'').trim().toLowerCase().replace(/\s+/g,' ');}
+function getSelectedExps(){
+  const map={};
+  (D.expenses||[]).forEach(r=>{if(r&&r.id)map[r.id]=r;});
+  // Drop stale ids
+  Object.keys(selectedExpIds).forEach(id=>{if(!map[id])delete selectedExpIds[id];});
+  return Object.keys(selectedExpIds).filter(id=>selectedExpIds[id]&&map[id]).map(id=>map[id]);
+}
+function toggleExpSelect(id,on){
+  if(on)selectedExpIds[id]=true;else delete selectedExpIds[id];
+  updateExpSelectBar();
+}
+function toggleSelectExpGroup(ids,on){
+  (ids||[]).forEach(id=>{if(on)selectedExpIds[id]=true;else delete selectedExpIds[id];});
+  renderExp();
+}
+function clearExpSelect(){
+  selectedExpIds={};
+  renderExp();
+}
+function selectSimilarExps(){
+  const picked=getSelectedExps();
+  if(!picked.length){toast('Select at least one expense first','info');return;}
+  const keys=new Set(picked.map(r=>normExpDesc(r.desc)).filter(Boolean));
+  let n=0;
+  (D.expenses||[]).forEach(r=>{
+    if(keys.has(normExpDesc(r.desc))){selectedExpIds[r.id]=true;n++;}
+  });
+  renderExp();
+  toast(n+' similar item'+(n===1?'':'s')+' selected ✓');
+}
+function updateExpSelectBar(){
+  const bar=e$('exp-select-bar');if(!bar)return;
+  const rows=getSelectedExps();
+  const n=rows.length;
+  const sum=rows.reduce((s,r)=>s+(+r.amount||0),0);
+  bar.style.display=n?'block':'none';
+  const c=e$('exp-select-count');if(c)c.textContent=n+' selected';
+  const s=e$('exp-select-sum');if(s)s.textContent='PKR '+fmt(sum);
+  // Keep checkbox UI in sync without full re-render when toggling one
+  document.querySelectorAll('#list-exp input.exp-sel[data-eid]').forEach(inp=>{
+    const id=inp.getAttribute('data-eid');
+    inp.checked=!!selectedExpIds[id];
+  });
+}
+
 // Reimbursement status for on-behalf expenses: 'unpaid' | 'pending' | 'paid'.
 // Falls back to legacy isPaid for records saved before this field existed.
 function rst(r){return r.rstatus||(r.isPaid?'paid':'unpaid');}
@@ -5493,6 +5555,7 @@ function renderExp(){
       ?'<div class="empty"><div class="empty-i">💰</div><div class="empty-t">No owner spending yet.<br>Tap + to add an expense.</div></div>'
       :'<div class="empty"><div class="empty-i">💰</div><div class="empty-t">No contractor spending yet.<br>Tap + to add an expense, or record a sub-con payment.</div></div>')
       +(!isOwnerMode?personalSectionHtml():'');
+    updateExpSelectBar();
     return;
   }
   const projIds=[...new Set([
@@ -5608,8 +5671,11 @@ function renderExp(){
         const internalRows=projRows.filter(r=>(r.fundedBy||'contract')==='contract');
         const ownerRows=projRows.filter(r=>r.fundedBy==='cashinhand');
         const behalfRowsF=projRows.filter(r=>r.fundedBy==='onbehalf');
-        const renderRow=r=>`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:11px 14px;border-bottom:1px solid var(--bor)">
-          <div>
+        const renderRow=r=>`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:11px 14px;border-bottom:1px solid var(--bor);gap:10px;${selectedExpIds[r.id]?'background:rgba(232,184,75,.07)':''}">
+          <label style="display:flex;align-items:flex-start;padding-top:2px;flex-shrink:0;cursor:pointer" onclick="event.stopPropagation()">
+            <input type="checkbox" class="exp-sel" data-eid="${r.id}" ${selectedExpIds[r.id]?'checked':''} onchange="toggleExpSelect('${r.id}',this.checked)" style="width:18px;height:18px;accent-color:var(--gold);cursor:pointer">
+          </label>
+          <div style="flex:1;min-width:0">
             <div style="font-size:var(--fs-sm);font-weight:600">${catIcon[r.cat]||'📦'} ${r.desc} ${expPayBadge(r)}</div>
             <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">${r.date} · ${r.paid} · <span class="b b-m" style="font-size:9px">${r.cat}</span>${expHasDue(r)?` · <span style="color:var(--ora)">Due ${fmt(expDueAmt(r))}</span>`:''}</div>
             ${r.paidTo?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">To: ${r.paidTo}</div>`:''}
@@ -5620,10 +5686,10 @@ function renderExp(){
               <button style="font-size:9px;padding:3px 7px;border-radius:6px;border:1px solid ${r.fundedBy==='onbehalf'?'var(--red)':'var(--bor)'};background:${r.fundedBy==='onbehalf'?'rgba(224,85,85,.12)':'transparent'};color:${r.fundedBy==='onbehalf'?'var(--red)':'var(--mut)'};cursor:pointer;font-family:Inter,sans-serif" onclick="setExpFunding('${r.id}','onbehalf')">On Behalf</button>
             </div>
           </div>
-          <div style="text-align:right;flex-shrink:0;margin-left:12px">
+          <div style="text-align:right;flex-shrink:0;margin-left:4px">
             <div style="font-family:'JetBrains Mono',monospace;color:var(--red);font-size:var(--fs-md)">${fmt(r.amount)}</div>
             ${expPayStatus(r)==='partial'?`<div style="font-size:9px;color:var(--mut);margin-top:2px">Paid ${fmt(expPaidAmt(r))}</div>`:''}
-            <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
+            <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;justify-content:flex-end">
               <button style="font-size:var(--fs-xs);color:${expIsFullyPaid(r)?'var(--mut)':'var(--grn)'};background:none;border:none;cursor:pointer;font-family:Inter,sans-serif;font-weight:600" onclick="markExpPaid('${r.id}')">${expIsFullyPaid(r)?'↩ Unpaid':(expHasDue(r)?'💰 Pay':'✅ Paid')}</button>
               <button style="font-size:var(--fs-xs);color:#4D94D4;background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="cycleFunded('${r.id}')" title="Change funding side">⇄ ${({contract:'Owner Cash',cashinhand:'On Behalf',onbehalf:'Internal'})[r.fundedBy||'contract']}</button>
               <button style="font-size:var(--fs-xs);color:var(--blu);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="eExp('${r.id}')">Edit</button>
@@ -5663,23 +5729,40 @@ function renderExp(){
         if(internalRows.length){
           const intPaid=internalRows.reduce((s,r)=>s+expPaidAmt(r),0);
           const intDue=internalRows.reduce((s,r)=>s+expDueAmt(r),0);
+          const intIds=internalRows.map(r=>r.id);
+          const allIntSel=intIds.every(id=>selectedExpIds[id]);
           html+=`<div style="padding:8px 10px 0">${collapsibleSection('exp-con-'+pid,
             `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%">
-              <span style="font-size:var(--fs-xs);font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.4px">💼 Contractor Expenses · ${internalRows.length}</span>
+              <span style="display:flex;align-items:center;gap:8px;min-width:0">
+                <label onclick="event.stopPropagation()" title="Select all in this section" style="display:flex;align-items:center;cursor:pointer">
+                  <input type="checkbox" ${allIntSel?'checked':''} onchange="toggleSelectExpGroup([${intIds.map(id=>`'${id}'`).join(',')}],this.checked)" style="width:16px;height:16px;accent-color:var(--gold);cursor:pointer">
+                </label>
+                <span style="font-size:var(--fs-xs);font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.4px">💼 Contractor Expenses · ${internalRows.length}</span>
+              </span>
               <span style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-xs);color:var(--red);flex-shrink:0">${fmt(intPaid)}${intDue>0?` · <span style="color:var(--ora)">${fmt(intDue)} due</span>`:''}</span>
             </div>`,
             `<div style="border:1px solid var(--bor);border-radius:8px;overflow:hidden">${internalRows.map(renderRow).join('')}</div>`,
             true)}</div>`;
         }
         if(ownerRows.length){
-          html+=`<div style="padding:7px 14px;background:rgba(77,148,212,.08);border-bottom:1px solid var(--bor);font-size:var(--fs-xs);font-weight:700;color:#4D94D4;text-transform:uppercase;letter-spacing:.5px">🪣 Owner Misc Cash — spent from owner's advance</div>`;
+          const ownIds=ownerRows.map(r=>r.id);
+          const allOwnSel=ownIds.every(id=>selectedExpIds[id]);
+          html+=`<div style="padding:7px 14px;background:rgba(77,148,212,.08);border-bottom:1px solid var(--bor);font-size:var(--fs-xs);font-weight:700;color:#4D94D4;text-transform:uppercase;letter-spacing:.5px;display:flex;align-items:center;gap:8px">
+            <label onclick="event.stopPropagation()" style="display:flex;align-items:center;cursor:pointer">
+              <input type="checkbox" ${allOwnSel?'checked':''} onchange="toggleSelectExpGroup([${ownIds.map(id=>`'${id}'`).join(',')}],this.checked)" style="width:16px;height:16px;accent-color:#4D94D4;cursor:pointer">
+            </label>
+            <span>🪣 Owner Misc Cash — spent from owner's advance</span>
+          </div>`;
           html+=ownerRows.map(renderRow).join('');
         }
         if(behalfRowsF.length){
           const rBadge={unpaid:'<span style="color:var(--red);font-size:var(--fs-xs)">🔴 Unpaid</span>',pending:'<span style="color:var(--gold);font-size:var(--fs-xs)">🟡 Pending</span>',paid:'<span style="color:var(--grn);font-size:var(--fs-xs)">✅ Paid</span>'};
           const rNext={unpaid:'🟡 Pending',pending:'✅ Paid',paid:'🔴 Unpaid'};
-          const renderRowB=r=>{const st=rst(r);return`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:11px 14px;border-bottom:1px solid var(--bor)">
-          <div>
+          const renderRowB=r=>{const st=rst(r);return`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:11px 14px;border-bottom:1px solid var(--bor);gap:10px;${selectedExpIds[r.id]?'background:rgba(232,184,75,.07)':''}">
+          <label style="display:flex;align-items:flex-start;padding-top:2px;flex-shrink:0;cursor:pointer" onclick="event.stopPropagation()">
+            <input type="checkbox" class="exp-sel" data-eid="${r.id}" ${selectedExpIds[r.id]?'checked':''} onchange="toggleExpSelect('${r.id}',this.checked)" style="width:18px;height:18px;accent-color:var(--gold);cursor:pointer">
+          </label>
+          <div style="flex:1;min-width:0">
             <div style="font-size:var(--fs-sm);font-weight:600">${catIcon[r.cat]||'📦'} ${r.desc} ${rBadge[st]}</div>
             <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">${r.date} · ${r.paid} · <span class="b b-m" style="font-size:9px">${r.cat}</span></div>
             ${r.paidTo?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">To: ${r.paidTo}</div>`:''}
@@ -5690,9 +5773,9 @@ function renderExp(){
               <button style="font-size:9px;padding:3px 7px;border-radius:6px;border:1px solid var(--red);background:rgba(224,85,85,.12);color:var(--red);cursor:pointer;font-family:Inter,sans-serif" onclick="setExpFunding('${r.id}','onbehalf')">On Behalf</button>
             </div>
           </div>
-          <div style="text-align:right;flex-shrink:0;margin-left:12px">
+          <div style="text-align:right;flex-shrink:0;margin-left:4px">
             <div style="font-family:'JetBrains Mono',monospace;color:var(--red);font-size:var(--fs-md)">${fmt(r.amount)}</div>
-            <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
+            <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;justify-content:flex-end">
               <button style="font-size:var(--fs-xs);color:var(--gold);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif;font-weight:600" onclick="cycleReimburse('${r.id}')">→ ${rNext[st]}</button>
               <button style="font-size:var(--fs-xs);color:#4D94D4;background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="cycleFunded('${r.id}')" title="Change funding side">⇄ Internal</button>
               <button style="font-size:var(--fs-xs);color:var(--blu);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="eExp('${r.id}')">Edit</button>
@@ -5700,7 +5783,14 @@ function renderExp(){
             </div>
           </div>
         </div>`;};
-          html+=`<div style="padding:7px 14px;background:rgba(224,85,85,.08);border-bottom:1px solid var(--bor);font-size:var(--fs-xs);font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.5px">🤝 On Behalf of Owner — reimbursable (not contract spend)</div>`;
+          const behIds=behalfRowsF.map(r=>r.id);
+          const allBehSel=behIds.every(id=>selectedExpIds[id]);
+          html+=`<div style="padding:7px 14px;background:rgba(224,85,85,.08);border-bottom:1px solid var(--bor);font-size:var(--fs-xs);font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.5px;display:flex;align-items:center;gap:8px">
+            <label onclick="event.stopPropagation()" style="display:flex;align-items:center;cursor:pointer">
+              <input type="checkbox" ${allBehSel?'checked':''} onchange="toggleSelectExpGroup([${behIds.map(id=>`'${id}'`).join(',')}],this.checked)" style="width:16px;height:16px;accent-color:var(--gold);cursor:pointer">
+            </label>
+            <span>🤝 On Behalf of Owner — reimbursable (not contract spend)</span>
+          </div>`;
           html+=behalfRowsF.map(renderRowB).join('');
         }
         return html;
@@ -5721,6 +5811,7 @@ function renderExp(){
     </div>`;
     return collapsibleSection(gid,header,body,open);
   }).join('')+(!isOwnerMode?personalSectionHtml():'');
+  updateExpSelectBar();
 }
 
 function setExpFunding(id,funded){
@@ -6264,6 +6355,64 @@ async function pdfExpProjectOwner(pid,projName){
   drawBankFooter(doc);
   savePdf(doc,'OwnerExpenses-'+projName.replace(/\s+/g,'-')+'-'+today()+'.pdf');
   toast('Owner expense PDF ✓');
+}
+
+// Per-item / multi-select expense PDF (sand, crush, etc.)
+async function pdfExpSelected(){
+  await prepareCompanyLogo();
+  const rows=getSelectedExps().slice().sort((a,b)=>(a.date||'').localeCompare(b.date||'')||(a.desc||'').localeCompare(b.desc||''));
+  if(!rows.length){toast('Select expenses first','info');return;}
+  const billTotal=rows.reduce((s,r)=>s+(+r.amount||0),0);
+  const paidTotal=rows.reduce((s,r)=>s+expPaidAmt(r),0);
+  const dueTotal=rows.reduce((s,r)=>s+expDueAmt(r),0);
+  const uniqDesc=[...new Set(rows.map(r=>normExpDesc(r.desc)).filter(Boolean))];
+  const titleLabel=uniqDesc.length===1?(rows[0].desc||'Selected Items'):(uniqDesc.length<=3?uniqDesc.map(d=>d.replace(/\b\w/g,c=>c.toUpperCase())).join(' + '):'Selected Expenses');
+  const refLabel=rows.length+' item'+(rows.length===1?'':'s');
+  const doc=bPDF();const pw=210;
+  let y=drawHeader(doc,'SELECTED EXPENSES PDF',refLabel,'Date: '+today(),'','');
+  doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(30,30,30);
+  doc.text(titleLabel,14,y);
+  doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(120,115,108);
+  doc.text('Only the expenses you ticked. Use this for material groups like sand, crush, steel, etc.',14,y+6);
+  y+=14;
+  doc.setFillColor(40,38,34);doc.rect(14,y,182,16,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(255,255,255);
+  doc.text('SUM (BILL):  PKR '+fmt(billTotal),pw/2,y+10.5,{align:'center'});
+  y+=20;
+  doc.setFillColor(248,246,242);doc.rect(14,y,182,14,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(9.5);doc.setTextColor(30,30,30);
+  doc.text('Items  '+rows.length,28,y+9);
+  doc.text('Paid  PKR '+fmt(paidTotal),95,y+9);
+  doc.setTextColor(201,123,58);
+  doc.text('Due  PKR '+fmt(dueTotal),190,y+9,{align:'right'});
+  y+=20;
+  const fundLabel=r=>({contract:'Contractor',cashinhand:'Owner Misc',onbehalf:'On Behalf'}[r.fundedBy||'contract']||'Contractor');
+  const body=rows.map(r=>[
+    r.date||'—',
+    (r.desc||'—')+(r.paidTo?'\nTo: '+r.paidTo:'')+(r.notes?'\n'+r.notes:''),
+    r.projectName||(D.projects.find(p=>p.id===r.projectId)?.name)||'—',
+    (r.cat||'other')+' · '+fundLabel(r),
+    fmt(r.amount),
+    fmt(expPaidAmt(r))
+  ]);
+  doc.autoTable({
+    startY:y,
+    head:[['Date','Description','Project','Category','Bill','Paid']],
+    body,
+    foot:[['','','','TOTAL',fmt(billTotal),fmt(paidTotal)]],
+    styles:{fontSize:8.5,cellPadding:2.6,textColor:[30,30,30]},
+    headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
+    footStyles:pdfFootStyles('gold'),
+    columnStyles:{0:{cellWidth:22},2:{cellWidth:34},3:{cellWidth:28},4:{halign:'right',cellWidth:22},5:{halign:'right',cellWidth:22}},
+    rowPageBreak:'avoid',showFoot:'lastPage',margin:{left:14,right:14,bottom:18}
+  });
+  y=doc.lastAutoTable.finalY+10;
+  if(y>250){doc.addPage();y=20;}
+  drawPdfGrandTotal(doc,y,'SELECTED TOTAL (BILL)','PKR '+fmt(billTotal),{tone:'gold',h:18});
+  drawBankFooter(doc);
+  const slug=(uniqDesc.length===1?(rows[0].desc||'items'):'selected').replace(/[^a-zA-Z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,40)||'selected';
+  savePdf(doc,'Expenses-'+slug+'-'+today()+'.pdf');
+  toast(rows.length+' expense'+(rows.length===1?'':'s')+' PDF ✓ · PKR '+fmt(billTotal));
 }
 
 // Legacy alias — keep old callers working; routes by current expenses tab
@@ -7639,7 +7788,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-08-06-v45';
+const APP_VERSION='2026-08-06-v46';
 // Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
 // GitHub Pages is the live OTA source of truth while Wasmer Edge GitHub deploys are failing.
 const OTA_ORIGIN='https://abbashafiz.github.io/Buildpro-crm';
