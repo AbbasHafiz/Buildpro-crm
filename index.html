@@ -5413,23 +5413,45 @@ async function pdfAgr(id){
     y+=3;
   }
   if(r.scope)sec('Detailed Scope of Work',r.scope);
-  // 7. Payment schedule
-  let payDetail='';
+  // 7. Payment schedule — 2-column rows (space-saving, Urdu-safe)
+  const payRows=[];
   if(Array.isArray(r.paySchedule)&&r.paySchedule.length){
-    r.paySchedule.forEach((p,idx)=>{
+    r.paySchedule.forEach(p=>{
       if(!p||(!(p.stage||'').trim()&&!(p.amount||'').trim()))return;
-      payDetail+=(idx+1)+'. '+(p.stage||'Stage');
-      if(p.amount)payDetail+=': '+p.amount;
-      if(p.note)payDetail+=' ('+p.note+')';
-      payDetail+='\n';
+      let cell=(p.stage||'Stage').trim();
+      if(p.amount)cell+=': '+String(p.amount).trim();
+      if(p.note)cell+=' ('+String(p.note).trim()+')';
+      payRows.push(cell);
     });
   }
-  if(r.pay1)payDetail+='Advance: '+r.pay1+'\n';
-  if(r.pay2)payDetail+='At DPC/Slab Level: '+r.pay2+'\n';
-  if(r.pay3)payDetail+='At Roof/Structure: '+r.pay3+'\n';
-  if(r.pay4)payDetail+='Final on Completion: '+r.pay4+'\n';
-  if(r.terms)payDetail+=(payDetail?'\n':'')+r.terms;
-  if(payDetail)sec('Payment Schedule',payDetail.trim());
+  if(r.pay1)payRows.push('Advance: '+r.pay1);
+  if(r.pay2)payRows.push('At DPC/Slab Level: '+r.pay2);
+  if(r.pay3)payRows.push('At Roof/Structure: '+r.pay3);
+  if(r.pay4)payRows.push('Final on Completion: '+r.pay4);
+  if(payRows.length||r.terms){
+    if(y>252){doc.addPage();y=20;}
+    doc.setFillColor(242,240,235);doc.rect(14,y-4,182,8,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(110,105,98);
+    doc.text('PAYMENT SCHEDULE',16,y+1);y+=10;
+    if(payRows.length){
+      const cols=2;const colW=88;const xs=[14,14+94];
+      for(let i=0;i<payRows.length;i+=cols){
+        if(y>280){doc.addPage();y=20;}
+        let rowH=5;
+        for(let c=0;c<cols;c++){
+          if(i+c>=payRows.length)break;
+          const cell=(i+c+1)+'. '+payRows[i+c];
+          const hh=pdfDrawCellAt(doc,cell,xs[c],y,colW,9);
+          rowH=Math.max(rowH,hh);
+        }
+        y+=rowH+2.2;
+      }
+      y+=2;
+    }
+    if(r.terms){
+      y+=pdfDrawCellAt(doc,String(r.terms).trim(),14,y,178,9)+3;
+    }
+  }
 
   // 8. Compliance
   if(r.compliance&&r.compliance.length){
