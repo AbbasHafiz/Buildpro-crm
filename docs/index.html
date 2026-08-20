@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-08-06-v54">
+<meta name="app-version" content="2026-08-06-v55">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -1372,8 +1372,8 @@ select option{background:var(--s2);}
     <div class="hdiv"></div>
 
     <!-- Scope of work — editable names; ✕ moves to Not Included -->
-    <div style="font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:.8px;font-weight:700;margin-bottom:6px">Scope of Work — Included</div>
-    <div style="font-size:var(--fs-xs);color:var(--mut2);margin-bottom:10px;line-height:1.45">Every field is editable — name, unit, and optional rate. Edit section titles too. <b style="color:var(--red)">✕</b> moves an item to <b style="color:var(--txt)">Not Included</b>.</div>
+    <div style="font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:.8px;font-weight:700;margin-bottom:6px">Scope of Work — Included <span style="color:var(--gold);font-weight:600;text-transform:none">· اردو / English</span></div>
+    <div style="font-size:var(--fs-xs);color:var(--mut2);margin-bottom:10px;line-height:1.45">Type English or Urdu in any field (auto RTL). Edit name, unit, rate, and section titles. <b style="color:var(--red)">✕</b> → Not Included.</div>
     <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
       <button type="button" class="btn btn-grey btn-sm" style="padding:6px 12px;font-size:var(--fs-xs)" onclick="applyAgrStructurePreset('brown')">🟤 Brown pack</button>
       <button type="button" class="btn btn-grey btn-sm" style="padding:6px 12px;font-size:var(--fs-xs)" onclick="applyAgrStructurePreset('grey')">⬜ Grey pack</button>
@@ -2047,6 +2047,46 @@ function pdfAddMixedBlock(doc,text,startY,maxWmm){
   doc.text(lines,14,y);
   return y+lines.length*5.5+5;
 }
+/** Draw mixed EN/UR text at (x,y); returns height used (mm). */
+function pdfDrawCellAt(doc,text,x,y,maxWmm,fontPt){
+  if(text==null||text==='')return 0;
+  const maxW=maxWmm||88;
+  const pt=fontPt||9;
+  if(hasUrdu(text)){
+    const pxPerMm=8;
+    const canvasWpx=Math.round(maxW*pxPerMm);
+    const fontMm=pt*0.3528;
+    const fontPx=Math.round(fontMm*pxPerMm);
+    const lineHmm=fontMm*1.7;
+    const lineHpx=Math.round(lineHmm*pxPerMm);
+    const padPx=Math.round(1.2*pxPerMm);
+    const canvas=document.createElement('canvas');
+    const tempCtx=canvas.getContext('2d');
+    tempCtx.font=fontPx+'px "Noto Nastaliq Urdu","Urdu Typesetting","Times New Roman",serif';
+    const words=String(text).split(' ');let lines=[],cur='';
+    words.forEach(w=>{
+      const test=cur?cur+' '+w:w;
+      if(tempCtx.measureText(test).width>canvasWpx-padPx*2&&cur){lines.push(cur);cur=w;}
+      else cur=test;
+    });
+    if(cur)lines.push(cur);
+    canvas.width=canvasWpx;
+    canvas.height=Math.max(Math.ceil(lines.length*lineHpx+padPx),lineHpx+padPx);
+    const ctx=canvas.getContext('2d');
+    ctx.fillStyle='#ffffff';ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.font=fontPx+'px "Noto Nastaliq Urdu","Urdu Typesetting","Times New Roman",serif';
+    ctx.fillStyle='#1e1b18';ctx.textAlign='right';ctx.direction='rtl';
+    lines.forEach((ln,i)=>{ctx.fillText(ln,canvas.width-padPx,lineHpx*(i+1)-2);});
+    const imgHmm=canvas.height/pxPerMm;
+    doc.addImage(canvas.toDataURL('image/jpeg',0.95),'JPEG',x,y-fontMm*0.85,maxW,imgHmm);
+    return imgHmm;
+  }
+  doc.setFont('helvetica','normal');doc.setFontSize(pt);doc.setTextColor(30,30,30);
+  const lines=doc.splitTextToSize(String(text),maxW);
+  doc.text(lines,x,y);
+  return Math.max(lines.length*4.2,4.2);
+}
+
 function pdfTextUrdu(doc,text,x,y,opts){
   if(!text)return;
   if(hasUrdu(text)){
@@ -3038,12 +3078,12 @@ function agrItemRowHtml(opts){
   const actions=opts.actions||'';
   return `<div class="agr-item-row" data-kind="${opts.kind}" data-key="${opts.key}" style="background:var(--bg);border:1px solid ${border};border-radius:8px;padding:7px 8px">
     <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">
-      <input class="agr-fld-lbl" value="${agrEsc(opts.label)}" placeholder="Item name" style="flex:1;min-width:0;font-size:var(--fs-xs);padding:6px 8px;background:var(--s2);border:1px solid var(--bor);border-radius:6px;color:var(--txt)">
+      <input class="agr-fld-lbl urdu-field" dir="auto" value="${agrEsc(opts.label)}" placeholder="Item name / نام" style="flex:1;min-width:0;font-size:var(--fs-xs);padding:6px 8px;background:var(--s2);border:1px solid var(--bor);border-radius:6px;color:var(--txt)">
       ${actions}
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-      <input class="agr-fld-unit" value="${agrEsc(opts.unit||'job')}" placeholder="Unit" style="font-size:var(--fs-xs);padding:5px 8px;background:var(--s2);border:1px solid var(--bor);border-radius:6px;color:var(--mut)">
-      <input class="agr-fld-rate" value="${agrEsc(opts.rate||'')}" placeholder="Rate (optional)" style="font-size:var(--fs-xs);padding:5px 8px;background:var(--s2);border:1px solid var(--bor);border-radius:6px;color:var(--mut)">
+      <input class="agr-fld-unit urdu-field" dir="auto" value="${agrEsc(opts.unit||'job')}" placeholder="Unit / یونٹ" style="font-size:var(--fs-xs);padding:5px 8px;background:var(--s2);border:1px solid var(--bor);border-radius:6px;color:var(--mut)">
+      <input class="agr-fld-rate urdu-field" dir="auto" value="${agrEsc(opts.rate||'')}" placeholder="Rate / ریٹ" style="font-size:var(--fs-xs);padding:5px 8px;background:var(--s2);border:1px solid var(--bor);border-radius:6px;color:var(--mut)">
     </div>
   </div>`;
 }
@@ -3335,9 +3375,9 @@ function renderAgrPayRows(){
   }
   el.innerHTML=agrPaySched.map(p=>{
     return `<div class="agr-pay-row" data-id="${p.id}" style="display:grid;grid-template-columns:1.4fr 0.9fr 1fr 28px;gap:6px;align-items:center">
-      <input class="agr-pay-stage" value="${agrEsc(p.stage)}" placeholder="Stage / work done" style="font-size:var(--fs-xs);padding:8px 9px">
-      <input class="agr-pay-amt" value="${agrEsc(p.amount)}" placeholder="Amount / %" style="font-size:var(--fs-xs);padding:8px 9px">
-      <input class="agr-pay-note" value="${agrEsc(p.note)}" placeholder="Note" style="font-size:var(--fs-xs);padding:8px 9px">
+      <input class="agr-pay-stage urdu-field" dir="auto" value="${agrEsc(p.stage)}" placeholder="Stage / work done" style="font-size:var(--fs-xs);padding:8px 9px">
+      <input class="agr-pay-amt urdu-field" dir="auto" value="${agrEsc(p.amount)}" placeholder="Amount / %" style="font-size:var(--fs-xs);padding:8px 9px">
+      <input class="agr-pay-note urdu-field" dir="auto" value="${agrEsc(p.note)}" placeholder="Note" style="font-size:var(--fs-xs);padding:8px 9px">
       <button type="button" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;font-weight:700" onclick="delAgrPayRow('${p.id}')">✕</button>
     </div>`;
   }).join('');
@@ -5070,6 +5110,7 @@ async function pdfBoqVsActual(id){
 
 async function pdfAgr(id){
   await prepareCompanyLogo();
+  await ensureUrduFont();
   const r=D.agreements.find(x=>x.id===id);if(!r)return;
   const co2=D.company||{};const doc=bPDF();const pw=210;
   const style=r.printStyle||'digital';
@@ -5174,110 +5215,119 @@ async function pdfAgr(id){
 
 
   const cli=D.clients.find(x=>x.id===r.clientId);
-  sec('Contractor / Service Provider',
-    (co2.name||'[Contractor Name]')+'\n'+
-    (co2.addr?co2.addr+', ':'')+( co2.city||'Islamabad')+', Pakistan'+
-    (co2.phone?'\nPhone: '+co2.phone:'')+
-    (co2.ntn?'\nNTN: '+co2.ntn:'')
-  );
-  sec('Client / Owner',
-    r.clientName+
-    (cli?(cli.addr||cli.city?'\nAddress: '+(cli.addr||cli.city):''):'')+
-    (cli&&cli.phone?'\nPhone: '+cli.phone:'')+
-    (cli&&cli.cnic?'\nCNIC: '+cli.cnic:'')
-  );
+  // Parties side-by-side
+  if(y>252){doc.addPage();y=20;}
+  doc.setFillColor(242,240,235);doc.rect(14,y-4,182,8,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(110,105,98);
+  doc.text('PARTIES',16,y+1);y+=10;
+  const leftX=14, rightX=110, colW=88;
+  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(110,105,98);
+  doc.text('CONTRACTOR',leftX,y);doc.text('CLIENT / OWNER',rightX,y);y+=5;
+  const co2b=D.company||co2||{};
+  const coBlock=(co2.name||'[Contractor Name]')+
+    ((co2.addr||co2.city)?('\n'+(co2.addr?co2.addr+', ':'')+(co2.city||'Islamabad')):'')+
+    (co2.phone?'\n'+co2.phone:'')+(co2.ntn?'\nNTN: '+co2.ntn:'');
+  const cliBlock=r.clientName+
+    (cli&&(cli.addr||cli.city)?('\n'+(cli.addr||cli.city)):'')+
+    (cli&&cli.phone?('\n'+cli.phone):'')+
+    (cli&&cli.cnic?('\nCNIC: '+cli.cnic):'');
+  const hL=pdfDrawCellAt(doc,coBlock,leftX,y,colW,9);
+  const hR=pdfDrawCellAt(doc,cliBlock,rightX,y,colW,9);
+  y+=Math.max(hL,hR)+4;
 
-  // 2. Project details
   const proj=D.projects.find(x=>x.id===r.projectId);
   let projDetail=r.projectName||'';
-  if(proj){if(proj.loc)projDetail+='\nLocation: '+proj.loc;if(proj.plot)projDetail+='\nPlot: '+proj.plot;}
-  sec('Project / Property',projDetail);
+  if(proj){if(proj.loc)projDetail+='\nLoc: '+proj.loc;if(proj.plot)projDetail+='\nPlot: '+proj.plot;}
+  if(y>252){doc.addPage();y=20;}
+  doc.setFillColor(242,240,235);doc.rect(14,y-4,182,8,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(110,105,98);
+  doc.text('PROJECT / PROPERTY',16,y+1);y+=10;
+  y+=pdfDrawCellAt(doc,projDetail,14,y,178,9)+2;
 
-  // 3. House specs
-  let specs='Structure: '+(agrDisplayStoreys(r)||'—');
-  const plotShow=agrDisplayPlotSize(r);
-  if(plotShow)specs+='\nPlot Size: '+plotShow;
-  if(r.dims)specs+='\nPlot Dimensions: '+r.dims;
+  const specPairs=[];
+  specPairs.push(['Structure',agrDisplayStoreys(r)||'—']);
+  const plotShow=agrDisplayPlotSize(r); if(plotShow)specPairs.push(['Plot Size',plotShow]);
+  if(r.dims)specPairs.push(['Dimensions',r.dims]);
   if(!r.hideValue){
-    if(r.covered)specs+='\nTotal Covered Area: '+fmt(r.covered)+' sft';
-    if(r.gfArea)specs+='\nGround Floor: '+fmt(r.gfArea)+' sft';
-    if(r.ffArea)specs+='\nFirst Floor: '+fmt(r.ffArea)+' sft';
+    if(r.covered)specPairs.push(['Covered Area',fmt(r.covered)+' sft']);
+    if(r.gfArea)specPairs.push(['Ground Floor',fmt(r.gfArea)+' sft']);
+    if(r.ffArea)specPairs.push(['First Floor',fmt(r.ffArea)+' sft']);
   }
-  if(r.arch)specs+='\nArchitect/Engineer: '+r.arch;
-  if(r.drawing)specs+='\nApproved Drawing No.: '+r.drawing;
-  if(r.permit)specs+='\nCDA/Society Permit No.: '+r.permit;
-  sec('House / Structure Specifications',specs);
+  if(r.arch)specPairs.push(['Architect',r.arch]);
+  if(r.drawing)specPairs.push(['Drawing No.',r.drawing]);
+  if(r.permit)specPairs.push(['Permit No.',r.permit]);
+  if(specPairs.length){
+    if(y>252){doc.addPage();y=20;}
+    doc.setFillColor(242,240,235);doc.rect(14,y-4,182,8,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(110,105,98);
+    doc.text('HOUSE / STRUCTURE SPECIFICATIONS',16,y+1);y+=10;
+    for(let i=0;i<specPairs.length;i+=2){
+      if(y>280){doc.addPage();y=20;}
+      let rowH=5;
+      for(let c=0;c<2;c++){
+        if(i+c>=specPairs.length)break;
+        const [k,v]=specPairs[i+c];
+        const xx=c===0?14:110;
+        doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(110,105,98);
+        doc.text(k+':',xx,y);
+        const hh=pdfDrawCellAt(doc,String(v),xx+28,y,58,9);
+        rowH=Math.max(rowH,hh);
+      }
+      y+=rowH+2;
+    }
+    y+=2;
+  }
 
   const startShow=agrDisplayStartAfter(r);
   if(r.startAfter&&r.startAfter!=='none'){
-    let prior='Work under this agreement starts: '+startShow;
-    if(r.priorNote)prior+='\nNote: '+r.priorNote;
-    prior+='\n(Prior completed work is not part of this agreement.)';
+    let prior='Starts: '+startShow;
+    if(r.priorNote)prior+='\n'+r.priorNote;
+    prior+='\n(Prior work not part of this agreement.)';
     sec('Prior Work / Start Point',prior);
   }else if(r.startAfterCustom&&r.startAfter==='none'){
-    let prior='Work under this agreement starts: '+r.startAfterCustom;
-    if(r.priorNote)prior+='\nNote: '+r.priorNote;
+    let prior='Starts: '+r.startAfterCustom;
+    if(r.priorNote)prior+='\n'+r.priorNote;
     sec('Prior Work / Start Point',prior);
   }else if(r.priorNote){
     sec('Prior Work / Start Point',r.priorNote);
   }
 
-  // 4. Agreement type & contract value
   const constShow=agrDisplayConstType(r);
-  let rateDetail='Agreement Type: '+agrDisplayType(r)+'\n';
+  let rateDetail='Type: '+agrDisplayType(r);
   if(!r.hideValue){
     if((r.agrType==='labour'||r.agrType==='other')&&r.rate){
       const area=r.covered||(r.gfArea+r.ffArea)||0;
-      rateDetail+=(r.agrType==='other'?'Rate / Amount: ':'Labour Rate: ')+'PKR '+fmt(r.rate)+(area?' per sft\n':' \n');
-      if(area)rateDetail+='Covered Area: '+fmt(area)+' sft\n';
-      rateDetail+='Construction Scope: '+constShow;
+      rateDetail+='\nRate: PKR '+fmt(r.rate)+(area?' /sft · Area: '+fmt(area)+' sft':'');
+      rateDetail+='\nScope: '+constShow;
     }else if(r.agrType==='material'&&r.rate){
       const area=r.covered||(r.gfArea+r.ffArea)||0;
-      rateDetail+='Rate: PKR '+fmt(r.rate)+' per sft (Labour + Material / With Material)\n';
-      if(area)rateDetail+='Covered Area: '+fmt(area)+' sft\n';
-      if(r.matGrade)rateDetail+='Material Grade: '+r.matGrade+'\n';
-      if(r.matSupply)rateDetail+='Material Supply: '+r.matSupply;
-      rateDetail+='\nConstruction Scope: '+constShow;
+      rateDetail+='\nWith Material: PKR '+fmt(r.rate)+'/sft'+(area?' · Area: '+fmt(area)+' sft':'');
+      if(r.matGrade)rateDetail+='\nGrade: '+r.matGrade;
+      rateDetail+='\nScope: '+constShow;
     }else if(r.agrType==='costpct'&&r.rate){
-      rateDetail+='Basis: Cost to Cost\n';
-      rateDetail+='Contractor Margin: '+r.rate+'%\n';
-      rateDetail+='Final payable = Actual verified cost + '+r.rate+'% margin\n';
-      rateDetail+='Construction Scope: '+constShow;
+      rateDetail+='\nCost to Cost + '+r.rate+'% margin\nScope: '+constShow;
     }else if(r.agrType==='phase'){
       const phases=[['Foundation',r.ph1],['DPC/Plinth',r.ph2],['Structure/Slab',r.ph3],['Brickwork',r.ph4],['Plaster',r.ph5],['Finishing',r.ph6]];
-      phases.filter(([,v])=>v>0).forEach(([n,v])=>{rateDetail+=n+': PKR '+fmt(v)+'\n';});
-    }else if(r.agrType==='lump'&&r.rate){
-      rateDetail+='Construction Scope: '+constShow;
+      phases.filter(([,v])=>v>0).forEach(([n,v])=>{rateDetail+='\n'+n+': PKR '+fmt(v);});
     }else{
-      rateDetail+='Construction Scope: '+constShow;
+      rateDetail+='\nScope: '+constShow;
     }
-    if(r.agrType!=='costpct')rateDetail+='\nContract Value: PKR '+fmt(r.value)+'\n('+nW(r.value)+' Pakistani Rupees Only)';
-    else if(r.value)rateDetail+='\nEstimated / Reference Value: PKR '+fmt(r.value);
+    if(r.agrType!=='costpct')rateDetail+='\nContract Value: PKR '+fmt(r.value)+' ('+nW(r.value)+')';
+    else if(r.value)rateDetail+='\nEst. Value: PKR '+fmt(r.value);
   }else{
-    // Hidden — show only labour rate, no covered area (area varies by shade-to-shade measurement)
     if((r.agrType==='labour'||r.agrType==='other')&&r.rate){
-      rateDetail+=(r.agrType==='other'?'Rate / Amount: ':'Labour Rate: ')+'PKR '+fmt(r.rate)+' per sft\n';
-      rateDetail+='Construction Scope: '+constShow+'\n';
-      rateDetail+='\nNote: Final covered area will be measured shade-to-shade upon completion. Total amount payable will be calculated as per the above rate applied to the measured area.';
+      rateDetail+='\nRate: PKR '+fmt(r.rate)+'/sft\nScope: '+constShow+'\nNote: Final area measured shade-to-shade.';
     }else if(r.agrType==='material'&&r.rate){
-      rateDetail+='Rate: PKR '+fmt(r.rate)+' per sft (Labour + Material)\n';
-      if(r.matGrade)rateDetail+='Material Grade: '+r.matGrade+'\n';
-      if(r.matSupply)rateDetail+='Material Supply: '+r.matSupply+'\n';
-      rateDetail+='Construction Scope: '+constShow+'\n';
-      rateDetail+='\nNote: Final covered area will be measured shade-to-shade upon completion. Total amount payable will be calculated as per the above rate applied to the measured area.';
+      rateDetail+='\nWith Material: PKR '+fmt(r.rate)+'/sft\nScope: '+constShow+'\nNote: Final area measured shade-to-shade.';
     }else if(r.agrType==='costpct'&&r.rate){
-      rateDetail+='Basis: Cost to Cost + '+r.rate+'% contractor margin\n';
-      rateDetail+='Construction Scope: '+constShow;
+      rateDetail+='\nCost to Cost + '+r.rate+'%\nScope: '+constShow;
     }else{
-      rateDetail+='Construction Scope: '+constShow;
+      rateDetail+='\nScope: '+constShow;
     }
   }
   sec(r.hideValue?'Agreement Type & Scope':'Contract Value & Rate Details',rateDetail);
+  sec('Contract Duration','Start: '+(r.start||'—')+'          Completion: '+(r.end||'—'));
 
-  // 5. Duration
-  sec('Contract Duration','Start Date: '+(r.start||'—')+'          Expected Completion: '+(r.end||'—'));
-
-  // 6. Scope — compact numbered rows; shows editable name / unit / rate
   const drawAgrScopeRows=(title,labels,details,stageLbl)=>{
     if(!labels||!labels.length)return;
     const detMap={};
@@ -5316,29 +5366,27 @@ async function pdfAgr(id){
     ['brown','grey','finishing','other'].forEach(k=>{
       const items=by[k];if(!items.length)return;
       if(y>270){doc.addPage();y=20;}
-      doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(30,30,30);
-      doc.text(titles[k],14,y);y+=5.5;
-      doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(30,30,30);
+      const gTitle=titles[k];
+      if(hasUrdu(gTitle)){ y+=pdfDrawCellAt(doc,gTitle,14,y,178,9)+1; }
+      else{ doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(30,30,30);doc.text(gTitle,14,y);y+=5.5; }
       for(let i=0;i<items.length;i+=cols){
         if(y>280){doc.addPage();y=20;}
         let rowH=4.8;
         for(let c=0;c<cols;c++){
           if(i+c>=items.length)break;
           n++;
-          const lines=doc.splitTextToSize(n+'. '+items[i+c],colW);
-          doc.text(lines,xs[c],y);
-          rowH=Math.max(rowH,lines.length*4.4);
+          const hh=pdfDrawCellAt(doc,n+'. '+items[i+c],xs[c],y,colW,9);
+          rowH=Math.max(rowH,hh);
         }
         y+=rowH+1.2;
       }
-      y+=2.5;
+      y+=2;
     });
-    y+=2;
+    y+=1;
   };
   if(r.inclusions&&r.inclusions.length){
     drawAgrScopeRows('Work Included in Contract',r.inclusions,r.includedDetails||null,r.stageLabels||null);
   }
-  // Not Included — with rates when provided
   const niList=(Array.isArray(r.notIncluded)&&r.notIncluded.length)
     ?r.notIncluded
     :(Array.isArray(r.exclusions)?r.exclusions.map(lab=>({label:lab,rate:''})):[]);
@@ -5347,7 +5395,6 @@ async function pdfAgr(id){
     doc.setFillColor(242,240,235);doc.rect(14,y-4,182,8,'F');
     doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(110,105,98);
     doc.text('NOT INCLUDED (EXCLUSIONS)',16,y+1);y+=10;
-    doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(30,30,30);
     const cols=2;const colW=88;const xs=[14,14+94];
     for(let i=0;i<niList.length;i+=cols){
       if(y>280){doc.addPage();y=20;}
@@ -5358,10 +5405,8 @@ async function pdfAgr(id){
         const lab=typeof it==='string'?it:(it.label||'');
         const unit=(typeof it==='object'&&it.unit)?String(it.unit).trim():'';
         const rate=(typeof it==='object'&&it.rate)?String(it.rate).trim():'';
-        const cell=(i+c+1)+'. '+lab+(unit?' ('+unit+')':'')+(rate?' — '+rate:'');
-        const lines=doc.splitTextToSize(cell,colW);
-        doc.text(lines,xs[c],y);
-        rowH=Math.max(rowH,lines.length*4.4);
+        const hh=pdfDrawCellAt(doc,(i+c+1)+'. '+lab+(unit?' ('+unit+')':'')+(rate?' — '+rate:''),xs[c],y,colW,9);
+        rowH=Math.max(rowH,hh);
       }
       y+=rowH+1.2;
     }
@@ -8493,7 +8538,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-08-06-v54';
+const APP_VERSION='2026-08-06-v55';
 // Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
 // GitHub Pages is the live OTA source of truth while Wasmer Edge GitHub deploys are failing.
 const OTA_ORIGIN='https://abbashafiz.github.io/Buildpro-crm';
