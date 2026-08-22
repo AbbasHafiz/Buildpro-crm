@@ -22,10 +22,14 @@ The Capacitor Android shell loads the live PWA from **GitHub Pages** (`server.ur
 
 If the device is offline, Capacitor shows the bundled `offline.html`, which can retry the live host or open the last packaged local copy.
 
+## Self-host for a client
+
+Point the app at the client’s own Supabase project (database + Google Sign-In) via **Backend / Self-host settings**, or ship a `config.json` beside `index.html`. Full steps: [SELFHOST.md](SELFHOST.md).
+
 ## Stack
 
 - Single-file web app: `index.html` + `sw.js` + `manifest.json` (vanilla JS, no bundler)
-- Supabase (Google OAuth + one JSON row per user)
+- Supabase (Google OAuth + one JSON row per user) — BuildPro hosted by default, or client-owned via Backend Settings
 - Capacitor 6 Android wrapper
 
 ## Develop
