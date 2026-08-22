@@ -1,0 +1,8 @@
+{
+  "mode": "custom",
+  "supabaseUrl": "https://YOUR_PROJECT.supabase.co",
+  "supabaseAnonKey": "YOUR_SUPABASE_ANON_PUBLIC_KEY",
+  "redirectUrl": "",
+  "googleClientId": "",
+  "deeplink": "com.buildpro.crm://login-callback"
+}

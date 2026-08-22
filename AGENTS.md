@@ -3,7 +3,7 @@
 A construction-business management app for a Pakistani contracting business.
 
 - **Web/PWA**: the entire app is a single static file, `index.html` (markup + CSS + vanilla JS inline), plus `sw.js`, `manifest.json`, and icons. No web build step, no framework, no bundler.
-- **Backend**: Supabase (hosted) — Google OAuth + a single `buildpro_data` row per user (JSON blob). Config is inlined in `index.html`.
+- **Backend**: Supabase — Google OAuth + a single `buildpro_data` row per user (JSON blob). Default credentials are inlined for BuildPro hosted mode; clients can switch to their own project via Backend Settings (`localStorage` `bp_backend`) or optional root `config.json`. See `SELFHOST.md`.
 - **Android app**: a Capacitor wrapper. In production it loads the live PWA over-the-air from GitHub Pages `https://abbashafiz.github.io/Buildpro-crm/` (`capacitor.config.json` → `server.url`). Bundled `www/` assets are the offline fallback (`server.errorPath` → `offline.html`). Web feature updates do **not** require a new APK — only native shell/plugin changes do. Wasmer (`buildpro-crm.wasmer.app`) is a mirror; CLI deploy needs `WASMER_TOKEN`.
 
 ## Cursor Cloud specific instructions
@@ -16,7 +16,8 @@ A construction-business management app for a Pakistani contracting business.
 - **Service worker caching**: `sw.js` caches the app. After changing `index.html`, a reload can serve the old version. To load fresh code in a browser, clear it first (DevTools console):
   `Promise.all([navigator.serviceWorker.getRegistrations().then(rs=>Promise.all(rs.map(r=>r.unregister()))), caches.keys().then(ks=>Promise.all(ks.map(k=>caches.delete(k))))]).then(()=>{localStorage.removeItem('bp5');location.reload();})`
   End users can use the in-app menu → "Check for Updates" (`clearCacheUpdate()`).
-- **Login is Google-OAuth-gated** (Supabase). Google OAuth cannot be completed in this VM/headless browser. To test app functionality without logging in, run `launchApp()` in the DevTools console — it bypasses the login screen and runs against `localStorage` (key `bp5`).
+- **Login is Google-OAuth-gated** (Supabase) in hosted/custom modes. Google OAuth cannot be completed in this VM/headless browser. To test without OAuth: set Backend Settings → **Local only**, or run `launchApp()` / `continueOffline()` in the DevTools console — uses `localStorage` key `bp5`.
+- Backend overrides live in `localStorage` key `bp_backend`. Reset with Backend Settings → Reset, or `localStorage.removeItem('bp_backend')`.
 - `confirm()`/`alert()` dialogs get suppressed by Chrome after a few prompts in automated sessions, which makes delete buttons look unresponsive. In tests, set `window.confirm=()=>true` before exercising deletes.
 
 ### Deploying the web/PWA
