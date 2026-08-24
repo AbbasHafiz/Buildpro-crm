@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-08-24-v67">
+<meta name="app-version" content="2026-08-24-v68">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -1473,6 +1473,7 @@ select option{background:var(--s2);}
       <button type="button" class="btn btn-grey btn-sm" style="padding:6px 12px;font-size:var(--fs-xs)" onclick="applyAgrStructurePreset('finishing')">✨ Finishing pack</button>
       <button type="button" class="btn btn-grey btn-sm" style="padding:6px 12px;font-size:var(--fs-xs)" onclick="clearAgrScopeItems()">Clear list</button>
     </div>
+    <div style="font-size:var(--fs-xs);color:var(--mut2);margin-bottom:8px;line-height:1.4">On each row use <b style="color:var(--txt)">→ Grey</b> / <b style="color:var(--txt)">→ Brown</b> to move an item between structures.</div>
     <div style="display:flex;gap:7px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
       <select id="agr-add-item" onchange="if(this.value){addAgrScopeItem(this.value);this.value='';}" style="flex:1;min-width:180px">
         <option value="">+ Add work item…</option>
@@ -3633,7 +3634,7 @@ function agrPresetSet(level){
   return set;
 }
 let agrActiveIds={}; // premade item ids currently ON this agreement
-let agrItemMeta={}; // id -> {label, unit, rate} overrides for catalogue items
+let agrItemMeta={}; // id -> {label, unit, rate, stage} overrides for catalogue items
 let agrStageLabels={brown:'',grey:'',finishing:''}; // editable section titles
 let agrNotIncluded=[]; // {key,label,rate,unit}
 let agrPaySched=[]; // {id,stage,amount,note}
@@ -3651,6 +3652,44 @@ function agrCatUnit(id){
 }
 function agrCatRate(id){
   return String(agrItemMeta[id]?.rate??'').trim();
+}
+function agrCatStage(id){
+  const ov=agrItemMeta[id]?.stage;
+  if(ov&&BOQ_STAGE_ORDER[ov]!=null)return ov;
+  const c=BOQ_SCOPE_ITEMS.find(x=>x.id===id);
+  return c?.stage||'grey';
+}
+function agrMoveBtnHtml(kind,key,stage){
+  // Toggle Brown ↔ Grey on included rows
+  if(stage==='brown'){
+    return`<button type="button" title="Move to Grey Structure" style="background:rgba(200,200,200,.12);border:1px solid var(--bor);color:var(--mut);cursor:pointer;font-size:10px;flex-shrink:0;padding:3px 7px;border-radius:6px;font-weight:700" onclick="moveAgrScopeItem('${kind}','${key}','grey')">→ Grey</button>`;
+  }
+  if(stage==='grey'){
+    return`<button type="button" title="Move to Brown Structure" style="background:rgba(201,123,58,.12);border:1px solid rgba(201,123,58,.35);color:var(--gold);cursor:pointer;font-size:10px;flex-shrink:0;padding:3px 7px;border-radius:6px;font-weight:700" onclick="moveAgrScopeItem('${kind}','${key}','brown')">→ Brown</button>`;
+  }
+  // Finishing (or other): offer both directions into brown/grey
+  return`<button type="button" title="Move to Brown Structure" style="background:rgba(201,123,58,.12);border:1px solid rgba(201,123,58,.35);color:var(--gold);cursor:pointer;font-size:10px;flex-shrink:0;padding:3px 7px;border-radius:6px;font-weight:700" onclick="moveAgrScopeItem('${kind}','${key}','brown')">→ Brown</button>
+    <button type="button" title="Move to Grey Structure" style="background:rgba(200,200,200,.12);border:1px solid var(--bor);color:var(--mut);cursor:pointer;font-size:10px;flex-shrink:0;padding:3px 7px;border-radius:6px;font-weight:700" onclick="moveAgrScopeItem('${kind}','${key}','grey')">→ Grey</button>`;
+}
+function moveAgrScopeItem(kind,key,toStage){
+  if(toStage!=='brown'&&toStage!=='grey'){toast('Move only between Brown and Grey','err');return;}
+  syncAgrFormFromDom();
+  if(kind==='cat'){
+    const base=BOQ_SCOPE_ITEMS.find(x=>x.id===key);if(!base)return;
+    if(toStage===base.stage){
+      if(agrItemMeta[key]){
+        delete agrItemMeta[key].stage;
+        if(!Object.keys(agrItemMeta[key]).length)delete agrItemMeta[key];
+      }
+    }else{
+      agrItemMeta[key]={...(agrItemMeta[key]||{}),stage:toStage};
+    }
+  }else if(kind==='custom'){
+    const c=agrCustomItems.find(x=>x.id===key);if(!c)return;
+    c.stage=toStage;
+  }else return;
+  renderAgrClauses();
+  toast('Moved to '+agrStageTitle(toStage)+' ✓');
 }
 function agrItemRowHtml(opts){
   // opts: {key,label,unit,rate,kind:'cat'|'custom'|'ni', border, actions}
@@ -3803,7 +3842,9 @@ function syncAgrFormFromDom(){
     const lbl=(row.querySelector('.agr-fld-lbl')?.value||'').trim();
     const unit=(row.querySelector('.agr-fld-unit')?.value||'').trim();
     const rate=(row.querySelector('.agr-fld-rate')?.value||'').trim();
+    const prev=agrItemMeta[id]||{};
     const meta={};
+    if(prev.stage&&BOQ_STAGE_ORDER[prev.stage]!=null)meta.stage=prev.stage;
     if(lbl&&lbl!==c.label)meta.label=lbl;
     if(unit&&unit!==(c.unit||'job'))meta.unit=unit;
     if(rate)meta.rate=rate;
@@ -3852,7 +3893,7 @@ function renderAgrClauses(selected){
   let html='';
   let any=false;
   stages.forEach(stage=>{
-    const cats=BOQ_SCOPE_ITEMS.filter(c=>agrActiveIds[c.id]&&c.stage===stage);
+    const cats=BOQ_SCOPE_ITEMS.filter(c=>agrActiveIds[c.id]&&agrCatStage(c.id)===stage);
     const customs=agrCustomItems.filter(c=>c.stage===stage);
     if(!cats.length&&!customs.length)return;
     any=true;
@@ -3861,7 +3902,9 @@ function renderAgrClauses(selected){
       <input class="agr-stage-lbl" data-stage="${stage}" value="${agrEsc(title)}" style="width:100%;font-size:10px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.6px;padding:5px 8px;background:transparent;border:1px dashed rgba(232,184,75,.35);border-radius:6px">
     </div>`;
     cats.forEach(c=>{
-      const actions=`<button type="button" title="Move to Not Included" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;flex-shrink:0;padding:0 2px;font-weight:700" onclick="removeAgrScopeItem('${c.id}')">✕</button>`;
+      const st=agrCatStage(c.id);
+      const actions=`${agrMoveBtnHtml('cat',c.id,st)}
+        <button type="button" title="Move to Not Included" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;flex-shrink:0;padding:0 2px;font-weight:700" onclick="removeAgrScopeItem('${c.id}')">✕</button>`;
       html+=agrItemRowHtml({
         kind:'cat',key:c.id,
         label:agrCatLabel(c.id),
@@ -3871,7 +3914,8 @@ function renderAgrClauses(selected){
       });
     });
     customs.forEach(c=>{
-      const actions=`<button type="button" title="Move to Not Included" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;flex-shrink:0;padding:0 2px;font-weight:700" onclick="delAgrCustomItem('${c.id}')">✕</button>`;
+      const actions=`${agrMoveBtnHtml('custom',c.id,c.stage)}
+        <button type="button" title="Move to Not Included" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;flex-shrink:0;padding:0 2px;font-weight:700" onclick="delAgrCustomItem('${c.id}')">✕</button>`;
       // Tag stage on the row so sync can preserve it
       html+=agrItemRowHtml({
         kind:'custom',key:c.id,
@@ -4030,8 +4074,9 @@ function getAgrClauses(){
     const label=agrCatLabel(c.id);
     const unit=agrCatUnit(c.id);
     const rate=agrCatRate(c.id);
+    const stage=agrCatStage(c.id);
     included.push(label);
-    includedDetails.push({id:c.id,label,unit,rate});
+    includedDetails.push({id:c.id,label,unit,rate,stage});
   });
   const custom=[];
   agrCustomItems.forEach(c=>{
@@ -6087,7 +6132,8 @@ async function pdfAgr(id){
       if(labels.some(x=>x===c.label||x===c.id||(detMap['id:'+c.id]&&x===detMap['id:'+c.id].label))){
         const d=detMap['id:'+c.id]||detMap[c.label.toLowerCase()]||{};
         const show=d.label||c.label;
-        by[c.stage].push(fmtItem(show,d));
+        const st=(d.stage&&by[d.stage])?d.stage:c.stage;
+        by[st].push(fmtItem(show,d));
         used.add(String(show).toLowerCase());
         used.add(c.label.toLowerCase());
       }
@@ -9320,7 +9366,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-08-24-v67';
+const APP_VERSION='2026-08-24-v68';
 // Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
 // GitHub Pages is the live OTA source of truth while Wasmer Edge GitHub deploys are failing.
 const OTA_ORIGIN='https://abbashafiz.github.io/Buildpro-crm';
