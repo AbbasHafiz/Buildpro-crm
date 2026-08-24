@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-08-24-v61">
+<meta name="app-version" content="2026-08-24-v62">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -590,7 +590,7 @@ select option{background:var(--s2);}
         <div class="ftab" onclick="fSub('paid',this)">Paid</div>
         <div class="ftab" onclick="fSub('unpaid',this)">Unpaid</div>
       </div>
-      <div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:10px;padding:0 2px" id="sub-filter-hint">All payment lines — paid and still due</div>
+      <div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:10px;padding:0 2px" id="sub-filter-hint">Tick a sub-contractor or payment lines to delete several at once</div>
       <div id="list-sub"></div>
     </div>
 
@@ -4561,14 +4561,23 @@ function del(store,id,opts){
   finish('Deleted');
 }
 
-// Bulk delete selected leaf records (one confirm). pairs: [{store,id},…]
+// Bulk delete selected records (one confirm). pairs: [{store,id},…]
 function delMany(pairs){
   pairs=(pairs||[]).filter(p=>p&&p.store&&p.id);
-  // Drop cascade-heavy stores from bulk — those stay single-delete only
-  pairs=pairs.filter(p=>p.store!=='projects'&&p.store!=='clients'&&p.store!=='subcons');
+  // Projects/clients stay single-delete only (heavy cascades / blockers)
+  pairs=pairs.filter(p=>p.store!=='projects'&&p.store!=='clients');
   if(!pairs.length){toast('Nothing selected','info');return;}
-  if(!confirm('Delete '+pairs.length+' selected record'+(pairs.length===1?'':'s')+'?\n\nThis cannot be undone.'))return;
-  pairs.forEach(({store,id})=>del(store,id,{quiet:true,noUi:true}));
+  const nSub=pairs.filter(p=>p.store==='subcons').length;
+  const nPay=pairs.filter(p=>p.store==='subpays').length;
+  let msg='Delete '+pairs.length+' selected record'+(pairs.length===1?'':'s')+'?\n\nThis cannot be undone.';
+  if(nSub){
+    msg='Delete '+nSub+' sub-contractor'+(nSub===1?'':'s')+(nPay?' and '+nPay+' payment'+(nPay===1?'':'s'):'')+'?\n\n⚠️ Removing a sub-contractor also deletes their payment history and project contracts.\n\nThis cannot be undone.';
+  }
+  if(!confirm(msg))return;
+  // Delete leaf payments first, then sub-contractors (cascade)
+  pairs.filter(p=>p.store==='subpays').forEach(({store,id})=>del(store,id,{quiet:true,noUi:true}));
+  pairs.filter(p=>p.store==='subcons').forEach(({store,id})=>del(store,id,{quiet:true,noUi:true}));
+  pairs.filter(p=>p.store!=='subpays'&&p.store!=='subcons').forEach(({store,id})=>del(store,id,{quiet:true,noUi:true}));
   selectedExpIds={};
   listSel={};
   sched();renderAll();
@@ -4585,6 +4594,7 @@ function listSelKeyForPage(){
   if(curPg==='inv')return'inv';
   if(curPg==='est')return'est';
   if(curPg==='pay')return'pay';
+  if(curPg==='sub')return'sub';
   if(curPg==='agr')return'agr';
   if(curPg==='tasks')return(typeof tasksTabMode!=='undefined'&&tasksTabMode==='jobs')?'workorders':'tasks';
   return null;
@@ -4604,6 +4614,7 @@ function clearListSel(key){
   if(k==='inv')renderInv();
   else if(k==='est')renderEst();
   else if(k==='pay')renderPay();
+  else if(k==='sub')renderSub();
   else if(k==='agr')renderAgr();
   else if(k==='tasks')renderTasks();
   else if(k==='workorders')renderWorkOrders();
@@ -5139,15 +5150,16 @@ function markSpayPaid(id){
 function spayRowHtml(p){
   const st=spayPayStatus(p);
   const amtColor=st==='unpaid'?'var(--ora)':'var(--red)';
-  return`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:10px 13px;border-bottom:1px solid var(--bor)">
-    <div>
+  return`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:10px 13px;border-bottom:1px solid var(--bor);gap:8px">
+    ${selBox('sub',p.id,'subpays')}
+    <div style="flex:1;min-width:0">
       <div style="font-size:var(--fs-sm);font-weight:600">${p.phase||'—'} ${spayPayBadge(p)}</div>
       <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">${p.date||'—'} · ${p.method||'Cash'}</div>
       ${p.desc?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">${p.desc}</div>`:''}
       ${st==='partial'?`<div style="font-size:var(--fs-xs);color:var(--ora);margin-top:3px">Due PKR ${fmt(spayDueAmt(p))}</div>`:''}
       ${(p.breakdown||[]).length?`<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">${p.breakdown.map(b=>`<span style="font-size:9px;padding:2px 6px;border-radius:5px;background:var(--bg);border:1px solid var(--bor);color:var(--mut)">${b.trade||'Other'}${b.name?' · '+b.name:''}: <b style="color:var(--txt)">${fmt(b.amount)}</b></span>`).join('')}</div>`:''}
     </div>
-    <div style="text-align:right;flex-shrink:0;margin-left:12px">
+    <div style="text-align:right;flex-shrink:0;margin-left:4px">
       <div style="font-family:'JetBrains Mono',monospace;color:${amtColor}">${fmt(p.amount)}</div>
       ${st==='partial'?`<div style="font-size:9px;color:var(--mut);margin-top:2px">Paid ${fmt(spayPaidAmt(p))}</div>`:''}
       <div style="display:flex;gap:8px;margin-top:4px;justify-content:flex-end;flex-wrap:wrap">
@@ -5162,7 +5174,7 @@ function spayRowHtml(p){
 // ════ RENDER SUB-CON ════
 function renderSub(){
   const el=e$('list-sub');
-  if(!D.subcons.length){el.innerHTML='<div class="empty"><div class="empty-i">👷</div><div class="empty-t">No sub-contractors yet</div></div>';return;}
+  if(!D.subcons.length){el.innerHTML='<div class="empty"><div class="empty-i">👷</div><div class="empty-t">No sub-contractors yet</div></div>';updateListSelBar();return;}
   // Newest payment activity first
   const subRecency=s=>{
     const pays=D.subpays.filter(p=>p.subconId===s.id);
@@ -5206,7 +5218,8 @@ function renderSub(){
     const gid='sub-grp-'+s.id;
     const open=!collapsedGroups[gid];
     const header=`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
-      <div style="min-width:0">
+      ${selBox('sub',s.id,'subcons')}
+      <div style="min-width:0;flex:1">
         <div style="font-size:var(--fs-sm);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.name} <span style="color:var(--mut);font-weight:400;font-size:var(--fs-xs)">· ${allPays.length}</span></div>
         <div style="margin-top:3px"><span class="b ${trC(s.trade)}">${s.trade}</span>${s.phone?`<span style="font-size:var(--fs-xs);color:var(--mut);margin-left:6px">${s.phone}</span>`:''}</div>
       </div>
@@ -5271,6 +5284,7 @@ function renderSub(){
     return collapsibleSection(gid,header,body,open);
   }).filter(Boolean).join('');
   el.innerHTML=html||'<div class="empty"><div class="empty-i">🔎</div><div class="empty-t">No matching payments for this filter</div></div>';
+  updateListSelBar();
 }
 
 // ════ RENDER AGREEMENTS ════
@@ -9181,7 +9195,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-08-24-v61';
+const APP_VERSION='2026-08-24-v62';
 // Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
 // GitHub Pages is the live OTA source of truth while Wasmer Edge GitHub deploys are failing.
 const OTA_ORIGIN='https://abbashafiz.github.io/Buildpro-crm';
