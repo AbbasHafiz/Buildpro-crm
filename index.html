@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-08-24-v60">
+<meta name="app-version" content="2026-08-24-v61">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -2482,6 +2482,10 @@ function continueOffline(){
     backendCfg={...backendCfg,mode:'local'};
     localStorage.setItem(BP_BACKEND_KEY,JSON.stringify(backendCfg));
   }
+  curUid=null;
+  resetDataMemory();
+  const local=readLocalData('local');
+  if(local)applyDataObject(local);
   updateUserUI({email:'Offline',user_metadata:{full_name:'Offline user'}});
   setSync('error');
   const txt=e$('sync-txt');if(txt)txt.textContent='Local only — not synced';
@@ -2508,17 +2512,82 @@ async function savePdf(doc,filename){
 let baseUpdatedAt=null,applyingRemote=false,rtChannel=null,curUid=null;
 const COLLECTIONS=['clients','projects','subcons','subpays','cpays','invoices','estimates','agreements','tasks','expenses','investors','banks','subconContracts','personals','workorders','stock'];
 
-// ════ DATA ════
-let D={
-  company:{name:'Your Company',phone:'',email:'',addr:'',city:'Islamabad',ntn:'',bank:'',acc:'',accT:'',iban:'',logo:''},
-  clients:[],projects:[],subcons:[],
-  subpays:[],cpays:[],
-  invoices:[],estimates:[],agreements:[],
-  tasks:[],expenses:[],
-  investors:[],banks:[],subconContracts:[],
-  personals:[],workorders:[],stock:[],
-  _tomb:[]
-};
+// ════ DATA (per Google user — never share localStorage across accounts) ════
+const BP_DATA_PREFIX='bp5';
+const BP_DATA_OWNER='bp5_owner'; // which uid last owned the legacy unscoped key
+function emptyData(){
+  return{
+    company:{name:'Your Company',phone:'',email:'',addr:'',city:'Islamabad',ntn:'',bank:'',acc:'',accT:'',iban:'',logo:''},
+    clients:[],projects:[],subcons:[],
+    subpays:[],cpays:[],
+    invoices:[],estimates:[],agreements:[],
+    tasks:[],expenses:[],
+    investors:[],banks:[],subconContracts:[],
+    personals:[],workorders:[],stock:[],
+    _tomb:[]
+  };
+}
+let D=emptyData();
+function dataStorageKey(uid){
+  if(backendCfg&&backendCfg.mode==='local')return BP_DATA_PREFIX+':local';
+  if(uid)return BP_DATA_PREFIX+':'+uid;
+  return BP_DATA_PREFIX+':anon';
+}
+function resetDataMemory(){
+  D=emptyData();
+  baseUpdatedAt=null;
+  if(typeof selectedExpIds!=='undefined')selectedExpIds={};
+  if(typeof listSel!=='undefined')listSel={};
+  if(rtChannel&&supa){try{supa.removeChannel(rtChannel);}catch(e){}rtChannel=null;}
+}
+function applyDataObject(p){
+  if(!p||typeof p!=='object')return;
+  const keys=['company',...COLLECTIONS,'_tomb'];
+  keys.forEach(k=>{if(p[k]!==undefined)D[k]=p[k];});
+  COLLECTIONS.forEach(k=>{if(!Array.isArray(D[k]))D[k]=[];});
+  if(!Array.isArray(D._tomb))D._tomb=[];
+}
+function readLocalData(uid){
+  const key=dataStorageKey(uid);
+  try{
+    const raw=localStorage.getItem(key);
+    if(raw)return JSON.parse(raw);
+  }catch(e){}
+  return null;
+}
+// Claim legacy shared `bp5` only for the same owner — never for a different Google login.
+function claimLegacyLocalIfSafe(uid){
+  if(!uid)return null;
+  try{
+    if(sessionStorage.getItem('bp_user_switched')==='1')return null;
+    const legacy=localStorage.getItem(BP_DATA_PREFIX);
+    if(!legacy)return null;
+    const owner=localStorage.getItem(BP_DATA_OWNER);
+    if(owner&&owner!==uid)return null;
+    localStorage.setItem(BP_DATA_PREFIX+':'+uid,legacy);
+    localStorage.setItem(BP_DATA_OWNER,uid);
+    localStorage.removeItem(BP_DATA_PREFIX);
+    return JSON.parse(legacy);
+  }catch(e){return null;}
+}
+function writeLocalData(uid){
+  const id=uid||curUid;
+  const key=dataStorageKey(id);
+  try{
+    localStorage.setItem(key,JSON.stringify(D));
+    if(id&&!(backendCfg&&backendCfg.mode==='local')){
+      const owner=localStorage.getItem(BP_DATA_OWNER);
+      // Never re-tag ownership to a different Google user while legacy still exists for someone else
+      if(!owner||owner===id)localStorage.setItem(BP_DATA_OWNER,id);
+    }
+    // Clear legacy shared `bp5` only if it belongs to this user (or is unowned)
+    const legacy=localStorage.getItem(BP_DATA_PREFIX);
+    if(legacy){
+      const owner=localStorage.getItem(BP_DATA_OWNER);
+      if(!owner||owner===id)localStorage.removeItem(BP_DATA_PREFIX);
+    }
+  }catch(e){}
+}
 
 // ════ MULTI-DEVICE MERGE ════
 // Merge two data snapshots without losing records:
@@ -2595,6 +2664,9 @@ function initSupa(){
       updateUserUI(session.user);
       launchApp();
     }else if(event==='SIGNED_OUT'){
+      try{sessionStorage.setItem('bp_user_switched','1');}catch(e){}
+      resetDataMemory();
+      curUid=null;
       document.getElementById('app').classList.remove('on');
       document.getElementById('login').style.display='flex';
       toast('Signed out','info');
@@ -2667,13 +2739,21 @@ function initNativeAuth(){
 }
 
 async function signOut(){
+  try{sessionStorage.setItem('bp_user_switched','1');}catch(e){}
   if(backendCfg.mode==='local'){
+    writeLocalData('local');
+    resetDataMemory();
+    curUid=null;
     document.getElementById('app').classList.remove('on');
     document.getElementById('login').style.display='flex';
     cMenu();toast('Signed out','info');
     return;
   }
+  // Persist this user's cache under their key before wiping memory
+  if(curUid)writeLocalData(curUid);
   if(supa)await supa.auth.signOut();
+  resetDataMemory();
+  curUid=null;
   document.getElementById('app').classList.remove('on');
   document.getElementById('login').style.display='flex';
   cMenu();toast('Signed out','info');
@@ -2743,32 +2823,49 @@ function updateUserUI(user){
 
 async function loadSupaData(user){
   setSync('loading');
+  // Critical: wipe previous Google user's in-memory data before loading this account
+  if(curUid&&curUid!==user.id){
+    try{writeLocalData(curUid);}catch(e){}
+  }
+  resetDataMemory();
   curUid=user.id;
-  const keys=['company',...COLLECTIONS,'_tomb'];
   try{
-    // Load localStorage first (instant display)
-    const lo=localStorage.getItem('bp5');
-    if(lo){
-      try{const p=JSON.parse(lo);keys.forEach(k=>{if(p[k]!==undefined)D[k]=p[k];});}catch(e){}
-    }
-    // Then load from Supabase (authoritative on first load), merging any unsynced local changes so they aren't lost
+    // Load ONLY this user's scoped local cache (never the shared legacy key from another account)
+    let local=readLocalData(user.id);
+    if(!local)local=claimLegacyLocalIfSafe(user.id);
+    if(local)applyDataObject(local);
+
+    // Server row for THIS user_id only
     const{data,error}=await supa.from('buildpro_data').select('data,updated_at').eq('user_id',user.id).single();
     if(!error&&data?.data){
+      // Merge this user's local cache with their cloud row — not anyone else's
       D=mergeData(D,data.data);
       baseUpdatedAt=data.updated_at||null;
-      localStorage.setItem('bp5',JSON.stringify(D));
-      prepareCompanyLogo(); // ensure PDF-ready logo after sync
+      prepareCompanyLogo();
+    }else if(!local){
+      // Brand-new account: stay empty (do not import another user's CRM)
+      D=emptyData();
     }
+    writeLocalData(user.id);
     setSync('synced');
-  }catch(e){setSync('error');toast('Offline — showing cached data','info');}
+  }catch(e){
+    setSync('error');
+    toast('Offline — showing cached data','info');
+  }
 }
 
 async function writeSupabase(){
-  if(!supa){localStorage.setItem('bp5',JSON.stringify(D));setSync('pending');return;}
+  if(!supa){writeLocalData(curUid);setSync('pending');return;}
   const{data:{session}}=await supa.auth.getSession();
-  if(!session){localStorage.setItem('bp5',JSON.stringify(D));setSync('pending');return;}
+  if(!session){writeLocalData(curUid);setSync('pending');return;}
+  // Never write if in-memory uid does not match the session (account switch race)
+  if(curUid&&session.user.id!==curUid){
+    setSync('error');
+    return;
+  }
+  curUid=session.user.id;
   try{
-    localStorage.setItem('bp5',JSON.stringify(D));
+    writeLocalData(session.user.id);
     // Conflict guard: if another device wrote since we last synced, merge first so nothing is clobbered.
     const{data:srv}=await supa.from('buildpro_data').select('data,updated_at').eq('user_id',session.user.id).single();
     if(srv&&srv.updated_at&&baseUpdatedAt&&srv.updated_at!==baseUpdatedAt&&srv.data){
@@ -2783,9 +2880,9 @@ async function writeSupabase(){
     },{onConflict:'user_id'});
     if(error)throw error;
     baseUpdatedAt=nowTs;
-    localStorage.setItem('bp5',JSON.stringify(D));
+    writeLocalData(session.user.id);
     setSync('synced');
-  }catch(e){localStorage.setItem('bp5',JSON.stringify(D));setSync('pending');}
+  }catch(e){writeLocalData(session.user.id);setSync('pending');}
 }
 
 // Pull the latest server data into the running app (merge, don't clobber local edits).
@@ -2794,12 +2891,13 @@ async function pullRemote(){
   try{
     const{data:{session}}=await supa.auth.getSession();
     if(!session)return;
+    if(curUid&&session.user.id!==curUid)return;
     const{data:srv}=await supa.from('buildpro_data').select('data,updated_at').eq('user_id',session.user.id).single();
     if(srv&&srv.updated_at&&srv.updated_at!==baseUpdatedAt&&srv.data){
       applyingRemote=true;
       D=mergeData(D,srv.data);
       baseUpdatedAt=srv.updated_at;
-      localStorage.setItem('bp5',JSON.stringify(D));
+      writeLocalData(session.user.id);
       try{renderAll();refreshProfileUI();}catch(e){}
       applyingRemote=false;
       setSync('synced');
@@ -2819,7 +2917,7 @@ function startRealtime(){
 }
 
 function sched(){
-  localStorage.setItem('bp5',JSON.stringify(D));
+  writeLocalData(curUid);
   setSync('pending');
   clearTimeout(stmr);
   stmr=setTimeout(writeSupabase,2000);
@@ -9064,8 +9162,8 @@ async function importBk(){
         keys.forEach(k=>{if(p[k]!==undefined)D[k]=p[k];});
         // Ensure arrays
         keys.filter(k=>k!=='company').forEach(k=>{if(!Array.isArray(D[k]))D[k]=[];});
-        // Save to localStorage immediately
-        localStorage.setItem('bp5',JSON.stringify(D));
+        // Save to this user's local cache immediately
+        writeLocalData(curUid);
         // Write to Supabase immediately (not debounced)
         toast('Importing…','info');
         await writeSupabase();
@@ -9083,7 +9181,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-08-24-v60';
+const APP_VERSION='2026-08-24-v61';
 // Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
 // GitHub Pages is the live OTA source of truth while Wasmer Edge GitHub deploys are failing.
 const OTA_ORIGIN='https://abbashafiz.github.io/Buildpro-crm';
@@ -9247,7 +9345,7 @@ if('serviceWorker' in navigator){
 }
 
 // ════ BOOT ════
-try{const lo=localStorage.getItem('bp5');if(lo){const p=JSON.parse(lo);Object.keys(p).forEach(k=>{if(D[k]!==undefined)D[k]=p[k];});}}catch(e){}
+// Do NOT preload shared bp5 before auth — that leaked one Google user's CRM into another.
 (async function bootBackend(){
   // White-label: if no local override, load optional config.json next to index.html
   if(!localStorage.getItem(BP_BACKEND_KEY)){
@@ -9264,6 +9362,11 @@ try{const lo=localStorage.getItem('bp5');if(lo){const p=JSON.parse(lo);Object.ke
     backendCfg=loadBackendCfg();
   }
   refreshLoginBackendUI();
+  // Local-only mode: load the offline workspace before init
+  if(backendCfg.mode==='local'){
+    const local=readLocalData('local');
+    if(local)applyDataObject(local);
+  }
   initSupa();
 })();
 </script>

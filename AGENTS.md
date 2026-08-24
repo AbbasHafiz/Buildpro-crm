@@ -16,8 +16,9 @@ A construction-business management app for a Pakistani contracting business.
 - **Service worker caching**: `sw.js` caches the app. After changing `index.html`, a reload can serve the old version. To load fresh code in a browser, clear it first (DevTools console):
   `Promise.all([navigator.serviceWorker.getRegistrations().then(rs=>Promise.all(rs.map(r=>r.unregister()))), caches.keys().then(ks=>Promise.all(ks.map(k=>caches.delete(k))))]).then(()=>{localStorage.removeItem('bp5');location.reload();})`
   End users can use the in-app menu → "Check for Updates" (`clearCacheUpdate()`).
-- **Login is Google-OAuth-gated** (Supabase) in hosted/custom modes. Google OAuth cannot be completed in this VM/headless browser. To test without OAuth: set Backend Settings → **Local only**, or run `launchApp()` / `continueOffline()` in the DevTools console — uses `localStorage` key `bp5`.
+- **Login is Google-OAuth-gated** (Supabase) in hosted/custom modes. Google OAuth cannot be completed in this VM/headless browser. To test without OAuth: set Backend Settings → **Local only**, or run `launchApp()` / `continueOffline()` in the DevTools console — uses `localStorage` key `bp5:local` (or `bp5:<userId>` when signed in).
 - Backend overrides live in `localStorage` key `bp_backend`. Reset with Backend Settings → Reset, or `localStorage.removeItem('bp_backend')`.
+- **Per-user data**: CRM JSON is stored as `bp5:<supabaseUserId>` (not a shared `bp5`). Switching Google accounts must not show another user's records. After sign-out, `sessionStorage.bp_user_switched=1` blocks claiming the legacy shared key.
 - `confirm()`/`alert()` dialogs get suppressed by Chrome after a few prompts in automated sessions, which makes delete buttons look unresponsive. In tests, set `window.confirm=()=>true` before exercising deletes.
 
 ### Deploying the web/PWA
