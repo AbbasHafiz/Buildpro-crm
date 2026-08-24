@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-08-06-v56">
+<meta name="app-version" content="2026-08-24-v58">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -44,6 +44,22 @@ body{color:var(--txt);font-family:'Inter',sans-serif;overscroll-behavior:none;fo
 .g-btn:active{transform:scale(.96);}
 .g-btn svg{width:24px;height:24px;flex-shrink:0;}
 .l-note{font-size:var(--fs-xs);color:var(--mut2);margin-top:16px;text-align:center;line-height:1.8;}
+.l-backend-link{margin-top:18px;background:none;border:none;color:var(--mut);font-size:var(--fs-xs);font-family:inherit;cursor:pointer;text-decoration:underline;text-underline-offset:3px;padding:8px;}
+.l-backend-link:active{color:var(--gold);}
+.l-backend-badge{margin-top:10px;font-size:10px;color:var(--mut2);letter-spacing:.4px;text-align:center;max-width:320px;line-height:1.5;}
+.be-mode{display:flex;flex-direction:column;gap:8px;margin-bottom:14px;}
+.be-mode label{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border:1px solid var(--bd);border-radius:12px;cursor:pointer;background:var(--card);}
+.be-mode label.on{border-color:var(--gold);background:rgba(201,162,39,.08);}
+.be-mode input{margin-top:3px;accent-color:var(--gold);}
+.be-mode .be-ttl{font-size:var(--fs-sm);font-weight:700;color:var(--txt);}
+.be-mode .be-sub{font-size:var(--fs-xs);color:var(--mut);margin-top:2px;line-height:1.45;font-weight:400;}
+.be-help{font-size:var(--fs-xs);color:var(--mut);line-height:1.65;background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px 14px;margin:10px 0 14px;}
+.be-help strong{color:var(--txt);}
+.be-help ol{margin:8px 0 0 18px;padding:0;}
+.be-help li{margin-bottom:4px;}
+.be-status{font-size:var(--fs-xs);min-height:18px;margin-top:8px;color:var(--mut);}
+.be-status.ok{color:var(--grn,#3d9a5f);}
+.be-status.err{color:var(--red,#c44);}
 
 /* ── APP ── */
 #app{display:none;flex-direction:column;height:100%;padding-top:var(--safe-t);padding-bottom:var(--safe-b);}
@@ -354,11 +370,14 @@ select option{background:var(--s2);}
     <div class="l-cell"><div class="l-cell-icon">👷</div><div class="l-cell-ttl">Sub-Con</div><div class="l-cell-sub">Payment history</div></div>
     <div class="l-cell"><div class="l-cell-icon">☁️</div><div class="l-cell-ttl">Google Drive</div><div class="l-cell-sub">Auto sync backup</div></div>
   </div>
-  <button class="g-btn" onclick="signIn()">
+  <button class="g-btn" id="btn-google-signin" onclick="signIn()">
     <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
     Sign in with Google
   </button>
-  <div class="l-note">Data saved privately to your Google Drive · Works offline<br>Install on Android: Chrome menu → Add to Home Screen</div>
+  <button class="g-btn" id="btn-local-continue" style="display:none;margin-top:12px;background:var(--card);color:var(--txt);box-shadow:none;border:1px solid var(--bd)" onclick="continueOffline()">Continue Offline</button>
+  <button type="button" class="l-backend-link" onclick="openBackendSettings()">⚙ Backend / Self-host settings</button>
+  <div class="l-backend-badge" id="l-backend-badge"></div>
+  <div class="l-note">Cloud sync via Supabase · Works offline<br>Install on Android: Chrome menu → Add to Home Screen</div>
 </div>
 
 <!-- APP -->
@@ -385,6 +404,7 @@ select option{background:var(--s2);}
     <div class="um-i" onclick="syncNow();cMenu()">🔄 Sync Now</div>
     <div class="um-i" onclick="exportBk()">⬇ Export Backup</div>
     <div class="um-i" onclick="importBk()">⬆ Import Backup</div>
+    <div class="um-i" onclick="openBackendSettings();cMenu()">⚙ Backend / Self-host</div>
     <div class="um-i" id="um-update" onclick="clearCacheUpdate()">🔄 Check for Updates<span id="um-update-badge" style="display:none;margin-left:6px;font-size:9px;background:var(--gold);color:#1a1916;border-radius:6px;padding:1px 6px;font-weight:700">NEW</span></div>
     <div class="um-i red" onclick="signOut()">Sign Out</div>
   </div>
@@ -711,32 +731,92 @@ select option{background:var(--s2);}
 
     <!-- PROFILE -->
     <div class="pg" id="pg-profile">
-      <div class="cp-header" onclick="O('sh-profile');openProfileSheet()">
-        <div class="cp-logo-box" id="cp-logo-box">
-          <img id="cp-logo-img" src="" alt="">
-          <div class="cp-logo-ph" id="cp-logo-ph">🏗</div>
+      <div class="ftabs" id="profile-tabs">
+        <div class="ftab on" id="ftab-profile-company" onclick="fProfile('company',this)">Company</div>
+        <div class="ftab" id="ftab-profile-backend" onclick="fProfile('backend',this)">Backend / Self-host</div>
+      </div>
+
+      <div id="profile-pane-company">
+        <div class="cp-header" onclick="O('sh-profile');openProfileSheet()">
+          <div class="cp-logo-box" id="cp-logo-box">
+            <img id="cp-logo-img" src="" alt="">
+            <div class="cp-logo-ph" id="cp-logo-ph">🏗</div>
+          </div>
+          <div class="cp-info">
+            <div class="cp-name" id="cp-nm">Your Company</div>
+            <div class="cp-city" id="cp-city-txt">Islamabad, Pakistan</div>
+            <div class="cp-ntn" id="cp-ntn-txt"></div>
+          </div>
         </div>
-        <div class="cp-info">
-          <div class="cp-name" id="cp-nm">Your Company</div>
-          <div class="cp-city" id="cp-city-txt">Islamabad, Pakistan</div>
-          <div class="cp-ntn" id="cp-ntn-txt"></div>
+        <div class="profile-section">
+          <div class="ps-title">Company Details</div>
+          <div class="ps-row"><span class="ps-lbl">Phone</span><span class="ps-val" id="ps-ph">—</span></div>
+          <div class="ps-row"><span class="ps-lbl">Email</span><span class="ps-val" id="ps-em">—</span></div>
+          <div class="ps-row"><span class="ps-lbl">Address</span><span class="ps-val" id="ps-addr">—</span></div>
+          <div class="ps-row"><span class="ps-lbl">NTN</span><span class="ps-val" id="ps-ntn">—</span></div>
+        </div>
+        <div class="profile-section">
+          <div class="ps-title">Bank Details (Printed on all PDFs)</div>
+          <div class="ps-row"><span class="ps-lbl">Bank</span><span class="ps-val" id="ps-bank">—</span></div>
+          <div class="ps-row"><span class="ps-lbl">Account No.</span><span class="ps-val" id="ps-acc">—</span></div>
+          <div class="ps-row"><span class="ps-lbl">Account Title</span><span class="ps-val" id="ps-acc-t">—</span></div>
+          <div class="ps-row"><span class="ps-lbl">IBAN</span><span class="ps-val" id="ps-iban">—</span></div>
+        </div>
+        <button class="btn btn-gold" style="width:100%" onclick="O('sh-profile');openProfileSheet()">✏️ Edit Company Profile</button>
+      </div>
+
+      <div id="profile-pane-backend" style="display:none">
+        <div class="profile-section">
+          <div class="ps-title">Current connection</div>
+          <div class="ps-row"><span class="ps-lbl">Mode</span><span class="ps-val" id="pgbe-status-mode">—</span></div>
+          <div class="ps-row"><span class="ps-lbl">Database</span><span class="ps-val" id="pgbe-status-url">—</span></div>
+        </div>
+        <div style="font-size:var(--fs-xs);color:var(--mut);line-height:1.55;margin-bottom:12px">Point this app at a client’s own Supabase project so they host the database and Google Sign-In. Only the public anon key is stored in the browser.</div>
+        <div style="font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;font-weight:700">Connection mode</div>
+        <div class="be-mode" id="pgbe-mode">
+          <label id="pgbe-lab-hosted" onclick="pgBePickMode('hosted')">
+            <input type="radio" name="pgbe-mode" value="hosted" id="pgbe-mode-hosted">
+            <div><div class="be-ttl">BuildPro hosted</div><div class="be-sub">Use the default BuildPro cloud</div></div>
+          </label>
+          <label id="pgbe-lab-custom" onclick="pgBePickMode('custom')">
+            <input type="radio" name="pgbe-mode" value="custom" id="pgbe-mode-custom">
+            <div><div class="be-ttl">Client Supabase (self-host)</div><div class="be-sub">Their project URL + anon key · Google OAuth in their Supabase</div></div>
+          </label>
+          <label id="pgbe-lab-local" onclick="pgBePickMode('local')">
+            <input type="radio" name="pgbe-mode" value="local" id="pgbe-mode-local">
+            <div><div class="be-ttl">Local only (offline)</div><div class="be-sub">No cloud sync — data stays on this device</div></div>
+          </label>
+        </div>
+
+        <div id="pgbe-custom-fields">
+          <div class="profile-section" style="margin-top:4px">
+            <div class="ps-title">Database (Supabase)</div>
+            <div class="fg"><label>Supabase Project URL</label><input id="pgbe-url" placeholder="https://xxxx.supabase.co" autocomplete="off" spellcheck="false"></div>
+            <div class="fg"><label>Supabase Anon / Public Key</label><textarea id="pgbe-key" placeholder="eyJhbGciOiJIUzI1NiIs…" style="min-height:72px;font-family:ui-monospace,monospace;font-size:11px" autocomplete="off" spellcheck="false"></textarea></div>
+            <div class="be-help" style="margin-top:0">Create table <strong>buildpro_data</strong> + RLS — see SELFHOST.md</div>
+          </div>
+          <div class="profile-section">
+            <div class="ps-title">Google Sign-In</div>
+            <div class="be-help" style="margin-top:0">
+              Configure Google <strong>inside the client’s Supabase</strong> (Auth → Providers → Google). Paste Client ID + Secret there. Then add this app URL under Auth → URL Configuration.
+            </div>
+            <div class="fg"><label>Google Client ID <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--mut2)">(optional note)</span></label><input id="pgbe-google" placeholder="xxxxx.apps.googleusercontent.com" autocomplete="off" spellcheck="false"></div>
+            <div class="fg"><label>OAuth redirect URL <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--mut2)">(optional)</span></label><input id="pgbe-redirect" placeholder="Leave blank = this page URL" autocomplete="off" spellcheck="false"></div>
+            <div class="fg"><label>Android deeplink</label><input id="pgbe-deeplink" placeholder="com.buildpro.crm://login-callback" autocomplete="off" spellcheck="false"></div>
+            <button type="button" class="btn btn-grey" style="width:100%;margin-top:4px" onclick="testBackendConn('pgbe')">🔌 Test Connection</button>
+            <div class="be-status" id="pgbe-status"></div>
+          </div>
+        </div>
+
+        <div class="be-help" id="pgbe-local-help" style="display:none">
+          Offline mode skips Google Sign-In. Use <strong>Continue Offline</strong> on the login screen. Export backups regularly.
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px;padding-bottom:24px">
+          <button class="btn btn-gold" style="width:100%" onclick="saveBackendSettings('pgbe')">💾 Save &amp; Apply Backend</button>
+          <button class="btn btn-grey" style="width:100%" onclick="resetBackendSettings()">Reset to BuildPro hosted</button>
         </div>
       </div>
-      <div class="profile-section">
-        <div class="ps-title">Company Details</div>
-        <div class="ps-row"><span class="ps-lbl">Phone</span><span class="ps-val" id="ps-ph">—</span></div>
-        <div class="ps-row"><span class="ps-lbl">Email</span><span class="ps-val" id="ps-em">—</span></div>
-        <div class="ps-row"><span class="ps-lbl">Address</span><span class="ps-val" id="ps-addr">—</span></div>
-        <div class="ps-row"><span class="ps-lbl">NTN</span><span class="ps-val" id="ps-ntn">—</span></div>
-      </div>
-      <div class="profile-section">
-        <div class="ps-title">Bank Details (Printed on all PDFs)</div>
-        <div class="ps-row"><span class="ps-lbl">Bank</span><span class="ps-val" id="ps-bank">—</span></div>
-        <div class="ps-row"><span class="ps-lbl">Account No.</span><span class="ps-val" id="ps-acc">—</span></div>
-        <div class="ps-row"><span class="ps-lbl">Account Title</span><span class="ps-val" id="ps-acc-t">—</span></div>
-        <div class="ps-row"><span class="ps-lbl">IBAN</span><span class="ps-val" id="ps-iban">—</span></div>
-      </div>
-      <button class="btn btn-gold" style="width:100%" onclick="O('sh-profile');openProfileSheet()">✏️ Edit Company Profile</button>
     </div>
 
   </div><!-- /content -->
@@ -1504,6 +1584,64 @@ select option{background:var(--s2);}
   <div class="sh-ft"><button class="btn btn-grey" onclick="X('sh-profile')">Cancel</button><button class="btn btn-gold" onclick="saveProfile()">💾 Save Profile</button></div>
 </div></div>
 
+<!-- BACKEND / SELF-HOST SETTINGS -->
+<div class="sh-ov" id="sh-backend"><div class="sh">
+  <div class="sh-grip"></div>
+  <div class="sh-hd"><div class="sh-title">Backend Settings</div><button class="sh-x" onclick="X('sh-backend')">×</button></div>
+  <div class="sh-body">
+    <div style="font-size:var(--fs-xs);color:var(--mut);line-height:1.55;margin-bottom:12px">Point this app at <strong style="color:var(--txt)">your</strong> Supabase project so a client can host their own database and Google Sign-In. Secrets stay in their account — only the public anon key is stored in the browser.</div>
+    <div style="font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;font-weight:700">Connection mode</div>
+    <div class="be-mode" id="be-mode">
+      <label id="be-lab-hosted" onclick="bePickMode('hosted')">
+        <input type="radio" name="be-mode" value="hosted" id="be-mode-hosted">
+        <div><div class="be-ttl">BuildPro hosted</div><div class="be-sub">Use the default BuildPro cloud (current behaviour)</div></div>
+      </label>
+      <label id="be-lab-custom" onclick="bePickMode('custom')">
+        <input type="radio" name="be-mode" value="custom" id="be-mode-custom">
+        <div><div class="be-ttl">Client Supabase (self-host)</div><div class="be-sub">Your project URL + anon key · Google OAuth in Supabase Dashboard</div></div>
+      </label>
+      <label id="be-lab-local" onclick="bePickMode('local')">
+        <input type="radio" name="be-mode" value="local" id="be-mode-local">
+        <div><div class="be-ttl">Local only (offline)</div><div class="be-sub">No cloud sync — data stays in this browser / device</div></div>
+      </label>
+    </div>
+
+    <div id="be-custom-fields">
+      <div style="font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:.8px;margin:6px 0 10px;font-weight:700">Database (Supabase)</div>
+      <div class="fg"><label>Supabase Project URL</label><input id="be-url" placeholder="https://xxxx.supabase.co" autocomplete="off" spellcheck="false"></div>
+      <div class="fg"><label>Supabase Anon / Public Key</label><textarea id="be-key" placeholder="eyJhbGciOiJIUzI1NiIs…" style="min-height:72px;font-family:ui-monospace,monospace;font-size:11px" autocomplete="off" spellcheck="false"></textarea></div>
+      <div class="be-help">
+        <strong>Create the table</strong> in Supabase → SQL Editor (see SELFHOST.md), then enable Row Level Security so each user only sees their row.
+      </div>
+
+      <div style="font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:.8px;margin:6px 0 10px;font-weight:700">Google Sign-In</div>
+      <div class="be-help">
+        Google login is configured <strong>inside your Supabase project</strong>, not as a raw Client Secret in this app:
+        <ol>
+          <li>Google Cloud Console → create OAuth 2.0 Client (Web)</li>
+          <li>Add authorized redirect URI from Supabase → Auth → Providers → Google</li>
+          <li>Paste Client ID + Client Secret into Supabase Google provider</li>
+          <li>Add this site URL (and Android deeplink if needed) under Supabase → Auth → URL Configuration</li>
+        </ol>
+      </div>
+      <div class="fg"><label>Google Client ID <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--mut2)">(optional note)</span></label><input id="be-google" placeholder="xxxxx.apps.googleusercontent.com" autocomplete="off" spellcheck="false"></div>
+      <div class="fg"><label>OAuth redirect URL <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--mut2)">(optional override)</span></label><input id="be-redirect" placeholder="Leave blank = this page URL" autocomplete="off" spellcheck="false"></div>
+      <div class="fg"><label>Android deeplink <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--mut2)">(native app)</span></label><input id="be-deeplink" placeholder="com.buildpro.crm://login-callback" autocomplete="off" spellcheck="false"></div>
+      <button type="button" class="btn btn-grey" style="width:100%;margin-top:4px" onclick="testBackendConn('be')">🔌 Test Connection</button>
+      <div class="be-status" id="be-status"></div>
+    </div>
+
+    <div class="be-help" id="be-local-help" style="display:none">
+      Offline mode skips Google Sign-In. Use <strong>Continue Offline</strong> on the login screen. Export backups regularly — nothing syncs to the cloud.
+    </div>
+  </div>
+  <div class="sh-ft">
+    <button class="btn btn-grey" onclick="X('sh-backend')">Cancel</button>
+    <button class="btn btn-grey" onclick="resetBackendSettings()" title="Clear saved overrides">Reset</button>
+    <button class="btn btn-gold" onclick="saveBackendSettings('be')">💾 Save &amp; Apply</button>
+  </div>
+</div></div>
+
 <!-- PAYMENT CHOOSER -->
 <div class="sh-ov" id="sh-pay-choose"><div class="sh">
   <div class="sh-grip"></div>
@@ -2102,13 +2240,226 @@ function pdfTextUrdu(doc,text,x,y,opts){
     doc.text(text,x,y,opts||{});
   }
 }
-// ════ SUPABASE CONFIG ════
-const SUPA_URL='https://lwjcnevludsiwoudzxcj.supabase.co';
-const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3amNuZXZsdWRzaXdvdWR6eGNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExNDQ0NjAsImV4cCI6MjA5NjcyMDQ2MH0.-6O4Z6OCUqjm3B1wSqtQv5uH7QuWTTkHdximiJB2PKE';
-let supa=null,stmr=null;
+// ════ SUPABASE / BACKEND CONFIG (self-host capable) ════
+// Default BuildPro cloud — used when mode === 'hosted'
+const HOSTED_SUPA_URL='https://lwjcnevludsiwoudzxcj.supabase.co';
+const HOSTED_SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3amNuZXZsdWRzaXdvdWR6eGNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExNDQ0NjAsImV4cCI6MjA5NjcyMDQ2MH0.-6O4Z6OCUqjm3B1wSqtQv5uH7QuWTTkHdximiJB2PKE';
+const BP_BACKEND_KEY='bp_backend';
 // Native (Capacitor Android) helpers — Google blocks OAuth inside embedded WebViews,
 // so on the native app we open the system browser and return via this deep link.
 const APP_DEEPLINK='com.buildpro.crm://login-callback';
+let supa=null,stmr=null,authUnsub=null;
+
+function defaultBackendCfg(){
+  return{
+    mode:'hosted', // hosted | custom | local
+    supabaseUrl:'',
+    supabaseAnonKey:'',
+    redirectUrl:'',
+    googleClientId:'',
+    deeplink:APP_DEEPLINK
+  };
+}
+function loadBackendCfg(){
+  try{
+    const raw=localStorage.getItem(BP_BACKEND_KEY);
+    if(raw)return{...defaultBackendCfg(),...JSON.parse(raw)};
+  }catch(e){}
+  return defaultBackendCfg();
+}
+let backendCfg=loadBackendCfg();
+
+function resolveSupaCreds(){
+  if(backendCfg.mode==='local')return null;
+  if(backendCfg.mode==='custom'){
+    const url=String(backendCfg.supabaseUrl||'').trim().replace(/\/+$/,'');
+    const key=String(backendCfg.supabaseAnonKey||'').trim();
+    if(url&&key)return{url,key};
+    return null;
+  }
+  return{url:HOSTED_SUPA_URL,key:HOSTED_SUPA_KEY};
+}
+function resolveRedirectTo(){
+  const custom=String(backendCfg.redirectUrl||'').trim();
+  if(custom)return custom;
+  return window.location.origin+window.location.pathname;
+}
+function resolveDeeplink(){
+  return String(backendCfg.deeplink||APP_DEEPLINK).trim()||APP_DEEPLINK;
+}
+function backendModeLabel(){
+  if(backendCfg.mode==='custom')return'Client Supabase';
+  if(backendCfg.mode==='local')return'Local only';
+  return'BuildPro hosted';
+}
+function refreshLoginBackendUI(){
+  const badge=e$('l-backend-badge');
+  const gBtn=e$('btn-google-signin');
+  const lBtn=e$('btn-local-continue');
+  if(badge){
+    if(backendCfg.mode==='custom'){
+      const host=(backendCfg.supabaseUrl||'').replace(/^https?:\/\//,'').split('/')[0]||'custom project';
+      badge.textContent='Backend: '+host;
+    }else if(backendCfg.mode==='local'){
+      badge.textContent='Backend: local only (no cloud sync)';
+    }else{
+      badge.textContent='';
+    }
+  }
+  if(gBtn)gBtn.style.display=backendCfg.mode==='local'?'none':'flex';
+  if(lBtn)lBtn.style.display=backendCfg.mode==='local'?'flex':'none';
+}
+function bePickMode(mode, prefix){
+  const p=prefix||'be';
+  const labId=p==='pgbe'?'pgbe-lab-':'be-lab-';
+  const modeId=p==='pgbe'?'pgbe-mode-':'be-mode-';
+  const customId=p==='pgbe'?'pgbe-custom-fields':'be-custom-fields';
+  const localId=p==='pgbe'?'pgbe-local-help':'be-local-help';
+  ['hosted','custom','local'].forEach(m=>{
+    const lab=e$(labId+m);
+    const inp=e$(modeId+m);
+    if(inp)inp.checked=m===mode;
+    if(lab)lab.classList.toggle('on',m===mode);
+  });
+  const custom=e$(customId);
+  const localHelp=e$(localId);
+  if(custom)custom.style.display=mode==='custom'?'block':'none';
+  if(localHelp)localHelp.style.display=mode==='local'?'block':'none';
+}
+function pgBePickMode(mode){bePickMode(mode,'pgbe');}
+function fillBackendForm(prefix){
+  const p=prefix||'be';
+  const id=k=>e$((p==='pgbe'?'pgbe-':'be-')+k);
+  const stored=(()=>{try{const r=localStorage.getItem(BP_BACKEND_KEY);return r?JSON.parse(r):null;}catch(e){return null;}})();
+  const cfg={...defaultBackendCfg(),...(stored||backendCfg||{})};
+  if(id('url'))id('url').value=cfg.supabaseUrl||'';
+  if(id('key'))id('key').value=cfg.supabaseAnonKey||'';
+  if(id('google'))id('google').value=cfg.googleClientId||'';
+  if(id('redirect'))id('redirect').value=cfg.redirectUrl||'';
+  if(id('deeplink'))id('deeplink').value=cfg.deeplink||APP_DEEPLINK;
+  const st=id('status');if(st){st.textContent='';st.className='be-status';}
+  bePickMode(cfg.mode||'hosted',p);
+  if(p==='pgbe'){
+    const modeEl=e$('pgbe-status-mode');
+    const urlEl=e$('pgbe-status-url');
+    if(modeEl)modeEl.textContent=backendModeLabel();
+    if(urlEl){
+      if(backendCfg.mode==='custom')urlEl.textContent=(backendCfg.supabaseUrl||'').replace(/^https?:\/\//,'').replace(/\/$/,'')||'—';
+      else if(backendCfg.mode==='local')urlEl.textContent='This device only';
+      else urlEl.textContent='BuildPro cloud';
+    }
+  }
+}
+function openBackendSettings(){
+  // In-app: open Profile → Backend tab (visible page). On login: bottom sheet.
+  if(document.getElementById('app')&&document.getElementById('app').classList.contains('on')){
+    const bi=[...document.querySelectorAll('.bnav .bi')].find(el=>/goPage\('profile'/.test(el.getAttribute('onclick')||''));
+    goPage('profile',bi||null,'Backend / Self-host');
+    fProfile('backend');
+    return;
+  }
+  fillBackendForm('be');
+  O('sh-backend');
+}
+function readBackendForm(prefix){
+  const p=prefix||'be';
+  const name=p==='pgbe'?'pgbe-mode':'be-mode';
+  const id=k=>e$((p==='pgbe'?'pgbe-':'be-')+k);
+  const mode=(document.querySelector('input[name="'+name+'"]:checked')||{}).value||'hosted';
+  return{
+    mode,
+    supabaseUrl:(id('url')&&id('url').value||'').trim(),
+    supabaseAnonKey:(id('key')&&id('key').value||'').trim(),
+    googleClientId:(id('google')&&id('google').value||'').trim(),
+    redirectUrl:(id('redirect')&&id('redirect').value||'').trim(),
+    deeplink:(id('deeplink')&&id('deeplink').value||'').trim()||APP_DEEPLINK
+  };
+}
+function saveBackendSettings(prefix){
+  const p=prefix||'be';
+  const next=readBackendForm(p);
+  if(next.mode==='custom'){
+    if(!next.supabaseUrl||!/^https?:\/\//i.test(next.supabaseUrl)){
+      toast('Enter a valid Supabase URL (https://….supabase.co)','err');return;
+    }
+    if(!next.supabaseAnonKey||next.supabaseAnonKey.length<20){
+      toast('Paste the Supabase anon/public key','err');return;
+    }
+  }
+  const prevMode=backendCfg.mode;
+  const prevCreds=JSON.stringify(resolveSupaCreds());
+  backendCfg=next;
+  localStorage.setItem(BP_BACKEND_KEY,JSON.stringify(backendCfg));
+  const newCreds=JSON.stringify(resolveSupaCreds());
+  if(p==='be')X('sh-backend');
+  refreshLoginBackendUI();
+  if(prevMode!==backendCfg.mode||prevCreds!==newCreds){
+    toast('Backend updated — reloading…','ok');
+    setTimeout(()=>location.reload(),700);
+  }else{
+    toast('Backend settings saved','ok');
+    if(typeof refreshProfileUI==='function')refreshProfileUI();
+  }
+}
+function resetBackendSettings(){
+  if(!confirm('Clear saved backend overrides and use BuildPro hosted defaults?'))return;
+  localStorage.removeItem(BP_BACKEND_KEY);
+  backendCfg=defaultBackendCfg();
+  toast('Backend reset — reloading…','ok');
+  setTimeout(()=>location.reload(),700);
+}
+async function testBackendConn(prefix){
+  const p=prefix||'be';
+  const st=e$((p==='pgbe'?'pgbe-':'be-')+'status');
+  const form=readBackendForm(p);
+  const url=String(form.supabaseUrl||'').trim().replace(/\/+$/,'');
+  const key=String(form.supabaseAnonKey||'').trim();
+  if(!url||!key){if(st){st.className='be-status err';st.textContent='Enter URL and anon key first.';}return;}
+  if(st){st.className='be-status';st.textContent='Testing…';}
+  try{
+    const health=await fetch(url+'/auth/v1/health',{headers:{apikey:key,'Content-Type':'application/json'}});
+    if(!health.ok)throw new Error('Auth health HTTP '+health.status);
+    let tableNote='';
+    try{
+      const t=await fetch(url+'/rest/v1/buildpro_data?select=user_id&limit=0',{
+        headers:{apikey:key,Authorization:'Bearer '+key,Accept:'application/json'}
+      });
+      if(t.status===404)tableNote=' · Warning: table buildpro_data not found — run the SQL in SELFHOST.md';
+      else if(t.status===401||t.status===200||t.status===206)tableNote=' · Table reachable';
+      else tableNote=' · Table check HTTP '+t.status;
+    }catch(e){tableNote=' · Table check skipped';}
+    if(st){st.className='be-status ok';st.textContent='Connected to Supabase'+tableNote;}
+    toast('Connection OK','ok');
+  }catch(e){
+    if(st){st.className='be-status err';st.textContent='Failed: '+(e.message||e);}
+    toast('Connection failed','err');
+  }
+}
+let profileTab='company';
+function fProfile(tab,el){
+  profileTab=tab==='backend'?'backend':'company';
+  document.querySelectorAll('#profile-tabs .ftab').forEach(t=>t.classList.remove('on'));
+  const tabEl=el||e$(profileTab==='backend'?'ftab-profile-backend':'ftab-profile-company');
+  if(tabEl)tabEl.classList.add('on');
+  const co=e$('profile-pane-company'),be=e$('profile-pane-backend');
+  if(co)co.style.display=profileTab==='company'?'':'none';
+  if(be)be.style.display=profileTab==='backend'?'':'none';
+  if(profileTab==='backend'){
+    fillBackendForm('pgbe');
+    if(e$('tb-pg'))e$('tb-pg').textContent='Backend / Self-host';
+  }else if(e$('tb-pg'))e$('tb-pg').textContent='Company Profile';
+}
+function continueOffline(){
+  if(backendCfg.mode!=='local'){
+    backendCfg={...backendCfg,mode:'local'};
+    localStorage.setItem(BP_BACKEND_KEY,JSON.stringify(backendCfg));
+  }
+  updateUserUI({email:'Offline',user_metadata:{full_name:'Offline user'}});
+  setSync('error');
+  const txt=e$('sync-txt');if(txt)txt.textContent='Local only — not synced';
+  launchApp();
+}
+
 function isNative(){return !!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform());}
 function capPlugin(name){return window.Capacitor&&window.Capacitor.Plugins?window.Capacitor.Plugins[name]:null;}
 // Save a jsPDF document. On the web, triggers a normal download. In the native app,
@@ -2191,10 +2542,26 @@ function recordTomb(ids){
 
 // ════ SUPABASE AUTH & STORAGE ════
 function initSupa(){
-  supa=supabase.createClient(SUPA_URL,SUPA_KEY);
+  refreshLoginBackendUI();
+  const creds=resolveSupaCreds();
+  if(!creds){
+    // Local mode — no cloud client
+    supa=null;
+    setSync('error');
+    const txt=e$('sync-txt');if(txt)txt.textContent='Local only — not synced';
+    return;
+  }
+  if(typeof supabase==='undefined'||!supabase.createClient){
+    toast('Supabase SDK failed to load','err');
+    return;
+  }
+  if(authUnsub){try{authUnsub();}catch(e){}authUnsub=null;}
+  supa=supabase.createClient(creds.url,creds.key,{
+    auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}
+  });
   initNativeAuth();
   // Listen for auth state changes
-  supa.auth.onAuthStateChange(async(event,session)=>{
+  const{data:{subscription}}=supa.auth.onAuthStateChange(async(event,session)=>{
     if(event==='SIGNED_IN'&&session){
       await loadSupaData(session.user);
       updateUserUI(session.user);
@@ -2207,6 +2574,7 @@ function initSupa(){
       setSync('synced');
     }
   });
+  authUnsub=subscription?()=>subscription.unsubscribe():null;
   // Check existing session on load
   supa.auth.getSession().then(({data:{session}})=>{
     if(session){
@@ -2219,13 +2587,22 @@ function initSupa(){
 }
 
 async function signIn(){
-  if(!supa){toast('Loading…','info');return;}
+  if(backendCfg.mode==='local'){toast('Switch backend mode to enable Google Sign-In','info');openBackendSettings();return;}
+  if(!supa){
+    if(backendCfg.mode==='custom'&&!resolveSupaCreds()){
+      toast('Add Supabase URL + anon key in Backend Settings','err');
+      openBackendSettings();
+      return;
+    }
+    toast('Loading…','info');return;
+  }
+  const redirectTo=isNative()?resolveDeeplink():resolveRedirectTo();
   if(isNative()){
     // Native app: open Google sign-in in the system browser, return via the app deep link.
     try{
       const{data,error}=await supa.auth.signInWithOAuth({
         provider:'google',
-        options:{redirectTo:APP_DEEPLINK,skipBrowserRedirect:true}
+        options:{redirectTo,skipBrowserRedirect:true}
       });
       if(error)throw error;
       const Browser=capPlugin('Browser');
@@ -2235,7 +2612,7 @@ async function signIn(){
   }
   supa.auth.signInWithOAuth({
     provider:'google',
-    options:{redirectTo:window.location.origin+window.location.pathname}
+    options:{redirectTo}
   });
 }
 
@@ -2243,8 +2620,9 @@ async function signIn(){
 function initNativeAuth(){
   if(!isNative())return;
   const App=capPlugin('App');if(!App)return;
+  const deeplink=resolveDeeplink();
   App.addListener('appUrlOpen',async({url})=>{
-    if(!url||url.indexOf(APP_DEEPLINK)!==0)return;
+    if(!url||url.indexOf(deeplink)!==0)return;
     try{
       const frag=url.split('#')[1]||'';
       const q=new URLSearchParams(frag);
@@ -2261,6 +2639,12 @@ function initNativeAuth(){
 }
 
 async function signOut(){
+  if(backendCfg.mode==='local'){
+    document.getElementById('app').classList.remove('on');
+    document.getElementById('login').style.display='flex';
+    cMenu();toast('Signed out','info');
+    return;
+  }
   if(supa)await supa.auth.signOut();
   document.getElementById('app').classList.remove('on');
   document.getElementById('login').style.display='flex';
@@ -2421,6 +2805,8 @@ async function syncNow(){
 
 function setSync(s){
   const dot=e$('sdot'),txt=e$('sync-txt');
+  if(!dot||!txt)return;
+  if(backendCfg.mode==='local'){dot.className='sdot err';txt.textContent='Local only — not synced';return;}
   if(s==='synced'){dot.className='sdot';txt.textContent='Synced to Supabase';}
   else if(s==='pending'){dot.className='sdot pend';txt.textContent='Pending sync…';}
   else if(s==='loading'){dot.className='sdot';dot.style.background='var(--blu)';txt.textContent='Loading…';}
@@ -2456,7 +2842,7 @@ function goPage(p,el,title){
   if(el)el.classList.add('on');
   curPg=p;e$('tb-pg').textContent=title;cMenu();
   if(typeof updateExpSelectBar==='function')updateExpSelectBar();
-  if(p==='profile')refreshProfileUI();
+  if(p==='profile'){refreshProfileUI();fProfile(profileTab==='backend'?'backend':'company');}
   else renderPage(p);
 }
 function renderPage(p){if(p==='dash')renderDash();else if(p==='proj')renderProj();else if(p==='inv')renderInv();else if(p==='est')renderEst();else if(p==='pay')renderPay();else if(p==='sub')renderSub();else if(p==='agr')renderAgr();else if(p==='cli')renderCli();else if(p==='tasks'){if(typeof tasksTabMode!=='undefined'&&tasksTabMode==='jobs')renderWorkOrders();else renderTasks();}else if(p==='exp')renderExp();else if(p==='ledger')renderLedger();}
@@ -3907,6 +4293,16 @@ function refreshProfileUI(){
   }
   set('ps-ph',c.phone);set('ps-em',c.email);set('ps-addr',c.addr);set('ps-ntn',c.ntn);
   set('ps-bank',c.bank);set('ps-acc',c.acc);set('ps-acc-t',c.accT);set('ps-iban',c.iban);
+  if(typeof fillBackendForm==='function'&&e$('pgbe-status-mode')){
+    const modeEl=e$('pgbe-status-mode');
+    const urlEl=e$('pgbe-status-url');
+    if(modeEl)modeEl.textContent=backendModeLabel();
+    if(urlEl){
+      if(backendCfg.mode==='custom')urlEl.textContent=(backendCfg.supabaseUrl||'').replace(/^https?:\/\//,'').replace(/\/$/,'')||'—';
+      else if(backendCfg.mode==='local')urlEl.textContent='This device only';
+      else urlEl.textContent='BuildPro cloud';
+    }
+  }
 }
 
 // ════ DELETE ════
@@ -5449,7 +5845,7 @@ async function pdfAgr(id){
       y+=2;
     }
     if(r.terms){
-      y=pdfDrawCellAt(doc,String(r.terms).trim(),14,y,178,9)+y+3;
+      y+=pdfDrawCellAt(doc,String(r.terms).trim(),14,y,178,9)+3;
     }
   }
 
@@ -8560,7 +8956,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-08-06-v56';
+const APP_VERSION='2026-08-24-v58';
 // Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
 // GitHub Pages is the live OTA source of truth while Wasmer Edge GitHub deploys are failing.
 const OTA_ORIGIN='https://abbashafiz.github.io/Buildpro-crm';
@@ -8725,7 +9121,24 @@ if('serviceWorker' in navigator){
 
 // ════ BOOT ════
 try{const lo=localStorage.getItem('bp5');if(lo){const p=JSON.parse(lo);Object.keys(p).forEach(k=>{if(D[k]!==undefined)D[k]=p[k];});}}catch(e){}
-initSupa();
+(async function bootBackend(){
+  // White-label: if no local override, load optional config.json next to index.html
+  if(!localStorage.getItem(BP_BACKEND_KEY)){
+    try{
+      const r=await fetch('config.json',{cache:'no-store'});
+      if(r.ok){
+        const j=await r.json();
+        if(j&&typeof j==='object'){
+          backendCfg={...defaultBackendCfg(),...j};
+        }
+      }
+    }catch(e){}
+  }else{
+    backendCfg=loadBackendCfg();
+  }
+  refreshLoginBackendUI();
+  initSupa();
+})();
 </script>
 </body>
 </html>
