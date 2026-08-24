@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-08-24-v70">
+<meta name="app-version" content="2026-08-24-v71">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -1508,14 +1508,14 @@ select option{background:var(--s2);}
 
     <!-- Not Included + rates -->
     <div style="font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:.8px;font-weight:700;margin-bottom:6px">Not Included Items <span style="color:var(--mut2);font-weight:400;text-transform:none">(editable + rates)</span></div>
-    <div style="font-size:var(--fs-xs);color:var(--mut2);margin-bottom:8px;line-height:1.45">Excluded items — edit name, unit, and rate as needed.</div>
+    <div style="font-size:var(--fs-xs);color:var(--mut2);margin-bottom:8px;line-height:1.45">Excluded items — edit name, unit, and rate as needed. Drag <b style="color:var(--txt)">⠿</b> to reorder.</div>
     <div style="display:grid;grid-template-columns:1fr 72px 90px auto;gap:7px;margin-bottom:8px;align-items:center">
       <input id="agr-ni-txt" placeholder="Item name — e.g. Excavation" onkeydown="if(event.key==='Enter'){event.preventDefault();addAgrNotIncluded()}">
       <input id="agr-ni-unit" placeholder="unit" value="job">
       <input id="agr-ni-rate" placeholder="Rate" onkeydown="if(event.key==='Enter'){event.preventDefault();addAgrNotIncluded()}">
       <button type="button" class="btn btn-grey btn-sm" style="padding:8px 12px;font-size:var(--fs-xs);flex:none" onclick="addAgrNotIncluded()">+ Add</button>
     </div>
-    <div id="agr-notincl" style="display:grid;grid-template-columns:1fr;gap:7px;margin-bottom:14px"></div>
+    <div id="agr-notincl" style="display:flex;flex-direction:column;gap:7px;margin-bottom:14px"></div>
 
     <div class="hdiv"></div>
 
@@ -3768,23 +3768,30 @@ function moveAgrScopeItem(kind,key,toStage){
   toast('Moved to '+agrStageTitle(toStage)+' ✓');
 }
 function agrClearDropMarks(){
-  document.querySelectorAll('#agr-clauses .agr-drop-before,#agr-clauses .agr-drop-after,#agr-clauses .agr-drop-into,#agr-clauses .agr-dragging').forEach(n=>{
+  document.querySelectorAll('#agr-clauses .agr-drop-before,#agr-clauses .agr-drop-after,#agr-clauses .agr-drop-into,#agr-clauses .agr-dragging,#agr-notincl .agr-drop-before,#agr-notincl .agr-drop-after,#agr-notincl .agr-dragging').forEach(n=>{
     n.classList.remove('agr-drop-before','agr-drop-after','agr-drop-into','agr-dragging');
   });
 }
 function agrBindScopeDrag(){
   const root=e$('agr-clauses');if(!root)return;
   root.querySelectorAll('.agr-drag-h').forEach(h=>{
-    h.addEventListener('pointerdown',agrDragPointerDown,{passive:false});
+    h.addEventListener('pointerdown',ev=>agrDragPointerDown(ev,'scope'),{passive:false});
   });
 }
-function agrDragPointerDown(ev){
+function agrBindNotInclDrag(){
+  const root=e$('agr-notincl');if(!root)return;
+  root.querySelectorAll('.agr-drag-h').forEach(h=>{
+    h.addEventListener('pointerdown',ev=>agrDragPointerDown(ev,'ni'),{passive:false});
+  });
+}
+function agrDragPointerDown(ev,list){
   if(ev.button!=null&&ev.button!==0)return;
   const handle=ev.currentTarget;
   const row=handle.closest('.agr-item-row');if(!row)return;
   ev.preventDefault();
   syncAgrFormFromDom();
   agrDragState={
+    list:list||'scope',
     kind:row.dataset.kind,
     key:row.dataset.key,
     fromStage:row.dataset.stage||agrEffectiveStage(row.dataset.key),
@@ -3799,6 +3806,9 @@ function agrDragPointerDown(ev){
   window.addEventListener('pointerup',agrDragPointerUp,{passive:false});
   window.addEventListener('pointercancel',agrDragPointerUp,{passive:false});
 }
+function agrDragRootSel(){
+  return(agrDragState&&agrDragState.list==='ni')?'#agr-notincl':'#agr-clauses';
+}
 function agrDragPointerMove(ev){
   if(!agrDragState)return;
   ev.preventDefault();
@@ -3807,8 +3817,9 @@ function agrDragPointerMove(ev){
   agrDragState.row.classList.add('agr-dragging');
   const el=document.elementFromPoint(ev.clientX,ev.clientY);
   if(!el)return;
-  const overRow=el.closest('#agr-clauses .agr-item-row');
-  const overItems=el.closest('#agr-clauses .agr-stage-items');
+  const root=agrDragRootSel();
+  const overRow=el.closest(root+' .agr-item-row');
+  const overItems=agrDragState.list==='ni'?null:el.closest('#agr-clauses .agr-stage-items');
   if(overRow&&overRow!==agrDragState.row){
     const rect=overRow.getBoundingClientRect();
     if(ev.clientY<rect.top+rect.height/2)overRow.classList.add('agr-drop-before');
@@ -3816,6 +3827,15 @@ function agrDragPointerMove(ev){
   }else if(overItems){
     overItems.classList.add('agr-drop-into');
   }
+}
+function agrReorderNotIncluded(key,beforeKey){
+  const item=agrNotIncluded.find(x=>x.key===key);if(!item)return;
+  agrNotIncluded=agrNotIncluded.filter(x=>x.key!==key);
+  if(beforeKey&&beforeKey!==key){
+    const idx=agrNotIncluded.findIndex(x=>x.key===beforeKey);
+    if(idx>=0){agrNotIncluded.splice(idx,0,item);return;}
+  }
+  agrNotIncluded.push(item);
 }
 function agrDragPointerUp(ev){
   window.removeEventListener('pointermove',agrDragPointerMove);
@@ -3826,6 +3846,24 @@ function agrDragPointerUp(ev){
   const el=document.elementFromPoint(ev.clientX,ev.clientY);
   agrClearDropMarks();
   if(!state.moved||!el)return;
+
+  if(state.list==='ni'){
+    const overRow=el.closest('#agr-notincl .agr-item-row');
+    if(!overRow||overRow===state.row)return;
+    const rect=overRow.getBoundingClientRect();
+    let beforeKey=null;
+    if(ev.clientY<rect.top+rect.height/2)beforeKey=overRow.dataset.key;
+    else{
+      const next=overRow.nextElementSibling;
+      beforeKey=(next&&next.classList.contains('agr-item-row'))?next.dataset.key:null;
+    }
+    syncAgrFormFromDom();
+    agrReorderNotIncluded(state.key,beforeKey);
+    renderAgrNotIncluded();
+    toast('Reordered ✓');
+    return;
+  }
+
   const overRow=el.closest('#agr-clauses .agr-item-row');
   const overItems=el.closest('#agr-clauses .agr-stage-items');
   let toStage=state.fromStage;
@@ -3837,7 +3875,6 @@ function agrDragPointerUp(ev){
     else{
       const next=overRow.nextElementSibling;
       beforeKey=(next&&next.classList.contains('agr-item-row'))?next.dataset.key:null;
-      // if inserting after last in stage, beforeKey null → append in that stage
       if(!beforeKey)toStage=overRow.dataset.stage||toStage;
     }
   }else if(overItems){
@@ -3847,7 +3884,6 @@ function agrDragPointerUp(ev){
   if(!toStage||BOQ_STAGE_ORDER[toStage]==null)return;
   syncAgrFormFromDom();
   agrSetItemStage(state.kind,state.key,toStage);
-  // Recompute effective stages after stage change, then place
   agrPlaceInStageOrder(state.key,toStage,beforeKey);
   renderAgrClauses();
   toast(toStage!==state.fromStage?('Moved to '+agrStageTitle(toStage)+' ✓'):'Reordered ✓');
@@ -4155,8 +4191,9 @@ function renderAgrNotIncluded(){
   el.innerHTML=agrNotIncluded.map(c=>{
     const actions=`<button type="button" title="Restore to Included" style="background:none;border:none;color:var(--grn);cursor:pointer;font-size:12px;flex-shrink:0;padding:0 2px;font-weight:700" onclick="restoreAgrNotIncluded('${c.key}')">↩</button>
       <button type="button" title="Delete" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;flex-shrink:0;padding:0 2px;font-weight:700" onclick="delAgrNotIncluded('${c.key}')">✕</button>`;
-    return agrItemRowHtml({kind:'ni',key:c.key,label:c.label,unit:c.unit||'job',rate:c.rate||'',border:'rgba(224,85,85,.35)',actions});
+    return agrItemRowHtml({kind:'ni',key:c.key,label:c.label,unit:c.unit||'job',rate:c.rate||'',border:'rgba(224,85,85,.35)',actions,drag:true});
   }).join('');
+  agrBindNotInclDrag();
 }
 function addAgrNotIncluded(){
   const label=(e$('agr-ni-txt')?.value||'').trim();
@@ -9576,7 +9613,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-08-24-v70';
+const APP_VERSION='2026-08-24-v71';
 // Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
 // GitHub Pages is the live OTA source of truth while Wasmer Edge GitHub deploys are failing.
 const OTA_ORIGIN='https://abbashafiz.github.io/Buildpro-crm';
