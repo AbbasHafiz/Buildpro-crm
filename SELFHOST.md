@@ -10,13 +10,14 @@ Sell / deploy BuildPro so the client owns the database and Google Sign-In on the
 
 ## Quick setup (in the app)
 
-1. Open the app → **Backend / Self-host settings** (login screen) or avatar menu → **Backend Settings**.
-2. Choose **Client Supabase (self-host)**.
-3. Paste **Project URL** and **anon/public key** from Supabase → Project Settings → API.
-4. Tap **Test Connection**, then **Save & Apply**.
-5. Configure Google in Supabase (below), then sign in.
+1. Sign in (or use Local only), then open bottom nav → **Profile**.
+2. Tap the **Backend / Self-host** tab.
+3. Choose **Client Supabase (self-host)**.
+4. Paste **Project URL** and **anon/public key** from Supabase → Project Settings → API.
+5. Tap **Test Connection**, then **Save & Apply Backend**.
+6. Configure Google in Supabase (below), then sign in again.
 
-Settings are stored in the browser (`localStorage` key `bp_backend`). Switching backend reloads the app and uses a separate cloud account — export a backup first if you need to move data.
+On the login screen you can also open **Backend / Self-host settings** (sheet). Avatar menu → **Backend / Self-host** opens the same Profile tab.
 
 ## Fleet deploy with `config.json`
 
