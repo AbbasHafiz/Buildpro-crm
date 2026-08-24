@@ -75,9 +75,10 @@ The app calls Supabase `signInWithOAuth({ provider: 'google' })`. Client ID / Se
 
 | Mode | Behaviour |
 |------|-----------|
-| **BuildPro hosted** | Default cloud (vendor Supabase). |
-| **Client Supabase** | Client URL + anon key; Google via their Supabase project. |
+| **Client Supabase** | Client URL + anon key; Google via their Supabase project. **Use this when delivering to a client.** |
 | **Local only** | No cloud; **Continue Offline** on the login screen. Use Export Backup regularly. |
+
+BuildPro’s own cloud credentials remain in the app as a silent fallback when no `config.json` / Backend settings are set. That option is **hidden** in the UI so clients cannot select the vendor cloud.
 
 ## Security notes
 

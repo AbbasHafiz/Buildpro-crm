@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-08-24-v58">
+<meta name="app-version" content="2026-08-24-v59">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -774,7 +774,7 @@ select option{background:var(--s2);}
         <div style="font-size:var(--fs-xs);color:var(--mut);line-height:1.55;margin-bottom:12px">Point this app at a client’s own Supabase project so they host the database and Google Sign-In. Only the public anon key is stored in the browser.</div>
         <div style="font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;font-weight:700">Connection mode</div>
         <div class="be-mode" id="pgbe-mode">
-          <label id="pgbe-lab-hosted" onclick="pgBePickMode('hosted')">
+          <label id="pgbe-lab-hosted" style="display:none" onclick="pgBePickMode('hosted')">
             <input type="radio" name="pgbe-mode" value="hosted" id="pgbe-mode-hosted">
             <div><div class="be-ttl">BuildPro hosted</div><div class="be-sub">Use the default BuildPro cloud</div></div>
           </label>
@@ -814,7 +814,7 @@ select option{background:var(--s2);}
 
         <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px;padding-bottom:24px">
           <button class="btn btn-gold" style="width:100%" onclick="saveBackendSettings('pgbe')">💾 Save &amp; Apply Backend</button>
-          <button class="btn btn-grey" style="width:100%" onclick="resetBackendSettings()">Reset to BuildPro hosted</button>
+          <button class="btn btn-grey" style="width:100%" onclick="resetBackendSettings()">Clear saved backend settings</button>
         </div>
       </div>
     </div>
@@ -1592,7 +1592,7 @@ select option{background:var(--s2);}
     <div style="font-size:var(--fs-xs);color:var(--mut);line-height:1.55;margin-bottom:12px">Point this app at <strong style="color:var(--txt)">your</strong> Supabase project so a client can host their own database and Google Sign-In. Secrets stay in their account — only the public anon key is stored in the browser.</div>
     <div style="font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;font-weight:700">Connection mode</div>
     <div class="be-mode" id="be-mode">
-      <label id="be-lab-hosted" onclick="bePickMode('hosted')">
+      <label id="be-lab-hosted" style="display:none" onclick="bePickMode('hosted')">
         <input type="radio" name="be-mode" value="hosted" id="be-mode-hosted">
         <div><div class="be-ttl">BuildPro hosted</div><div class="be-sub">Use the default BuildPro cloud (current behaviour)</div></div>
       </label>
@@ -2245,6 +2245,9 @@ function pdfTextUrdu(doc,text,x,y,opts){
 const HOSTED_SUPA_URL='https://lwjcnevludsiwoudzxcj.supabase.co';
 const HOSTED_SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3amNuZXZsdWRzaXdvdWR6eGNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExNDQ0NjAsImV4cCI6MjA5NjcyMDQ2MH0.-6O4Z6OCUqjm3B1wSqtQv5uH7QuWTTkHdximiJB2PKE';
 const BP_BACKEND_KEY='bp_backend';
+// Hosted mode is for the BuildPro vendor cloud only — never offer it in the client UI
+// (clients must use their own Supabase). Kept as a silent fallback when no config is set.
+const SHOW_HOSTED_BACKEND_UI=false;
 // Native (Capacitor Android) helpers — Google blocks OAuth inside embedded WebViews,
 // so on the native app we open the system browser and return via this deep link.
 const APP_DEEPLINK='com.buildpro.crm://login-callback';
@@ -2290,7 +2293,8 @@ function resolveDeeplink(){
 function backendModeLabel(){
   if(backendCfg.mode==='custom')return'Client Supabase';
   if(backendCfg.mode==='local')return'Local only';
-  return'BuildPro hosted';
+  // Hosted is silent vendor default — not offered in the client UI
+  return SHOW_HOSTED_BACKEND_UI?'BuildPro hosted':'App default';
 }
 function refreshLoginBackendUI(){
   const badge=e$('l-backend-badge');
@@ -2310,6 +2314,7 @@ function refreshLoginBackendUI(){
   if(lBtn)lBtn.style.display=backendCfg.mode==='local'?'flex':'none';
 }
 function bePickMode(mode, prefix){
+  if(!SHOW_HOSTED_BACKEND_UI && mode==='hosted')mode='custom';
   const p=prefix||'be';
   const labId=p==='pgbe'?'pgbe-lab-':'be-lab-';
   const modeId=p==='pgbe'?'pgbe-mode-':'be-mode-';
@@ -2319,7 +2324,11 @@ function bePickMode(mode, prefix){
     const lab=e$(labId+m);
     const inp=e$(modeId+m);
     if(inp)inp.checked=m===mode;
-    if(lab)lab.classList.toggle('on',m===mode);
+    if(lab){
+      if(m==='hosted'&&!SHOW_HOSTED_BACKEND_UI)lab.style.display='none';
+      else if(m==='hosted')lab.style.display='';
+      lab.classList.toggle('on',m===mode);
+    }
   });
   const custom=e$(customId);
   const localHelp=e$(localId);
@@ -2338,7 +2347,10 @@ function fillBackendForm(prefix){
   if(id('redirect'))id('redirect').value=cfg.redirectUrl||'';
   if(id('deeplink'))id('deeplink').value=cfg.deeplink||APP_DEEPLINK;
   const st=id('status');if(st){st.textContent='';st.className='be-status';}
-  bePickMode(cfg.mode||'hosted',p);
+  // Never pre-select hidden hosted mode in the client UI
+  let uiMode=cfg.mode||'custom';
+  if(!SHOW_HOSTED_BACKEND_UI && uiMode==='hosted')uiMode='custom';
+  bePickMode(uiMode,p);
   if(p==='pgbe'){
     const modeEl=e$('pgbe-status-mode');
     const urlEl=e$('pgbe-status-url');
@@ -2346,7 +2358,7 @@ function fillBackendForm(prefix){
     if(urlEl){
       if(backendCfg.mode==='custom')urlEl.textContent=(backendCfg.supabaseUrl||'').replace(/^https?:\/\//,'').replace(/\/$/,'')||'—';
       else if(backendCfg.mode==='local')urlEl.textContent='This device only';
-      else urlEl.textContent='BuildPro cloud';
+      else urlEl.textContent=SHOW_HOSTED_BACKEND_UI?'BuildPro cloud':'Set Client Supabase below';
     }
   }
 }
@@ -2378,6 +2390,9 @@ function readBackendForm(prefix){
 function saveBackendSettings(prefix){
   const p=prefix||'be';
   const next=readBackendForm(p);
+  if(!SHOW_HOSTED_BACKEND_UI && next.mode==='hosted'){
+    toast('Choose Client Supabase (self-host) or Local only','err');return;
+  }
   if(next.mode==='custom'){
     if(!next.supabaseUrl||!/^https?:\/\//i.test(next.supabaseUrl)){
       toast('Enter a valid Supabase URL (https://….supabase.co)','err');return;
@@ -2402,10 +2417,10 @@ function saveBackendSettings(prefix){
   }
 }
 function resetBackendSettings(){
-  if(!confirm('Clear saved backend overrides and use BuildPro hosted defaults?'))return;
+  if(!confirm('Clear saved backend settings? The app will reload with default connection settings.'))return;
   localStorage.removeItem(BP_BACKEND_KEY);
   backendCfg=defaultBackendCfg();
-  toast('Backend reset — reloading…','ok');
+  toast('Backend settings cleared — reloading…','ok');
   setTimeout(()=>location.reload(),700);
 }
 async function testBackendConn(prefix){
@@ -4300,7 +4315,7 @@ function refreshProfileUI(){
     if(urlEl){
       if(backendCfg.mode==='custom')urlEl.textContent=(backendCfg.supabaseUrl||'').replace(/^https?:\/\//,'').replace(/\/$/,'')||'—';
       else if(backendCfg.mode==='local')urlEl.textContent='This device only';
-      else urlEl.textContent='BuildPro cloud';
+      else urlEl.textContent=SHOW_HOSTED_BACKEND_UI?'BuildPro cloud':'Set Client Supabase below';
     }
   }
 }
@@ -8956,7 +8971,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-08-24-v58';
+const APP_VERSION='2026-08-24-v59';
 // Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
 // GitHub Pages is the live OTA source of truth while Wasmer Edge GitHub deploys are failing.
 const OTA_ORIGIN='https://abbashafiz.github.io/Buildpro-crm';
