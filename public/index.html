@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-08-24-v59">
+<meta name="app-version" content="2026-08-24-v60">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -552,6 +552,7 @@ select option{background:var(--s2);}
         <div class="ftab" onclick="fInv('overdue',this)">Overdue</div>
         <div class="ftab" onclick="fInv('draft',this)">Draft</div>
       </div>
+      <div style="font-size:var(--fs-xs);color:var(--mut);margin:-2px 0 10px;padding:0 2px">Tick cards to select several, then Delete from the bar.</div>
       <div class="card-list" id="list-inv"></div>
     </div>
 
@@ -712,7 +713,7 @@ select option{background:var(--s2);}
         <div class="ftab" onclick="fExp('equipment',this)">Equipment</div>
         <div class="ftab" onclick="fExp('other',this)">Other</div>
       </div>
-      <div style="font-size:var(--fs-xs);color:var(--mut);margin:-2px 0 10px;padding:0 2px">Tick similar items (e.g. sand, crush) to see their sum and export a PDF.</div>
+      <div style="font-size:var(--fs-xs);color:var(--mut);margin:-2px 0 10px;padding:0 2px">Tick items to sum, export PDF, or delete several at once.</div>
       <div id="list-exp"></div>
       <div id="exp-select-bar" style="display:none;position:fixed;left:12px;right:12px;bottom:calc(72px + var(--safe-b));z-index:55;background:var(--s2);border:1px solid var(--bor2);border-radius:14px;padding:11px 13px;box-shadow:0 10px 32px rgba(0,0,0,.55)">
         <div style="display:flex;flex-direction:column;gap:9px">
@@ -720,10 +721,11 @@ select option{background:var(--s2);}
             <div style="font-size:var(--fs-sm);font-weight:700;color:var(--txt)" id="exp-select-count">0 selected</div>
             <div style="font-size:var(--fs-xs);color:var(--mut)">Sum <span style="font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--gold)" id="exp-select-sum">PKR 0</span></div>
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1.2fr;gap:7px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px">
             <button type="button" class="btn btn-grey btn-sm" style="padding:9px 8px;font-size:var(--fs-xs);width:100%" onclick="selectSimilarExps()">Similar</button>
             <button type="button" class="btn btn-grey btn-sm" style="padding:9px 8px;font-size:var(--fs-xs);width:100%" onclick="clearExpSelect()">Clear</button>
             <button type="button" class="btn btn-gold btn-sm" style="padding:9px 8px;font-size:var(--fs-xs);width:100%" onclick="pdfExpSelected()">⬇ PDF</button>
+            <button type="button" class="btn btn-grey btn-sm" style="padding:9px 8px;font-size:var(--fs-xs);width:100%;color:var(--red);border-color:rgba(196,68,68,.35)" onclick="delSelectedExps()">🗑 Delete</button>
           </div>
         </div>
       </div>
@@ -885,6 +887,17 @@ select option{background:var(--s2);}
   <button class="fab" onclick="fabAction()">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
   </button>
+
+  <!-- Shared multi-select bar (invoices, estimates, payments, agreements, tasks, jobs) -->
+  <div id="list-select-bar" style="display:none;position:fixed;left:12px;right:12px;bottom:calc(72px + var(--safe-b));z-index:55;background:var(--s2);border:1px solid var(--bor2);border-radius:14px;padding:11px 13px;box-shadow:0 10px 32px rgba(0,0,0,.55)">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+      <div style="font-size:var(--fs-sm);font-weight:700;color:var(--txt)" id="list-select-count">0 selected</div>
+      <div style="display:flex;gap:7px;flex:1;justify-content:flex-end">
+        <button type="button" class="btn btn-grey btn-sm" style="padding:9px 14px;font-size:var(--fs-xs)" onclick="clearListSel()">Clear</button>
+        <button type="button" class="btn btn-grey btn-sm" style="padding:9px 14px;font-size:var(--fs-xs);color:var(--red);border-color:rgba(196,68,68,.35)" onclick="delListSel()">🗑 Delete</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- ═══ SHEETS ═══ -->
@@ -2857,6 +2870,7 @@ function goPage(p,el,title){
   if(el)el.classList.add('on');
   curPg=p;e$('tb-pg').textContent=title;cMenu();
   if(typeof updateExpSelectBar==='function')updateExpSelectBar();
+  if(typeof updateListSelBar==='function')updateListSelBar();
   if(p==='profile'){refreshProfileUI();fProfile(profileTab==='backend'?'backend':'company');}
   else renderPage(p);
 }
@@ -4321,7 +4335,18 @@ function refreshProfileUI(){
 }
 
 // ════ DELETE ════
-function del(store,id){
+// opts.quiet — skip confirm(); opts.noUi — skip sched/render/toast (for bulk)
+function del(store,id,opts){
+  opts=opts||{};
+  const quiet=!!opts.quiet,noUi=!!opts.noUi;
+  const ask=msg=>{if(quiet)return true;return confirm(msg);};
+  const finish=msg=>{
+    if(noUi)return;
+    sched();renderAll();
+    if(typeof updateExpSelectBar==='function')updateExpSelectBar();
+    if(typeof updateListSelBar==='function')updateListSelBar();
+    if(msg)toast(msg,'info');
+  };
   // ── PROJECTS: cascade with warning ──
   if(store==='projects'){
     const pid=id;
@@ -4343,7 +4368,7 @@ function del(store,id){
       const parts=Object.entries(counts).filter(([,v])=>v>0).map(([k,v])=>v+' '+k).join(', ');
       msg='⚠️ This project has linked records: '+parts+'.\n\nDeleting will PERMANENTLY remove all of these too. This cannot be undone.\n\nContinue?';
     }
-    if(!confirm(msg))return;
+    if(!ask(msg))return;
     recordTomb([pid,
       ...D.invoices.filter(x=>x.projectId===pid).map(x=>x.id),
       ...D.estimates.filter(x=>x.projectId===pid).map(x=>x.id),
@@ -4366,8 +4391,7 @@ function del(store,id){
     D.subpays=D.subpays.filter(x=>x.projectId!==pid);
     if(D.subconContracts)D.subconContracts=D.subconContracts.filter(x=>x.projectId!==pid);
     D.projects=D.projects.filter(x=>x.id!==pid);
-    sched();renderAll();
-    toast(total>0?'Project + '+total+' linked records deleted':'Project deleted','info');
+    finish(total>0?'Project + '+total+' linked records deleted':'Project deleted');
     return;
   }
   // ── CLIENTS: block if has projects, else cascade their own invoices/estimates/agreements ──
@@ -4375,7 +4399,7 @@ function del(store,id){
     const cid=id;
     const linkedProjects=D.projects.filter(x=>x.clientId===cid);
     if(linkedProjects.length>0){
-      alert('⚠️ This client has '+linkedProjects.length+' project(s) linked to them.\n\nPlease delete or reassign those projects first before deleting this client.');
+      if(!quiet)alert('⚠️ This client has '+linkedProjects.length+' project(s) linked to them.\n\nPlease delete or reassign those projects first before deleting this client.');
       return;
     }
     const counts={
@@ -4389,7 +4413,7 @@ function del(store,id){
       const parts=Object.entries(counts).filter(([,v])=>v>0).map(([k,v])=>v+' '+k).join(', ');
       msg='⚠️ This client has linked records: '+parts+'.\n\nDeleting will PERMANENTLY remove these too. This cannot be undone.\n\nContinue?';
     }
-    if(!confirm(msg))return;
+    if(!ask(msg))return;
     recordTomb([cid,
       ...D.invoices.filter(x=>x.clientId===cid).map(x=>x.id),
       ...D.estimates.filter(x=>x.clientId===cid).map(x=>x.id),
@@ -4398,8 +4422,7 @@ function del(store,id){
     D.estimates=D.estimates.filter(x=>x.clientId!==cid);
     D.agreements=D.agreements.filter(x=>x.clientId!==cid);
     D.clients=D.clients.filter(x=>x.id!==cid);
-    sched();renderAll();
-    toast(total>0?'Client + '+total+' linked records deleted':'Client deleted','info');
+    finish(total>0?'Client + '+total+' linked records deleted':'Client deleted');
     return;
   }
   // ── SUB-CONTRACTORS: cascade payments + project contracts ──
@@ -4412,33 +4435,106 @@ function del(store,id){
     if(total>0){
       msg='⚠️ This sub-contractor has '+linkedPays+' payment record(s) and '+linkedCons+' project contract(s).\n\nDeleting will PERMANENTLY remove these too. This cannot be undone.\n\nContinue?';
     }
-    if(!confirm(msg))return;
+    if(!ask(msg))return;
     recordTomb([sid,
       ...D.subpays.filter(x=>x.subconId===sid).map(x=>x.id),
       ...(D.subconContracts||[]).filter(x=>x.subconId===sid).map(x=>x.id)]);
     D.subpays=D.subpays.filter(x=>x.subconId!==sid);
     if(D.subconContracts)D.subconContracts=D.subconContracts.filter(x=>x.subconId!==sid);
     D.subcons=D.subcons.filter(x=>x.id!==sid);
-    sched();renderAll();
-    toast(total>0?'Sub-contractor + '+total+' linked records deleted':'Sub-contractor deleted','info');
+    finish(total>0?'Sub-contractor + '+total+' linked records deleted':'Sub-contractor deleted');
     return;
   }
   // ── CLIENT PAYMENTS: reverse Cash in Hand (misc advances) + recompute invoice status ──
   if(store==='cpays'){
-    if(!confirm('Delete this record?'))return;
+    if(!ask('Delete this record?'))return;
     const rec=D.cpays.find(x=>x.id===id);
     recordTomb([id]);
     D.cpays=D.cpays.filter(x=>x.id!==id);
     if(rec&&rec.payType==='misc'&&rec.projectId){const op=D.projects.find(x=>x.id===rec.projectId);if(op){op.cashInHand=Math.max(0,(op.cashInHand||0)-(rec.amount||0));op.updatedAt=new Date().toISOString();}}
     if(rec&&rec.invoiceId)recalcInvoiceStatus(rec.invoiceId);
-    sched();renderAll();toast('Deleted','info');
+    finish('Deleted');
     return;
   }
   // ── Default: simple delete for leaf records (invoices, tasks, expenses, etc) ──
-  if(!confirm('Delete this record?'))return;
+  if(!ask('Delete this record?'))return;
   recordTomb([id]);
   D[store]=D[store].filter(x=>x.id!==id);
-  sched();renderAll();toast('Deleted','info');
+  finish('Deleted');
+}
+
+// Bulk delete selected leaf records (one confirm). pairs: [{store,id},…]
+function delMany(pairs){
+  pairs=(pairs||[]).filter(p=>p&&p.store&&p.id);
+  // Drop cascade-heavy stores from bulk — those stay single-delete only
+  pairs=pairs.filter(p=>p.store!=='projects'&&p.store!=='clients'&&p.store!=='subcons');
+  if(!pairs.length){toast('Nothing selected','info');return;}
+  if(!confirm('Delete '+pairs.length+' selected record'+(pairs.length===1?'':'s')+'?\n\nThis cannot be undone.'))return;
+  pairs.forEach(({store,id})=>del(store,id,{quiet:true,noUi:true}));
+  selectedExpIds={};
+  listSel={};
+  sched();renderAll();
+  if(typeof updateExpSelectBar==='function')updateExpSelectBar();
+  if(typeof updateListSelBar==='function')updateListSelBar();
+  toast(pairs.length+' deleted','info');
+}
+
+// ════ MULTI-SELECT (lists) ════
+// listSel[key] = { [id]: storeName }
+let listSel={};
+function listSelKeyForPage(){
+  if(typeof curPg==='undefined')return null;
+  if(curPg==='inv')return'inv';
+  if(curPg==='est')return'est';
+  if(curPg==='pay')return'pay';
+  if(curPg==='agr')return'agr';
+  if(curPg==='tasks')return(typeof tasksTabMode!=='undefined'&&tasksTabMode==='jobs')?'workorders':'tasks';
+  return null;
+}
+function selBox(key,id,store){
+  const on=!!(listSel[key]&&listSel[key][id]);
+  return`<label style="display:flex;align-items:flex-start;padding-top:3px;margin-right:10px" onclick="event.stopPropagation()"><input type="checkbox" class="list-sel" data-lkey="${key}" data-lid="${id}" ${on?'checked':''} onchange="toggleListSel('${key}','${id}',this.checked,'${store}')" style="width:18px;height:18px;accent-color:var(--gold);cursor:pointer"></label>`;
+}
+function toggleListSel(key,id,on,store){
+  if(!listSel[key])listSel[key]={};
+  if(on)listSel[key][id]=store;else delete listSel[key][id];
+  updateListSelBar();
+}
+function clearListSel(key){
+  const k=key||listSelKeyForPage();
+  if(k)listSel[k]={};
+  if(k==='inv')renderInv();
+  else if(k==='est')renderEst();
+  else if(k==='pay')renderPay();
+  else if(k==='agr')renderAgr();
+  else if(k==='tasks')renderTasks();
+  else if(k==='workorders')renderWorkOrders();
+  else updateListSelBar();
+}
+function getListSelPairs(key){
+  const k=key||listSelKeyForPage();
+  const map=listSel[k]||{};
+  return Object.keys(map).map(id=>({store:map[id],id}));
+}
+function delListSel(){
+  delMany(getListSelPairs());
+}
+function updateListSelBar(){
+  const bar=e$('list-select-bar');if(!bar)return;
+  const k=listSelKeyForPage();
+  const n=k?Object.keys(listSel[k]||{}).length:0;
+  const show=!!(k&&n);
+  bar.style.display=show?'block':'none';
+  const c=e$('list-select-count');if(c)c.textContent=n+' selected';
+  const expBar=e$('exp-select-bar');
+  const expOn=expBar&&expBar.style.display!=='none'&&expBar.style.display!=='';
+  document.querySelectorAll('.fab').forEach(fab=>fab.classList.toggle('fab-select-up',show||!!expOn));
+  if(k){
+    document.querySelectorAll('.list-sel[data-lkey="'+k+'"]').forEach(inp=>{
+      const id=inp.getAttribute('data-lid');
+      inp.checked=!!(listSel[k]&&listSel[k][id]);
+    });
+  }
 }
 
 // ════ FILTER TABS ════
@@ -4595,10 +4691,10 @@ function renderUnpaidSuppliers(){
 function renderInv(){
   const el=e$('list-inv');let rows=fInvF==='all'?D.invoices:D.invoices.filter(r=>r.status===fInvF);
   rows=[...rows].sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.createdAt||'').localeCompare(a.createdAt||''));
-  if(!rows.length){el.innerHTML=`<div class="empty"><div class="empty-i">🧾</div><div class="empty-t">No invoices${fInvF!=='all'?' with status "'+fInvF+'"':' yet'}</div></div>`;return;}
+  if(!rows.length){el.innerHTML=`<div class="empty"><div class="empty-i">🧾</div><div class="empty-t">No invoices${fInvF!=='all'?' with status "'+fInvF+'"':' yet'}</div></div>`;updateListSelBar();return;}
   const typeLabel={standard:'Standard',labour:'Labour',progress:'Progress Billing',material:'Material'};
   el.innerHTML=rows.map(r=>`<div class="card">
-    <div class="card-top"><div><div class="card-num">${r.num} · <span style="color:var(--mut)">${typeLabel[r.invType||'standard']||'Standard'}</span></div><div class="card-nm">${r.clientName}</div><div class="card-sub">${r.projectName||'—'} ${r.period?'· '+r.period:''}</div></div>${bdg(r.status)}</div>
+    <div class="card-top">${selBox('inv',r.id,'invoices')}<div style="flex:1;min-width:0"><div class="card-num">${r.num} · <span style="color:var(--mut)">${typeLabel[r.invType||'standard']||'Standard'}</span></div><div class="card-nm">${r.clientName}</div><div class="card-sub">${r.projectName||'—'} ${r.period?'· '+r.period:''}</div></div>${bdg(r.status)}</div>
     <div class="card-mid"><div class="card-amt">PKR ${fmt(r.total)}</div><div class="card-date">Due: ${r.due||'—'}</div></div>
     <div class="card-acts">
       <button class="ca blu" onclick="eInv('${r.id}')">✏️ Edit</button>
@@ -4607,19 +4703,20 @@ function renderInv(){
       <button class="ca" style="color:#25D366;border-color:rgba(37,211,102,.25);background:rgba(37,211,102,.06);flex:none;padding:8px 10px" onclick="waInv('${r.id}')">📤</button>
       <button class="ca red" onclick="del('invoices','${r.id}')">🗑</button>
     </div></div>`).join('');
+  updateListSelBar();
 }
 
 // ════ RENDER ESTIMATES ════
 function renderEst(){
   const el=e$('list-est');let rows=fEstF==='all'?D.estimates:D.estimates.filter(r=>r.status===fEstF);
   rows=[...rows].sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.createdAt||'').localeCompare(a.createdAt||''));
-  if(!rows.length){el.innerHTML='<div class="empty"><div class="empty-i">📊</div><div class="empty-t">No estimates yet</div></div>';return;}
+  if(!rows.length){el.innerHTML='<div class="empty"><div class="empty-i">📊</div><div class="empty-t">No estimates yet</div></div>';updateListSelBar();return;}
   const structLbl={brown:'Brown',grey:'Grey',finishing:'Finishing'};
   el.innerHTML=rows.map(r=>{
     const inc=(r.inclusions||[]).length;const exc=Array.isArray(r.exclusions)?r.exclusions.length:0;
     const st=structLbl[r.structure]||'';
     return`<div class="card">
-    <div class="card-top"><div><div class="card-num">${r.num}${st?` · <span style="color:var(--mut)">${st}</span>`:''}</div><div class="card-nm">${r.clientName}</div><div class="card-sub">${r.projectName||'—'}${inc||exc?` · ✓${inc} include · ✕${exc} exclude`:''}</div></div>${bdg(r.status)}</div>
+    <div class="card-top">${selBox('est',r.id,'estimates')}<div style="flex:1;min-width:0"><div class="card-num">${r.num}${st?` · <span style="color:var(--mut)">${st}</span>`:''}</div><div class="card-nm">${r.clientName}</div><div class="card-sub">${r.projectName||'—'}${inc||exc?` · ✓${inc} include · ✕${exc} exclude`:''}</div></div>${bdg(r.status)}</div>
     <div class="card-mid"><div class="card-amt">PKR ${fmt(r.total)}</div><div class="card-date">${r.date||'—'}</div></div>
     <div class="card-acts">
       <button class="ca blu" onclick="eEst('${r.id}')">✏️ Edit</button>
@@ -4629,6 +4726,7 @@ function renderEst(){
       <button class="ca red" onclick="del('estimates','${r.id}')">🗑</button>
     </div></div>`;
   }).join('');
+  updateListSelBar();
 }
 
 // ════ RENDER PAYMENTS ════
@@ -4711,7 +4809,7 @@ function renderPay(){
   if(fPayF==='all')rows=[...D.cpays.map(p=>({...p,dir:'in'})),...D.subpays.map(p=>({...p,dir:'out'}))];
   else if(fPayF==='in')rows=D.cpays.map(p=>({...p,dir:'in'}));
   else rows=D.subpays.map(p=>({...p,dir:'out'}));
-  if(!rows.length){el.innerHTML='<div class="empty"><div class="empty-i">💳</div><div class="empty-t">No payments yet</div></div>';return;}
+  if(!rows.length){el.innerHTML='<div class="empty"><div class="empty-i">💳</div><div class="empty-t">No payments yet</div></div>';updateListSelBar();return;}
   // Resolve which client each payment belongs to (sub-con payments resolve via their project's client)
   const clientOf=p=>{
     if(p.dir==='in')return{id:p.clientId||'__none__',name:p.clientName||'No Client'};
@@ -4723,8 +4821,9 @@ function renderPay(){
     const isIn=p.dir==='in';
     const bd=(!isIn&&p.breakdown&&p.breakdown.length)?p.breakdown:[];
     return`<div class="pay-card">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start">
-        <div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+        ${selBox('pay',p.id,isIn?'cpays':'subpays')}
+        <div style="flex:1;min-width:0">
           <div class="pay-type" style="color:${isIn?'var(--grn)':'var(--red)'}">${isIn?'💳 Received from Client':'💸 Paid to Sub-Con'}</div>
           <div class="pay-nm">${isIn?(p.clientName||'—'):(p.subconName||'—')}</div>
           <div class="pay-sub">${isIn?(p.milestone||p.invoiceRef||p.projectName||'—'):(p.phase+' · '+(p.projectName||'—'))}</div>
@@ -4765,6 +4864,7 @@ function renderPay(){
       </div>`;
     return collapsibleSection(gid,header,g.rows.map(renderPayCard).join(''),open);
   }).join('');
+  updateListSelBar();
 }
 
 // ════ SUB-CON PROJECT CONTRACT ════
@@ -5078,14 +5178,14 @@ function renderSub(){
 // ════ RENDER AGREEMENTS ════
 function renderAgr(){
   const el=e$('list-agr');
-  if(!D.agreements.length){el.innerHTML='<div class="empty"><div class="empty-i">✍️</div><div class="empty-t">No agreements yet</div></div>';return;}
+  if(!D.agreements.length){el.innerHTML='<div class="empty"><div class="empty-i">✍️</div><div class="empty-t">No agreements yet</div></div>';updateListSelBar();return;}
   const typeLbl={labour:'Labour Rate',material:'With Material',costpct:'Cost to Cost %',lump:'Lump Sum',phase:'Phase-wise',other:'Other'};
   const agrRows=[...D.agreements].sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.createdAt||'').localeCompare(a.createdAt||''));
   el.innerHTML=agrRows.map(r=>{
     const inc=(r.inclusions||[]).length;const exc=Array.isArray(r.exclusions)?r.exclusions.length:0;
     const typeShow=(r.agrTypeCustom||typeLbl[r.agrType]||r.agrType||'—');
     return`<div class="card">
-    <div class="card-top"><div><div class="card-num">${r.num} · <span style="color:var(--mut)">${typeShow}</span></div><div class="card-nm">${r.clientName}</div><div class="card-sub">${r.projectName||'—'}${inc||exc?` · ✓${inc} include · ✕${exc} exclude`:''}</div></div>${bdg(r.status)}</div>
+    <div class="card-top">${selBox('agr',r.id,'agreements')}<div style="flex:1;min-width:0"><div class="card-num">${r.num} · <span style="color:var(--mut)">${typeShow}</span></div><div class="card-nm">${r.clientName}</div><div class="card-sub">${r.projectName||'—'}${inc||exc?` · ✓${inc} include · ✕${exc} exclude`:''}</div></div>${bdg(r.status)}</div>
     <div class="card-mid"><div class="card-amt">${r.agrType==='costpct'?(r.rate?r.rate+'%':'—'):('PKR '+fmt(r.value))}</div><div class="card-date">${r.date||'—'}</div></div>
     <div class="card-acts">
       <button class="ca blu" onclick="eAgr('${r.id}')">✏️ Edit</button>
@@ -5093,6 +5193,7 @@ function renderAgr(){
       <button class="ca red" onclick="del('agreements','${r.id}')">🗑</button>
     </div></div>`;
   }).join('');
+  updateListSelBar();
 }
 
 // ════ RENDER CLIENTS ════
@@ -6047,12 +6148,13 @@ function renderTasks(){
   const tasks=D.tasks||[];
   let rows=taskFilter==='all'?tasks:tasks.filter(r=>r.status===taskFilter);
   rows=[...rows].sort((a,b)=>((b.due||b.start||'')+(b.createdAt||'')).localeCompare((a.due||a.start||'')+(a.createdAt||'')));
-  if(!rows.length){el.innerHTML='<div class="empty"><div class="empty-i">📋</div><div class="empty-t">No tasks yet.<br>Tap + to add a task.</div></div>';return;}
+  if(!rows.length){el.innerHTML='<div class="empty"><div class="empty-i">📋</div><div class="empty-t">No tasks yet.<br>Tap + to add a task.</div></div>';updateListSelBar();return;}
   const statusColor={pending:'var(--gold)',inprogress:'var(--blu)',done:'var(--grn)',blocked:'var(--red)'};
   const priorityIcon={high:'🔴',medium:'🟡',low:'🟢'};
   el.innerHTML=rows.map(r=>`<div class="card" style="border-left:3px solid ${statusColor[r.status]||'var(--bor)'}">
     <div class="card-top">
-      <div>
+      ${selBox('tasks',r.id,'tasks')}
+      <div style="flex:1;min-width:0">
         <div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:4px">${priorityIcon[r.priority]||''} ${r.priority||''} · ${r.projectName||'No Project'}</div>
         <div class="card-nm">${r.title}</div>
         ${r.assign?`<div class="card-sub">👤 ${r.assign}</div>`:''}
@@ -6070,6 +6172,7 @@ function renderTasks(){
       <button class="ca red" onclick="del('tasks','${r.id}')">🗑</button>
     </div>
   </div>`).join('');
+  updateListSelBar();
 }
 
 function markDone(id){const r=(D.tasks||[]).find(x=>x.id===id);if(!r)return;r.status='done';sched();renderTasks();toast('Task marked done ✅');}
@@ -6092,6 +6195,7 @@ function switchTasksTab(mode){
     if(ps)ps.style.display='none';if(pj)pj.style.display='block';
     renderWorkOrders();
   }
+  if(typeof updateListSelBar==='function')updateListSelBar();
 }
 function fTask(f,el){taskFilter=f;document.querySelectorAll('#tasks-pane-site .ftab').forEach(t=>t.classList.remove('on'));if(el)el.classList.add('on');renderTasks();}
 function fWorkOrder(f,el){woFilter=f;document.querySelectorAll('#tasks-pane-jobs .ftab').forEach(t=>t.classList.remove('on'));if(el)el.classList.add('on');renderWorkOrders();}
@@ -6181,6 +6285,7 @@ function renderWorkOrders(){
   const filtered=woFilter==='all'?rows:rows.filter(r=>(r.status||'assigned')===woFilter);
   if(!filtered.length){
     el.innerHTML='<div class="empty"><div class="empty-i">👷</div><div class="empty-t">No worker jobs yet.<br>Tap + Assign Job · کام کا حکم دیں</div></div>';
+    updateListSelBar();
     return;
   }
   const stColor={assigned:'var(--gold)',inprogress:'var(--blu)',done:'var(--grn)',cancelled:'var(--red)'};
@@ -6191,7 +6296,8 @@ function renderWorkOrders(){
     const urCls=t=>hasUrdu(t)?' card-urdu':'';
     return`<div class="card" style="border-left:3px solid ${stColor[st]||'var(--bor)'}">
       <div class="card-top">
-        <div>
+        ${selBox('workorders',r.id,'workorders')}
+        <div style="flex:1;min-width:0">
           <div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:4px">${r.num||''} · ${prIcon[r.priority]||''} ${(r.priority||'normal')} · ${woTradeLabel(r.trade,'both')}</div>
           <div class="card-nm${urCls(r.title)}">${r.title}</div>
           <div class="card-sub">👷 ${r.workerName||r.subconName||'—'}${r.projectName?' · '+r.projectName:''}</div>
@@ -6216,6 +6322,7 @@ function renderWorkOrders(){
       </div>
     </div>`;
   }).join('');
+  updateListSelBar();
 }
 
 async function pdfWorkOrder(id){
@@ -6396,6 +6503,11 @@ function toggleSelectExpGroup(ids,on){
 function clearExpSelect(){
   selectedExpIds={};
   renderExp();
+}
+function delSelectedExps(){
+  const rows=getSelectedExps();
+  if(!rows.length){toast('Select expenses first','info');return;}
+  delMany(rows.map(r=>({store:'expenses',id:r.id})));
 }
 function selectSimilarExps(){
   const picked=getSelectedExps();
@@ -8971,7 +9083,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-08-24-v59';
+const APP_VERSION='2026-08-24-v60';
 // Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
 // GitHub Pages is the live OTA source of truth while Wasmer Edge GitHub deploys are failing.
 const OTA_ORIGIN='https://abbashafiz.github.io/Buildpro-crm';
