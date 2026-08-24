@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-08-24-v71">
+<meta name="app-version" content="2026-08-24-v72">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -194,6 +194,7 @@ body{color:var(--txt);font-family:'Inter',sans-serif;overscroll-behavior:none;fo
 .agr-item-row.agr-drop-before{box-shadow:inset 0 2px 0 0 var(--gold);}
 .agr-item-row.agr-drop-after{box-shadow:inset 0 -2px 0 0 var(--gold);}
 .agr-stage-items.agr-drop-into{outline:1px dashed rgba(232,184,75,.55);outline-offset:2px;border-radius:8px;min-height:12px;}
+#agr-notincl.agr-drop-into,#agr-clauses.agr-drop-into{outline:1px dashed rgba(232,184,75,.55);outline-offset:2px;border-radius:8px;min-height:28px;}
 .agr-stage-block{display:flex;flex-direction:column;gap:7px;}
 .agr-stage-items{display:flex;flex-direction:column;gap:7px;min-height:4px;}
 .phi{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--bor);font-size:var(--fs-sm);align-items:flex-start;}
@@ -1481,7 +1482,7 @@ select option{background:var(--s2);}
       <button type="button" class="btn btn-grey btn-sm" style="padding:6px 12px;font-size:var(--fs-xs)" onclick="applyAgrStructurePreset('finishing')">✨ Finishing pack</button>
       <button type="button" class="btn btn-grey btn-sm" style="padding:6px 12px;font-size:var(--fs-xs)" onclick="clearAgrScopeItems()">Clear list</button>
     </div>
-    <div style="font-size:var(--fs-xs);color:var(--mut2);margin-bottom:8px;line-height:1.4">Drag <b style="color:var(--txt)">⠿</b> to reorder. Use <b style="color:var(--txt)">→ Grey</b> / <b style="color:var(--txt)">→ Brown</b> (or drag into another section) to move between structures.</div>
+    <div style="font-size:var(--fs-xs);color:var(--mut2);margin-bottom:8px;line-height:1.4">Drag <b style="color:var(--txt)">⠿</b> to reorder, move between Brown/Grey, or drop into <b style="color:var(--txt)">Not Included</b> below.</div>
     <div style="display:flex;gap:7px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
       <select id="agr-add-item" onchange="if(this.value){addAgrScopeItem(this.value);this.value='';}" style="flex:1;min-width:180px">
         <option value="">+ Add work item…</option>
@@ -1508,7 +1509,7 @@ select option{background:var(--s2);}
 
     <!-- Not Included + rates -->
     <div style="font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:.8px;font-weight:700;margin-bottom:6px">Not Included Items <span style="color:var(--mut2);font-weight:400;text-transform:none">(editable + rates)</span></div>
-    <div style="font-size:var(--fs-xs);color:var(--mut2);margin-bottom:8px;line-height:1.45">Excluded items — edit name, unit, and rate as needed. Drag <b style="color:var(--txt)">⠿</b> to reorder.</div>
+    <div style="font-size:var(--fs-xs);color:var(--mut2);margin-bottom:8px;line-height:1.45">Excluded items — edit name, unit, and rate as needed. Drag <b style="color:var(--txt)">⠿</b> to reorder, or drop back into Included above.</div>
     <div style="display:grid;grid-template-columns:1fr 72px 90px auto;gap:7px;margin-bottom:8px;align-items:center">
       <input id="agr-ni-txt" placeholder="Item name — e.g. Excavation" onkeydown="if(event.key==='Enter'){event.preventDefault();addAgrNotIncluded()}">
       <input id="agr-ni-unit" placeholder="unit" value="job">
@@ -3768,7 +3769,7 @@ function moveAgrScopeItem(kind,key,toStage){
   toast('Moved to '+agrStageTitle(toStage)+' ✓');
 }
 function agrClearDropMarks(){
-  document.querySelectorAll('#agr-clauses .agr-drop-before,#agr-clauses .agr-drop-after,#agr-clauses .agr-drop-into,#agr-clauses .agr-dragging,#agr-notincl .agr-drop-before,#agr-notincl .agr-drop-after,#agr-notincl .agr-dragging').forEach(n=>{
+  document.querySelectorAll('#agr-clauses .agr-drop-before,#agr-clauses .agr-drop-after,#agr-clauses .agr-drop-into,#agr-clauses .agr-dragging,#agr-notincl .agr-drop-before,#agr-notincl .agr-drop-after,#agr-notincl .agr-dragging,#agr-notincl.agr-drop-into,#agr-clauses.agr-drop-into').forEach(n=>{
     n.classList.remove('agr-drop-before','agr-drop-after','agr-drop-into','agr-dragging');
   });
 }
@@ -3806,8 +3807,12 @@ function agrDragPointerDown(ev,list){
   window.addEventListener('pointerup',agrDragPointerUp,{passive:false});
   window.addEventListener('pointercancel',agrDragPointerUp,{passive:false});
 }
-function agrDragRootSel(){
-  return(agrDragState&&agrDragState.list==='ni')?'#agr-notincl':'#agr-clauses';
+function agrNiDropBeforeKey(ev,overRow){
+  if(!overRow)return null;
+  const rect=overRow.getBoundingClientRect();
+  if(ev.clientY<rect.top+rect.height/2)return overRow.dataset.key;
+  const next=overRow.nextElementSibling;
+  return(next&&next.classList.contains('agr-item-row'))?next.dataset.key:null;
 }
 function agrDragPointerMove(ev){
   if(!agrDragState)return;
@@ -3817,9 +3822,48 @@ function agrDragPointerMove(ev){
   agrDragState.row.classList.add('agr-dragging');
   const el=document.elementFromPoint(ev.clientX,ev.clientY);
   if(!el)return;
-  const root=agrDragRootSel();
-  const overRow=el.closest(root+' .agr-item-row');
-  const overItems=agrDragState.list==='ni'?null:el.closest('#agr-clauses .agr-stage-items');
+  const overNi=el.closest('#agr-notincl');
+  const overClauses=el.closest('#agr-clauses');
+
+  // Cross-list highlights
+  if(agrDragState.list==='scope'&&overNi){
+    const overRow=el.closest('#agr-notincl .agr-item-row');
+    if(overRow){
+      const rect=overRow.getBoundingClientRect();
+      if(ev.clientY<rect.top+rect.height/2)overRow.classList.add('agr-drop-before');
+      else overRow.classList.add('agr-drop-after');
+    }else{
+      overNi.classList.add('agr-drop-into');
+    }
+    return;
+  }
+  if(agrDragState.list==='ni'&&overClauses){
+    const overRow=el.closest('#agr-clauses .agr-item-row');
+    const overItems=el.closest('#agr-clauses .agr-stage-items');
+    if(overRow){
+      const rect=overRow.getBoundingClientRect();
+      if(ev.clientY<rect.top+rect.height/2)overRow.classList.add('agr-drop-before');
+      else overRow.classList.add('agr-drop-after');
+    }else if(overItems){
+      overItems.classList.add('agr-drop-into');
+    }else{
+      overClauses.classList.add('agr-drop-into');
+    }
+    return;
+  }
+
+  // Same-list highlights
+  if(agrDragState.list==='ni'){
+    const overRow=el.closest('#agr-notincl .agr-item-row');
+    if(overRow&&overRow!==agrDragState.row){
+      const rect=overRow.getBoundingClientRect();
+      if(ev.clientY<rect.top+rect.height/2)overRow.classList.add('agr-drop-before');
+      else overRow.classList.add('agr-drop-after');
+    }
+    return;
+  }
+  const overRow=el.closest('#agr-clauses .agr-item-row');
+  const overItems=el.closest('#agr-clauses .agr-stage-items');
   if(overRow&&overRow!==agrDragState.row){
     const rect=overRow.getBoundingClientRect();
     if(ev.clientY<rect.top+rect.height/2)overRow.classList.add('agr-drop-before');
@@ -3837,6 +3881,56 @@ function agrReorderNotIncluded(key,beforeKey){
   }
   agrNotIncluded.push(item);
 }
+function agrInsertNotIncluded(item,beforeKey){
+  if(!item||!item.key)return;
+  agrNotIncluded=agrNotIncluded.filter(x=>x.key!==item.key&&agrNormLabel(x.label)!==agrNormLabel(item.label));
+  if(beforeKey&&beforeKey!==item.key){
+    const idx=agrNotIncluded.findIndex(x=>x.key===beforeKey);
+    if(idx>=0){agrNotIncluded.splice(idx,0,item);return;}
+  }
+  agrNotIncluded.push(item);
+}
+function agrMoveScopeToNotIncluded(kind,key,beforeKey){
+  if(kind==='cat'){
+    const c=BOQ_SCOPE_ITEMS.find(x=>x.id===key);
+    const label=agrCatLabel(key);
+    const unit=agrCatUnit(key);
+    const rate=agrCatRate(key);
+    delete agrActiveIds[key];
+    delete agrItemMeta[key];
+    agrRemoveFromOrder(key);
+    if(label)agrInsertNotIncluded({key,label,rate,unit:unit||c?.unit||'job'},beforeKey);
+  }else if(kind==='custom'){
+    const c=agrCustomItems.find(x=>x.id===key);if(!c)return;
+    agrCustomItems=agrCustomItems.filter(x=>x.id!==key);
+    agrRemoveFromOrder(key);
+    if(c.label)agrInsertNotIncluded({key,label:c.label,rate:c.rate||'',unit:c.unit||'job'},beforeKey);
+  }
+  renderAgrClauses();
+  toast('Moved to Not Included ✓');
+}
+function agrMoveNotIncludedToScope(key,toStage,beforeKey){
+  const item=agrNotIncluded.find(x=>x.key===key);if(!item)return;
+  agrNotIncluded=agrNotIncluded.filter(x=>x.key!==key);
+  const stage=(toStage&&BOQ_STAGE_ORDER[toStage]!=null)?toStage:agrDefaultStage();
+  const cat=BOQ_SCOPE_ITEMS.find(c=>c.id===key)||agrFindCatalogue(item.label);
+  if(cat){
+    agrActivateCatalogue(cat,{label:item.label,unit:item.unit,rate:item.rate});
+    if(stage!==cat.stage)agrSetItemStage('cat',cat.id,stage);
+    else if(agrItemMeta[cat.id]?.stage&&agrItemMeta[cat.id].stage!==stage)agrSetItemStage('cat',cat.id,stage);
+    agrEnsureInOrder(cat.id);
+    agrPlaceInStageOrder(cat.id,agrCatStage(cat.id),beforeKey);
+    renderAgrClauses();
+    toast('Moved to '+agrStageTitle(agrCatStage(cat.id))+' ✓');
+    return;
+  }
+  const nid='ac_'+uid();
+  agrCustomItems.push({id:nid,label:item.label,unit:item.unit||'job',rate:item.rate||'',stage,included:true});
+  agrEnsureInOrder(nid);
+  agrPlaceInStageOrder(nid,stage,beforeKey);
+  renderAgrClauses();
+  toast('Moved to '+agrStageTitle(stage)+' ✓');
+}
 function agrDragPointerUp(ev){
   window.removeEventListener('pointermove',agrDragPointerMove);
   window.removeEventListener('pointerup',agrDragPointerUp);
@@ -3847,16 +3941,46 @@ function agrDragPointerUp(ev){
   agrClearDropMarks();
   if(!state.moved||!el)return;
 
+  const overNi=el.closest('#agr-notincl');
+  const overClauses=el.closest('#agr-clauses');
+
+  // Included → Not Included
+  if(state.list==='scope'&&overNi){
+    const overRow=el.closest('#agr-notincl .agr-item-row');
+    const beforeKey=agrNiDropBeforeKey(ev,overRow);
+    syncAgrFormFromDom();
+    agrMoveScopeToNotIncluded(state.kind,state.key,beforeKey);
+    return;
+  }
+
+  // Not Included → Included
+  if(state.list==='ni'&&overClauses){
+    const overRow=el.closest('#agr-clauses .agr-item-row');
+    const overItems=el.closest('#agr-clauses .agr-stage-items');
+    let toStage=agrDefaultStage();
+    let beforeKey=null;
+    if(overRow){
+      toStage=overRow.dataset.stage||agrEffectiveStage(overRow.dataset.key)||toStage;
+      const rect=overRow.getBoundingClientRect();
+      if(ev.clientY<rect.top+rect.height/2)beforeKey=overRow.dataset.key;
+      else{
+        const next=overRow.nextElementSibling;
+        beforeKey=(next&&next.classList.contains('agr-item-row'))?next.dataset.key:null;
+        if(!beforeKey)toStage=overRow.dataset.stage||toStage;
+      }
+    }else if(overItems){
+      toStage=overItems.dataset.stage||toStage;
+    }
+    syncAgrFormFromDom();
+    agrMoveNotIncludedToScope(state.key,toStage,beforeKey);
+    return;
+  }
+
+  // Reorder within Not Included
   if(state.list==='ni'){
     const overRow=el.closest('#agr-notincl .agr-item-row');
     if(!overRow||overRow===state.row)return;
-    const rect=overRow.getBoundingClientRect();
-    let beforeKey=null;
-    if(ev.clientY<rect.top+rect.height/2)beforeKey=overRow.dataset.key;
-    else{
-      const next=overRow.nextElementSibling;
-      beforeKey=(next&&next.classList.contains('agr-item-row'))?next.dataset.key:null;
-    }
+    const beforeKey=agrNiDropBeforeKey(ev,overRow);
     syncAgrFormFromDom();
     agrReorderNotIncluded(state.key,beforeKey);
     renderAgrNotIncluded();
@@ -3864,6 +3988,7 @@ function agrDragPointerUp(ev){
     return;
   }
 
+  // Reorder / move stage within Included
   const overRow=el.closest('#agr-clauses .agr-item-row');
   const overItems=el.closest('#agr-clauses .agr-stage-items');
   let toStage=state.fromStage;
@@ -9613,7 +9738,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-08-24-v71';
+const APP_VERSION='2026-08-24-v72';
 // Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
 // GitHub Pages is the live OTA source of truth while Wasmer Edge GitHub deploys are failing.
 const OTA_ORIGIN='https://abbashafiz.github.io/Buildpro-crm';
