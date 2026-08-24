@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-08-24-v72">
+<meta name="app-version" content="2026-08-24-v73">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -9200,19 +9200,22 @@ function renderProj(){
     const stkBal=showStock?stockBalances(p.id):[];
     const stkItems=stkBal.length;
     const stkLow=stkBal.filter(b=>b.bal<=0).length;
-    return`<div class="card">
-      <div class="card-top">
-        <div>
-          <div class="card-nm">${p.name}</div>
-          <div class="card-sub">${[p.loc,p.plot].filter(Boolean).join(' · ')}</div>
-          ${cli?`<div class="card-sub">👤 ${cli.name}${cli.phone?' · '+cli.phone:''}</div>`:''}
-          <div style="margin-top:6px"><span class="b b-b">${p.phase||'—'}</span>${p.lumpSum?'<span class="b" style="background:rgba(77,148,212,.15);color:#4D94D4;margin-left:4px;font-size:9px">🧾 Owner Reimburses</span>':''}${agr?` <span class="b b-g" style="font-size:9px">✍️ ${agr.status}</span>`:''}${showStock?` <span class="b" style="background:rgba(201,123,58,.15);color:var(--ora);margin-left:4px;font-size:9px">📦 Stock</span>`:''}${chk.pending?` <span class="b" style="background:rgba(224,85,85,.15);color:var(--red);margin-left:4px;font-size:9px">⚠ ${chk.pending} change${chk.pending>1?'s':''}</span>`:''}</div>
-        </div>
-        <div style="text-align:right">
-          <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-md);color:var(--gold)">${fmt(p.value)}</div>
-          <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">${p.start||'—'} → ${p.end||'—'}</div>
-        </div>
+    const gid='proj-grp-'+p.id;
+    const open=!collapsedGroups[gid];
+    const locBits=[p.loc,p.plot].filter(Boolean).join(' · ');
+    const header=`<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+      <div style="min-width:0;flex:1">
+        <div style="font-size:var(--fs-sm);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}</div>
+        ${locBits?`<div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${locBits}</div>`:''}
+        ${cli?`<div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">👤 ${cli.name}${cli.phone?' · '+cli.phone:''}</div>`:''}
+        <div style="margin-top:5px"><span class="b b-b">${p.phase||'—'}</span>${p.lumpSum?'<span class="b" style="background:rgba(77,148,212,.15);color:#4D94D4;margin-left:4px;font-size:9px">🧾 Owner Reimburses</span>':''}${agr?` <span class="b b-g" style="font-size:9px">✍️ ${agr.status}</span>`:''}${showStock?` <span class="b" style="background:rgba(201,123,58,.15);color:var(--ora);margin-left:4px;font-size:9px">📦 Stock</span>`:''}${chk.pending?` <span class="b" style="background:rgba(224,85,85,.15);color:var(--red);margin-left:4px;font-size:9px">⚠ ${chk.pending} change${chk.pending>1?'s':''}</span>`:''}</div>
       </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-md);color:var(--gold)">${fmt(p.value)}</div>
+        <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">${pct}% · ${p.start||'—'} → ${p.end||'—'}</div>
+      </div>
+    </div>`;
+    const body=`<div class="card" style="margin:0">
       <div style="margin-bottom:10px">
         <div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--mut);margin-bottom:4px"><span>Collection ${pct}%</span><span>PKR ${fmt(rec)} / ${fmt(p.value)}</span></div>
         <div class="pbar-wrap"><div class="pbar" style="width:${pct}%"></div></div>
@@ -9296,6 +9299,7 @@ function renderProj(){
         <button class="ca gold" style="width:100%;margin-top:9px;padding:8px" onclick="eAgr('${agr.id}')">✏️ Edit Agreement</button>
       </div>`:''}
     </div>`;
+    return collapsibleSection(gid,header,body,open);
   }).join('');
 }
 
@@ -9738,7 +9742,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-08-24-v72';
+const APP_VERSION='2026-08-24-v73';
 // Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
 // GitHub Pages is the live OTA source of truth while Wasmer Edge GitHub deploys are failing.
 const OTA_ORIGIN='https://abbashafiz.github.io/Buildpro-crm';
