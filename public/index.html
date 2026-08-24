@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-08-24-v64">
+<meta name="app-version" content="2026-08-24-v65">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -3341,7 +3341,7 @@ const BOQ_SCOPE_ITEMS=[
   {id:'drainage',label:'Drainage / Sewer Pipes',unit:'job',stage:'grey',def:true},
   {id:'boundary',label:'Boundary Wall',unit:'rft',stage:'grey',def:false},
   {id:'stair',label:'Stair Case',unit:'job',stage:'grey',def:true},
-  {id:'watertank',label:'Water Tank (UG / OH)',unit:'job',stage:'grey',def:false},
+  {id:'watertank',label:'Water Tank (UG / OH)',unit:'job',stage:'grey',def:true},
   {id:'septic',label:'Septic Tank',unit:'job',stage:'grey',def:false},
   {id:'pardi',label:'Pardi / Parapet',unit:'rft',stage:'grey',def:false},
   {id:'plaster',label:'Plaster (Internal / External)',unit:'sft',stage:'grey',def:true},
@@ -9203,7 +9203,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-08-24-v64';
+const APP_VERSION='2026-08-24-v65';
 // Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
 // GitHub Pages is the live OTA source of truth while Wasmer Edge GitHub deploys are failing.
 const OTA_ORIGIN='https://abbashafiz.github.io/Buildpro-crm';
