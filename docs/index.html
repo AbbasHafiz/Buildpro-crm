@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-08-24-v63">
+<meta name="app-version" content="2026-08-24-v64">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -4909,7 +4909,7 @@ function renderPay(){
             <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Sub-Con Paid</div>
           </div>
           <div style="background:var(--s2);border-radius:8px;padding:8px;text-align:center">
-            <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:${p.value-rec>0?'var(--gold)':'var(--grn)'}">${fmt(Math.max(0,p.value-rec))}</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:${(p.value||0)-rec>0?'var(--gold)':(p.value||0)-rec<0?'var(--red)':'var(--grn)'}">${fmt((p.value||0)-rec)}</div>
             <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Remaining</div>
           </div>
         </div>
@@ -5010,7 +5010,8 @@ async function pdfSubProjStatement(subconId,projectId){
   const contract=(D.subconContracts||[]).find(x=>x.subconId===subconId&&x.projectId===projectId);
   const contractVal=contract?.value||pays.reduce((m,p)=>Math.max(m,p.projContract||0),0);
   const totalPaid=pays.reduce((s,p)=>s+spayPaidAmt(p),0);
-  const remaining=contractVal>0?Math.max(0,contractVal-totalPaid):0;
+  // Signed remaining: overpayment shows negative until contract is increased / more funds received
+  const remaining=contractVal>0?(contractVal-totalPaid):0;
   const c=co();const doc=bPDF();const pw=210;
   let y=drawHeader(doc,'PAYMENT STATEMENT',sc?.name||'Sub-Contractor',today(),'','');
   doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(30,30,30);
@@ -5024,7 +5025,7 @@ async function pdfSubProjStatement(subconId,projectId){
   doc.setFont('helvetica','bold');doc.setFontSize(9.5);doc.setTextColor(30,30,30);
   doc.text('Contract Value: PKR '+fmt(contractVal),16,y+32);
   doc.text('Total Paid: PKR '+fmt(totalPaid),90,y+32);
-  const remColor=remaining>0?[224,85,85]:[82,181,106];
+  const remColor=remaining>0?[201,123,58]:remaining<0?[224,85,85]:[82,181,106];
   doc.setTextColor(...remColor);
   doc.text('Remaining: PKR '+fmt(remaining),16,y+42);
   y+=52;
@@ -5198,7 +5199,9 @@ function renderSub(){
     const totalDue=allPaysRaw.reduce((t,p)=>t+spayDueAmt(p),0);
     const projContracts=(D.subconContracts||[]).filter(x=>x.subconId===s.id);
     const totalContract=projContracts.length>0?projContracts.reduce((sum,x)=>sum+x.value,0):(s.contract||0);
-    const rem=Math.max(0,totalContract-totalPaid);
+    // Signed: paid over contract → negative remaining (until contract raised / more funds in)
+    const rem=totalContract>0?(totalContract-totalPaid):0;
+    const remClr=rem>0?'var(--gold)':rem<0?'var(--red)':'var(--grn)';
     const pct=totalContract>0?Math.min(100,Math.round(totalPaid/totalContract*100)):0;
     const projIds=[...new Set(allPays.filter(p=>p.projectId).map(p=>p.projectId))];
     const unlinkedPays=allPays.filter(p=>!p.projectId).sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.createdAt||'').localeCompare(a.createdAt||''));
@@ -5209,7 +5212,7 @@ function renderSub(){
       const projTotal=projPaysAll.reduce((sum,p)=>sum+spayPaidAmt(p),0);
       const scCon=(D.subconContracts||[]).find(x=>x.subconId===s.id&&x.projectId===pid);
       const projContract=scCon?.value||projPaysAll.filter(p=>p.projContract>0).reduce((max,p)=>Math.max(max,p.projContract),0);
-      const projRem=projContract>0?Math.max(0,projContract-projTotal):0;
+      const projRem=projContract>0?(projContract-projTotal):0;
       const projName=proj?proj.name:(pid==='__none__'?'No Project':projPays[0]?.projectName||'Unknown Project');
       return{pid,projName,projPays,projTotal,projContract,projRem};
     }).filter(pg=>pg.projPays.length);
@@ -5229,7 +5232,7 @@ function renderSub(){
       </div>
       <div style="text-align:right;flex-shrink:0;font-size:var(--fs-xs);font-family:'JetBrains Mono',monospace">
         <div style="color:var(--red)">-${fmt(totalPaid)}</div>
-        <div style="color:${rem>0?'var(--gold)':'var(--grn)'};margin-top:2px">${fmt(rem)} left</div>
+        <div style="color:${remClr};margin-top:2px">${fmt(Math.abs(rem))} ${rem<0?'over':'left'}</div>
         ${totalDue>0?`<div style="color:var(--ora);margin-top:2px">${fmt(totalDue)} due</div>`:''}
       </div>
     </div>`;
@@ -5255,7 +5258,7 @@ function renderSub(){
                 <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Paid</div>
               </div>
               <div style="background:var(--bg);border-radius:7px;padding:8px;text-align:center">
-                <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:${pg.projRem>0?'var(--gold)':'var(--grn)'}">${pg.projContract>0?fmt(pg.projRem):'—'}</div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:${pg.projRem>0?'var(--gold)':pg.projRem<0?'var(--red)':'var(--grn)'}">${pg.projContract>0?fmt(pg.projRem):'—'}</div>
                 <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Remaining</div>
               </div>
             </div>`:''}
@@ -5272,7 +5275,7 @@ function renderSub(){
       <div class="sub-stats">
         <div class="sub-stat"><div class="sub-stat-val" style="color:var(--gold)">${fmt(totalContract)}</div><div class="sub-stat-lbl">Total Contract</div></div>
         <div class="sub-stat"><div class="sub-stat-val" style="color:var(--red)">${fmt(totalPaid)}</div><div class="sub-stat-lbl">Total Paid</div></div>
-        <div class="sub-stat"><div class="sub-stat-val" style="color:${rem>0?'var(--gold)':'var(--grn)'}">${fmt(rem)}</div><div class="sub-stat-lbl">Remaining</div></div>
+        <div class="sub-stat"><div class="sub-stat-val" style="color:${remClr}">${fmt(rem)}</div><div class="sub-stat-lbl">Remaining</div></div>
       </div>
       ${totalDue>0?`<div style="font-size:var(--fs-xs);color:var(--ora);margin-bottom:8px">⏳ Pending on payment lines: PKR ${fmt(totalDue)} (not in Total Paid)</div>`:''}
       <div class="pbar-wrap"><div class="pbar" style="width:${pct}%"></div></div>
@@ -6945,7 +6948,8 @@ function renderExp(){
   setV('exp-own-hand',totalCash);
   setV('exp-own-spent',ownerSpent);
   const or=e$('exp-own-rem');
-  if(or){or.textContent=fmt(Math.max(0,totalCash-ownerSpent));or.style.color=totalCash-ownerSpent<0?'var(--red)':'var(--grn)';}
+  const ownRem=totalCash-ownerSpent;
+  if(or){or.textContent=fmt(ownRem);or.style.color=ownRem<0?'var(--red)':ownRem>0?'var(--grn)':'var(--mut)';}
   const reimburseOwed=behalfExps.filter(e=>rst(e)!=='paid').reduce((s,e)=>s+e.amount,0);
   const rb=e$('exp-own-reimburse');if(rb)rb.textContent='PKR '+fmt(reimburseOwed);
   updateMiscReconBanner();
@@ -7735,7 +7739,7 @@ async function pdfExpProjectOwner(pid,projName){
   const tiles=[
     [cashInHand,'Misc Cash Given',[201,123,58]],
     [cashSpent,'Misc Cash Spent',[200,50,50]],
-    [Math.max(0,miscLeft),'Misc Remaining',miscLeft>=0?[50,150,50]:[200,50,50]],
+    [miscLeft,'Misc Remaining',miscLeft>0?[50,150,50]:miscLeft<0?[200,50,50]:[130,125,118]],
     [behalfSpent,'On Behalf Spent',[200,50,50]]
   ];
   tiles.forEach(([v,label,col],i)=>{
@@ -7989,7 +7993,7 @@ async function pdfSpayConfirm(id){
     margin:{left:14,right:14,bottom:18}
     });
     y=doc.lastAutoTable.finalY+8;
-    if(sc2?.contract){const rem=sc2.contract-totalPaid;doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(rem>0?201:82,rem>0?123:181,rem>0?58:106);doc.text('Contract: PKR '+fmt(sc2.contract)+'   |   Total Paid: PKR '+fmt(totalPaid)+'   |   Remaining: PKR '+fmt(Math.max(0,rem)),14,y);}
+    if(sc2?.contract){const rem=sc2.contract-totalPaid;doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(rem>0?201:rem<0?224:82,rem>0?123:rem<0?85:181,rem>0?58:rem<0?85:106);doc.text('Contract: PKR '+fmt(sc2.contract)+'   |   Total Paid: PKR '+fmt(totalPaid)+'   |   Remaining: PKR '+fmt(rem),14,y);}
   }
   drawBankFooter(doc);
   savePdf(doc,'PaymentVoucher-'+r.subconName+'-'+r.date+'.pdf');
@@ -9199,7 +9203,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-08-24-v63';
+const APP_VERSION='2026-08-24-v64';
 // Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
 // GitHub Pages is the live OTA source of truth while Wasmer Edge GitHub deploys are failing.
 const OTA_ORIGIN='https://abbashafiz.github.io/Buildpro-crm';
