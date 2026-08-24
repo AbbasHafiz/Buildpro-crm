@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-08-24-v61">
+<meta name="app-version" content="2026-08-24-v62">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -3322,6 +3322,7 @@ const BOQ_SCOPE_ITEMS=[
   {id:'foundation',label:'Foundation / Footing',unit:'cft',stage:'brown',def:true},
   {id:'raft',label:'Rafting / Raft Foundation',unit:'cft',stage:'brown',def:true},
   {id:'bricks',label:'Bricks',unit:'nos',stage:'brown',def:true},
+  {id:'brick_works_all',label:'Brick Works — Chunnai / Tesi / Carandi (All Work)',unit:'sft',stage:'brown',def:true},
   {id:'steel',label:'Steel / Tor Steel',unit:'ton',stage:'brown',def:true},
   {id:'steel_bind',label:'Steel Binding',unit:'job',stage:'brown',def:true},
   {id:'sand',label:'Sand',unit:'cft',stage:'brown',def:true},
@@ -3387,6 +3388,9 @@ const AGR_LEGACY_LABEL_TO_ID={
   'rcc columns / beams / slab':'rcc',
   'brickwork / chuuni':'brickwork',
   'bricks chuuni':'brickwork',
+  'brick works chunnai tesi carandi all work':'brick_works_all',
+  'brick works — chunnai / tesi / carandi (all work)':'brick_works_all',
+  'chunnai / tesi / carandi':'brick_works_all',
   'plaster (internal / external)':'plaster',
   'back filling':'backfill'
 };
@@ -9181,7 +9185,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-08-24-v61';
+const APP_VERSION='2026-08-24-v62';
 // Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
 // GitHub Pages is the live OTA source of truth while Wasmer Edge GitHub deploys are failing.
 const OTA_ORIGIN='https://abbashafiz.github.io/Buildpro-crm';
