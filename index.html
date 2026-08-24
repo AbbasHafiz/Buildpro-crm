@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-08-24-v68">
+<meta name="app-version" content="2026-08-24-v69">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -188,6 +188,14 @@ body{color:var(--txt);font-family:'Inter',sans-serif;overscroll-behavior:none;fo
 .sub-stat{background:var(--s2);border-radius:10px;padding:11px 10px;text-align:center;}
 .sub-stat-val{font-family:'JetBrains Mono',monospace;font-size:var(--fs-md);font-weight:500;}
 .sub-stat-lbl{font-size:var(--fs-xs);color:var(--mut);margin-top:4px;text-transform:uppercase;letter-spacing:.4px;}
+.agr-drag-h{cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;color:var(--mut);font-size:16px;line-height:1;padding:4px 2px;flex-shrink:0;letter-spacing:-1px;}
+.agr-drag-h:active{cursor:grabbing;color:var(--gold);}
+.agr-item-row.agr-dragging{opacity:.45;border-color:var(--gold)!important;}
+.agr-item-row.agr-drop-before{box-shadow:inset 0 2px 0 0 var(--gold);}
+.agr-item-row.agr-drop-after{box-shadow:inset 0 -2px 0 0 var(--gold);}
+.agr-stage-items.agr-drop-into{outline:1px dashed rgba(232,184,75,.55);outline-offset:2px;border-radius:8px;min-height:12px;}
+.agr-stage-block{display:flex;flex-direction:column;gap:7px;}
+.agr-stage-items{display:flex;flex-direction:column;gap:7px;min-height:4px;}
 .phi{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--bor);font-size:var(--fs-sm);align-items:flex-start;}
 .phi:last-child{border-bottom:none;}
 
@@ -1473,7 +1481,7 @@ select option{background:var(--s2);}
       <button type="button" class="btn btn-grey btn-sm" style="padding:6px 12px;font-size:var(--fs-xs)" onclick="applyAgrStructurePreset('finishing')">✨ Finishing pack</button>
       <button type="button" class="btn btn-grey btn-sm" style="padding:6px 12px;font-size:var(--fs-xs)" onclick="clearAgrScopeItems()">Clear list</button>
     </div>
-    <div style="font-size:var(--fs-xs);color:var(--mut2);margin-bottom:8px;line-height:1.4">On each row use <b style="color:var(--txt)">→ Grey</b> / <b style="color:var(--txt)">→ Brown</b> to move an item between structures.</div>
+    <div style="font-size:var(--fs-xs);color:var(--mut2);margin-bottom:8px;line-height:1.4">Drag <b style="color:var(--txt)">⠿</b> to reorder. Use <b style="color:var(--txt)">→ Grey</b> / <b style="color:var(--txt)">→ Brown</b> (or drag into another section) to move between structures.</div>
     <div style="display:flex;gap:7px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
       <select id="agr-add-item" onchange="if(this.value){addAgrScopeItem(this.value);this.value='';}" style="flex:1;min-width:180px">
         <option value="">+ Add work item…</option>
@@ -3638,6 +3646,8 @@ let agrItemMeta={}; // id -> {label, unit, rate, stage} overrides for catalogue 
 let agrStageLabels={brown:'',grey:'',finishing:''}; // editable section titles
 let agrNotIncluded=[]; // {key,label,rate,unit}
 let agrPaySched=[]; // {id,stage,amount,note}
+let agrScopeOrder=[]; // included item ids (catalogue + custom) in display order
+let agrDragState=null;
 function agrEsc(s){return String(s??'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');}
 function agrStageTitle(stage){
   return (agrStageLabels[stage]||BOQ_STAGE_LABEL[stage]||stage).trim();
@@ -3659,21 +3669,53 @@ function agrCatStage(id){
   const c=BOQ_SCOPE_ITEMS.find(x=>x.id===id);
   return c?.stage||'grey';
 }
-function agrMoveBtnHtml(kind,key,stage){
-  // Toggle Brown ↔ Grey on included rows
-  if(stage==='brown'){
-    return`<button type="button" title="Move to Grey Structure" style="background:rgba(200,200,200,.12);border:1px solid var(--bor);color:var(--mut);cursor:pointer;font-size:10px;flex-shrink:0;padding:3px 7px;border-radius:6px;font-weight:700" onclick="moveAgrScopeItem('${kind}','${key}','grey')">→ Grey</button>`;
-  }
-  if(stage==='grey'){
-    return`<button type="button" title="Move to Brown Structure" style="background:rgba(201,123,58,.12);border:1px solid rgba(201,123,58,.35);color:var(--gold);cursor:pointer;font-size:10px;flex-shrink:0;padding:3px 7px;border-radius:6px;font-weight:700" onclick="moveAgrScopeItem('${kind}','${key}','brown')">→ Brown</button>`;
-  }
-  // Finishing (or other): offer both directions into brown/grey
-  return`<button type="button" title="Move to Brown Structure" style="background:rgba(201,123,58,.12);border:1px solid rgba(201,123,58,.35);color:var(--gold);cursor:pointer;font-size:10px;flex-shrink:0;padding:3px 7px;border-radius:6px;font-weight:700" onclick="moveAgrScopeItem('${kind}','${key}','brown')">→ Brown</button>
-    <button type="button" title="Move to Grey Structure" style="background:rgba(200,200,200,.12);border:1px solid var(--bor);color:var(--mut);cursor:pointer;font-size:10px;flex-shrink:0;padding:3px 7px;border-radius:6px;font-weight:700" onclick="moveAgrScopeItem('${kind}','${key}','grey')">→ Grey</button>`;
+function agrEffectiveStage(key){
+  if(agrActiveIds[key])return agrCatStage(key);
+  const c=agrCustomItems.find(x=>x.id===key);
+  return (c&&c.stage&&BOQ_STAGE_ORDER[c.stage]!=null)?c.stage:null;
 }
-function moveAgrScopeItem(kind,key,toStage){
-  if(toStage!=='brown'&&toStage!=='grey'){toast('Move only between Brown and Grey','err');return;}
-  syncAgrFormFromDom();
+function agrEnsureInOrder(key){
+  if(!key)return;
+  if(!agrScopeOrder.includes(key))agrScopeOrder.push(key);
+}
+function agrRemoveFromOrder(key){
+  agrScopeOrder=agrScopeOrder.filter(k=>k!==key);
+}
+function agrPlaceInStageOrder(key,toStage,beforeKey){
+  agrScopeOrder=agrScopeOrder.filter(k=>k!==key);
+  if(beforeKey&&beforeKey!==key){
+    const idx=agrScopeOrder.indexOf(beforeKey);
+    if(idx>=0){agrScopeOrder.splice(idx,0,key);return;}
+  }
+  let last=-1;
+  for(let i=0;i<agrScopeOrder.length;i++){
+    if(agrEffectiveStage(agrScopeOrder[i])===toStage)last=i;
+  }
+  agrScopeOrder.splice(last+1,0,key);
+}
+function agrRebuildOrderFromActive(){
+  const alive=new Set([
+    ...Object.keys(agrActiveIds||{}).filter(id=>agrActiveIds[id]),
+    ...(agrCustomItems||[]).map(c=>c.id)
+  ]);
+  const kept=(agrScopeOrder||[]).filter(k=>alive.has(k));
+  const missing=[...alive].filter(k=>!kept.includes(k));
+  const catOrder=BOQ_SCOPE_ITEMS.map(c=>c.id);
+  missing.sort((a,b)=>{
+    const sa=agrEffectiveStage(a)||'grey',sb=agrEffectiveStage(b)||'grey';
+    const ds=(BOQ_STAGE_ORDER[sa]??9)-(BOQ_STAGE_ORDER[sb]??9);
+    if(ds)return ds;
+    const ia=catOrder.indexOf(a),ib=catOrder.indexOf(b);
+    if(ia>=0||ib>=0)return(ia<0?999:ia)-(ib<0?999:ib);
+    return String(a).localeCompare(String(b));
+  });
+  agrScopeOrder=kept.concat(missing);
+}
+function agrOrderedKeysForStage(stage){
+  agrRebuildOrderFromActive();
+  return agrScopeOrder.filter(k=>agrEffectiveStage(k)===stage);
+}
+function agrSetItemStage(kind,key,toStage){
   if(kind==='cat'){
     const base=BOQ_SCOPE_ITEMS.find(x=>x.id===key);if(!base)return;
     if(toStage===base.stage){
@@ -3687,16 +3729,122 @@ function moveAgrScopeItem(kind,key,toStage){
   }else if(kind==='custom'){
     const c=agrCustomItems.find(x=>x.id===key);if(!c)return;
     c.stage=toStage;
-  }else return;
+  }
+}
+function agrMoveBtnHtml(kind,key,stage){
+  // Toggle Brown ↔ Grey on included rows
+  if(stage==='brown'){
+    return`<button type="button" title="Move to Grey Structure" style="background:rgba(200,200,200,.12);border:1px solid var(--bor);color:var(--mut);cursor:pointer;font-size:10px;flex-shrink:0;padding:3px 7px;border-radius:6px;font-weight:700" onclick="moveAgrScopeItem('${kind}','${key}','grey')">→ Grey</button>`;
+  }
+  if(stage==='grey'){
+    return`<button type="button" title="Move to Brown Structure" style="background:rgba(201,123,58,.12);border:1px solid rgba(201,123,58,.35);color:var(--gold);cursor:pointer;font-size:10px;flex-shrink:0;padding:3px 7px;border-radius:6px;font-weight:700" onclick="moveAgrScopeItem('${kind}','${key}','brown')">→ Brown</button>`;
+  }
+  // Finishing (or other): offer both directions into brown/grey
+  return`<button type="button" title="Move to Brown Structure" style="background:rgba(201,123,58,.12);border:1px solid rgba(201,123,58,.35);color:var(--gold);cursor:pointer;font-size:10px;flex-shrink:0;padding:3px 7px;border-radius:6px;font-weight:700" onclick="moveAgrScopeItem('${kind}','${key}','brown')">→ Brown</button>
+    <button type="button" title="Move to Grey Structure" style="background:rgba(200,200,200,.12);border:1px solid var(--bor);color:var(--mut);cursor:pointer;font-size:10px;flex-shrink:0;padding:3px 7px;border-radius:6px;font-weight:700" onclick="moveAgrScopeItem('${kind}','${key}','grey')">→ Grey</button>`;
+}
+function moveAgrScopeItem(kind,key,toStage){
+  if(toStage!=='brown'&&toStage!=='grey'&&toStage!=='finishing'){toast('Pick Brown, Grey, or Finishing','err');return;}
+  syncAgrFormFromDom();
+  agrSetItemStage(kind,key,toStage);
+  agrPlaceInStageOrder(key,toStage,null);
   renderAgrClauses();
   toast('Moved to '+agrStageTitle(toStage)+' ✓');
 }
+function agrClearDropMarks(){
+  document.querySelectorAll('#agr-clauses .agr-drop-before,#agr-clauses .agr-drop-after,#agr-clauses .agr-drop-into,#agr-clauses .agr-dragging').forEach(n=>{
+    n.classList.remove('agr-drop-before','agr-drop-after','agr-drop-into','agr-dragging');
+  });
+}
+function agrBindScopeDrag(){
+  const root=e$('agr-clauses');if(!root)return;
+  root.querySelectorAll('.agr-drag-h').forEach(h=>{
+    h.addEventListener('pointerdown',agrDragPointerDown,{passive:false});
+  });
+}
+function agrDragPointerDown(ev){
+  if(ev.button!=null&&ev.button!==0)return;
+  const handle=ev.currentTarget;
+  const row=handle.closest('.agr-item-row');if(!row)return;
+  ev.preventDefault();
+  syncAgrFormFromDom();
+  agrDragState={
+    kind:row.dataset.kind,
+    key:row.dataset.key,
+    fromStage:row.dataset.stage||agrEffectiveStage(row.dataset.key),
+    startY:ev.clientY,
+    startX:ev.clientX,
+    moved:false,
+    row
+  };
+  row.classList.add('agr-dragging');
+  try{handle.setPointerCapture(ev.pointerId);}catch(_){}
+  window.addEventListener('pointermove',agrDragPointerMove,{passive:false});
+  window.addEventListener('pointerup',agrDragPointerUp,{passive:false});
+  window.addEventListener('pointercancel',agrDragPointerUp,{passive:false});
+}
+function agrDragPointerMove(ev){
+  if(!agrDragState)return;
+  ev.preventDefault();
+  if(Math.abs(ev.clientY-agrDragState.startY)>8||Math.abs(ev.clientX-agrDragState.startX)>8)agrDragState.moved=true;
+  agrClearDropMarks();
+  agrDragState.row.classList.add('agr-dragging');
+  const el=document.elementFromPoint(ev.clientX,ev.clientY);
+  if(!el)return;
+  const overRow=el.closest('#agr-clauses .agr-item-row');
+  const overItems=el.closest('#agr-clauses .agr-stage-items');
+  if(overRow&&overRow!==agrDragState.row){
+    const rect=overRow.getBoundingClientRect();
+    if(ev.clientY<rect.top+rect.height/2)overRow.classList.add('agr-drop-before');
+    else overRow.classList.add('agr-drop-after');
+  }else if(overItems){
+    overItems.classList.add('agr-drop-into');
+  }
+}
+function agrDragPointerUp(ev){
+  window.removeEventListener('pointermove',agrDragPointerMove);
+  window.removeEventListener('pointerup',agrDragPointerUp);
+  window.removeEventListener('pointercancel',agrDragPointerUp);
+  if(!agrDragState)return;
+  const state=agrDragState;agrDragState=null;
+  const el=document.elementFromPoint(ev.clientX,ev.clientY);
+  agrClearDropMarks();
+  if(!state.moved||!el)return;
+  const overRow=el.closest('#agr-clauses .agr-item-row');
+  const overItems=el.closest('#agr-clauses .agr-stage-items');
+  let toStage=state.fromStage;
+  let beforeKey=null;
+  if(overRow&&overRow!==state.row){
+    toStage=overRow.dataset.stage||agrEffectiveStage(overRow.dataset.key)||toStage;
+    const rect=overRow.getBoundingClientRect();
+    if(ev.clientY<rect.top+rect.height/2)beforeKey=overRow.dataset.key;
+    else{
+      const next=overRow.nextElementSibling;
+      beforeKey=(next&&next.classList.contains('agr-item-row'))?next.dataset.key:null;
+      // if inserting after last in stage, beforeKey null → append in that stage
+      if(!beforeKey)toStage=overRow.dataset.stage||toStage;
+    }
+  }else if(overItems){
+    toStage=overItems.dataset.stage||toStage;
+    beforeKey=null;
+  }else return;
+  if(!toStage||BOQ_STAGE_ORDER[toStage]==null)return;
+  syncAgrFormFromDom();
+  agrSetItemStage(state.kind,state.key,toStage);
+  // Recompute effective stages after stage change, then place
+  agrPlaceInStageOrder(state.key,toStage,beforeKey);
+  renderAgrClauses();
+  toast(toStage!==state.fromStage?('Moved to '+agrStageTitle(toStage)+' ✓'):'Reordered ✓');
+}
 function agrItemRowHtml(opts){
-  // opts: {key,label,unit,rate,kind:'cat'|'custom'|'ni', border, actions}
+  // opts: {key,label,unit,rate,kind:'cat'|'custom'|'ni', border, actions, stage, drag}
   const border=opts.border||'rgba(82,181,106,.35)';
   const actions=opts.actions||'';
-  return `<div class="agr-item-row" data-kind="${opts.kind}" data-key="${opts.key}" style="background:var(--bg);border:1px solid ${border};border-radius:8px;padding:7px 8px">
+  const stageAttr=opts.stage?` data-stage="${opts.stage}"`:'';
+  const drag=opts.drag?`<span class="agr-drag-h" title="Drag to reorder" aria-label="Drag to reorder">⠿</span>`:'';
+  return `<div class="agr-item-row" data-kind="${opts.kind}" data-key="${opts.key}"${stageAttr} style="background:var(--bg);border:1px solid ${border};border-radius:8px;padding:7px 8px">
     <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">
+      ${drag}
       <input class="agr-fld-lbl urdu-field" dir="auto" value="${agrEsc(opts.label)}" placeholder="Item name / نام" style="flex:1;min-width:0;font-size:var(--fs-xs);padding:6px 8px;background:var(--s2);border:1px solid var(--bor);border-radius:6px;color:var(--txt)">
       ${actions}
     </div>
@@ -3787,6 +3935,7 @@ function clearAgrScopeItems(){
   agrItemMeta={};
   agrStageLabels={brown:'',grey:'',finishing:''};
   agrNotIncluded=[];
+  agrScopeOrder=[];
   renderAgrClauses();
 }
 function addAgrScopeItem(id){
@@ -3794,6 +3943,8 @@ function addAgrScopeItem(id){
   syncAgrFormFromDom();
   agrActiveIds[id]=true;
   agrNotIncluded=agrNotIncluded.filter(x=>x.key!==id);
+  agrEnsureInOrder(id);
+  agrPlaceInStageOrder(id,agrCatStage(id),null);
   renderAgrClauses();
   toast('Work item added ✓');
 }
@@ -3805,6 +3956,7 @@ function removeAgrScopeItem(id){
   const rate=agrCatRate(id);
   delete agrActiveIds[id];
   delete agrItemMeta[id];
+  agrRemoveFromOrder(id);
   if(label&&!agrNotIncluded.some(x=>x.key===id||x.label.toLowerCase()===label.toLowerCase())){
     agrNotIncluded.push({key:id,label,rate,unit:unit||c?.unit||'job'});
   }
@@ -3887,48 +4039,51 @@ function renderAgrClauses(selected){
     ...c,
     stage:(c.stage&&BOQ_STAGE_ORDER[c.stage]!=null)?c.stage:agrDefaultStage()
   }));
+  agrRebuildOrderFromActive();
   const stageSel=e$('agr-custom-stage');
   if(stageSel&&!stageSel.dataset.touched)stageSel.value=agrDefaultStage();
   const stages=['brown','grey','finishing'];
   let html='';
   let any=false;
   stages.forEach(stage=>{
-    const cats=BOQ_SCOPE_ITEMS.filter(c=>agrActiveIds[c.id]&&agrCatStage(c.id)===stage);
-    const customs=agrCustomItems.filter(c=>c.stage===stage);
-    if(!cats.length&&!customs.length)return;
+    const keys=agrOrderedKeysForStage(stage);
+    if(!keys.length)return;
     any=true;
     const title=agrStageTitle(stage);
-    html+=`<div style="margin:${html?'10px':'0'} 0 4px">
-      <input class="agr-stage-lbl" data-stage="${stage}" value="${agrEsc(title)}" style="width:100%;font-size:10px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.6px;padding:5px 8px;background:transparent;border:1px dashed rgba(232,184,75,.35);border-radius:6px">
-    </div>`;
-    cats.forEach(c=>{
-      const st=agrCatStage(c.id);
-      const actions=`${agrMoveBtnHtml('cat',c.id,st)}
-        <button type="button" title="Move to Not Included" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;flex-shrink:0;padding:0 2px;font-weight:700" onclick="removeAgrScopeItem('${c.id}')">✕</button>`;
-      html+=agrItemRowHtml({
-        kind:'cat',key:c.id,
-        label:agrCatLabel(c.id),
-        unit:agrCatUnit(c.id),
-        rate:agrCatRate(c.id),
-        actions
-      });
+    html+=`<div class="agr-stage-block" data-stage="${stage}" style="margin:${html?'10px':'0'} 0 0">
+      <input class="agr-stage-lbl" data-stage="${stage}" value="${agrEsc(title)}" style="width:100%;font-size:10px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.6px;padding:5px 8px;background:transparent;border:1px dashed rgba(232,184,75,.35);border-radius:6px;margin-bottom:7px">
+      <div class="agr-stage-items" data-stage="${stage}">`;
+    keys.forEach(key=>{
+      if(agrActiveIds[key]){
+        const st=agrCatStage(key);
+        const actions=`${agrMoveBtnHtml('cat',key,st)}
+          <button type="button" title="Move to Not Included" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;flex-shrink:0;padding:0 2px;font-weight:700" onclick="removeAgrScopeItem('${key}')">✕</button>`;
+        html+=agrItemRowHtml({
+          kind:'cat',key,stage:st,drag:true,
+          label:agrCatLabel(key),
+          unit:agrCatUnit(key),
+          rate:agrCatRate(key),
+          actions
+        });
+      }else{
+        const c=agrCustomItems.find(x=>x.id===key);if(!c)return;
+        const actions=`${agrMoveBtnHtml('custom',c.id,c.stage)}
+          <button type="button" title="Move to Not Included" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;flex-shrink:0;padding:0 2px;font-weight:700" onclick="delAgrCustomItem('${c.id}')">✕</button>`;
+        html+=agrItemRowHtml({
+          kind:'custom',key:c.id,stage:c.stage,drag:true,
+          label:c.label,unit:c.unit||'job',rate:c.rate||'',
+          actions
+        });
+      }
     });
-    customs.forEach(c=>{
-      const actions=`${agrMoveBtnHtml('custom',c.id,c.stage)}
-        <button type="button" title="Move to Not Included" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;flex-shrink:0;padding:0 2px;font-weight:700" onclick="delAgrCustomItem('${c.id}')">✕</button>`;
-      // Tag stage on the row so sync can preserve it
-      html+=agrItemRowHtml({
-        kind:'custom',key:c.id,
-        label:c.label,unit:c.unit||'job',rate:c.rate||'',
-        actions
-      }).replace('data-kind="custom"','data-kind="custom" data-stage="'+c.stage+'"');
-    });
+    html+=`</div></div>`;
   });
   if(!any){
     el.innerHTML='<div style="font-size:var(--fs-xs);color:var(--mut);padding:10px;text-align:center">No work items yet — use a pack above or + Add work item</div>';
   }else{
     el.innerHTML=html;
   }
+  agrBindScopeDrag();
   refreshAgrAddPicker();
   renderAgrNotIncluded();
 }
@@ -3946,15 +4101,20 @@ function addAgrCustomItem(){
     if(agrActiveIds[cat.id]){toast('Already in '+agrStageTitle(cat.stage),'info');return;}
     agrActivateCatalogue(cat,{label,unit,rate});
     agrCustomItems=agrCustomItems.filter(x=>agrNormLabel(x.label)!==agrNormLabel(label));
+    agrEnsureInOrder(cat.id);
+    agrPlaceInStageOrder(cat.id,agrCatStage(cat.id),null);
     sv('agr-custom-txt','');sv('agr-custom-unit','job');sv('agr-custom-rate','');
     renderAgrClauses();
-    toast('Added under '+agrStageTitle(cat.stage)+' ✓');
+    toast('Added under '+agrStageTitle(agrCatStage(cat.id))+' ✓');
     return;
   }
   if(agrCustomItems.some(x=>agrNormLabel(x.label)===agrNormLabel(label))){
     toast('Item already in list','err');return;
   }
-  agrCustomItems.push({id:'ac_'+uid(),label,unit,rate,stage,included:true});
+  const nid='ac_'+uid();
+  agrCustomItems.push({id:nid,label,unit,rate,stage,included:true});
+  agrEnsureInOrder(nid);
+  agrPlaceInStageOrder(nid,stage,null);
   sv('agr-custom-txt','');sv('agr-custom-unit','job');sv('agr-custom-rate','');
   renderAgrClauses();
   toast('Added under '+agrStageTitle(stage)+' ✓');
@@ -3966,6 +4126,7 @@ function delAgrCustomItem(id){
     agrNotIncluded.push({key:id,label:c.label,rate:c.rate||'',unit:c.unit||'job'});
   }
   agrCustomItems=agrCustomItems.filter(x=>x.id!==id);
+  agrRemoveFromOrder(id);
   renderAgrClauses();
   toast('Moved to Not Included','info');
 }
@@ -4004,12 +4165,17 @@ function restoreAgrNotIncluded(key){
   const cat=BOQ_SCOPE_ITEMS.find(c=>c.id===key)||agrFindCatalogue(item.label);
   if(cat){
     agrActivateCatalogue(cat,{label:item.label,unit:item.unit,rate:item.rate});
+    agrEnsureInOrder(cat.id);
+    agrPlaceInStageOrder(cat.id,agrCatStage(cat.id),null);
   }else{
     const stage=agrDefaultStage();
-    agrCustomItems.push({id:'ac_'+uid(),label:item.label,unit:item.unit||'job',rate:item.rate||'',stage,included:true});
+    const nid='ac_'+uid();
+    agrCustomItems.push({id:nid,label:item.label,unit:item.unit||'job',rate:item.rate||'',stage,included:true});
+    agrEnsureInOrder(nid);
+    agrPlaceInStageOrder(nid,stage,null);
   }
   renderAgrClauses();
-  toast('Restored under '+(cat?agrStageTitle(cat.stage):agrStageTitle(agrDefaultStage()))+' ✓');
+  toast('Restored under '+(cat?agrStageTitle(agrCatStage(cat.id)):agrStageTitle(agrDefaultStage()))+' ✓');
 }
 function delAgrNotIncluded(key){
   syncAgrFormFromDom();
@@ -4067,19 +4233,21 @@ function agrMatchLabel(list,c){
 }
 function getAgrClauses(){
   syncAgrFormFromDom();
+  agrRebuildOrderFromActive();
   const included=[];
   const includedDetails=[];
-  BOQ_SCOPE_ITEMS.forEach(c=>{
-    if(!agrActiveIds[c.id])return;
-    const label=agrCatLabel(c.id);
-    const unit=agrCatUnit(c.id);
-    const rate=agrCatRate(c.id);
-    const stage=agrCatStage(c.id);
-    included.push(label);
-    includedDetails.push({id:c.id,label,unit,rate,stage});
-  });
   const custom=[];
-  agrCustomItems.forEach(c=>{
+  agrScopeOrder.forEach(key=>{
+    if(agrActiveIds[key]){
+      const label=agrCatLabel(key);
+      const unit=agrCatUnit(key);
+      const rate=agrCatRate(key);
+      const stage=agrCatStage(key);
+      included.push(label);
+      includedDetails.push({id:key,label,unit,rate,stage});
+      return;
+    }
+    const c=agrCustomItems.find(x=>x.id===key);if(!c)return;
     const stage=(c.stage&&BOQ_STAGE_ORDER[c.stage]!=null)?c.stage:agrDefaultStage();
     custom.push({label:c.label,unit:c.unit||'job',rate:c.rate||'',stage,included:true});
     included.push(c.label);
@@ -4090,10 +4258,11 @@ function getAgrClauses(){
   return{
     included,excluded,custom,notIncluded,includedDetails,
     scopeMeta:{...agrItemMeta},
-    stageLabels:{...agrStageLabels}
+    stageLabels:{...agrStageLabels},
+    scopeOrder:agrScopeOrder.slice()
   };
 }
-function applyAgrClauses(included,excluded,custom,notIncluded,scopeMeta,stageLabels){
+function applyAgrClauses(included,excluded,custom,notIncluded,scopeMeta,stageLabels,scopeOrder){
   const set={};
   agrItemMeta=(scopeMeta&&typeof scopeMeta==='object')?{...scopeMeta}:{};
   agrStageLabels={
@@ -4169,6 +4338,24 @@ function applyAgrClauses(included,excluded,custom,notIncluded,scopeMeta,stageLab
     agrNotIncluded=[];
   }
   agrNotIncluded.forEach(x=>{ if(x.key) set[x.key]=false; });
+  // Restore display order (saved scopeOrder, else inclusions order)
+  if(Array.isArray(scopeOrder)&&scopeOrder.length){
+    agrScopeOrder=scopeOrder.filter(Boolean);
+  }else if(included&&included.length){
+    agrScopeOrder=included.map(lab=>{
+      const s=typeof lab==='object'?(lab.id||lab.label):lab;
+      if(typeof lab==='object'&&lab.id&&(set[lab.id]||agrCustomItems.some(c=>c.id===lab.id)))return lab.id;
+      const cat=agrFindCatalogue(s);
+      if(cat&&set[cat.id])return cat.id;
+      const cu=agrCustomItems.find(x=>agrNormLabel(x.label)===agrNormLabel(typeof lab==='object'?lab.label:s));
+      return cu?cu.id:null;
+    }).filter(Boolean);
+  }else{
+    agrScopeOrder=[];
+  }
+  agrActiveIds={}; // renderAgrClauses(set) will set from selected
+  Object.keys(set).forEach(id=>{ if(set[id]) agrActiveIds[id]=true; });
+  agrRebuildOrderFromActive();
   renderAgrClauses(set);
 }
 function syncAgrRateLabel(){
@@ -4222,7 +4409,7 @@ function iAgr(){
   sv('a-start-after','none');sv('a-prior-note','');sv('a-storeys','single');sv('a-plot-size','');
   sv('agr-custom-unit','job');sv('agr-ni-unit','job');
   const stg=e$('agr-custom-stage');if(stg){stg.value='grey';delete stg.dataset.touched;}
-  agrCustomItems=[];agrItemMeta={};agrStageLabels={brown:'',grey:'',finishing:''};agrNotIncluded=[];
+  agrCustomItems=[];agrItemMeta={};agrStageLabels={brown:'',grey:'',finishing:''};agrNotIncluded=[];agrScopeOrder=[];
   agrPaySched=defaultAgrPaySched();
   renderAgrClauses(agrApplyStartAfterFilter(agrPresetSet('grey')));
   renderAgrPayRows();
@@ -4299,7 +4486,7 @@ function eAgr(id){
   setAgrSelectOrCustom('a-storeys','a-storeys-custom',r.storeys||'single',r.storeysCustom||'','custom');
   setAgrSelectOrCustom('a-start-after','a-start-after-custom',r.startAfter||'none',r.startAfterCustom||'','other');
   sv('a-prior-note',r.priorNote||'');
-  applyAgrClauses(r.inclusions||[], r.exclusions||[], r.customScope||null, r.notIncluded||null, r.scopeMeta||null, r.stageLabels||null);
+  applyAgrClauses(r.inclusions||[], r.exclusions||[], r.customScope||null, r.notIncluded||null, r.scopeMeta||null, r.stageLabels||null, r.scopeOrder||null);
   if(Array.isArray(r.paySchedule)&&r.paySchedule.length){
     agrPaySched=r.paySchedule.map(p=>({id:p.id||('ap_'+uid()),stage:p.stage||'',amount:p.amount!=null?String(p.amount):'',note:p.note||''}));
   }else{
@@ -4491,6 +4678,7 @@ function saveAgr(){
     includedDetails:clauses.includedDetails||[],
     scopeMeta:clauses.scopeMeta||{},
     stageLabels:clauses.stageLabels||{},
+    scopeOrder:clauses.scopeOrder||[],
     customScope:clauses.custom||[],
     paySchedule,
     terms:e$('a-terms').value,
@@ -6128,7 +6316,20 @@ async function pdfAgr(id){
       if(d.rate) s+=' — '+d.rate;
       return s;
     };
+    // Follow inclusions / details order (supports drag-reorder)
+    labels.forEach(l=>{
+      const lab=typeof l==='object'?(l.label||''):l;
+      if(!lab||used.has(String(lab).toLowerCase()))return;
+      const d=detMap[String(lab).toLowerCase()]||(typeof l==='object'?l:{})||{};
+      const cat=d.id?BOQ_SCOPE_ITEMS.find(x=>x.id===d.id):BOQ_SCOPE_ITEMS.find(x=>x.label===lab||agrNormLabel(x.label)===agrNormLabel(lab));
+      const st=(d.stage&&by[d.stage])?d.stage:(cat?cat.stage:'other');
+      const show=d.label||lab;
+      by[st]?(by[st].push(fmtItem(show,d))):(by.other.push(fmtItem(show,d)));
+      used.add(String(show).toLowerCase());
+      if(cat)used.add(cat.label.toLowerCase());
+    });
     BOQ_SCOPE_ITEMS.forEach(c=>{
+      if(used.has(c.label.toLowerCase()))return;
       if(labels.some(x=>x===c.label||x===c.id||(detMap['id:'+c.id]&&x===detMap['id:'+c.id].label))){
         const d=detMap['id:'+c.id]||detMap[c.label.toLowerCase()]||{};
         const show=d.label||c.label;
@@ -6137,13 +6338,6 @@ async function pdfAgr(id){
         used.add(String(show).toLowerCase());
         used.add(c.label.toLowerCase());
       }
-    });
-    labels.forEach(l=>{
-      if(used.has(String(l).toLowerCase()))return;
-      const d=detMap[String(l).toLowerCase()]||{};
-      const st=(d.stage&&by[d.stage])?d.stage:'other';
-      by[st].push(fmtItem(l,d));
-      used.add(String(l).toLowerCase());
     });
     if(y>252){doc.addPage();y=20;}
     doc.setFillColor(242,240,235);doc.rect(14,y-4,182,8,'F');
@@ -9366,7 +9560,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-08-24-v68';
+const APP_VERSION='2026-08-24-v69';
 // Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
 // GitHub Pages is the live OTA source of truth while Wasmer Edge GitHub deploys are failing.
 const OTA_ORIGIN='https://abbashafiz.github.io/Buildpro-crm';
