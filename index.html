@@ -1687,6 +1687,22 @@ select option{background:var(--s2);}
   </div>
 </div></div>
 
+<!-- SUB-CON CHOOSER -->
+<div class="sh-ov" id="sh-sub-choose"><div class="sh">
+  <div class="sh-grip"></div>
+  <div class="sh-hd"><div class="sh-title">Sub-Contractors</div><button class="sh-x" onclick="X('sh-sub-choose')">×</button></div>
+  <div class="sh-body" style="display:flex;flex-direction:column;gap:9px;padding-bottom:20px">
+    <button class="btn btn-grey" style="justify-content:flex-start;gap:15px;padding:14px" onclick="X('sh-sub-choose');iSub();O('sh-sub')">
+      <span style="font-size:22px">👷</span>
+      <div style="text-align:left"><div style="font-size:var(--fs-md)">Add Sub-Contractor</div><div style="font-size:var(--fs-xs);color:var(--mut);font-weight:400;margin-top:2px">Raj mistri, electrician, plumber…</div></div>
+    </button>
+    <button class="btn btn-grey" style="justify-content:flex-start;gap:15px;padding:14px" onclick="X('sh-sub-choose');iSpay();O('sh-spay')">
+      <span style="font-size:22px">💸</span>
+      <div style="text-align:left"><div style="font-size:var(--fs-md)">Add Payment</div><div style="font-size:var(--fs-xs);color:var(--mut);font-weight:400;margin-top:2px">Pay a sub-contractor for work done</div></div>
+    </button>
+  </div>
+</div></div>
+
 <!-- PAY INTERNAL CHOOSER -->
 <div class="sh-ov" id="sh-pay-internal"><div class="sh">
   <div class="sh-grip"></div>
@@ -3274,7 +3290,7 @@ function fabAction(){
     'proj':  ()=>{O('sh-proj');iP();},
     'pay':   ()=>O('sh-pay-choose'),
     'ledger':()=>O('sh-new'),
-    'sub':   ()=>{iSub();O('sh-sub');},
+    'sub':   ()=>O('sh-sub-choose'),
     'agr':   ()=>{iAgr();O('sh-agr');},
     'cli':   ()=>{iCli();O('sh-cli');},
     'tasks': ()=>{if(typeof tasksTabMode!=='undefined'&&tasksTabMode==='jobs'){iWorkOrder();O('sh-workorder');}else{iTask();O('sh-task');}},
