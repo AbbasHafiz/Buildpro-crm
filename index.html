@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-08-24-v65">
+<meta name="app-version" content="2026-08-24-v66">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -1480,14 +1480,21 @@ select option{background:var(--s2);}
     </div>
     <div id="agr-clauses" style="display:grid;grid-template-columns:1fr;gap:7px;margin-bottom:10px"></div>
     <div style="background:var(--s2);border:1px solid var(--bor);border-radius:10px;padding:10px 12px;margin-bottom:14px">
-      <div style="font-size:var(--fs-xs);font-weight:700;color:var(--mut);margin-bottom:8px">＋ Custom included item</div>
-      <div style="display:grid;grid-template-columns:1fr 72px 90px auto;gap:7px;align-items:center">
-        <input id="agr-custom-txt" placeholder="Item name — e.g. Lift shaft…" onkeydown="if(event.key==='Enter'){event.preventDefault();addAgrCustomItem()}">
+      <div style="font-size:var(--fs-xs);font-weight:700;color:var(--mut);margin-bottom:8px">＋ Add item to Brown / Grey / Finishing</div>
+      <div style="font-size:var(--fs-xs);color:var(--mut2);margin-bottom:8px;line-height:1.4">Matches catalogue when possible; otherwise adds under the stage you pick (not a separate Custom list).</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:7px">
+        <select id="agr-custom-stage" onchange="this.dataset.touched='1'" style="font-size:var(--fs-xs);padding:8px 9px">
+          <option value="brown">Brown Structure</option>
+          <option value="grey" selected>Grey Structure</option>
+          <option value="finishing">Finishing</option>
+        </select>
         <input id="agr-custom-unit" placeholder="unit" value="job">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 90px auto;gap:7px;align-items:center">
+        <input id="agr-custom-txt" placeholder="Item name — e.g. Water Tank (OH)…" onkeydown="if(event.key==='Enter'){event.preventDefault();addAgrCustomItem()}">
         <input id="agr-custom-rate" placeholder="rate" onkeydown="if(event.key==='Enter'){event.preventDefault();addAgrCustomItem()}">
         <button type="button" class="btn btn-grey btn-sm" style="padding:8px 12px;font-size:var(--fs-xs);flex:none" onclick="addAgrCustomItem()">+ Add</button>
       </div>
-      <div id="agr-custom-list" style="display:grid;grid-template-columns:1fr;gap:7px;margin-top:8px"></div>
     </div>
 
     <!-- Not Included + rates -->
@@ -3373,6 +3380,14 @@ const AGR_LEGACY_LABEL_TO_ID={
   'roof treatment / waterproofing':'roof',
   'main gate / grill':'gate',
   'overhead / underground water tank':'watertank',
+  'water tank (ug / oh)':'watertank',
+  'water tank (oh)':'watertank',
+  'water tank (ug)':'watertank',
+  'water tank oh':'watertank',
+  'water tank ug':'watertank',
+  'water tank':'watertank',
+  'oh water tank':'watertank',
+  'ug water tank':'watertank',
   'pardi / parapet wall':'pardi',
   'paint / polish':'paint',
   'boundary wall':'boundary',
@@ -3398,7 +3413,55 @@ const AGR_SCOPE_CLAUSES=BOQ_SCOPE_ITEMS; // alias — agreements share BOQ stage
 const BOQ_STAGE_ORDER={brown:0,grey:1,finishing:2};
 const BOQ_STAGE_LABEL={brown:'Brown Structure',grey:'Grey Structure',finishing:'Finishing'};
 let boqCustomItems=[]; // {id,label,unit,included}
-let agrCustomItems=[]; // {id,label,included}
+let agrCustomItems=[]; // {id,label,unit,rate,stage,included} — shown under Brown/Grey/Finishing, not a separate Custom block
+function agrNormLabel(s){
+  return String(s||'').toLowerCase()
+    .replace(/[—–−]/g,'-')
+    .replace(/[^a-z0-9\s/+-]/g,' ')
+    .replace(/\s+/g,' ')
+    .trim();
+}
+function agrDefaultStage(){
+  const level=agrStructureLevel(e$('a-const-type')?.value);
+  if(level==='brown')return'brown';
+  if(level==='finishing'||level==='finishing_only')return'finishing';
+  return'grey';
+}
+function agrFindCatalogue(label){
+  const raw=String(label||'').trim();
+  if(!raw)return null;
+  const low=raw.toLowerCase();
+  const norm=agrNormLabel(raw);
+  let c=BOQ_SCOPE_ITEMS.find(x=>x.id===raw||x.id===low);
+  if(c)return c;
+  c=BOQ_SCOPE_ITEMS.find(x=>agrNormLabel(x.label)===norm||x.label.toLowerCase()===low);
+  if(c)return c;
+  const leg=AGR_LEGACY_LABEL_TO_ID[low]||AGR_LEGACY_LABEL_TO_ID[norm];
+  if(leg){c=BOQ_SCOPE_ITEMS.find(x=>x.id===leg);if(c)return c;}
+  // Fuzzy: most meaningful tokens of the typed name appear in a catalogue label
+  const stop=new Set(['and','the','for','with','all','work','works','item','ug','oh']);
+  const tokens=norm.split(/[\s/+-]+/).filter(t=>t.length>2&&!stop.has(t));
+  if(tokens.length){
+    const scored=BOQ_SCOPE_ITEMS.map(x=>{
+      const nl=agrNormLabel(x.label);
+      const hit=tokens.filter(t=>nl.includes(t)).length;
+      return{x,hit,need:tokens.length,nl};
+    }).filter(s=>s.hit>=Math.min(2,s.need)&&s.hit/s.need>=0.6)
+      .sort((a,b)=>b.hit-a.hit||a.nl.length-b.nl.length);
+    if(scored[0])return scored[0].x;
+  }
+  return null;
+}
+function agrActivateCatalogue(cat,meta){
+  if(!cat)return;
+  agrActiveIds[cat.id]=true;
+  agrNotIncluded=agrNotIncluded.filter(x=>x.key!==cat.id&&agrNormLabel(x.label)!==agrNormLabel(cat.label));
+  const m={};
+  if(meta?.label&&agrNormLabel(meta.label)!==agrNormLabel(cat.label))m.label=meta.label;
+  if(meta?.unit&&meta.unit!==(cat.unit||'job'))m.unit=meta.unit;
+  if(meta?.rate)m.rate=meta.rate;
+  if(Object.keys(m).length)agrItemMeta[cat.id]={...(agrItemMeta[cat.id]||{}),...m};
+}
 function boqItemsForStructure(struct){
   const max=BOQ_STAGE_ORDER[struct]??1;
   return BOQ_SCOPE_ITEMS.filter(i=>(BOQ_STAGE_ORDER[i.stage]??0)<=max);
@@ -3622,6 +3685,10 @@ function applyAgrStructurePreset(level){
 function onAgrConstTypeChange(){
   syncAgrFormFromDom();
   const level=agrStructureLevel(e$('a-const-type')?.value);
+  const stg=e$('agr-custom-stage');
+  if(stg&&!stg.dataset.touched){
+    stg.value=(level==='brown')?'brown':(level==='finishing'||level==='finishing_only')?'finishing':'grey';
+  }
   renderAgrClauses(agrApplyStartAfterFilter(agrPresetSet(level)));
   const label=level==='finishing_only'?'Finishing Only':(BOQ_STAGE_LABEL[level]||level);
   toast('Scope set for '+label,'info');
@@ -3742,11 +3809,13 @@ function syncAgrFormFromDom(){
     if(rate)meta.rate=rate;
     if(Object.keys(meta).length)agrItemMeta[id]=meta;else delete agrItemMeta[id];
   });
-  document.querySelectorAll('#agr-custom-list .agr-item-row').forEach(row=>{
+  document.querySelectorAll('#agr-clauses .agr-item-row[data-kind="custom"]').forEach(row=>{
     const id=row.dataset.key;const c=agrCustomItems.find(x=>x.id===id);if(!c)return;
     c.label=(row.querySelector('.agr-fld-lbl')?.value||'').trim()||c.label;
     c.unit=(row.querySelector('.agr-fld-unit')?.value||'').trim()||'job';
     c.rate=(row.querySelector('.agr-fld-rate')?.value||'').trim();
+    const st=row.dataset.stage;
+    if(st&&BOQ_STAGE_ORDER[st]!=null)c.stage=st;
   });
   document.querySelectorAll('#agr-notincl .agr-item-row').forEach(row=>{
     const key=row.dataset.key;
@@ -3772,65 +3841,88 @@ function renderAgrClauses(selected){
     agrActiveIds={};
     Object.keys(selected).forEach(id=>{ if(selected[id]) agrActiveIds[id]=true; });
   }
-  const active=BOQ_SCOPE_ITEMS.filter(c=>agrActiveIds[c.id]);
-  if(!active.length&&!agrCustomItems.length){
-    el.innerHTML='<div style="font-size:var(--fs-xs);color:var(--mut);padding:10px;text-align:center">No work items yet — use a pack above or + Add work item</div>';
-  }else{
-    let lastStage='';
-    el.innerHTML=active.map(c=>{
-      let hdr='';
-      if(c.stage!==lastStage){
-        const title=agrStageTitle(c.stage);
-        hdr=`<div style="margin:${lastStage?'10px':0} 0 4px">
-          <input class="agr-stage-lbl" data-stage="${c.stage}" value="${agrEsc(title)}" style="width:100%;font-size:10px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.6px;padding:5px 8px;background:transparent;border:1px dashed rgba(232,184,75,.35);border-radius:6px">
-        </div>`;
-        lastStage=c.stage;
-      }
+  // Keep free-text items under Brown/Grey/Finishing — never a separate Custom block
+  agrCustomItems=(agrCustomItems||[]).map(c=>({
+    ...c,
+    stage:(c.stage&&BOQ_STAGE_ORDER[c.stage]!=null)?c.stage:agrDefaultStage()
+  }));
+  const stageSel=e$('agr-custom-stage');
+  if(stageSel&&!stageSel.dataset.touched)stageSel.value=agrDefaultStage();
+  const stages=['brown','grey','finishing'];
+  let html='';
+  let any=false;
+  stages.forEach(stage=>{
+    const cats=BOQ_SCOPE_ITEMS.filter(c=>agrActiveIds[c.id]&&c.stage===stage);
+    const customs=agrCustomItems.filter(c=>c.stage===stage);
+    if(!cats.length&&!customs.length)return;
+    any=true;
+    const title=agrStageTitle(stage);
+    html+=`<div style="margin:${html?'10px':'0'} 0 4px">
+      <input class="agr-stage-lbl" data-stage="${stage}" value="${agrEsc(title)}" style="width:100%;font-size:10px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.6px;padding:5px 8px;background:transparent;border:1px dashed rgba(232,184,75,.35);border-radius:6px">
+    </div>`;
+    cats.forEach(c=>{
       const actions=`<button type="button" title="Move to Not Included" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;flex-shrink:0;padding:0 2px;font-weight:700" onclick="removeAgrScopeItem('${c.id}')">✕</button>`;
-      return hdr+agrItemRowHtml({
+      html+=agrItemRowHtml({
         kind:'cat',key:c.id,
         label:agrCatLabel(c.id),
         unit:agrCatUnit(c.id),
         rate:agrCatRate(c.id),
         actions
       });
-    }).join('');
+    });
+    customs.forEach(c=>{
+      const actions=`<button type="button" title="Move to Not Included" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;flex-shrink:0;padding:0 2px;font-weight:700" onclick="delAgrCustomItem('${c.id}')">✕</button>`;
+      // Tag stage on the row so sync can preserve it
+      html+=agrItemRowHtml({
+        kind:'custom',key:c.id,
+        label:c.label,unit:c.unit||'job',rate:c.rate||'',
+        actions
+      }).replace('data-kind="custom"','data-kind="custom" data-stage="'+c.stage+'"');
+    });
+  });
+  if(!any){
+    el.innerHTML='<div style="font-size:var(--fs-xs);color:var(--mut);padding:10px;text-align:center">No work items yet — use a pack above or + Add work item</div>';
+  }else{
+    el.innerHTML=html;
   }
   refreshAgrAddPicker();
-  renderAgrCustomList();
   renderAgrNotIncluded();
-}
-function renderAgrCustomList(){
-  const el=e$('agr-custom-list');if(!el)return;
-  if(!agrCustomItems.length){el.innerHTML='';return;}
-  el.innerHTML=agrCustomItems.map(c=>{
-    const actions=`<button type="button" title="Move to Not Included" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;flex-shrink:0;padding:0 2px;font-weight:700" onclick="delAgrCustomItem('${c.id}')">✕</button>`;
-    return agrItemRowHtml({kind:'custom',key:c.id,label:c.label,unit:c.unit||'job',rate:c.rate||'',actions});
-  }).join('');
 }
 function addAgrCustomItem(){
   const label=(e$('agr-custom-txt')?.value||'').trim();
   const unit=(e$('agr-custom-unit')?.value||'job').trim()||'job';
   const rate=(e$('agr-custom-rate')?.value||'').trim();
-  if(!label){toast('Enter a custom work item','err');return;}
+  let stage=(e$('agr-custom-stage')?.value||agrDefaultStage()).trim();
+  if(!BOQ_STAGE_ORDER[stage])stage=agrDefaultStage();
+  if(!label){toast('Enter a work item name','err');return;}
   syncAgrFormFromDom();
-  if(agrCustomItems.some(x=>x.label.toLowerCase()===label.toLowerCase())||BOQ_SCOPE_ITEMS.some(x=>x.label.toLowerCase()===label.toLowerCase())){
-    toast('Item already in list — add from catalogue or rename','err');return;
+  // Prefer catalogue match → lands under Brown/Grey/Finishing of that item
+  const cat=agrFindCatalogue(label);
+  if(cat){
+    if(agrActiveIds[cat.id]){toast('Already in '+agrStageTitle(cat.stage),'info');return;}
+    agrActivateCatalogue(cat,{label,unit,rate});
+    agrCustomItems=agrCustomItems.filter(x=>agrNormLabel(x.label)!==agrNormLabel(label));
+    sv('agr-custom-txt','');sv('agr-custom-unit','job');sv('agr-custom-rate','');
+    renderAgrClauses();
+    toast('Added under '+agrStageTitle(cat.stage)+' ✓');
+    return;
   }
-  agrCustomItems.push({id:'ac_'+uid(),label,unit,rate,included:true});
+  if(agrCustomItems.some(x=>agrNormLabel(x.label)===agrNormLabel(label))){
+    toast('Item already in list','err');return;
+  }
+  agrCustomItems.push({id:'ac_'+uid(),label,unit,rate,stage,included:true});
   sv('agr-custom-txt','');sv('agr-custom-unit','job');sv('agr-custom-rate','');
-  renderAgrCustomList();
-  toast('Custom work item added ✓');
+  renderAgrClauses();
+  toast('Added under '+agrStageTitle(stage)+' ✓');
 }
 function delAgrCustomItem(id){
   syncAgrFormFromDom();
   const c=agrCustomItems.find(x=>x.id===id);
-  if(c&&c.label&&!agrNotIncluded.some(x=>x.label.toLowerCase()===c.label.toLowerCase())){
+  if(c&&c.label&&!agrNotIncluded.some(x=>agrNormLabel(x.label)===agrNormLabel(c.label))){
     agrNotIncluded.push({key:id,label:c.label,rate:c.rate||'',unit:c.unit||'job'});
   }
   agrCustomItems=agrCustomItems.filter(x=>x.id!==id);
-  renderAgrCustomList();
-  renderAgrNotIncluded();
+  renderAgrClauses();
   toast('Moved to Not Included','info');
 }
 function renderAgrNotIncluded(){
@@ -3851,10 +3943,10 @@ function addAgrNotIncluded(){
   const rate=(e$('agr-ni-rate')?.value||'').trim();
   if(!label){toast('Enter item name','err');return;}
   syncAgrFormFromDom();
-  if(agrNotIncluded.some(x=>x.label.toLowerCase()===label.toLowerCase())){toast('Already in Not Included','err');return;}
-  const cat=BOQ_SCOPE_ITEMS.find(x=>x.label.toLowerCase()===label.toLowerCase());
+  if(agrNotIncluded.some(x=>agrNormLabel(x.label)===agrNormLabel(label))){toast('Already in Not Included','err');return;}
+  const cat=agrFindCatalogue(label);
   if(cat){delete agrActiveIds[cat.id];delete agrItemMeta[cat.id];}
-  agrCustomItems=agrCustomItems.filter(x=>x.label.toLowerCase()!==label.toLowerCase());
+  agrCustomItems=agrCustomItems.filter(x=>agrNormLabel(x.label)!==agrNormLabel(label));
   agrNotIncluded.push({key:cat?cat.id:('ni_'+uid()),label,rate,unit});
   sv('agr-ni-txt','');sv('agr-ni-unit','job');sv('agr-ni-rate','');
   renderAgrClauses();
@@ -3864,19 +3956,16 @@ function restoreAgrNotIncluded(key){
   syncAgrFormFromDom();
   const item=agrNotIncluded.find(x=>x.key===key);if(!item)return;
   agrNotIncluded=agrNotIncluded.filter(x=>x.key!==key);
-  if(BOQ_SCOPE_ITEMS.some(c=>c.id===key)){
-    agrActiveIds[key]=true;
-    const base=BOQ_SCOPE_ITEMS.find(c=>c.id===key);
-    const meta={};
-    if(item.label&&item.label!==base.label)meta.label=item.label;
-    if(item.unit&&item.unit!==(base.unit||'job'))meta.unit=item.unit;
-    if(item.rate)meta.rate=item.rate;
-    if(Object.keys(meta).length)agrItemMeta[key]=meta;
+  // Catalogue id, or fuzzy match by label → Brown/Grey/Finishing section
+  const cat=BOQ_SCOPE_ITEMS.find(c=>c.id===key)||agrFindCatalogue(item.label);
+  if(cat){
+    agrActivateCatalogue(cat,{label:item.label,unit:item.unit,rate:item.rate});
   }else{
-    agrCustomItems.push({id:'ac_'+uid(),label:item.label,unit:item.unit||'job',rate:item.rate||'',included:true});
+    const stage=agrDefaultStage();
+    agrCustomItems.push({id:'ac_'+uid(),label:item.label,unit:item.unit||'job',rate:item.rate||'',stage,included:true});
   }
   renderAgrClauses();
-  toast('Restored to Included ✓');
+  toast('Restored under '+(cat?agrStageTitle(cat.stage):agrStageTitle(agrDefaultStage()))+' ✓');
 }
 function delAgrNotIncluded(key){
   syncAgrFormFromDom();
@@ -3946,9 +4035,10 @@ function getAgrClauses(){
   });
   const custom=[];
   agrCustomItems.forEach(c=>{
-    custom.push({label:c.label,unit:c.unit||'job',rate:c.rate||'',included:true});
+    const stage=(c.stage&&BOQ_STAGE_ORDER[c.stage]!=null)?c.stage:agrDefaultStage();
+    custom.push({label:c.label,unit:c.unit||'job',rate:c.rate||'',stage,included:true});
     included.push(c.label);
-    includedDetails.push({id:c.id,label:c.label,unit:c.unit||'job',rate:c.rate||'',custom:true});
+    includedDetails.push({id:c.id,label:c.label,unit:c.unit||'job',rate:c.rate||'',stage,custom:true});
   });
   const excluded=agrNotIncluded.map(x=>x.label).filter(Boolean);
   const notIncluded=agrNotIncluded.map(x=>({id:x.key,label:x.label,rate:x.rate||'',unit:x.unit||'job'}));
@@ -3968,32 +4058,52 @@ function applyAgrClauses(included,excluded,custom,notIncluded,scopeMeta,stageLab
   };
   if(included&&included.length){
     BOQ_SCOPE_ITEMS.forEach(c=>{ set[c.id]=agrMatchLabel(included,c)===true; });
-    if(!scopeMeta){
-      (included||[]).forEach(lab=>{
-        const s=typeof lab==='object'?lab.label:lab;
-        const c=BOQ_SCOPE_ITEMS.find(x=>agrMatchLabel([s],x));
-        if(c&&s&&s!==c.label&&!AGR_LEGACY_LABEL_TO_ID[String(s).toLowerCase()]){
-          agrItemMeta[c.id]={...(agrItemMeta[c.id]||{}),label:s};
+    (included||[]).forEach(lab=>{
+      const s=typeof lab==='object'?(lab.label||lab.id):lab;
+      const c=agrFindCatalogue(s);
+      if(c){
+        set[c.id]=true;
+        if(s&&agrNormLabel(s)!==agrNormLabel(c.label)){
+          agrItemMeta[c.id]={...(agrItemMeta[c.id]||{}),label:typeof lab==='object'&&lab.label?lab.label:s};
         }
-      });
-    }
+      }
+    });
   }else{
     BOQ_SCOPE_ITEMS.forEach(c=>{ set[c.id]=!!c.def; });
   }
   const premadeLabels=new Set(BOQ_SCOPE_ITEMS.map(x=>x.label.toLowerCase()));
   Object.keys(AGR_LEGACY_LABEL_TO_ID||{}).forEach(l=>premadeLabels.add(l));
+  const absorbCustom=(label,unit,rate,stage)=>{
+    const cat=agrFindCatalogue(label);
+    if(cat){
+      set[cat.id]=true;
+      if(label&&agrNormLabel(label)!==agrNormLabel(cat.label)){
+        agrItemMeta[cat.id]={...(agrItemMeta[cat.id]||{}),label};
+      }
+      if(unit&&unit!==(cat.unit||'job'))agrItemMeta[cat.id]={...(agrItemMeta[cat.id]||{}),unit};
+      if(rate)agrItemMeta[cat.id]={...(agrItemMeta[cat.id]||{}),rate};
+      return null;
+    }
+    const st=(stage&&BOQ_STAGE_ORDER[stage]!=null)?stage:agrDefaultStage();
+    return{id:'ac_'+uid(),label,unit:unit||'job',rate:rate||'',stage:st,included:true};
+  };
   if(Array.isArray(custom)&&custom.length){
-    agrCustomItems=custom.filter(c=>c.included!==false).map(c=>({
-      id:'ac_'+uid(),label:c.label,unit:c.unit||'job',rate:c.rate||'',included:true
-    }));
+    agrCustomItems=custom.filter(c=>c.included!==false).map(c=>absorbCustom(c.label,c.unit,c.rate,c.stage)).filter(Boolean);
   }else if(included&&included.length){
-    agrCustomItems=included.filter(l=>{
+    agrCustomItems=included.map(l=>{
       const s=typeof l==='object'?l.label:l;
-      return !premadeLabels.has((s||'').toLowerCase())&&!BOQ_SCOPE_ITEMS.some(c=>agrMatchLabel([s],c));
-    }).map(l=>{
-      if(typeof l==='object')return {id:'ac_'+uid(),label:l.label,unit:l.unit||'job',rate:l.rate||'',included:true};
-      return {id:'ac_'+uid(),label:l,unit:'job',rate:'',included:true};
-    });
+      const unit=typeof l==='object'?(l.unit||'job'):'job';
+      const rate=typeof l==='object'?(l.rate||''):'';
+      const stage=typeof l==='object'?l.stage:null;
+      if(!s)return null;
+      if(premadeLabels.has((s||'').toLowerCase())||BOQ_SCOPE_ITEMS.some(c=>agrMatchLabel([s],c))||agrFindCatalogue(s)){
+        // Ensure catalogue match is active (agrMatchLabel pass above may have missed fuzzy)
+        const cat=agrFindCatalogue(s);
+        if(cat){set[cat.id]=true;if(agrNormLabel(s)!==agrNormLabel(cat.label))agrItemMeta[cat.id]={...(agrItemMeta[cat.id]||{}),label:s};}
+        return null;
+      }
+      return absorbCustom(s,unit,rate,stage);
+    }).filter(Boolean);
   }else{
     agrCustomItems=[];
   }
@@ -4066,6 +4176,7 @@ function iAgr(){
   sv('a-st','draft');sv('a-type','labour');sv('a-const-type','Grey Structure');
   sv('a-start-after','none');sv('a-prior-note','');sv('a-storeys','single');sv('a-plot-size','');
   sv('agr-custom-unit','job');sv('agr-ni-unit','job');
+  const stg=e$('agr-custom-stage');if(stg){stg.value='grey';delete stg.dataset.touched;}
   agrCustomItems=[];agrItemMeta={};agrStageLabels={brown:'',grey:'',finishing:''};agrNotIncluded=[];
   agrPaySched=defaultAgrPaySched();
   renderAgrClauses(agrApplyStartAfterFilter(agrPresetSet('grey')));
@@ -5981,7 +6092,13 @@ async function pdfAgr(id){
         used.add(c.label.toLowerCase());
       }
     });
-    labels.forEach(l=>{if(!used.has(String(l).toLowerCase()))by.other.push(fmtItem(l));});
+    labels.forEach(l=>{
+      if(used.has(String(l).toLowerCase()))return;
+      const d=detMap[String(l).toLowerCase()]||{};
+      const st=(d.stage&&by[d.stage])?d.stage:'other';
+      by[st].push(fmtItem(l,d));
+      used.add(String(l).toLowerCase());
+    });
     if(y>252){doc.addPage();y=20;}
     doc.setFillColor(242,240,235);doc.rect(14,y-4,182,8,'F');
     doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(110,105,98);
@@ -9203,7 +9320,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-08-24-v65';
+const APP_VERSION='2026-08-24-v66';
 // Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
 // GitHub Pages is the live OTA source of truth while Wasmer Edge GitHub deploys are failing.
 const OTA_ORIGIN='https://abbashafiz.github.io/Buildpro-crm';
