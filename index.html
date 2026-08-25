@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-08-24-v73">
+<meta name="app-version" content="2026-08-25-v74">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -1536,7 +1536,11 @@ select option{background:var(--s2);}
       <button type="button" class="btn btn-grey btn-sm" style="padding:5px 10px;font-size:var(--fs-xs)" onclick="addAgrPayRow({stage:'On Completion'})">+ Completion</button>
       <button type="button" class="btn btn-grey btn-sm" style="padding:5px 10px;font-size:var(--fs-xs)" onclick="addAgrPayRow({})">+ Custom stage</button>
     </div>
-    <div id="agr-pay-rows" style="display:flex;flex-direction:column;gap:7px;margin-bottom:10px"></div>
+    <div id="agr-pay-rows" style="display:flex;flex-direction:column;gap:7px;margin-bottom:7px"></div>
+    <div id="agr-pay-total-row" style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;margin-bottom:10px;background:var(--s2);border:1px solid var(--bor);border-radius:8px">
+      <span style="font-size:var(--fs-xs);color:var(--mut);font-weight:700;text-transform:uppercase;letter-spacing:.7px">Stages total</span>
+      <span id="agr-pay-total" style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-md);color:var(--gold);font-weight:600">0</span>
+    </div>
     <div class="fg"><label>Payment notes <span style="color:var(--mut2);font-weight:400;text-transform:none">(optional)</span></label><textarea id="a-terms" placeholder="Extra payment terms…" style="min-height:54px"></textarea></div>
     <div class="f2">
       <div class="fg"><label>CDA / Permit No.</label><input id="a-permit" placeholder="Optional"></div>
@@ -4361,20 +4365,37 @@ function delAgrNotIncluded(key){
   renderAgrNotIncluded();
   refreshAgrAddPicker();
 }
+function parseAgrPayAmt(raw){
+  if(raw==null)return 0;
+  const s=String(raw).replace(/,/g,'').replace(/[^\d.\-]/g,'').trim();
+  if(!s||s==='-'||s==='.')return 0;
+  const n=parseFloat(s);
+  return Number.isFinite(n)?n:0;
+}
+function updateAgrPayTotal(){
+  const el=e$('agr-pay-total');if(!el)return;
+  let sum=0;
+  document.querySelectorAll('#agr-pay-rows .agr-pay-amt').forEach(inp=>{
+    sum+=parseAgrPayAmt(inp.value);
+  });
+  el.textContent=fmt(sum);
+}
 function renderAgrPayRows(){
   const el=e$('agr-pay-rows');if(!el)return;
   if(!agrPaySched.length){
     el.innerHTML='<div style="font-size:var(--fs-xs);color:var(--mut);padding:6px 0">No stages yet — tap a chip above to add</div>';
+    updateAgrPayTotal();
     return;
   }
   el.innerHTML=agrPaySched.map(p=>{
     return `<div class="agr-pay-row" data-id="${p.id}" style="display:grid;grid-template-columns:1.4fr 0.9fr 1fr 28px;gap:6px;align-items:center">
       <input class="agr-pay-stage urdu-field" dir="auto" value="${agrEsc(p.stage)}" placeholder="Stage / work done" style="font-size:var(--fs-xs);padding:8px 9px">
-      <input class="agr-pay-amt urdu-field" dir="auto" value="${agrEsc(p.amount)}" placeholder="Amount / %" style="font-size:var(--fs-xs);padding:8px 9px">
+      <input class="agr-pay-amt urdu-field" dir="auto" value="${agrEsc(p.amount)}" placeholder="Amount / %" style="font-size:var(--fs-xs);padding:8px 9px" oninput="updateAgrPayTotal()" onchange="updateAgrPayTotal()">
       <input class="agr-pay-note urdu-field" dir="auto" value="${agrEsc(p.note)}" placeholder="Note" style="font-size:var(--fs-xs);padding:8px 9px">
       <button type="button" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;font-weight:700" onclick="delAgrPayRow('${p.id}')">✕</button>
     </div>`;
   }).join('');
+  updateAgrPayTotal();
 }
 function addAgrPayRow(preset){
   syncAgrFormFromDom();
@@ -9742,7 +9763,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-08-24-v73';
+const APP_VERSION='2026-08-25-v74';
 // Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
 // GitHub Pages is the live OTA source of truth while Wasmer Edge GitHub deploys are failing.
 const OTA_ORIGIN='https://abbashafiz.github.io/Buildpro-crm';
