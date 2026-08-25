@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-08-25-v75">
+<meta name="app-version" content="2026-08-25-v76">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -266,6 +266,9 @@ label{font-size:var(--fs-xs);color:var(--mut);font-weight:600;text-transform:upp
 /* Stronger field labels inside the agreement sheet only */
 #sh-agr .fg>label{font-size:var(--fs-sm);color:var(--txt);font-weight:700;letter-spacing:.55px;}
 #sh-agr .fg>label span{font-weight:500;}
+.agr-psec{display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--bor);border-radius:8px;padding:8px 10px;cursor:pointer;font-size:var(--fs-xs);color:var(--txt);text-transform:none;letter-spacing:0;font-weight:600;margin:0;}
+.agr-psec input[type="checkbox"]{width:16px;height:16px;accent-color:#4d94d4;flex-shrink:0;margin:0;}
+.agr-psec span{line-height:1.3;}
 .agr-stage-lbl{width:100%;font-size:var(--fs-xs)!important;font-weight:800!important;color:var(--gold)!important;text-transform:uppercase;letter-spacing:.7px;padding:6px 9px;background:transparent;border:1px dashed rgba(232,184,75,.4);border-radius:6px;margin-bottom:7px;}
 input,select,textarea{background:var(--bg);border:1px solid var(--bor);border-radius:10px;padding:13px 14px;color:var(--txt);font-size:var(--fs-md);font-family:'Inter',sans-serif;outline:none;transition:border-color .15s;width:100%;-webkit-appearance:none;appearance:none;}
 input[type="checkbox"],input[type="radio"]{-webkit-appearance:auto;appearance:auto;width:18px;height:18px;padding:0;border:none;background:none;flex-shrink:0;accent-color:var(--gold);cursor:pointer;}
@@ -1582,6 +1585,25 @@ select option{background:var(--s2);}
         <input type="radio" name="agr-print-style" id="a-style-legal" value="legal" style="width:16px;height:16px;accent-color:var(--gold);flex-shrink:0;margin-top:2px">
         <div><div style="font-size:var(--fs-sm);font-weight:600;color:var(--txt)">⚖️ Legal Style</div><div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">5 inch (127mm) empty at top for stamp paper / legal letterhead</div></div>
       </label>
+    </div>
+    <div class="fl" style="margin:16px 0 8px">☑ PDF Sections <span class="fl-sub">(uncheck to hide from PDF)</span></div>
+    <div style="font-size:var(--fs-xs);color:var(--mut2);margin-bottom:8px;line-height:1.4">Controls which headings appear on the downloaded agreement PDF.</div>
+    <div id="agr-pdf-secs" style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+      <label class="agr-psec"><input type="checkbox" id="a-psec-parties" checked><span>Parties</span></label>
+      <label class="agr-psec"><input type="checkbox" id="a-psec-project" checked><span>Project / Property</span></label>
+      <label class="agr-psec"><input type="checkbox" id="a-psec-specs" checked><span>House / Specs</span></label>
+      <label class="agr-psec"><input type="checkbox" id="a-psec-prior" checked><span>Prior Work / Start</span></label>
+      <label class="agr-psec"><input type="checkbox" id="a-psec-value" checked><span>Contract Value &amp; Rate</span></label>
+      <label class="agr-psec"><input type="checkbox" id="a-psec-duration" checked><span>Contract Duration</span></label>
+      <label class="agr-psec"><input type="checkbox" id="a-psec-included" checked><span>Work Included</span></label>
+      <label class="agr-psec"><input type="checkbox" id="a-psec-notIncluded" checked><span>Not Included</span></label>
+      <label class="agr-psec"><input type="checkbox" id="a-psec-scope" checked><span>Detailed Scope</span></label>
+      <label class="agr-psec"><input type="checkbox" id="a-psec-payment" checked><span>Payment Schedule</span></label>
+      <label class="agr-psec"><input type="checkbox" id="a-psec-compliance" checked><span>CDA / Compliance</span></label>
+      <label class="agr-psec"><input type="checkbox" id="a-psec-general" checked><span>General Conditions</span></label>
+      <label class="agr-psec"><input type="checkbox" id="a-psec-payDetails" checked><span>Payment Details</span></label>
+      <label class="agr-psec"><input type="checkbox" id="a-psec-conditions" checked><span>Special Conditions</span></label>
+      <label class="agr-psec"><input type="checkbox" id="a-psec-signatures" checked><span>Signatures</span></label>
     </div>
   </div>
   <div class="sh-ft"><button class="btn btn-grey" onclick="X('sh-agr')">Cancel</button><button class="btn btn-gold" onclick="saveAgr()">💾 Save Agreement</button></div>
@@ -4380,6 +4402,51 @@ function parseAgrPayAmt(raw){
   const n=parseFloat(s);
   return Number.isFinite(n)?n:0;
 }
+/** Agreement PDF section visibility — checked = show on PDF. */
+const AGR_PDF_SECS=[
+  {k:'parties',l:'Parties'},
+  {k:'project',l:'Project / Property'},
+  {k:'specs',l:'House / Specs'},
+  {k:'prior',l:'Prior Work / Start'},
+  {k:'value',l:'Contract Value & Rate'},
+  {k:'duration',l:'Contract Duration'},
+  {k:'included',l:'Work Included'},
+  {k:'notIncluded',l:'Not Included'},
+  {k:'scope',l:'Detailed Scope'},
+  {k:'payment',l:'Payment Schedule'},
+  {k:'compliance',l:'CDA / Compliance'},
+  {k:'general',l:'General Conditions'},
+  {k:'payDetails',l:'Payment Details'},
+  {k:'conditions',l:'Special Conditions'},
+  {k:'signatures',l:'Signatures'}
+];
+function defaultAgrPdfSecs(){
+  const o={};AGR_PDF_SECS.forEach(s=>{o[s.k]=true;});return o;
+}
+function getAgrPdfSecsFromDom(){
+  const o=defaultAgrPdfSecs();
+  AGR_PDF_SECS.forEach(s=>{
+    const el=e$('a-psec-'+s.k);
+    if(el)o[s.k]=!!el.checked;
+  });
+  return o;
+}
+function setAgrPdfSecs(secs){
+  const d=Object.assign(defaultAgrPdfSecs(),secs||{});
+  AGR_PDF_SECS.forEach(s=>{
+    const el=e$('a-psec-'+s.k);
+    if(el)el.checked=d[s.k]!==false;
+  });
+}
+function agrPdfShow(r,key){
+  if(!r||!r.pdfSecs)return true;
+  return r.pdfSecs[key]!==false;
+}
+function sumAgrPaySchedule(rows){
+  let sum=0;
+  (rows||[]).forEach(p=>{sum+=parseAgrPayAmt(p&&p.amount);});
+  return sum;
+}
 function updateAgrPayTotal(){
   const el=e$('agr-pay-total');if(!el)return;
   let sum=0;
@@ -4612,6 +4679,7 @@ function iAgr(){
    'a-plot-size-custom','a-storeys-custom','a-type-custom','a-const-type-custom','a-start-after-custom',
    'agr-custom-txt','agr-custom-unit','agr-custom-rate','agr-ni-txt','agr-ni-unit','agr-ni-rate'].forEach(id=>sv(id,''));
   const sd=e$('a-style-digital');if(sd)sd.checked=true;const hv=e$('a-hide-value');if(hv)hv.checked=false;toggleHideValue();
+  setAgrPdfSecs(defaultAgrPdfSecs());
   sv('a-st','draft');sv('a-type','labour');sv('a-const-type','Grey Structure');
   sv('a-start-after','none');sv('a-prior-note','');sv('a-storeys','single');sv('a-plot-size','');
   sv('agr-custom-unit','job');sv('agr-ni-unit','job');
@@ -4687,6 +4755,7 @@ function eAgr(id){
   sv('a-rate',r.rate||r.labRate||r.matRate||'');
   sv('a-general',r.general||'');sv('a-footer',r.footerNote||'');
   const style=r.printStyle||'digital';const sel=e$('a-style-'+style);if(sel)sel.checked=true;const hv2=e$('a-hide-value');if(hv2)hv2.checked=r.hideValue||false;toggleHideValue();
+  setAgrPdfSecs(r.pdfSecs);
   setAgrSelectOrCustom('a-type','a-type-custom',r.agrType||'labour',r.agrTypeCustom||'','other');
   setAgrSelectOrCustom('a-const-type','a-const-type-custom',r.constType||'Grey Structure',r.constTypeCustom||'','Custom');
   setAgrSelectOrCustom('a-plot-size','a-plot-size-custom',r.plotSize||'',r.plotSizeCustom||'','Custom');
@@ -4893,7 +4962,8 @@ function saveAgr(){
     general:e$('a-general')?.value||'',
     footerNote:e$('a-footer')?.value||'',
     printStyle:(document.querySelector('input[name="agr-print-style"]:checked')?.value)||'digital',
-    hideValue:e$('a-hide-value')?.checked||false
+    hideValue:e$('a-hide-value')?.checked||false,
+    pdfSecs:getAgrPdfSecsFromDom()
   };
   if(!doc.clientName){toast('Select a client','err');return;}
   ups('agreements',doc);X('sh-agr');renderAgr();updateDots();renderDash();
@@ -6059,6 +6129,17 @@ function drawPdfGrandTotal(doc,y,label,amountText,opts){
   return y+h+10;
 }
 
+/** Prominent agreement PDF section heading — tan bar + gold accent + dark bold title. Returns new y. */
+function drawAgrPdfHead(doc,title,y){
+  if(y>252){doc.addPage();y=20;}
+  const h=11;
+  doc.setFillColor(235,228,214);doc.rect(14,y-4,182,h,'F');
+  doc.setFillColor(232,184,75);doc.rect(14,y-4,3.5,h,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(10.5);doc.setTextColor(30,30,30);
+  doc.text(String(title||'').toUpperCase(),20,y+3);
+  return y+h+4;
+}
+
 /** Crisp owner-expense totals box (avoids blurry blue autoTable foot on mobile PDF viewers). */
 function drawOwnerExpTotals(doc,y,cashSpent,behalfSpent){
   const total=cashSpent+behalfSpent;
@@ -6387,44 +6468,39 @@ async function pdfAgr(id){
     }
   }
 
+  const show=k=>agrPdfShow(r,k);
   const sec=(title,content)=>{
-    if(y>252){doc.addPage();y=20;}
-    doc.setFillColor(242,240,235);doc.rect(14,y-4,182,8,'F');
-    doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(110,105,98);
-    doc.text(title.toUpperCase(),16,y+1);y+=10;
+    y=drawAgrPdfHead(doc,title,y);
     y=renderContent(content,y);
   };
 
 
   const cli=D.clients.find(x=>x.id===r.clientId);
   // Parties side-by-side
-  if(y>252){doc.addPage();y=20;}
-  doc.setFillColor(242,240,235);doc.rect(14,y-4,182,8,'F');
-  doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(110,105,98);
-  doc.text('PARTIES',16,y+1);y+=10;
-  const leftX=14, rightX=110, colW=88;
-  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(110,105,98);
-  doc.text('CONTRACTOR',leftX,y);doc.text('CLIENT / OWNER',rightX,y);y+=5;
-  const co2b=D.company||co2||{};
-  const coBlock=(co2.name||'[Contractor Name]')+
-    ((co2.addr||co2.city)?('\n'+(co2.addr?co2.addr+', ':'')+(co2.city||'Islamabad')):'')+
-    (co2.phone?'\n'+co2.phone:'')+(co2.ntn?'\nNTN: '+co2.ntn:'');
-  const cliBlock=r.clientName+
-    (cli&&(cli.addr||cli.city)?('\n'+(cli.addr||cli.city)):'')+
-    (cli&&cli.phone?('\n'+cli.phone):'')+
-    (cli&&cli.cnic?('\nCNIC: '+cli.cnic):'');
-  const hL=pdfDrawCellAt(doc,coBlock,leftX,y,colW,9);
-  const hR=pdfDrawCellAt(doc,cliBlock,rightX,y,colW,9);
-  y+=Math.max(hL,hR)+4;
+  if(show('parties')){
+    y=drawAgrPdfHead(doc,'PARTIES',y);
+    const leftX=14, rightX=110, colW=88;
+    doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(110,105,98);
+    doc.text('CONTRACTOR',leftX,y);doc.text('CLIENT / OWNER',rightX,y);y+=5;
+    const coBlock=(co2.name||'[Contractor Name]')+
+      ((co2.addr||co2.city)?('\n'+(co2.addr?co2.addr+', ':'')+(co2.city||'Islamabad')):'')+
+      (co2.phone?'\n'+co2.phone:'')+(co2.ntn?'\nNTN: '+co2.ntn:'');
+    const cliBlock=r.clientName+
+      (cli&&(cli.addr||cli.city)?('\n'+(cli.addr||cli.city)):'')+
+      (cli&&cli.phone?('\n'+cli.phone):'')+
+      (cli&&cli.cnic?('\nCNIC: '+cli.cnic):'');
+    const hL=pdfDrawCellAt(doc,coBlock,leftX,y,colW,9);
+    const hR=pdfDrawCellAt(doc,cliBlock,rightX,y,colW,9);
+    y+=Math.max(hL,hR)+4;
+  }
 
   const proj=D.projects.find(x=>x.id===r.projectId);
   let projDetail=r.projectName||'';
   if(proj){if(proj.loc)projDetail+='\nLoc: '+proj.loc;if(proj.plot)projDetail+='\nPlot: '+proj.plot;}
-  if(y>252){doc.addPage();y=20;}
-  doc.setFillColor(242,240,235);doc.rect(14,y-4,182,8,'F');
-  doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(110,105,98);
-  doc.text('PROJECT / PROPERTY',16,y+1);y+=10;
-  y+=pdfDrawCellAt(doc,projDetail,14,y,178,9)+2;
+  if(show('project')){
+    y=drawAgrPdfHead(doc,'PROJECT / PROPERTY',y);
+    y+=pdfDrawCellAt(doc,projDetail,14,y,178,9)+2;
+  }
 
   const specPairs=[];
   specPairs.push(['Structure',agrDisplayStoreys(r)||'—']);
@@ -6438,11 +6514,8 @@ async function pdfAgr(id){
   if(r.arch)specPairs.push(['Architect',r.arch]);
   if(r.drawing)specPairs.push(['Drawing No.',r.drawing]);
   if(r.permit)specPairs.push(['Permit No.',r.permit]);
-  if(specPairs.length){
-    if(y>252){doc.addPage();y=20;}
-    doc.setFillColor(242,240,235);doc.rect(14,y-4,182,8,'F');
-    doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(110,105,98);
-    doc.text('HOUSE / STRUCTURE SPECIFICATIONS',16,y+1);y+=10;
+  if(show('specs')&&specPairs.length){
+    y=drawAgrPdfHead(doc,'HOUSE / STRUCTURE SPECIFICATIONS',y);
     for(let i=0;i<specPairs.length;i+=2){
       if(y>280){doc.addPage();y=20;}
       let rowH=5;
@@ -6460,55 +6533,59 @@ async function pdfAgr(id){
     y+=2;
   }
 
-  const startShow=agrDisplayStartAfter(r);
-  if(r.startAfter&&r.startAfter!=='none'){
-    let prior='Starts: '+startShow;
-    if(r.priorNote)prior+='\n'+r.priorNote;
-    prior+='\n(Prior work not part of this agreement.)';
-    sec('Prior Work / Start Point',prior);
-  }else if(r.startAfterCustom&&r.startAfter==='none'){
-    let prior='Starts: '+r.startAfterCustom;
-    if(r.priorNote)prior+='\n'+r.priorNote;
-    sec('Prior Work / Start Point',prior);
-  }else if(r.priorNote){
-    sec('Prior Work / Start Point',r.priorNote);
+  if(show('prior')){
+    const startShow=agrDisplayStartAfter(r);
+    if(r.startAfter&&r.startAfter!=='none'){
+      let prior='Starts: '+startShow;
+      if(r.priorNote)prior+='\n'+r.priorNote;
+      prior+='\n(Prior work not part of this agreement.)';
+      sec('Prior Work / Start Point',prior);
+    }else if(r.startAfterCustom&&r.startAfter==='none'){
+      let prior='Starts: '+r.startAfterCustom;
+      if(r.priorNote)prior+='\n'+r.priorNote;
+      sec('Prior Work / Start Point',prior);
+    }else if(r.priorNote){
+      sec('Prior Work / Start Point',r.priorNote);
+    }
   }
 
-  const constShow=agrDisplayConstType(r);
-  let rateDetail='Type: '+agrDisplayType(r);
-  if(!r.hideValue){
-    if((r.agrType==='labour'||r.agrType==='other')&&r.rate){
-      const area=r.covered||(r.gfArea+r.ffArea)||0;
-      rateDetail+='\nRate: PKR '+fmt(r.rate)+(area?' /sft · Area: '+fmt(area)+' sft':'');
-      rateDetail+='\nScope: '+constShow;
-    }else if(r.agrType==='material'&&r.rate){
-      const area=r.covered||(r.gfArea+r.ffArea)||0;
-      rateDetail+='\nWith Material: PKR '+fmt(r.rate)+'/sft'+(area?' · Area: '+fmt(area)+' sft':'');
-      if(r.matGrade)rateDetail+='\nGrade: '+r.matGrade;
-      rateDetail+='\nScope: '+constShow;
-    }else if(r.agrType==='costpct'&&r.rate){
-      rateDetail+='\nCost to Cost + '+r.rate+'% margin\nScope: '+constShow;
-    }else if(r.agrType==='phase'){
-      const phases=[['Foundation',r.ph1],['DPC/Plinth',r.ph2],['Structure/Slab',r.ph3],['Brickwork',r.ph4],['Plaster',r.ph5],['Finishing',r.ph6]];
-      phases.filter(([,v])=>v>0).forEach(([n,v])=>{rateDetail+='\n'+n+': PKR '+fmt(v);});
+  if(show('value')){
+    const constShow=agrDisplayConstType(r);
+    let rateDetail='Type: '+agrDisplayType(r);
+    if(!r.hideValue){
+      if((r.agrType==='labour'||r.agrType==='other')&&r.rate){
+        const area=r.covered||(r.gfArea+r.ffArea)||0;
+        rateDetail+='\nRate: PKR '+fmt(r.rate)+(area?' /sft · Area: '+fmt(area)+' sft':'');
+        rateDetail+='\nScope: '+constShow;
+      }else if(r.agrType==='material'&&r.rate){
+        const area=r.covered||(r.gfArea+r.ffArea)||0;
+        rateDetail+='\nWith Material: PKR '+fmt(r.rate)+'/sft'+(area?' · Area: '+fmt(area)+' sft':'');
+        if(r.matGrade)rateDetail+='\nGrade: '+r.matGrade;
+        rateDetail+='\nScope: '+constShow;
+      }else if(r.agrType==='costpct'&&r.rate){
+        rateDetail+='\nCost to Cost + '+r.rate+'% margin\nScope: '+constShow;
+      }else if(r.agrType==='phase'){
+        const phases=[['Foundation',r.ph1],['DPC/Plinth',r.ph2],['Structure/Slab',r.ph3],['Brickwork',r.ph4],['Plaster',r.ph5],['Finishing',r.ph6]];
+        phases.filter(([,v])=>v>0).forEach(([n,v])=>{rateDetail+='\n'+n+': PKR '+fmt(v);});
+      }else{
+        rateDetail+='\nScope: '+constShow;
+      }
+      if(r.agrType!=='costpct')rateDetail+='\nContract Value: PKR '+fmt(r.value)+' ('+nW(r.value)+')';
+      else if(r.value)rateDetail+='\nEst. Value: PKR '+fmt(r.value);
     }else{
-      rateDetail+='\nScope: '+constShow;
+      if((r.agrType==='labour'||r.agrType==='other')&&r.rate){
+        rateDetail+='\nRate: PKR '+fmt(r.rate)+'/sft\nScope: '+constShow+'\nNote: Final area measured shade-to-shade.';
+      }else if(r.agrType==='material'&&r.rate){
+        rateDetail+='\nWith Material: PKR '+fmt(r.rate)+'/sft\nScope: '+constShow+'\nNote: Final area measured shade-to-shade.';
+      }else if(r.agrType==='costpct'&&r.rate){
+        rateDetail+='\nCost to Cost + '+r.rate+'%\nScope: '+constShow;
+      }else{
+        rateDetail+='\nScope: '+constShow;
+      }
     }
-    if(r.agrType!=='costpct')rateDetail+='\nContract Value: PKR '+fmt(r.value)+' ('+nW(r.value)+')';
-    else if(r.value)rateDetail+='\nEst. Value: PKR '+fmt(r.value);
-  }else{
-    if((r.agrType==='labour'||r.agrType==='other')&&r.rate){
-      rateDetail+='\nRate: PKR '+fmt(r.rate)+'/sft\nScope: '+constShow+'\nNote: Final area measured shade-to-shade.';
-    }else if(r.agrType==='material'&&r.rate){
-      rateDetail+='\nWith Material: PKR '+fmt(r.rate)+'/sft\nScope: '+constShow+'\nNote: Final area measured shade-to-shade.';
-    }else if(r.agrType==='costpct'&&r.rate){
-      rateDetail+='\nCost to Cost + '+r.rate+'%\nScope: '+constShow;
-    }else{
-      rateDetail+='\nScope: '+constShow;
-    }
+    sec(r.hideValue?'Agreement Type & Scope':'Contract Value & Rate Details',rateDetail);
   }
-  sec(r.hideValue?'Agreement Type & Scope':'Contract Value & Rate Details',rateDetail);
-  sec('Contract Duration','Start: '+(r.start||'—')+'          Completion: '+(r.end||'—'));
+  if(show('duration'))sec('Contract Duration','Start: '+(r.start||'—')+'          Completion: '+(r.end||'—'));
 
   const drawAgrScopeRows=(title,labels,details,stageLbl)=>{
     if(!labels||!labels.length)return;
@@ -6530,26 +6607,23 @@ async function pdfAgr(id){
       const d=detMap[String(lab).toLowerCase()]||(typeof l==='object'?l:{})||{};
       const cat=d.id?BOQ_SCOPE_ITEMS.find(x=>x.id===d.id):BOQ_SCOPE_ITEMS.find(x=>x.label===lab||agrNormLabel(x.label)===agrNormLabel(lab));
       const st=(d.stage&&by[d.stage])?d.stage:(cat?cat.stage:'other');
-      const show=d.label||lab;
-      by[st]?(by[st].push(fmtItem(show,d))):(by.other.push(fmtItem(show,d)));
-      used.add(String(show).toLowerCase());
+      const showLab=d.label||lab;
+      by[st]?(by[st].push(fmtItem(showLab,d))):(by.other.push(fmtItem(showLab,d)));
+      used.add(String(showLab).toLowerCase());
       if(cat)used.add(cat.label.toLowerCase());
     });
     BOQ_SCOPE_ITEMS.forEach(c=>{
       if(used.has(c.label.toLowerCase()))return;
       if(labels.some(x=>x===c.label||x===c.id||(detMap['id:'+c.id]&&x===detMap['id:'+c.id].label))){
         const d=detMap['id:'+c.id]||detMap[c.label.toLowerCase()]||{};
-        const show=d.label||c.label;
+        const showLab=d.label||c.label;
         const st=(d.stage&&by[d.stage])?d.stage:c.stage;
-        by[st].push(fmtItem(show,d));
-        used.add(String(show).toLowerCase());
+        by[st].push(fmtItem(showLab,d));
+        used.add(String(showLab).toLowerCase());
         used.add(c.label.toLowerCase());
       }
     });
-    if(y>252){doc.addPage();y=20;}
-    doc.setFillColor(242,240,235);doc.rect(14,y-4,182,8,'F');
-    doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(110,105,98);
-    doc.text(title.toUpperCase(),16,y+1);y+=10;
+    y=drawAgrPdfHead(doc,title,y);
     const cols=2;const colW=88;const xs=[14,14+94];
     let n=0;
     const titles={
@@ -6579,17 +6653,14 @@ async function pdfAgr(id){
     });
     y+=1;
   };
-  if(r.inclusions&&r.inclusions.length){
+  if(show('included')&&r.inclusions&&r.inclusions.length){
     drawAgrScopeRows('Work Included in Contract',r.inclusions,r.includedDetails||null,r.stageLabels||null);
   }
   const niList=(Array.isArray(r.notIncluded)&&r.notIncluded.length)
     ?r.notIncluded
     :(Array.isArray(r.exclusions)?r.exclusions.map(lab=>({label:lab,rate:''})):[]);
-  if(niList.length){
-    if(y>252){doc.addPage();y=20;}
-    doc.setFillColor(242,240,235);doc.rect(14,y-4,182,8,'F');
-    doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(110,105,98);
-    doc.text('NOT INCLUDED (EXCLUSIONS)',16,y+1);y+=10;
+  if(show('notIncluded')&&niList.length){
+    y=drawAgrPdfHead(doc,'NOT INCLUDED (EXCLUSIONS)',y);
     const cols=2;const colW=88;const xs=[14,14+94];
     for(let i=0;i<niList.length;i+=cols){
       if(y>280){doc.addPage();y=20;}
@@ -6607,10 +6678,12 @@ async function pdfAgr(id){
     }
     y+=3;
   }
-  if(r.scope)sec('Detailed Scope of Work',r.scope);
+  if(show('scope')&&r.scope)sec('Detailed Scope of Work',r.scope);
   // 7. Payment schedule — 2-column rows (space-saving, Urdu-safe)
   const payRows=[];
+  let paySum=0;
   if(Array.isArray(r.paySchedule)&&r.paySchedule.length){
+    paySum=sumAgrPaySchedule(r.paySchedule);
     r.paySchedule.forEach(p=>{
       if(!p||(!(p.stage||'').trim()&&!(p.amount||'').trim()))return;
       let cell=(p.stage||'Stage').trim();
@@ -6623,11 +6696,8 @@ async function pdfAgr(id){
   if(r.pay2)payRows.push('At DPC/Slab Level: '+r.pay2);
   if(r.pay3)payRows.push('At Roof/Structure: '+r.pay3);
   if(r.pay4)payRows.push('Final on Completion: '+r.pay4);
-  if(payRows.length||r.terms){
-    if(y>252){doc.addPage();y=20;}
-    doc.setFillColor(242,240,235);doc.rect(14,y-4,182,8,'F');
-    doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(110,105,98);
-    doc.text('PAYMENT SCHEDULE',16,y+1);y+=10;
+  if(show('payment')&&(payRows.length||r.terms)){
+    y=drawAgrPdfHead(doc,'PAYMENT SCHEDULE',y);
     if(payRows.length){
       const cols=2;const colW=88;const xs=[14,14+94];
       for(let i=0;i<payRows.length;i+=cols){
@@ -6643,44 +6713,53 @@ async function pdfAgr(id){
       }
       y+=2;
     }
+    if(Array.isArray(r.paySchedule)&&r.paySchedule.length){
+      y=drawPdfGrandTotal(doc,y,'STAGES TOTAL','PKR '+fmt(paySum),{h:14,fontSize:11});
+    }
     if(r.terms){
       y+=pdfDrawCellAt(doc,String(r.terms).trim(),14,y,178,9)+3;
     }
   }
 
   // 8. Compliance
-  if(r.compliance&&r.compliance.length){
+  if(show('compliance')&&r.compliance&&r.compliance.length){
     sec('CDA / Society Compliance',r.compliance.join('\n'));
   }
 
 
   // 9. General conditions — use editable saved text
-  const generalText=r.general||'1. Contractor shall carry out all work as per CDA-approved drawings and agreed specifications.\n2. Any change in scope or specifications requires written approval from both parties before execution.\n3. Client shall provide timely site access, water connection, and electricity supply for construction.\n4. Work to be carried out during permitted hours (7:00 AM – 6:00 PM) as per CDA bylaws.\n5. Contractor responsible for maintaining CDA-required setbacks and building lines.\n6. Any dispute shall first be resolved through mutual discussion. If unresolved, CDA/court jurisdiction applies.\n7. This agreement is subject to applicable laws of Pakistan and CDA building bylaws, Islamabad.';
-  sec('General Conditions',generalText);
+  if(show('general')){
+    const generalText=r.general||'1. Contractor shall carry out all work as per CDA-approved drawings and agreed specifications.\n2. Any change in scope or specifications requires written approval from both parties before execution.\n3. Client shall provide timely site access, water connection, and electricity supply for construction.\n4. Work to be carried out during permitted hours (7:00 AM – 6:00 PM) as per CDA bylaws.\n5. Contractor responsible for maintaining CDA-required setbacks and building lines.\n6. Any dispute shall first be resolved through mutual discussion. If unresolved, CDA/court jurisdiction applies.\n7. This agreement is subject to applicable laws of Pakistan and CDA building bylaws, Islamabad.';
+    sec('General Conditions',generalText);
+  }
 
   // 10. Bank/payment details — use footer note if set, else company bank details
-  if(r.footerNote){
-    sec('Payment Details',r.footerNote);
-  }else if(co2.bank||co2.acc){
-    sec('Payment Bank Account','Bank: '+(co2.bank||'—')+'\nAccount No.: '+(co2.acc||'—')+(co2.accT?' | Account Title: '+co2.accT:'')+(co2.iban?'\nIBAN: '+co2.iban:''));
+  if(show('payDetails')){
+    if(r.footerNote){
+      sec('Payment Details',r.footerNote);
+    }else if(co2.bank||co2.acc){
+      sec('Payment Bank Account','Bank: '+(co2.bank||'—')+'\nAccount No.: '+(co2.acc||'—')+(co2.accT?' | Account Title: '+co2.accT:'')+(co2.iban?'\nIBAN: '+co2.iban:''));
+    }
   }
 
   // Special conditions
-  if(r.conditions)sec('Special Conditions / Notes',r.conditions);
+  if(show('conditions')&&r.conditions)sec('Special Conditions / Notes',r.conditions);
 
 
   // Signature block
-  y+=8;if(y>238){doc.addPage();y=20;}
-  doc.setFillColor(248,246,242);doc.rect(14,y-2,182,52,'F');
-  doc.setDrawColor(180,175,165);
-  doc.line(22,y+30,90,y+30);doc.line(118,y+30,186,y+30);
-  doc.setFont('helvetica','bold');doc.setFontSize(9.5);doc.setTextColor(40,40,40);
-  doc.text('Contractor / Service Provider',22,y+36);doc.text('Client / Owner',118,y+36);
-  doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(120,115,108);
-  doc.text(co2.name||'Company',22,y+42);doc.text(r.clientName,118,y+42);
-  doc.text('Date: _______________',22,y+48);doc.text('Date: _______________',118,y+48);
-  doc.setFontSize(8);doc.setTextColor(150,145,138);
-  doc.text('Thumb Impression / Signature',22,y+53);doc.text('Thumb Impression / Signature',118,y+53);
+  if(show('signatures')){
+    y+=8;if(y>238){doc.addPage();y=20;}
+    doc.setFillColor(248,246,242);doc.rect(14,y-2,182,52,'F');
+    doc.setDrawColor(180,175,165);
+    doc.line(22,y+30,90,y+30);doc.line(118,y+30,186,y+30);
+    doc.setFont('helvetica','bold');doc.setFontSize(9.5);doc.setTextColor(40,40,40);
+    doc.text('Contractor / Service Provider',22,y+36);doc.text('Client / Owner',118,y+36);
+    doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(120,115,108);
+    doc.text(co2.name||'Company',22,y+42);doc.text(r.clientName,118,y+42);
+    doc.text('Date: _______________',22,y+48);doc.text('Date: _______________',118,y+48);
+    doc.setFontSize(8);doc.setTextColor(150,145,138);
+    doc.text('Thumb Impression / Signature',22,y+53);doc.text('Thumb Impression / Signature',118,y+53);
+  }
 
   if(style==='digital'){
     if(r.footerNote){
@@ -9771,7 +9850,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-08-25-v75';
+const APP_VERSION='2026-08-25-v76';
 // Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
 // GitHub Pages is the live OTA source of truth while Wasmer Edge GitHub deploys are failing.
 const OTA_ORIGIN='https://abbashafiz.github.io/Buildpro-crm';
