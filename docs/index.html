@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-08-25-v74">
+<meta name="app-version" content="2026-08-25-v75">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -259,6 +259,14 @@ body{color:var(--txt);font-family:'Inter',sans-serif;overscroll-behavior:none;fo
 .fg{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;}
 .fg:last-child{margin-bottom:0;}
 label{font-size:var(--fs-xs);color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.7px;}
+/* Prominent sheet section headings (Edit Agreement etc.) */
+.fl{font-size:var(--fs-sm);color:var(--txt);text-transform:uppercase;letter-spacing:.85px;font-weight:800;margin-bottom:8px;line-height:1.35;}
+.fl .fl-sub{color:var(--mut);font-weight:500;text-transform:none;letter-spacing:0;font-size:var(--fs-xs);}
+.fl .fl-accent{color:var(--gold);font-weight:700;text-transform:none;letter-spacing:0;}
+/* Stronger field labels inside the agreement sheet only */
+#sh-agr .fg>label{font-size:var(--fs-sm);color:var(--txt);font-weight:700;letter-spacing:.55px;}
+#sh-agr .fg>label span{font-weight:500;}
+.agr-stage-lbl{width:100%;font-size:var(--fs-xs)!important;font-weight:800!important;color:var(--gold)!important;text-transform:uppercase;letter-spacing:.7px;padding:6px 9px;background:transparent;border:1px dashed rgba(232,184,75,.4);border-radius:6px;margin-bottom:7px;}
 input,select,textarea{background:var(--bg);border:1px solid var(--bor);border-radius:10px;padding:13px 14px;color:var(--txt);font-size:var(--fs-md);font-family:'Inter',sans-serif;outline:none;transition:border-color .15s;width:100%;-webkit-appearance:none;appearance:none;}
 input[type="checkbox"],input[type="radio"]{-webkit-appearance:auto;appearance:auto;width:18px;height:18px;padding:0;border:none;background:none;flex-shrink:0;accent-color:var(--gold);cursor:pointer;}
 input:focus,select:focus,textarea:focus{border-color:var(--gold);}
@@ -1474,7 +1482,7 @@ select option{background:var(--s2);}
     <div class="hdiv"></div>
 
     <!-- Scope of work — editable names; ✕ moves to Not Included -->
-    <div style="font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:.8px;font-weight:700;margin-bottom:6px">Scope of Work — Included <span style="color:var(--gold);font-weight:600;text-transform:none">· اردو / English</span></div>
+    <div class="fl">Scope of Work — Included <span class="fl-accent">· اردو / English</span></div>
     <div style="font-size:var(--fs-xs);color:var(--mut2);margin-bottom:10px;line-height:1.45">Type English or Urdu in any field (auto RTL). Edit name, unit, rate, and section titles. <b style="color:var(--red)">✕</b> → Not Included.</div>
     <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
       <button type="button" class="btn btn-grey btn-sm" style="padding:6px 12px;font-size:var(--fs-xs)" onclick="applyAgrStructurePreset('brown')">🟤 Brown pack</button>
@@ -1490,7 +1498,7 @@ select option{background:var(--s2);}
     </div>
     <div id="agr-clauses" style="display:grid;grid-template-columns:1fr;gap:7px;margin-bottom:10px"></div>
     <div style="background:var(--s2);border:1px solid var(--bor);border-radius:10px;padding:10px 12px;margin-bottom:14px">
-      <div style="font-size:var(--fs-xs);font-weight:700;color:var(--mut);margin-bottom:8px">＋ Add item to Brown / Grey / Finishing</div>
+      <div class="fl" style="margin-bottom:8px;font-size:var(--fs-xs)">＋ Add item to Brown / Grey / Finishing</div>
       <div style="font-size:var(--fs-xs);color:var(--mut2);margin-bottom:8px;line-height:1.4">Matches catalogue when possible; otherwise adds under the stage you pick (not a separate Custom list).</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:7px">
         <select id="agr-custom-stage" onchange="this.dataset.touched='1'" style="font-size:var(--fs-xs);padding:8px 9px">
@@ -1508,7 +1516,7 @@ select option{background:var(--s2);}
     </div>
 
     <!-- Not Included + rates -->
-    <div style="font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:.8px;font-weight:700;margin-bottom:6px">Not Included Items <span style="color:var(--mut2);font-weight:400;text-transform:none">(editable + rates)</span></div>
+    <div class="fl">Not Included Items <span class="fl-sub">(editable + rates)</span></div>
     <div style="font-size:var(--fs-xs);color:var(--mut2);margin-bottom:8px;line-height:1.45">Excluded items — edit name, unit, and rate as needed. Drag <b style="color:var(--txt)">⠿</b> to reorder, or drop back into Included above.</div>
     <div style="display:grid;grid-template-columns:1fr 72px 90px auto;gap:7px;margin-bottom:8px;align-items:center">
       <input id="agr-ni-txt" placeholder="Item name — e.g. Excavation" onkeydown="if(event.key==='Enter'){event.preventDefault();addAgrNotIncluded()}">
@@ -1526,7 +1534,7 @@ select option{background:var(--s2);}
       <div class="fg"><label>Special Conditions</label><textarea id="a-conditions" placeholder="e.g. Drawings by client. Water + electricity by client…" style="min-height:70px"></textarea></div>
     </div>
 
-    <div style="font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:.8px;font-weight:700;margin-bottom:6px">Custom Payment Schedule</div>
+    <div class="fl">Payment Stages</div>
     <div style="font-size:var(--fs-xs);color:var(--mut2);margin-bottom:8px;line-height:1.45">Set how much is due at each stage or per work done. Amount can be PKR or %.</div>
     <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
       <button type="button" class="btn btn-grey btn-sm" style="padding:5px 10px;font-size:var(--fs-xs)" onclick="addAgrPayRow({stage:'Advance / Mobilization'})">+ Advance</button>
@@ -1550,17 +1558,17 @@ select option{background:var(--s2);}
     <div class="hdiv"></div>
 
     <!-- General Conditions — editable -->
-    <div style="font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:.8px;font-weight:700;margin-bottom:9px">General Conditions <span style="color:var(--mut2);font-weight:400;text-transform:none;letter-spacing:0">(editable)</span></div>
+    <div class="fl">General Conditions <span class="fl-sub">(editable)</span></div>
     <div class="fg"><textarea id="a-general" style="min-height:130px;font-size:var(--fs-sm);line-height:1.7"></textarea></div>
 
     <div class="hdiv"></div>
 
     <!-- PDF Footer note — editable -->
-    <div style="font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:.8px;font-weight:700;margin-bottom:9px">PDF Footer Note <span style="color:var(--mut2);font-weight:400;text-transform:none;letter-spacing:0">(overrides bank details if filled)</span></div>
+    <div class="fl">PDF Footer Note <span class="fl-sub">(overrides bank details if filled)</span></div>
     <div class="fg"><input id="a-footer" placeholder="Leave empty to use company bank details from Profile"></div>
   </div>
   <div style="padding:12px 20px;border-top:1px solid var(--bor)">
-    <div style="font-size:var(--fs-xs);color:var(--mut);font-weight:700;text-transform:uppercase;letter-spacing:.7px;margin-bottom:10px">🖨️ PDF Print Style</div>
+    <div class="fl" style="margin-bottom:10px">🖨️ PDF Print Style</div>
     <div style="display:flex;flex-direction:column;gap:7px">
       <label style="display:flex;align-items:flex-start;gap:11px;background:var(--bg);border:1px solid var(--bor);border-radius:9px;padding:11px 13px;cursor:pointer">
         <input type="radio" name="agr-print-style" id="a-style-digital" value="digital" checked style="width:16px;height:16px;accent-color:var(--gold);flex-shrink:0;margin-top:2px">
@@ -4232,7 +4240,7 @@ function renderAgrClauses(selected){
     any=true;
     const title=agrStageTitle(stage);
     html+=`<div class="agr-stage-block" data-stage="${stage}" style="margin:${html?'10px':'0'} 0 0">
-      <input class="agr-stage-lbl" data-stage="${stage}" value="${agrEsc(title)}" style="width:100%;font-size:10px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.6px;padding:5px 8px;background:transparent;border:1px dashed rgba(232,184,75,.35);border-radius:6px;margin-bottom:7px">
+      <input class="agr-stage-lbl" data-stage="${stage}" value="${agrEsc(title)}">
       <div class="agr-stage-items" data-stage="${stage}">`;
     keys.forEach(key=>{
       if(agrActiveIds[key]){
@@ -9763,7 +9771,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-08-25-v74';
+const APP_VERSION='2026-08-25-v75';
 // Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
 // GitHub Pages is the live OTA source of truth while Wasmer Edge GitHub deploys are failing.
 const OTA_ORIGIN='https://abbashafiz.github.io/Buildpro-crm';
