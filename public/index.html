@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-08-27-v78">
+<meta name="app-version" content="2026-08-27-v79">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -182,6 +182,9 @@ body{color:var(--txt);font-family:'Inter',sans-serif;overscroll-behavior:none;fo
 .ca.grn{color:var(--grn);border-color:rgba(82,181,106,.2);background:rgba(82,181,106,.06);}
 .ca.ora{color:var(--ora);border-color:rgba(232,148,75,.2);background:rgba(232,148,75,.06);}
 .ca.arch{color:var(--mut);border-color:rgba(138,130,120,.35);background:rgba(138,130,120,.08);}
+/* Compact text-link action row under list cards (expenses, subpays) — full width so Archive+Del don't crush the title */
+.row-acts{display:flex;flex-wrap:wrap;gap:8px 12px;margin-top:8px;align-items:center;width:100%;max-width:100%;box-sizing:border-box;}
+.row-acts button{font-size:var(--fs-xs);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif;padding:0;line-height:1.35;}
 
 /* SUB-CON */
 .sub-card{background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:16px;margin-bottom:12px;}
@@ -574,7 +577,7 @@ select option{background:var(--s2);}
         <div class="ftab" onclick="fInv('overdue',this)">Overdue</div>
         <div class="ftab" onclick="fInv('draft',this)">Draft</div>
       </div>
-      <div style="font-size:var(--fs-xs);color:var(--mut);margin:-2px 0 10px;padding:0 2px">Tick cards to select several, then Delete from the bar.</div>
+      <div style="font-size:var(--fs-xs);color:var(--mut);margin:-2px 0 10px;padding:0 2px">Tick cards to select several, then Archive or Delete from the bar.</div>
       <div class="card-list" id="list-inv"></div>
     </div>
 
@@ -5899,23 +5902,27 @@ function markSpayPaid(id){
 function spayRowHtml(p){
   const st=spayPayStatus(p);
   const amtColor=st==='unpaid'?'var(--ora)':'var(--red)';
-  return`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:10px 13px;border-bottom:1px solid var(--bor);gap:8px">
-    ${selBox('sub',p.id,'subpays')}
-    <div style="flex:1;min-width:0">
-      <div style="font-size:var(--fs-sm);font-weight:600">${p.phase||'—'} ${spayPayBadge(p)}</div>
-      <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">${p.date||'—'} · ${p.method||'Cash'}</div>
-      ${p.desc?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">${p.desc}</div>`:''}
-      ${st==='partial'?`<div style="font-size:var(--fs-xs);color:var(--ora);margin-top:3px">Due PKR ${fmt(spayDueAmt(p))}</div>`:''}
-      ${(p.breakdown||[]).length?`<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">${p.breakdown.map(b=>`<span style="font-size:9px;padding:2px 6px;border-radius:5px;background:var(--bg);border:1px solid var(--bor);color:var(--mut)">${b.trade||'Other'}${b.name?' · '+b.name:''}: <b style="color:var(--txt)">${fmt(b.amount)}</b></span>`).join('')}</div>`:''}
-    </div>
-    <div style="text-align:right;flex-shrink:0;margin-left:4px">
-      <div style="font-family:'JetBrains Mono',monospace;color:${amtColor}">${fmt(p.amount)}</div>
-      ${st==='partial'?`<div style="font-size:9px;color:var(--mut);margin-top:2px">Paid ${fmt(spayPaidAmt(p))}</div>`:''}
-      <div style="display:flex;gap:8px;margin-top:4px;justify-content:flex-end;flex-wrap:wrap">
-        <button style="font-size:var(--fs-xs);color:${spayIsFullyPaid(p)?'var(--mut)':'var(--grn)'};background:none;border:none;cursor:pointer;font-family:Inter,sans-serif;font-weight:600" onclick="markSpayPaid('${p.id}')">${spayIsFullyPaid(p)?'↩ Unpaid':(spayHasDue(p)?'💰 Pay':'✅ Paid')}</button>
-        <button style="font-size:var(--fs-xs);color:var(--blu);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="eSpay('${p.id}')">Edit</button>
-        <button style="font-size:var(--fs-xs);color:var(--mut);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="archiveRec('subpays','${p.id}')">Archive</button>
-        <button style="font-size:var(--fs-xs);color:var(--red);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="del('subpays','${p.id}')">Del</button>
+  return`<div style="padding:10px 13px;border-bottom:1px solid var(--bor)">
+    <div style="display:flex;align-items:flex-start;gap:8px">
+      ${selBox('sub',p.id,'subpays')}
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+          <div style="font-size:var(--fs-sm);font-weight:600;min-width:0;flex:1">${p.phase||'—'} ${spayPayBadge(p)}</div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-family:'JetBrains Mono',monospace;color:${amtColor}">${fmt(p.amount)}</div>
+            ${st==='partial'?`<div style="font-size:9px;color:var(--mut);margin-top:2px">Paid ${fmt(spayPaidAmt(p))}</div>`:''}
+          </div>
+        </div>
+        <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">${p.date||'—'} · ${p.method||'Cash'}</div>
+        ${p.desc?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">${p.desc}</div>`:''}
+        ${st==='partial'?`<div style="font-size:var(--fs-xs);color:var(--ora);margin-top:3px">Due PKR ${fmt(spayDueAmt(p))}</div>`:''}
+        ${(p.breakdown||[]).length?`<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">${p.breakdown.map(b=>`<span style="font-size:9px;padding:2px 6px;border-radius:5px;background:var(--bg);border:1px solid var(--bor);color:var(--mut)">${b.trade||'Other'}${b.name?' · '+b.name:''}: <b style="color:var(--txt)">${fmt(b.amount)}</b></span>`).join('')}</div>`:''}
+        <div class="row-acts">
+          <button style="color:${spayIsFullyPaid(p)?'var(--mut)':'var(--grn)'};font-weight:600" onclick="markSpayPaid('${p.id}')">${spayIsFullyPaid(p)?'↩ Unpaid':(spayHasDue(p)?'💰 Pay':'✅ Paid')}</button>
+          <button style="color:var(--blu)" onclick="eSpay('${p.id}')">Edit</button>
+          <button style="color:var(--mut)" onclick="archiveRec('subpays','${p.id}')">Archive</button>
+          <button style="color:var(--red)" onclick="del('subpays','${p.id}')">Del</button>
+        </div>
       </div>
     </div>
   </div>`;
@@ -7868,52 +7875,58 @@ function renderExp(){
         const internalRows=projRows.filter(r=>(r.fundedBy||'contract')==='contract');
         const ownerRows=projRows.filter(r=>r.fundedBy==='cashinhand');
         const behalfRowsF=projRows.filter(r=>r.fundedBy==='onbehalf');
-        const renderRow=r=>`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:11px 14px;border-bottom:1px solid var(--bor);gap:10px;${selectedExpIds[r.id]?'background:rgba(232,184,75,.07)':''}">
-          <label style="display:flex;align-items:flex-start;padding-top:2px;flex-shrink:0;cursor:pointer" onclick="event.stopPropagation()">
-            <input type="checkbox" class="exp-sel" data-eid="${r.id}" ${selectedExpIds[r.id]?'checked':''} onchange="toggleExpSelect('${r.id}',this.checked)" style="width:18px;height:18px;accent-color:var(--gold);cursor:pointer">
-          </label>
-          <div style="flex:1;min-width:0">
-            <div style="font-size:var(--fs-sm);font-weight:600">${catIcon[r.cat]||'📦'} ${r.desc} ${expPayBadge(r)}</div>
-            <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">${r.date} · ${r.paid} · <span class="b b-m" style="font-size:9px">${(r.cat==='material'&&(r.matItem||resolveExpMatItem(r)))?(r.matItem||resolveExpMatItem(r)):r.cat}</span>${expHasDue(r)?` · <span style="color:var(--ora)">Due ${fmt(expDueAmt(r))}</span>`:''}</div>
-            ${r.paidTo?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">To: ${r.paidTo}</div>`:''}
-            ${r.notes?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">${r.notes}</div>`:''}
-            <div style="display:flex;gap:5px;margin-top:6px;flex-wrap:wrap">
-              <button style="font-size:9px;padding:3px 7px;border-radius:6px;border:1px solid ${(r.fundedBy||'contract')==='contract'?'var(--gold)':'var(--bor)'};background:${(r.fundedBy||'contract')==='contract'?'rgba(232,184,75,.15)':'transparent'};color:${(r.fundedBy||'contract')==='contract'?'var(--gold)':'var(--mut)'};cursor:pointer;font-family:Inter,sans-serif" onclick="setExpFunding('${r.id}','contract')">Contractor</button>
-              <button style="font-size:9px;padding:3px 7px;border-radius:6px;border:1px solid ${r.fundedBy==='cashinhand'?'#4D94D4':'var(--bor)'};background:${r.fundedBy==='cashinhand'?'rgba(77,148,212,.15)':'transparent'};color:${r.fundedBy==='cashinhand'?'#4D94D4':'var(--mut)'};cursor:pointer;font-family:Inter,sans-serif" onclick="setExpFunding('${r.id}','cashinhand')">Owner Cash</button>
-              <button style="font-size:9px;padding:3px 7px;border-radius:6px;border:1px solid ${r.fundedBy==='onbehalf'?'var(--red)':'var(--bor)'};background:${r.fundedBy==='onbehalf'?'rgba(224,85,85,.12)':'transparent'};color:${r.fundedBy==='onbehalf'?'var(--red)':'var(--mut)'};cursor:pointer;font-family:Inter,sans-serif" onclick="setExpFunding('${r.id}','onbehalf')">On Behalf</button>
-            </div>
-          </div>
-          <div style="text-align:right;flex-shrink:0;margin-left:4px">
-            <div style="font-family:'JetBrains Mono',monospace;color:var(--red);font-size:var(--fs-md)">${fmt(r.amount)}</div>
-            ${expPayStatus(r)==='partial'?`<div style="font-size:9px;color:var(--mut);margin-top:2px">Paid ${fmt(expPaidAmt(r))}</div>`:''}
-            <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;justify-content:flex-end">
-              <button style="font-size:var(--fs-xs);color:${expIsFullyPaid(r)?'var(--mut)':'var(--grn)'};background:none;border:none;cursor:pointer;font-family:Inter,sans-serif;font-weight:600" onclick="markExpPaid('${r.id}')">${expIsFullyPaid(r)?'↩ Unpaid':(expHasDue(r)?'💰 Pay':'✅ Paid')}</button>
-              <button style="font-size:var(--fs-xs);color:#4D94D4;background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="cycleFunded('${r.id}')" title="Change funding side">⇄ ${({contract:'Owner Cash',cashinhand:'On Behalf',onbehalf:'Internal'})[r.fundedBy||'contract']}</button>
-              <button style="font-size:var(--fs-xs);color:var(--blu);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="eExp('${r.id}')">Edit</button>
-              <button style="font-size:var(--fs-xs);color:var(--mut);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="archiveRec('expenses','${r.id}')">Archive</button>
-              <button style="font-size:var(--fs-xs);color:var(--red);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="del('expenses','${r.id}')">Del</button>
+        const renderRow=r=>`<div style="padding:11px 14px;border-bottom:1px solid var(--bor);${selectedExpIds[r.id]?'background:rgba(232,184,75,.07)':''}">
+          <div style="display:flex;align-items:flex-start;gap:10px">
+            <label style="display:flex;align-items:flex-start;padding-top:2px;flex-shrink:0;cursor:pointer" onclick="event.stopPropagation()">
+              <input type="checkbox" class="exp-sel" data-eid="${r.id}" ${selectedExpIds[r.id]?'checked':''} onchange="toggleExpSelect('${r.id}',this.checked)" style="width:18px;height:18px;accent-color:var(--gold);cursor:pointer">
+            </label>
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+                <div style="font-size:var(--fs-sm);font-weight:600;min-width:0;flex:1">${catIcon[r.cat]||'📦'} ${r.desc} ${expPayBadge(r)}</div>
+                <div style="text-align:right;flex-shrink:0">
+                  <div style="font-family:'JetBrains Mono',monospace;color:var(--red);font-size:var(--fs-md)">${fmt(r.amount)}</div>
+                  ${expPayStatus(r)==='partial'?`<div style="font-size:9px;color:var(--mut);margin-top:2px">Paid ${fmt(expPaidAmt(r))}</div>`:''}
+                </div>
+              </div>
+              <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">${r.date} · ${r.paid} · <span class="b b-m" style="font-size:9px">${(r.cat==='material'&&(r.matItem||resolveExpMatItem(r)))?(r.matItem||resolveExpMatItem(r)):r.cat}</span>${expHasDue(r)?` · <span style="color:var(--ora)">Due ${fmt(expDueAmt(r))}</span>`:''}</div>
+              ${r.paidTo?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">To: ${r.paidTo}</div>`:''}
+              ${r.notes?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">${r.notes}</div>`:''}
+              <div style="display:flex;gap:5px;margin-top:6px;flex-wrap:wrap">
+                <button style="font-size:9px;padding:3px 7px;border-radius:6px;border:1px solid ${(r.fundedBy||'contract')==='contract'?'var(--gold)':'var(--bor)'};background:${(r.fundedBy||'contract')==='contract'?'rgba(232,184,75,.15)':'transparent'};color:${(r.fundedBy||'contract')==='contract'?'var(--gold)':'var(--mut)'};cursor:pointer;font-family:Inter,sans-serif" onclick="setExpFunding('${r.id}','contract')">Contractor</button>
+                <button style="font-size:9px;padding:3px 7px;border-radius:6px;border:1px solid ${r.fundedBy==='cashinhand'?'#4D94D4':'var(--bor)'};background:${r.fundedBy==='cashinhand'?'rgba(77,148,212,.15)':'transparent'};color:${r.fundedBy==='cashinhand'?'#4D94D4':'var(--mut)'};cursor:pointer;font-family:Inter,sans-serif" onclick="setExpFunding('${r.id}','cashinhand')">Owner Cash</button>
+                <button style="font-size:9px;padding:3px 7px;border-radius:6px;border:1px solid ${r.fundedBy==='onbehalf'?'var(--red)':'var(--bor)'};background:${r.fundedBy==='onbehalf'?'rgba(224,85,85,.12)':'transparent'};color:${r.fundedBy==='onbehalf'?'var(--red)':'var(--mut)'};cursor:pointer;font-family:Inter,sans-serif" onclick="setExpFunding('${r.id}','onbehalf')">On Behalf</button>
+              </div>
+              <div class="row-acts">
+                <button style="color:${expIsFullyPaid(r)?'var(--mut)':'var(--grn)'};font-weight:600" onclick="markExpPaid('${r.id}')">${expIsFullyPaid(r)?'↩ Unpaid':(expHasDue(r)?'💰 Pay':'✅ Paid')}</button>
+                <button style="color:#4D94D4" onclick="cycleFunded('${r.id}')" title="Change funding side">⇄ ${({contract:'Owner Cash',cashinhand:'On Behalf',onbehalf:'Internal'})[r.fundedBy||'contract']}</button>
+                <button style="color:var(--blu)" onclick="eExp('${r.id}')">Edit</button>
+                <button style="color:var(--mut)" onclick="archiveRec('expenses','${r.id}')">Archive</button>
+                <button style="color:var(--red)" onclick="del('expenses','${r.id}')">Del</button>
+              </div>
             </div>
           </div>
         </div>`;
         let html='';
         if(!isOwnerMode&&projSubpays.length){
-          const subBody=projSubpays.map(p=>`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:11px 14px;border-bottom:1px solid var(--bor);background:var(--s1)">
-            <div>
-              <div style="font-size:var(--fs-sm);font-weight:600">💸 ${p.subconName||'Sub-Con'} ${spayPayBadge(p)}</div>
-              <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">${p.date||'—'} · ${p.method||'Cash'} · <span class="b b-m" style="font-size:9px">${p.phase||'—'}</span></div>
-              ${p.desc?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">${p.desc}</div>`:''}
-              ${spayPayStatus(p)==='partial'?`<div style="font-size:var(--fs-xs);color:var(--ora);margin-top:3px">Due PKR ${fmt(spayDueAmt(p))}</div>`:''}
-              ${(p.breakdown||[]).length?`<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">${p.breakdown.map(b=>`<span style="font-size:9px;padding:2px 6px;border-radius:5px;background:var(--bg);border:1px solid var(--bor);color:var(--mut)">${b.trade||'Other'}${b.name?' · '+b.name:''}: <b style="color:var(--txt)">${fmt(b.amount)}</b></span>`).join('')}</div>`:''}
-            </div>
-            <div style="text-align:right;flex-shrink:0;margin-left:12px">
-              <div style="font-family:'JetBrains Mono',monospace;color:${spayPayStatus(p)==='unpaid'?'var(--ora)':'var(--red)'};font-size:var(--fs-md)">${fmt(p.amount)}</div>
-              ${spayPayStatus(p)==='partial'?`<div style="font-size:9px;color:var(--mut);margin-top:2px">Paid ${fmt(spayPaidAmt(p))}</div>`:''}
-              <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;justify-content:flex-end">
-                <button style="font-size:var(--fs-xs);color:${spayIsFullyPaid(p)?'var(--mut)':'var(--grn)'};background:none;border:none;cursor:pointer;font-family:Inter,sans-serif;font-weight:600" onclick="markSpayPaid('${p.id}')">${spayIsFullyPaid(p)?'↩ Unpaid':(spayHasDue(p)?'💰 Pay':'✅ Paid')}</button>
-                <button style="font-size:var(--fs-xs);color:var(--blu);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="eSpay('${p.id}')">Edit</button>
-                <button style="font-size:var(--fs-xs);color:var(--mut);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="archiveRec('subpays','${p.id}')">Archive</button>
-                <button style="font-size:var(--fs-xs);color:var(--red);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="del('subpays','${p.id}')">Del</button>
+          const subBody=projSubpays.map(p=>`<div style="padding:11px 14px;border-bottom:1px solid var(--bor);background:var(--s1)">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+              <div style="min-width:0;flex:1">
+                <div style="font-size:var(--fs-sm);font-weight:600">💸 ${p.subconName||'Sub-Con'} ${spayPayBadge(p)}</div>
+                <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">${p.date||'—'} · ${p.method||'Cash'} · <span class="b b-m" style="font-size:9px">${p.phase||'—'}</span></div>
+                ${p.desc?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">${p.desc}</div>`:''}
+                ${spayPayStatus(p)==='partial'?`<div style="font-size:var(--fs-xs);color:var(--ora);margin-top:3px">Due PKR ${fmt(spayDueAmt(p))}</div>`:''}
+                ${(p.breakdown||[]).length?`<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">${p.breakdown.map(b=>`<span style="font-size:9px;padding:2px 6px;border-radius:5px;background:var(--bg);border:1px solid var(--bor);color:var(--mut)">${b.trade||'Other'}${b.name?' · '+b.name:''}: <b style="color:var(--txt)">${fmt(b.amount)}</b></span>`).join('')}</div>`:''}
               </div>
+              <div style="text-align:right;flex-shrink:0">
+                <div style="font-family:'JetBrains Mono',monospace;color:${spayPayStatus(p)==='unpaid'?'var(--ora)':'var(--red)'};font-size:var(--fs-md)">${fmt(p.amount)}</div>
+                ${spayPayStatus(p)==='partial'?`<div style="font-size:9px;color:var(--mut);margin-top:2px">Paid ${fmt(spayPaidAmt(p))}</div>`:''}
+              </div>
+            </div>
+            <div class="row-acts">
+              <button style="color:${spayIsFullyPaid(p)?'var(--mut)':'var(--grn)'};font-weight:600" onclick="markSpayPaid('${p.id}')">${spayIsFullyPaid(p)?'↩ Unpaid':(spayHasDue(p)?'💰 Pay':'✅ Paid')}</button>
+              <button style="color:var(--blu)" onclick="eSpay('${p.id}')">Edit</button>
+              <button style="color:var(--mut)" onclick="archiveRec('subpays','${p.id}')">Archive</button>
+              <button style="color:var(--red)" onclick="del('subpays','${p.id}')">Del</button>
             </div>
           </div>`).join('');
           const subDue=projSubpays.reduce((s,p)=>s+spayDueAmt(p),0);
@@ -7957,29 +7970,33 @@ function renderExp(){
         if(behalfRowsF.length){
           const rBadge={unpaid:'<span style="color:var(--red);font-size:var(--fs-xs)">🔴 Unpaid</span>',pending:'<span style="color:var(--gold);font-size:var(--fs-xs)">🟡 Pending</span>',paid:'<span style="color:var(--grn);font-size:var(--fs-xs)">✅ Paid</span>'};
           const rNext={unpaid:'🟡 Pending',pending:'✅ Paid',paid:'🔴 Unpaid'};
-          const renderRowB=r=>{const st=rst(r);return`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:11px 14px;border-bottom:1px solid var(--bor);gap:10px;${selectedExpIds[r.id]?'background:rgba(232,184,75,.07)':''}">
-          <label style="display:flex;align-items:flex-start;padding-top:2px;flex-shrink:0;cursor:pointer" onclick="event.stopPropagation()">
-            <input type="checkbox" class="exp-sel" data-eid="${r.id}" ${selectedExpIds[r.id]?'checked':''} onchange="toggleExpSelect('${r.id}',this.checked)" style="width:18px;height:18px;accent-color:var(--gold);cursor:pointer">
-          </label>
-          <div style="flex:1;min-width:0">
-            <div style="font-size:var(--fs-sm);font-weight:600">${catIcon[r.cat]||'📦'} ${r.desc} ${rBadge[st]}</div>
-            <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">${r.date} · ${r.paid} · <span class="b b-m" style="font-size:9px">${r.cat}</span></div>
-            ${r.paidTo?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">To: ${r.paidTo}</div>`:''}
-            ${r.notes?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">${r.notes}</div>`:''}
-            <div style="display:flex;gap:5px;margin-top:6px;flex-wrap:wrap">
-              <button style="font-size:9px;padding:3px 7px;border-radius:6px;border:1px solid var(--bor);background:transparent;color:var(--mut);cursor:pointer;font-family:Inter,sans-serif" onclick="setExpFunding('${r.id}','contract')">Contractor</button>
-              <button style="font-size:9px;padding:3px 7px;border-radius:6px;border:1px solid var(--bor);background:transparent;color:var(--mut);cursor:pointer;font-family:Inter,sans-serif" onclick="setExpFunding('${r.id}','cashinhand')">Owner Cash</button>
-              <button style="font-size:9px;padding:3px 7px;border-radius:6px;border:1px solid var(--red);background:rgba(224,85,85,.12);color:var(--red);cursor:pointer;font-family:Inter,sans-serif" onclick="setExpFunding('${r.id}','onbehalf')">On Behalf</button>
-            </div>
-          </div>
-          <div style="text-align:right;flex-shrink:0;margin-left:4px">
-            <div style="font-family:'JetBrains Mono',monospace;color:var(--red);font-size:var(--fs-md)">${fmt(r.amount)}</div>
-            <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;justify-content:flex-end">
-              <button style="font-size:var(--fs-xs);color:var(--gold);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif;font-weight:600" onclick="cycleReimburse('${r.id}')">→ ${rNext[st]}</button>
-              <button style="font-size:var(--fs-xs);color:#4D94D4;background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="cycleFunded('${r.id}')" title="Change funding side">⇄ Internal</button>
-              <button style="font-size:var(--fs-xs);color:var(--blu);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="eExp('${r.id}')">Edit</button>
-              <button style="font-size:var(--fs-xs);color:var(--mut);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="archiveRec('expenses','${r.id}')">Archive</button>
-              <button style="font-size:var(--fs-xs);color:var(--red);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="del('expenses','${r.id}')">Del</button>
+          const renderRowB=r=>{const st=rst(r);return`<div style="padding:11px 14px;border-bottom:1px solid var(--bor);${selectedExpIds[r.id]?'background:rgba(232,184,75,.07)':''}">
+          <div style="display:flex;align-items:flex-start;gap:10px">
+            <label style="display:flex;align-items:flex-start;padding-top:2px;flex-shrink:0;cursor:pointer" onclick="event.stopPropagation()">
+              <input type="checkbox" class="exp-sel" data-eid="${r.id}" ${selectedExpIds[r.id]?'checked':''} onchange="toggleExpSelect('${r.id}',this.checked)" style="width:18px;height:18px;accent-color:var(--gold);cursor:pointer">
+            </label>
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+                <div style="font-size:var(--fs-sm);font-weight:600;min-width:0;flex:1">${catIcon[r.cat]||'📦'} ${r.desc} ${rBadge[st]}</div>
+                <div style="text-align:right;flex-shrink:0">
+                  <div style="font-family:'JetBrains Mono',monospace;color:var(--red);font-size:var(--fs-md)">${fmt(r.amount)}</div>
+                </div>
+              </div>
+              <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">${r.date} · ${r.paid} · <span class="b b-m" style="font-size:9px">${r.cat}</span></div>
+              ${r.paidTo?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">To: ${r.paidTo}</div>`:''}
+              ${r.notes?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">${r.notes}</div>`:''}
+              <div style="display:flex;gap:5px;margin-top:6px;flex-wrap:wrap">
+                <button style="font-size:9px;padding:3px 7px;border-radius:6px;border:1px solid var(--bor);background:transparent;color:var(--mut);cursor:pointer;font-family:Inter,sans-serif" onclick="setExpFunding('${r.id}','contract')">Contractor</button>
+                <button style="font-size:9px;padding:3px 7px;border-radius:6px;border:1px solid var(--bor);background:transparent;color:var(--mut);cursor:pointer;font-family:Inter,sans-serif" onclick="setExpFunding('${r.id}','cashinhand')">Owner Cash</button>
+                <button style="font-size:9px;padding:3px 7px;border-radius:6px;border:1px solid var(--red);background:rgba(224,85,85,.12);color:var(--red);cursor:pointer;font-family:Inter,sans-serif" onclick="setExpFunding('${r.id}','onbehalf')">On Behalf</button>
+              </div>
+              <div class="row-acts">
+                <button style="color:var(--gold);font-weight:600" onclick="cycleReimburse('${r.id}')">→ ${rNext[st]}</button>
+                <button style="color:#4D94D4" onclick="cycleFunded('${r.id}')" title="Change funding side">⇄ Internal</button>
+                <button style="color:var(--blu)" onclick="eExp('${r.id}')">Edit</button>
+                <button style="color:var(--mut)" onclick="archiveRec('expenses','${r.id}')">Archive</button>
+                <button style="color:var(--red)" onclick="del('expenses','${r.id}')">Del</button>
+              </div>
             </div>
           </div>
         </div>`;};
@@ -8192,41 +8209,43 @@ function personalSectionHtml(){
       const bal=persBalance(r);const paid=persRepaidAmt(r);const open=bal>0;
       const reps=(r.repayments||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
       return`<div style="padding:11px 14px;border-bottom:1px solid var(--bor)">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start">
-          <div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+          <div style="min-width:0;flex:1">
             <div style="font-size:var(--fs-sm);font-weight:600">${r.subconName||'Sub-Con'} ${open?'<span style="color:var(--red);font-size:var(--fs-xs)">🔴 Outstanding</span>':'<span style="color:var(--grn);font-size:var(--fs-xs)">✅ Repaid</span>'}</div>
             <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">${r.date||'—'} · ${r.method||'Cash'}${r.projectName?' · '+r.projectName:''}</div>
             ${r.notes?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">${r.notes}</div>`:''}
             <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:4px">Loan ${fmt(r.amount)}${paid?` · Paid ${fmt(paid)}`:''}${open?` · <b style="color:var(--red)">Bal ${fmt(bal)}</b>`:''}</div>
           </div>
-          <div style="text-align:right;flex-shrink:0;margin-left:12px">
+          <div style="text-align:right;flex-shrink:0">
             <div style="font-family:'JetBrains Mono',monospace;color:var(--pur);font-size:var(--fs-md)">${fmt(open?bal:r.amount)}</div>
-            <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;justify-content:flex-end">
-              ${open?`<button style="font-size:var(--fs-xs);color:var(--grn);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif;font-weight:600" onclick="iPersRepay('${r.id}')">💰 Repay</button>`:''}
-              <button style="font-size:var(--fs-xs);color:var(--gold);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif;font-weight:600" onclick="markPersonalRepaid('${r.id}')">${open?'✅ Full':'↩ Reopen'}</button>
-              <button style="font-size:var(--fs-xs);color:var(--blu);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="ePersonal('${r.id}')">Edit</button>
-              <button style="font-size:var(--fs-xs);color:var(--mut);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="archiveRec('personals','${r.id}')">Archive</button>
-              <button style="font-size:var(--fs-xs);color:var(--red);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="del('personals','${r.id}')">Del</button>
-            </div>
           </div>
+        </div>
+        <div class="row-acts">
+          ${open?`<button style="color:var(--grn);font-weight:600" onclick="iPersRepay('${r.id}')">💰 Repay</button>`:''}
+          <button style="color:var(--gold);font-weight:600" onclick="markPersonalRepaid('${r.id}')">${open?'✅ Full':'↩ Reopen'}</button>
+          <button style="color:var(--blu)" onclick="ePersonal('${r.id}')">Edit</button>
+          <button style="color:var(--mut)" onclick="archiveRec('personals','${r.id}')">Archive</button>
+          <button style="color:var(--red)" onclick="del('personals','${r.id}')">Del</button>
         </div>
         ${reps.length?`<div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--bor)">${reps.map(p=>`<div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--mut);padding:2px 0"><span>${p.date||'—'} · ${p.method||'Cash'}${p.note?' · '+p.note:''}${p.linkedSpayId?' · via work pay':''}</span><span style="font-family:'JetBrains Mono',monospace;color:var(--grn)">-${fmt(p.amount)}</span></div>`).join('')}</div>`:''}
       </div>`;
     }).join('')}
     ${draws.length?`<div style="padding:7px 14px;background:rgba(232,148,75,.08);border-bottom:1px solid var(--bor);font-size:var(--fs-xs);font-weight:700;color:var(--ora);text-transform:uppercase;letter-spacing:.5px">🙋 I Took &amp; Spent</div>`:''}
-    ${draws.map(r=>`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:11px 14px;border-bottom:1px solid var(--bor)">
-      <div>
-        <div style="font-size:var(--fs-sm);font-weight:600">${r.spentOn||'Personal use'}</div>
-        <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">${r.date||'—'} · ${r.method||'Cash'}${r.subconName?' · via '+r.subconName:''}${r.projectName?' · '+r.projectName:''}</div>
-        ${r.notes?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">${r.notes}</div>`:''}
-      </div>
-      <div style="text-align:right;flex-shrink:0;margin-left:12px">
-        <div style="font-family:'JetBrains Mono',monospace;color:var(--ora);font-size:var(--fs-md)">${fmt(r.amount)}</div>
-        <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;justify-content:flex-end">
-          <button style="font-size:var(--fs-xs);color:var(--blu);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="ePersonal('${r.id}')">Edit</button>
-          <button style="font-size:var(--fs-xs);color:var(--mut);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="archiveRec('personals','${r.id}')">Archive</button>
-          <button style="font-size:var(--fs-xs);color:var(--red);background:none;border:none;cursor:pointer;font-family:Inter,sans-serif" onclick="del('personals','${r.id}')">Del</button>
+    ${draws.map(r=>`<div style="padding:11px 14px;border-bottom:1px solid var(--bor)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+        <div style="min-width:0;flex:1">
+          <div style="font-size:var(--fs-sm);font-weight:600">${r.spentOn||'Personal use'}</div>
+          <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">${r.date||'—'} · ${r.method||'Cash'}${r.subconName?' · via '+r.subconName:''}${r.projectName?' · '+r.projectName:''}</div>
+          ${r.notes?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">${r.notes}</div>`:''}
         </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-family:'JetBrains Mono',monospace;color:var(--ora);font-size:var(--fs-md)">${fmt(r.amount)}</div>
+        </div>
+      </div>
+      <div class="row-acts">
+        <button style="color:var(--blu)" onclick="ePersonal('${r.id}')">Edit</button>
+        <button style="color:var(--mut)" onclick="archiveRec('personals','${r.id}')">Archive</button>
+        <button style="color:var(--red)" onclick="del('personals','${r.id}')">Del</button>
       </div>
     </div>`).join('')}
   </div>`;
@@ -9994,7 +10013,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-08-27-v78';
+const APP_VERSION='2026-08-27-v79';
 // Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
 // GitHub Pages is the live OTA source of truth while Wasmer Edge GitHub deploys are failing.
 const OTA_ORIGIN='https://abbashafiz.github.io/Buildpro-crm';
