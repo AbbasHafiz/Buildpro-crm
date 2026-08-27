@@ -2,7 +2,9 @@ kind: wasmer.io/App.v0
 name: buildpro-crm
 package: .
 annotations:
-  shipitcli.com/provider: staticfile
+  shipitcli.com/provider: node-static
   shipitcli.com/config:
     name: buildpro-crm
     static_dir: public
+    node_package_manager: npm
+  anybuild.run/provider: node-static

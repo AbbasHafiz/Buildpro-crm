@@ -1,6 +1,6 @@
 [package]
-name = "abbashafiz/buildpro-crm"
-version = "0.1.0"
+name = "abbashafiz09/buildpro-crm"
+version = "0.1.43"
 description = "BuildPro CRM — construction business PWA"
 entrypoint = "start"
 

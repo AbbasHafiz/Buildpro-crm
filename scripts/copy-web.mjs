@@ -8,7 +8,8 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const FILES = ['index.html', 'sw.js', 'manifest.json', 'icon-192.png', 'icon-512.png'];
+const FILES = ['index.html', 'sw.js', 'manifest.json', 'icon-192.png', 'icon-512.png', 'offline.html'];
+const OPTIONAL = ['config.json', 'config.example.json'];
 const EXTRA = { public: ['_headers'], docs: [] };
 const TARGETS = ['www', 'public', 'docs'];
 
@@ -25,6 +26,10 @@ for (const dir of TARGETS) {
   mkdirSync(dest, { recursive: true });
   for (const f of FILES) {
     copyFileSync(join(root, f), join(dest, f));
+  }
+  for (const f of OPTIONAL) {
+    const src = join(root, f);
+    if (existsSync(src)) copyFileSync(src, join(dest, f));
   }
   for (const f of (EXTRA[dir] || [])) {
     const src = join(root, f);
