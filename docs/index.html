@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-08-27-v79">
+<meta name="app-version" content="2026-10-08-v80">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -610,7 +610,11 @@ select option{background:var(--s2);}
 
     <!-- SUB-CON -->
     <div class="pg" id="pg-sub">
-      <div class="ftabs" style="margin-bottom:10px">
+      <div class="ftabs" id="sub-view-tabs" style="margin-bottom:8px">
+        <div class="ftab on" onclick="fSubView('payments',this)">Payments</div>
+        <div class="ftab" onclick="fSubView('work',this)">Work spend</div>
+      </div>
+      <div class="ftabs" id="sub-pay-filters" style="margin-bottom:10px">
         <div class="ftab on" onclick="fSub('all',this)">All</div>
         <div class="ftab" onclick="fSub('paid',this)">Paid</div>
         <div class="ftab" onclick="fSub('unpaid',this)">Unpaid</div>
@@ -5826,12 +5830,29 @@ async function pdfSubProjStatement(subconId,projectId){
 // amount = agreed milestone line; paidAmt = cash given so far.
 // Legacy records without paidAmt: treated as fully paid (old behaviour).
 let subFilter='all';
+let subView='payments'; // 'payments' | 'work'
 function fSub(f,el){
   subFilter=f;
-  document.querySelectorAll('#pg-sub .ftab').forEach(t=>t.classList.remove('on'));
+  document.querySelectorAll('#sub-pay-filters .ftab').forEach(t=>t.classList.remove('on'));
   if(el)el.classList.add('on');
+  if(subView!=='work'){
+    const hint=e$('sub-filter-hint');
+    if(hint)hint.textContent=f==='paid'?'Only fully paid payment lines':f==='unpaid'?'Unpaid + partial — still due':'All payment lines — paid and still due';
+  }
+  renderSub();
+}
+function fSubView(mode,el){
+  subView=mode==='work'?'work':'payments';
+  document.querySelectorAll('#sub-view-tabs .ftab').forEach(t=>t.classList.remove('on'));
+  if(el)el.classList.add('on');
+  const filters=e$('sub-pay-filters');
+  if(filters)filters.style.display=subView==='work'?'none':'';
   const hint=e$('sub-filter-hint');
-  if(hint)hint.textContent=f==='paid'?'Only fully paid payment lines':f==='unpaid'?'Unpaid + partial — still due':'All payment lines — paid and still due';
+  if(hint){
+    hint.textContent=subView==='work'
+      ?'Paid cash by work type — Shuttering, Steel Binding, Mason, and other labels on payments. The payment list stays on Payments.'
+      :(subFilter==='paid'?'Only fully paid payment lines':subFilter==='unpaid'?'Unpaid + partial — still due':'All payment lines — paid and still due');
+  }
   renderSub();
 }
 function spayPaidAmt(r){
@@ -5928,17 +5949,198 @@ function spayRowHtml(p){
   </div>`;
 }
 
-// ════ RENDER SUB-CON ════
-function renderSub(){
-  const el=e$('list-sub');
+// ════ SUB-CON WORK SPEND (paid cash by work type) ════
+// Catalogue labels from further-breakdown chips, sub-con trades, and worker trades.
+// Obvious spellings merge (Shatring → Shuttering, Mason's → Mason). Other labels stay as entered.
+const WORK_SPEND_CANON=[
+  {label:'Shuttering', keys:['shuttering','shuttering work','shatring','shattring','shuttring','shutterng','shattering','shutering','shutter','شٹرنگ']},
+  {label:'Steel Binding', keys:['steel binding','steel bind','steelbinding','steel binder','steel binding wala','steelbinder','سٹیل بائنڈنگ']},
+  {label:'Mason', keys:['mason','masons','brick chuuni mason','chuuni mason','chuuni','chunnai','chunai','chunni','chuni','raj mistri','brickwork','brickwork chuuni','contractor mason','contractor mason raj mistri','brick mason','mistri']},
+  {label:'Electrician', keys:['electrician','electric','الیکٹریشن']},
+  {label:'Plumber', keys:['plumber','plumbing','پلمبر']},
+  {label:'Tile Fixer', keys:['tile fixer','tile work','tiling','tiles','ٹائل']},
+  {label:'Painter', keys:['painter','painting','paint','پینٹر']},
+  {label:'Carpenter', keys:['carpenter','بڑھئی']},
+  {label:'Labour', keys:['labour','labor','مزدور']},
+  {label:'Layout / Setting Out', keys:['layout','layout setting out','setting out']},
+  {label:'Other', keys:['other','دیگر']}
+];
+function normWorkLabel(s){
+  return String(s||'')
+    .toLowerCase()
+    .replace(/['’]s\b/g,'')
+    .replace(/[\/_,.;:|+]+/g,' ')
+    .replace(/[^a-z0-9\u0600-\u06FF\s]+/g,' ')
+    .replace(/\s+/g,' ')
+    .trim();
+}
+function workSpendCanon(raw){
+  const key=normWorkLabel(raw);
+  if(!key)return {key:'canon:Other', label:'Other'};
+  for(let i=0;i<WORK_SPEND_CANON.length;i++){
+    const c=WORK_SPEND_CANON[i];
+    if(c.keys.indexOf(key)>=0)return {key:'canon:'+c.label, label:c.label};
+  }
+  return {key:'raw:'+key, label:String(raw||'').trim()||'Other'};
+}
+// Paid portion only. Breakdown trades take their share of cash paid; leftover paid cash uses the phase / work label.
+function spayWorkSlices(p){
+  const paid=spayPaidAmt(p);
+  if(!(paid>0.005))return [];
+  const amount=p.amount||0;
+  const bd=(p.breakdown||[]).filter(b=>(parseFloat(b.amount)||0)>0);
+  if(!bd.length){
+    const raw=(p.phase||'').trim()||(p.desc||'').trim()||'Other';
+    return [{raw, amount:paid}];
+  }
+  const bdSum=bd.reduce((s,b)=>s+(parseFloat(b.amount)||0),0);
+  const bill=amount>0?amount:bdSum;
+  const cover=Math.min(bdSum,bill);
+  const bdPaid=bill>0?paid*(cover/bill):Math.min(paid,bdSum);
+  const slices=[];
+  bd.forEach(b=>{
+    const part=bdSum>0?bdPaid*((parseFloat(b.amount)||0)/bdSum):0;
+    if(part>0.005)slices.push({raw:(b.trade||'').trim()||(b.name||'').trim()||'Other', amount:part});
+  });
+  const used=slices.reduce((s,x)=>s+x.amount,0);
+  const rest=paid-used;
+  if(rest>0.005){
+    const raw=(p.phase||'').trim()||(p.desc||'').trim()||'Unallocated';
+    slices.push({raw, amount:rest});
+  }else if(slices.length&&rest<-0.005){
+    slices[slices.length-1].amount+=rest;
+  }
+  return slices.filter(x=>x.amount>0.005);
+}
+function workSpendMap(pays){
+  const map=new Map();
+  (pays||[]).forEach(p=>{
+    spayWorkSlices(p).forEach(sl=>{
+      const c=workSpendCanon(sl.raw);
+      let row=map.get(c.key);
+      if(!row){row={key:c.key,label:c.label,amount:0,pays:new Set()};map.set(c.key,row);}
+      row.amount+=sl.amount;
+      if(p.id)row.pays.add(p.id);
+    });
+  });
+  return [...map.values()].sort((a,b)=>b.amount-a.amount||a.label.localeCompare(b.label));
+}
+function workSpendRowsHtml(rows){
+  if(!rows.length)return '<div style="padding:12px 13px;font-size:var(--fs-xs);color:var(--mut)">No paid cash yet. Unpaid lines stay on the Payments list.</div>';
+  const total=rows.reduce((s,r)=>s+r.amount,0);
+  const lines=rows.map(r=>{
+    const n=r.pays?r.pays.size:0;
+    return `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 13px;border-bottom:1px solid var(--bor)">
+      <div style="min-width:0">
+        <div style="font-size:var(--fs-sm);font-weight:600">${agrEsc(r.label)}</div>
+        <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">${n} payment${n===1?'':'s'} · Paid</div>
+      </div>
+      <div style="font-family:'JetBrains Mono',monospace;color:var(--red);font-weight:700;flex-shrink:0">${fmt(r.amount)}</div>
+    </div>`;
+  }).join('');
+  return lines+`<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 13px;background:var(--s2)">
+    <div style="font-size:var(--fs-xs);font-weight:700;color:var(--mut);letter-spacing:.4px;text-transform:uppercase">Paid total</div>
+    <div style="font-family:'JetBrains Mono',monospace;color:var(--red);font-weight:700">${fmt(total)}</div>
+  </div>`;
+}
+function orderedSubcons(){
   const subs=activeRows(D.subcons);
-  if(!subs.length){el.innerHTML='<div class="empty"><div class="empty-i">👷</div><div class="empty-t">No sub-contractors yet</div></div>';updateListSelBar();return;}
-  // Newest payment activity first
   const subRecency=s=>{
     const pays=liveSubpays().filter(p=>p.subconId===s.id);
     return pays.reduce((m,p)=>((p.date||'')>m?(p.date||''):m),'');
   };
-  const ordered=[...subs].sort((a,b)=>subRecency(b).localeCompare(subRecency(a)));
+  return [...subs].sort((a,b)=>subRecency(b).localeCompare(subRecency(a)));
+}
+function subconPayProjects(pays){
+  const projIds=[...new Set((pays||[]).filter(p=>p.projectId).map(p=>p.projectId))];
+  const byProject=projIds.map(pid=>{
+    const proj=D.projects.find(x=>x.id===pid);
+    const projPays=(pays||[]).filter(p=>p.projectId===pid).sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.createdAt||'').localeCompare(a.createdAt||''));
+    const projName=proj?proj.name:(projPays[0]?.projectName||'Unknown Project');
+    return {pid, projName, pays:projPays};
+  }).filter(pg=>pg.pays.length);
+  byProject.sort((a,b)=>(b.pays[0]?.date||'').localeCompare(a.pays[0]?.date||''));
+  return byProject;
+}
+function renderSubWork(){
+  const el=e$('list-sub');
+  const ordered=orderedSubcons();
+  if(!ordered.length){el.innerHTML='<div class="empty"><div class="empty-i">👷</div><div class="empty-t">No sub-contractors yet</div></div>';updateListSelBar();return;}
+  const html=ordered.map(s=>{
+    const allPaysRaw=liveSubpays().filter(p=>p.subconId===s.id);
+    const totalPaid=allPaysRaw.reduce((t,p)=>t+spayPaidAmt(p),0);
+    const totalDue=allPaysRaw.reduce((t,p)=>t+spayDueAmt(p),0);
+    const projContracts=(D.subconContracts||[]).filter(x=>x.subconId===s.id);
+    const totalContract=projContracts.length>0?projContracts.reduce((sum,x)=>sum+x.value,0):(s.contract||0);
+    const rem=totalContract>0?(totalContract-totalPaid):0;
+    const remClr=rem>0?'var(--gold)':rem<0?'var(--red)':'var(--grn)';
+    const pct=totalContract>0?Math.min(100,Math.round(totalPaid/totalContract*100)):0;
+    const byProject=subconPayProjects(allPaysRaw);
+    const unlinked=allPaysRaw.filter(p=>!p.projectId).sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.createdAt||'').localeCompare(a.createdAt||''));
+    const groupCount=byProject.length+(unlinked.length?1:0);
+    const gid='subw-grp-'+s.id;
+    const open=!collapsedGroups[gid];
+    const header=`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+      ${selBox('sub',s.id,'subcons')}
+      <div style="min-width:0;flex:1">
+        <div style="font-size:var(--fs-sm);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${agrEsc(s.name)} <span style="color:var(--mut);font-weight:400;font-size:var(--fs-xs)">· ${allPaysRaw.length}</span></div>
+        <div style="margin-top:3px"><span class="b ${trC(s.trade)}">${agrEsc(s.trade||'')}</span>${s.phone?`<span style="font-size:var(--fs-xs);color:var(--mut);margin-left:6px">${agrEsc(s.phone)}</span>`:''}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0;font-size:var(--fs-xs);font-family:'JetBrains Mono',monospace">
+        <div style="color:var(--red)">-${fmt(totalPaid)}</div>
+        <div style="color:${remClr};margin-top:2px">${fmt(Math.abs(rem))} ${rem<0?'over':'left'}</div>
+        ${totalDue>0?`<div style="color:var(--ora);margin-top:2px">${fmt(totalDue)} due</div>`:''}
+      </div>
+    </div>`;
+    const sectionHtml=(id,title,pays,paid)=>{
+      const rows=workSpendMap(pays);
+      const pOpen=!collapsedGroups[id];
+      const pHeader=`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+        <div style="font-size:var(--fs-sm);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">${title} <span style="color:var(--mut);font-weight:400;font-size:var(--fs-xs)">· Paid</span></div>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-xs);color:var(--red);flex-shrink:0">-${fmt(paid)}</span>
+      </div>`;
+      const pBody=`<div style="background:var(--s1);border:1px solid var(--bor);border-radius:10px;overflow:hidden">${workSpendRowsHtml(rows)}</div>`;
+      return collapsibleSection(id,pHeader,pBody,pOpen);
+    };
+    const projectsHtml=byProject.map(pg=>{
+      const paid=pg.pays.reduce((sum,p)=>sum+spayPaidAmt(p),0);
+      return sectionHtml('subw-proj-'+s.id+'-'+pg.pid,'📁 '+agrEsc(pg.projName),pg.pays,paid);
+    }).join('');
+    const unlinkedHtml=unlinked.length?sectionHtml('subw-proj-'+s.id+'-none','📌 No project',unlinked,unlinked.reduce((sum,p)=>sum+spayPaidAmt(p),0)):'';
+    const rollupHtml=groupCount>1?`<div style="font-size:var(--fs-xs);color:var(--mut);font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin:0 0 6px">All projects · Paid by work</div>
+      <div style="background:var(--s1);border:1px solid var(--bor);border-radius:10px;overflow:hidden;margin-bottom:10px">${workSpendRowsHtml(workSpendMap(allPaysRaw))}</div>`:'';
+    const body=`<div style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:12px 14px">
+      <div class="sub-stats">
+        <div class="sub-stat"><div class="sub-stat-val" style="color:var(--gold)">${fmt(totalContract)}</div><div class="sub-stat-lbl">Total Contract</div></div>
+        <div class="sub-stat"><div class="sub-stat-val" style="color:var(--red)">${fmt(totalPaid)}</div><div class="sub-stat-lbl">Total Paid</div></div>
+        <div class="sub-stat"><div class="sub-stat-val" style="color:${remClr}">${fmt(rem)}</div><div class="sub-stat-lbl">Remaining</div></div>
+      </div>
+      ${totalDue>0?`<div style="font-size:var(--fs-xs);color:var(--ora);margin-bottom:8px">⏳ Pending on payment lines: PKR ${fmt(totalDue)} (not in Total Paid or work spend)</div>`:''}
+      <div class="pbar-wrap"><div class="pbar" style="width:${pct}%"></div></div>
+      <div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:14px">Paid ${pct}% of total contract · work rows are paid cash only</div>
+      ${rollupHtml}
+      ${projectsHtml}
+      ${unlinkedHtml}
+      ${!allPaysRaw.length?'<div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:10px">No payments yet.</div>':''}
+      <div class="card-acts" style="margin-top:4px">
+        <button class="ca blu" onclick="eSub('${s.id}')">✏️ Edit</button>
+        <button class="ca gold" onclick="O('sh-spay');iSpay();sv('sp-sub-t','${esc(s.name)}');sv('sp-sub-id','${s.id}')">+ Pay</button>
+        <button class="ca arch" onclick="archiveRec('subcons','${s.id}')">📦 Archive</button>
+        <button class="ca red" onclick="del('subcons','${s.id}')">🗑</button>
+      </div>
+    </div>`;
+    return collapsibleSection(gid,header,body,open);
+  }).join('');
+  el.innerHTML=html||'<div class="empty"><div class="empty-i">🔎</div><div class="empty-t">No sub-contractors yet</div></div>';
+  updateListSelBar();
+}
+
+// ════ RENDER SUB-CON ════
+function renderSub(){
+  if(subView==='work'){renderSubWork();return;}
+  const el=e$('list-sub');
+  const ordered=orderedSubcons();
+  if(!ordered.length){el.innerHTML='<div class="empty"><div class="empty-i">👷</div><div class="empty-t">No sub-contractors yet</div></div>';updateListSelBar();return;}
   const matchFilter=p=>{
     if(subFilter==='paid')return spayIsFullyPaid(p);
     if(subFilter==='unpaid')return spayHasDue(p);
@@ -10013,7 +10215,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-08-27-v79';
+const APP_VERSION='2026-10-08-v80';
 // Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
 // GitHub Pages is the live OTA source of truth while Wasmer Edge GitHub deploys are failing.
 const OTA_ORIGIN='https://abbashafiz.github.io/Buildpro-crm';
