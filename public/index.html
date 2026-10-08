@@ -6102,10 +6102,11 @@ function workSpendLineHtml(sl,showProject){
   const desc=(sl.desc||'').trim();
   let title=raw||person||phase||desc||'Payment';
   if(person&&raw&&normWorkLabel(person)!==normWorkLabel(raw))title=person+' · '+raw;
+  const parts=title.split(' · ');
   const meta=[];
   const pushMeta=v=>{
     const t=String(v||'').trim();
-    if(!t||t===title||meta.indexOf(t)>=0)return;
+    if(!t||t===title||parts.indexOf(t)>=0||meta.indexOf(t)>=0)return;
     meta.push(t);
   };
   pushMeta(sl.date);
