@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-10-08-v81">
+<meta name="app-version" content="2026-10-09-v82">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -329,8 +329,11 @@ select option{background:var(--s2);}
 .li-prg .li-hd{grid-template-columns:1fr 80px 70px 28px;}
 .li-prg .li-row{grid-template-columns:1fr 80px 70px 28px;}
 /* Sub-con payment further breakdown */
-.li-spbd .li-hd{grid-template-columns:1fr 1fr 80px 28px;}
-.li-spbd .li-row{grid-template-columns:1fr 1fr 80px 28px;}
+.li-spbd .li-hd{grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) 68px 26px;}
+.li-spbd .li-row{grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) 68px 26px;}
+.li-spbd .bd-trade-wrap{display:flex;flex-direction:column;gap:4px;min-width:0;}
+.li-spbd select.bd-trade{padding:8px 22px 8px 8px;font-size:var(--fs-xs);border-radius:7px;background-color:var(--bg);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='none' stroke='%238a8278' stroke-width='1.6' d='M1 1.5l5 5 5-5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 6px center;background-size:10px 7px;}
+.li-spbd .bd-trade-custom{display:none;padding:8px 8px;font-size:var(--fs-xs);border-radius:7px;}
 .spbd-chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px;}
 .spbd-chip{font-size:var(--fs-xs);padding:6px 10px;border-radius:8px;border:1px solid var(--bor);background:var(--s2);color:var(--mut);cursor:pointer;font-family:Inter,sans-serif;font-weight:600;}
 .spbd-chip:active{border-color:var(--gold);color:var(--gold);}
@@ -1133,10 +1136,10 @@ select option{background:var(--s2);}
     <!-- Further payment breakdown — who the sub-con paid onward (partnership tracking) -->
     <div style="margin-top:6px;padding-top:12px;border-top:1px solid var(--bor)">
       <div style="font-size:var(--fs-sm);font-weight:700;color:var(--txt);margin-bottom:4px">🔀 Further Payment Breakdown</div>
-      <div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:10px">Optional — if this 1 payment was split onward (shuttering wala, steel binder, mason, electrician…). Useful for partnership tracking.</div>
+      <div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:10px">Optional — pick a labour type on each line (Mason / Chunnai, Shuttering, Steel Binding…) so Work spend can group the same trade together.</div>
       <div class="spbd-chips" id="sp-bd-chips"></div>
       <div class="li-wrap li-spbd">
-        <div class="li-hd"><span>Trade / Role</span><span>Person Name</span><span>Amount</span><span></span></div>
+        <div class="li-hd"><span>Labour Type</span><span>Person Name</span><span>Amount</span><span></span></div>
         <div id="li-spbd"></div>
         <button class="btn btn-grey" style="width:100%;padding:11px;margin-bottom:4px" type="button" onclick="addSpBd()">+ Add Person</button>
         <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 4px 0;font-size:var(--fs-xs)">
@@ -4833,11 +4836,27 @@ function iAgr(){
 }
 
 // ════ EDIT LOADERS ════
-function eP(id){const r=D.projects.find(x=>x.id===id);if(!r)return;sv('proj-eid',id);e$('proj-eb').classList.add('on');e$('proj-sh-t').textContent='Edit Project';sv('p-name',r.name);sv('p-loc',r.loc);sv('p-plot',r.plot);sv('p-val',r.value);sv('p-notes',r.notes);sv('p-phase',r.phase||'Foundation');sv('p-custom-stage',r.customStage||'');sv('p-area',r.area||'');sv('p-rate',r.rate||'');sv('p-partner-name',r.partnerName||'');sv('p-my-share',r.myShare||'');sv('p-partner-share',r.partnerShare||'');const pip2=e$('p-is-partner');if(pip2)pip2.checked=r.isPartner||false;const pls2=e$('p-lumpsum');if(pls2)pls2.checked=r.lumpSum||false;const ppf2=e$('p-partner-fields');if(ppf2)ppf2.style.display=r.isPartner?'block':'none';sv('p-start',r.start);sv('p-end',r.end);const c=D.clients.find(x=>x.id===r.clientId);sv('p-cli-t',c?c.name:'');sv('p-cli-id',r.clientId||'');O('sh-proj');}
+/** Dropdown + companion free-text. Custom text is often saved in the select field itself (phase / milestone). */
+function fillSelectOrCustom(selId,customId,selVal,customVal,otherOpt){
+  const sel=e$(selId),inp=e$(customId);
+  const custom=customVal==null?'':String(customVal);
+  if(inp)inp.value=custom;
+  if(!sel)return;
+  const opts=[...sel.options].map(o=>o.value);
+  const saved=selVal==null?'':String(selVal);
+  if(saved&&opts.includes(saved))sel.value=saved;
+  else if(saved&&otherOpt&&opts.includes(otherOpt)){
+    sel.value=otherOpt;
+    if(inp&&!custom.trim())inp.value=saved;
+  }else if(otherOpt&&opts.includes(otherOpt)&&custom.trim()){
+    sel.value=otherOpt;
+  }
+}
+function eP(id){const r=D.projects.find(x=>x.id===id);if(!r)return;sv('proj-eid',id);e$('proj-eb').classList.add('on');e$('proj-sh-t').textContent='Edit Project';sv('p-name',r.name);sv('p-loc',r.loc);sv('p-plot',r.plot);sv('p-val',r.value);sv('p-notes',r.notes);fillSelectOrCustom('p-phase','p-custom-stage',r.phase||'Foundation',r.customStage||'','Custom');sv('p-area',r.area||'');sv('p-rate',r.rate||'');sv('p-partner-name',r.partnerName||'');sv('p-my-share',r.myShare||'');sv('p-partner-share',r.partnerShare||'');const pip2=e$('p-is-partner');if(pip2)pip2.checked=r.isPartner||false;const pls2=e$('p-lumpsum');if(pls2)pls2.checked=r.lumpSum||false;const ppf2=e$('p-partner-fields');if(ppf2)ppf2.style.display=r.isPartner?'block':'none';sv('p-start',r.start);sv('p-end',r.end);const c=D.clients.find(x=>x.id===r.clientId);sv('p-cli-t',c?c.name:'');sv('p-cli-id',r.clientId||'');O('sh-proj');}
 function eCli(id){const r=D.clients.find(x=>x.id===id);if(!r)return;sv('cli-eid',id);e$('cli-eb').classList.add('on');e$('cli-sh-t').textContent='Edit Client';sv('c-name',r.name);sv('c-ph',r.phone);sv('c-cnic',r.cnic);sv('c-city',r.city);sv('c-email',r.email);sv('c-addr',r.addr);O('sh-cli');}
 function eSub(id){const r=D.subcons.find(x=>x.id===id);if(!r)return;sv('sub-eid',id);e$('sub-eb').classList.add('on');e$('sub-sh-t').textContent='Edit Contractor';sv('s-name',r.name);sv('s-trade',r.trade);sv('s-ph',r.phone);sv('s-contract',r.contract);sv('s-ptype',r.ptype);sv('s-notes',r.notes);sv('s-cnic',r.cnic||'');const p=D.projects.find(x=>x.id===r.projectId);sv('s-proj-t',p?p.name:'');sv('s-proj-id',r.projectId||'');O('sh-sub');}
-function eSpay(id){const r=D.subpays.find(x=>x.id===id);if(!r)return;sv('spay-eid',id);e$('spay-eb').classList.add('on');e$('spay-sh-t').textContent='Edit Payment';const sc=D.subcons.find(x=>x.id===r.subconId);sv('sp-sub-t',sc?sc.name:r.subconName||'');sv('sp-sub-id',r.subconId||'');const p=D.projects.find(x=>x.id===r.projectId);sv('sp-proj-t',p?p.name:r.projectName||'');sv('sp-proj-id',r.projectId||'');sv('sp-date',r.date);sv('sp-amt',r.amount);sv('sp-proj-contract',r.projContract||'');sv('sp-phase',r.phase);sv('sp-custom-stage','');sv('sp-method',r.method);sv('sp-desc',r.desc);sv('sp-paid-amt',String(spayPaidAmt(r)));clearSpBd();renderSpBdChips();(r.breakdown||[]).forEach(b=>addSpBd(b));if(!(r.breakdown||[]).length)cSpBd();refreshSpLoanRow();syncSpayPayHint();O('sh-spay');}
-function eCpay(id){const r=D.cpays.find(x=>x.id===id);if(!r)return;sv('cpay-eid',id);e$('cpay-eb').classList.add('on');e$('cpay-sh-t').textContent='Edit Payment';const c=D.clients.find(x=>x.id===r.clientId);sv('cp-cli-t',c?c.name:'');sv('cp-cli-id',r.clientId||'');const p=D.projects.find(x=>x.id===r.projectId);sv('cp-proj-t',p?p.name:'');sv('cp-proj-id',r.projectId||'');sv('cp-date',r.date);sv('cp-time',r.time||'');sv('cp-amt',r.amount);sv('cp-custom-stage','');sv('cp-pay-type',r.payType||'contract');const inv=D.invoices.find(x=>x.id===r.invoiceId);sv('cp-inv-t',inv?inv.num:'');sv('cp-inv-id',r.invoiceId||'');sv('cp-method',r.method);sv('cp-note',r.note);sv('cp-milestone',r.milestone||'Other');O('sh-cpay');}
+function eSpay(id){const r=D.subpays.find(x=>x.id===id);if(!r)return;sv('spay-eid',id);e$('spay-eb').classList.add('on');e$('spay-sh-t').textContent='Edit Payment';const sc=D.subcons.find(x=>x.id===r.subconId);sv('sp-sub-t',sc?sc.name:r.subconName||'');sv('sp-sub-id',r.subconId||'');const p=D.projects.find(x=>x.id===r.projectId);sv('sp-proj-t',p?p.name:r.projectName||'');sv('sp-proj-id',r.projectId||'');sv('sp-date',r.date);sv('sp-amt',r.amount);sv('sp-proj-contract',r.projContract||'');fillSelectOrCustom('sp-phase','sp-custom-stage',r.phase,'','Other');sv('sp-method',r.method);sv('sp-desc',r.desc);sv('sp-paid-amt',String(spayPaidAmt(r)));clearSpBd();renderSpBdChips();(r.breakdown||[]).forEach(b=>addSpBd(b));if(!(r.breakdown||[]).length)cSpBd();refreshSpLoanRow();syncSpayPayHint();O('sh-spay');}
+function eCpay(id){const r=D.cpays.find(x=>x.id===id);if(!r)return;sv('cpay-eid',id);e$('cpay-eb').classList.add('on');e$('cpay-sh-t').textContent='Edit Payment';const c=D.clients.find(x=>x.id===r.clientId);sv('cp-cli-t',c?c.name:'');sv('cp-cli-id',r.clientId||'');const p=D.projects.find(x=>x.id===r.projectId);sv('cp-proj-t',p?p.name:'');sv('cp-proj-id',r.projectId||'');sv('cp-date',r.date);sv('cp-time',r.time||'');sv('cp-amt',r.amount);sv('cp-pay-type',r.payType||'contract');const inv=D.invoices.find(x=>x.id===r.invoiceId);sv('cp-inv-t',inv?inv.num:'');sv('cp-inv-id',r.invoiceId||'');sv('cp-method',r.method);sv('cp-note',r.note);fillSelectOrCustom('cp-milestone','cp-custom-stage',r.milestone||'','','Other');O('sh-cpay');}
 function eInv(id){
   const r=D.invoices.find(x=>x.id===id);if(!r)return;
   sv('inv-eid',id);e$('inv-eb').classList.add('on');e$('inv-sh-t').textContent='Edit Invoice';
@@ -4952,7 +4971,66 @@ function saveSpay(){
 }
 
 // ════ SUB-CON PAYMENT BREAKDOWN (further payees) ════
-const SP_BD_TRADES=['Shuttering','Steel Fixing','Steel Binding','Material Lifting','Brick / Chuuni Mason','Electrician','Plumber','Tile Fixer','Painter','Carpenter','Labour','Other'];
+// Dropdown values are the Work spend group labels. Stored on breakdown.trade
+// (the field Work spend already reads). "Other" keeps a short custom label in that same field.
+const SP_BD_TRADE_OPTS=[
+  {v:'Mason / Chunnai', canon:'Mason / Chunnai'},
+  {v:'Shuttering', canon:'Shuttering'},
+  {v:'Steel Binding', canon:'Steel Binding'},
+  {v:'Steel Fixing', canon:'Steel Fixing'},
+  {v:'General Labour', canon:'General Labour'},
+  {v:'Material Lifting', canon:'Material Lifting'},
+  {v:'Electrician', canon:'Electrician'},
+  {v:'Plumber', canon:'Plumber'},
+  {v:'Tile Fixer', canon:'Tile Fixer'},
+  {v:'Painter', canon:'Painter'},
+  {v:'Carpenter', canon:'Carpenter'},
+  {v:'Layout / Setting Out', canon:'Layout / Setting Out'}
+];
+const SP_BD_TRADES=SP_BD_TRADE_OPTS.map(o=>o.v).concat(['Other']);
+function spBdTradeSelectHtml(){
+  const opts=['<option value="">Select labour type</option>']
+    .concat(SP_BD_TRADE_OPTS.map(o=>'<option value="'+o.v.replace(/"/g,'&quot;')+'">'+o.v+'</option>'))
+    .concat(['<option value="Other">Other</option>']);
+  return '<select class="bd-trade" onchange="syncSpBdTradeRow(this)">'+opts.join('')+'</select>';
+}
+// Map a saved trade (dropdown label, old chip, or free text such as Shatring) back onto the list.
+function spBdResolveTrade(raw){
+  const t=String(raw||'').trim();
+  if(!t)return {sel:'', custom:''};
+  const nk=normWorkLabel(t);
+  const exact=SP_BD_TRADE_OPTS.find(o=>normWorkLabel(o.v)===nk);
+  if(exact)return {sel:exact.v, custom:''};
+  if(nk==='other')return {sel:'Other', custom:''};
+  const hit=matchWorkCanon(t);
+  if(hit&&hit.label&&hit.label!=='Other'){
+    const opt=SP_BD_TRADE_OPTS.find(o=>o.canon===hit.label||normWorkLabel(o.v)===normWorkLabel(hit.label));
+    if(opt)return {sel:opt.v, custom:''};
+  }
+  return {sel:'Other', custom:t};
+}
+function applySpBdTrade(row, raw){
+  const sel=row.querySelector('.bd-trade');
+  const custom=row.querySelector('.bd-trade-custom');
+  const resolved=spBdResolveTrade(raw);
+  if(sel)sel.value=resolved.sel||'';
+  if(custom){
+    const on=resolved.sel==='Other';
+    custom.value=on?resolved.custom:'';
+    custom.style.display=on?'block':'none';
+  }
+}
+function syncSpBdTradeRow(sel){
+  const row=sel&&sel.closest?sel.closest('.li-row'):null;
+  if(!row)return;
+  const custom=row.querySelector('.bd-trade-custom');
+  if(custom){
+    const on=sel.value==='Other';
+    custom.style.display=on?'block':'none';
+    if(!on)custom.value='';
+  }
+  cSpBd();
+}
 function renderSpBdChips(){
   const el=e$('sp-bd-chips');if(!el)return;
   el.innerHTML=SP_BD_TRADES.map(t=>`<button type="button" class="spbd-chip" onclick="addSpBd({trade:'${t.replace(/'/g,"\\'")}'})">+ ${t}</button>`).join('');
@@ -4961,9 +5039,9 @@ function clearSpBd(){const el=e$('li-spbd');if(el)el.innerHTML='';const tot=e$('
 function addSpBd(item){
   const el=e$('li-spbd');if(!el)return;
   const div=document.createElement('div');div.className='li-row';
-  div.innerHTML=`<input class="bd-trade" placeholder="e.g. Shuttering" oninput="cSpBd()"><input class="bd-name" placeholder="Person name" oninput="cSpBd()"><input class="bd-amt" type="number" placeholder="0" oninput="cSpBd()"><button class="li-del" type="button" onclick="this.parentElement.remove();cSpBd()">×</button>`;
+  div.innerHTML='<div class="bd-trade-wrap">'+spBdTradeSelectHtml()+'<input class="bd-trade-custom" placeholder="Custom labour type" oninput="cSpBd()"></div><input class="bd-name" placeholder="Person name" oninput="cSpBd()"><input class="bd-amt" type="number" placeholder="0" oninput="cSpBd()"><button class="li-del" type="button" onclick="this.parentElement.remove();cSpBd()">×</button>';
   if(item){
-    const t=div.querySelector('.bd-trade');if(t)t.value=item.trade||'';
+    applySpBdTrade(div, item.trade||'');
     const n=div.querySelector('.bd-name');if(n)n.value=item.name||'';
     const a=div.querySelector('.bd-amt');if(a&&item.amount)a.value=item.amount;
   }
@@ -4973,7 +5051,10 @@ function gSpBd(){
   const el=e$('li-spbd');if(!el)return[];
   const items=[];
   el.querySelectorAll('.li-row').forEach(row=>{
-    const trade=(row.querySelector('.bd-trade')?.value||'').trim();
+    const sel=row.querySelector('.bd-trade');
+    let trade=(sel?.value||'').trim();
+    const custom=(row.querySelector('.bd-trade-custom')?.value||'').trim();
+    if(trade==='Other')trade=custom||'Other';
     const name=(row.querySelector('.bd-name')?.value||'').trim();
     const amount=parseFloat(row.querySelector('.bd-amt')?.value)||0;
     if((trade||name)&&amount>0)items.push({trade,name,amount});
@@ -5850,7 +5931,7 @@ function fSubView(mode,el){
   const hint=e$('sub-filter-hint');
   if(hint){
     hint.textContent=subView==='work'
-      ?'One paid sum per trade in each project. Tap Shuttering, Steel Fixing, Binding, Material Lifting, or any other sum to see the lines. Payments stay on Payments.'
+      ?'One paid sum per labour type in each project. Tap Mason / Chunnai, Shuttering, Steel Binding, or any other sum to see the lines. Payments stay on Payments.'
       :(subFilter==='paid'?'Only fully paid payment lines':subFilter==='unpaid'?'Unpaid + partial — still due':'All payment lines — paid and still due');
   }
   renderSub();
@@ -5950,22 +6031,23 @@ function spayRowHtml(p){
 }
 
 // ════ SUB-CON WORK SPEND (paid cash by work type) ════
-// One sum per trade inside a project. Words on the phase, description, or further-breakdown
-// line count (Shatring → Shuttering, Mason's → Mason). Steel Fixing stays separate from
-// Steel Binding; bare "binding" joins Steel Binding. Material Lifting is its own sum.
-// Tap a sum to list the lines. A slice is counted once — the earliest trade word wins.
+// One sum per labour type inside a project. The further-breakdown dropdown stores its
+// label on breakdown.trade, which is grouped here. Older free text still counts
+// (Shatring → Shuttering, chunnai / Brick Chuuni Mason → Mason / Chunnai, Labour → General Labour).
+// Steel Fixing stays separate from Steel Binding; bare "binding" joins Steel Binding.
+// Material Lifting is its own sum. Tap a sum to list the lines. A slice is counted once.
 const WORK_SPEND_CANON=[
   {label:'Shuttering', keys:['shuttering','shutterings','shuttering work','shuttering wala','shatring','shattring','shuttring','shutterng','shattering','shutering','shutter','شٹرنگ']},
   {label:'Steel Fixing', keys:['steel fixing','steel fixings','steel fix','steel fixer','steel fixers','fixing steel','steel fixing wala','steelfixing','steel fxing']},
   {label:'Steel Binding', keys:['steel binding','steel bindings','steel bind','steelbinding','steel binder','steel binders','steel binding wala','steelbinder','binding','bindings','binding wala','steel bind wala','سٹیل بائنڈنگ']},
   {label:'Material Lifting', keys:['material lifting','material lift','materials lifting','materials lift','lifting material','material lifting wala','maal lifting']},
-  {label:'Mason', keys:['mason','masons','brick chuuni mason','chuuni mason','chuuni','chunnai','chunai','chunni','chuni','raj mistri','brickwork','brickwork chuuni','contractor mason','contractor mason raj mistri','brick mason','mistri']},
+  {label:'Mason / Chunnai', keys:['mason chunnai','mason chunai','mason','masons','brick chuuni mason','chuuni mason','chuuni','chunnai','chunai','chunni','chuni','raj mistri','brickwork','brickwork chuuni','contractor mason','contractor mason raj mistri','brick mason','mistri']},
   {label:'Electrician', keys:['electrician','electric','الیکٹریشن']},
   {label:'Plumber', keys:['plumber','plumbing','پلمبر']},
   {label:'Tile Fixer', keys:['tile fixer','tile work','tiling','tiles','ٹائل']},
   {label:'Painter', keys:['painter','painting','paint','پینٹر']},
   {label:'Carpenter', keys:['carpenter','بڑھئی']},
-  {label:'Labour', keys:['labour','labor','مزدور']},
+  {label:'General Labour', keys:['general labour','general labor','labour','labor','مزدور']},
   {label:'Layout / Setting Out', keys:['layout','layout setting out','setting out']},
   {label:'Other', keys:['other','دیگر']}
 ];
@@ -10330,7 +10412,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-10-08-v81';
+const APP_VERSION='2026-10-09-v82';
 // Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
 // GitHub Pages is the live OTA source of truth while Wasmer Edge GitHub deploys are failing.
 const OTA_ORIGIN='https://abbashafiz.github.io/Buildpro-crm';
