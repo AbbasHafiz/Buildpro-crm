@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-10-09-v82">
+<meta name="app-version" content="2026-10-09-v83">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -1136,7 +1136,7 @@ select option{background:var(--s2);}
     <!-- Further payment breakdown — who the sub-con paid onward (partnership tracking) -->
     <div style="margin-top:6px;padding-top:12px;border-top:1px solid var(--bor)">
       <div style="font-size:var(--fs-sm);font-weight:700;color:var(--txt);margin-bottom:4px">🔀 Further Payment Breakdown</div>
-      <div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:10px">Optional — pick a labour type on each line (Mason / Chunnai, Shuttering, Steel Binding…) so Work spend can group the same trade together.</div>
+      <div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:10px">Optional — pick a labour type on each line (Mason / Chunnai, Shuttering, Mixture Machine, Phatty…) so Work spend can group the same trade together.</div>
       <div class="spbd-chips" id="sp-bd-chips"></div>
       <div class="li-wrap li-spbd">
         <div class="li-hd"><span>Labour Type</span><span>Person Name</span><span>Amount</span><span></span></div>
@@ -4973,25 +4973,39 @@ function saveSpay(){
 // ════ SUB-CON PAYMENT BREAKDOWN (further payees) ════
 // Dropdown values are the Work spend group labels. Stored on breakdown.trade
 // (the field Work spend already reads). "Other" keeps a short custom label in that same field.
+// Rental / equipment types sit together after the labour trades. Each one is its own sum
+// (Phatty, Ghori, Rehri…), not one shared Rental bucket.
 const SP_BD_TRADE_OPTS=[
-  {v:'Mason / Chunnai', canon:'Mason / Chunnai'},
-  {v:'Shuttering', canon:'Shuttering'},
-  {v:'Steel Binding', canon:'Steel Binding'},
-  {v:'Steel Fixing', canon:'Steel Fixing'},
-  {v:'General Labour', canon:'General Labour'},
-  {v:'Material Lifting', canon:'Material Lifting'},
-  {v:'Electrician', canon:'Electrician'},
-  {v:'Plumber', canon:'Plumber'},
-  {v:'Tile Fixer', canon:'Tile Fixer'},
-  {v:'Painter', canon:'Painter'},
-  {v:'Carpenter', canon:'Carpenter'},
-  {v:'Layout / Setting Out', canon:'Layout / Setting Out'}
+  {v:'Mason / Chunnai', canon:'Mason / Chunnai', g:'labour'},
+  {v:'Shuttering', canon:'Shuttering', g:'labour'},
+  {v:'Steel Binding', canon:'Steel Binding', g:'labour'},
+  {v:'Steel Fixing', canon:'Steel Fixing', g:'labour'},
+  {v:'General Labour', canon:'General Labour', g:'labour'},
+  {v:'Material Lifting', canon:'Material Lifting', g:'labour'},
+  {v:'Electrician', canon:'Electrician', g:'labour'},
+  {v:'Plumber', canon:'Plumber', g:'labour'},
+  {v:'Tile Fixer', canon:'Tile Fixer', g:'labour'},
+  {v:'Painter', canon:'Painter', g:'labour'},
+  {v:'Carpenter', canon:'Carpenter', g:'labour'},
+  {v:'Layout / Setting Out', canon:'Layout / Setting Out', g:'labour'},
+  {v:'Mixture Machine', canon:'Mixture Machine', g:'rental'},
+  {v:'Phatty', canon:'Phatty', g:'rental'},
+  {v:'Ghori', canon:'Ghori', g:'rental'},
+  {v:'Rehri', canon:'Rehri', g:'rental'},
+  {v:'Scaffolding', canon:'Scaffolding', g:'rental'},
+  {v:'Generator', canon:'Generator', g:'rental'},
+  {v:'Water Pump', canon:'Water Pump', g:'rental'},
+  {v:'Vibrator', canon:'Vibrator', g:'rental'}
 ];
 const SP_BD_TRADES=SP_BD_TRADE_OPTS.map(o=>o.v).concat(['Other']);
 function spBdTradeSelectHtml(){
-  const opts=['<option value="">Select labour type</option>']
-    .concat(SP_BD_TRADE_OPTS.map(o=>'<option value="'+o.v.replace(/"/g,'&quot;')+'">'+o.v+'</option>'))
-    .concat(['<option value="Other">Other</option>']);
+  const opt=o=>'<option value="'+o.v.replace(/"/g,'&quot;')+'">'+o.v+'</option>';
+  const labour=SP_BD_TRADE_OPTS.filter(o=>o.g!=='rental').map(opt).join('');
+  const rental=SP_BD_TRADE_OPTS.filter(o=>o.g==='rental').map(opt).join('');
+  const opts=['<option value="">Select labour type</option>',
+    '<optgroup label="Labour">'+labour+'</optgroup>',
+    '<optgroup label="Rental">'+rental+'</optgroup>',
+    '<option value="Other">Other</option>'];
   return '<select class="bd-trade" onchange="syncSpBdTradeRow(this)">'+opts.join('')+'</select>';
 }
 // Map a saved trade (dropdown label, old chip, or free text such as Shatring) back onto the list.
@@ -5931,7 +5945,7 @@ function fSubView(mode,el){
   const hint=e$('sub-filter-hint');
   if(hint){
     hint.textContent=subView==='work'
-      ?'One paid sum per labour type in each project. Tap Mason / Chunnai, Shuttering, Steel Binding, or any other sum to see the lines. Payments stay on Payments.'
+      ?'One paid sum per labour type in each project. Tap Mason / Chunnai, Shuttering, Mixture Machine, Phatty, or any other sum to see the lines. Payments stay on Payments.'
       :(subFilter==='paid'?'Only fully paid payment lines':subFilter==='unpaid'?'Unpaid + partial — still due':'All payment lines — paid and still due');
   }
   renderSub();
@@ -6035,7 +6049,8 @@ function spayRowHtml(p){
 // label on breakdown.trade, which is grouped here. Older free text still counts
 // (Shatring → Shuttering, chunnai / Brick Chuuni Mason → Mason / Chunnai, Labour → General Labour).
 // Steel Fixing stays separate from Steel Binding; bare "binding" joins Steel Binding.
-// Material Lifting is its own sum. Tap a sum to list the lines. A slice is counted once.
+// Material Lifting is its own sum. Rental spellings share a sum (phatty/phatti, ghori/ghodi,
+// rehri/rehrian, mixture machine/mixer). Tap a sum to list the lines. A slice is counted once.
 const WORK_SPEND_CANON=[
   {label:'Shuttering', keys:['shuttering','shutterings','shuttering work','shuttering wala','shatring','shattring','shuttring','shutterng','shattering','shutering','shutter','شٹرنگ']},
   {label:'Steel Fixing', keys:['steel fixing','steel fixings','steel fix','steel fixer','steel fixers','fixing steel','steel fixing wala','steelfixing','steel fxing']},
@@ -6049,6 +6064,14 @@ const WORK_SPEND_CANON=[
   {label:'Carpenter', keys:['carpenter','بڑھئی']},
   {label:'General Labour', keys:['general labour','general labor','labour','labor','مزدور']},
   {label:'Layout / Setting Out', keys:['layout','layout setting out','setting out']},
+  {label:'Mixture Machine', keys:['mixture machine','mixer machine','mixture mashine','mixer mashine','concrete mixer','concrete mixture','mixture','mixtures','mixer','mixers','mixure','mixure machine','مکسر','مکسر مشین']},
+  {label:'Phatty', keys:['phatty','phatti','phatties','phaties','phati','phaty','patti','patties','patty','پھٹی','پٹی']},
+  {label:'Ghori', keys:['ghori','ghodi','ghoris','ghodis','ghorri','ghoddi','ghory','گھوڑی']},
+  {label:'Rehri', keys:['rehri','rehrian','rehris','rehari','rehriyan','rehrain','ریڑھی','ریہڑی']},
+  {label:'Scaffolding', keys:['scaffolding','scaffoldings','scaffold','scaffolds','scafolding','scaffholding','scaffoldng']},
+  {label:'Generator', keys:['generator','generators','genrator','genrators','genset','gen set','diesel generator']},
+  {label:'Water Pump', keys:['water pump','water pumps','waterpump','waterpumps','dewatering pump','pump','pumps']},
+  {label:'Vibrator', keys:['vibrator','vibrators','vibrater','concrete vibrator','needle vibrator','poker vibrator']},
   {label:'Other', keys:['other','دیگر']}
 ];
 function normWorkLabel(s){
@@ -10412,7 +10435,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-10-09-v82';
+const APP_VERSION='2026-10-09-v83';
 // Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
 // GitHub Pages is the live OTA source of truth while Wasmer Edge GitHub deploys are failing.
 const OTA_ORIGIN='https://abbashafiz.github.io/Buildpro-crm';
