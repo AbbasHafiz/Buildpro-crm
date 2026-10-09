@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-10-09-v86">
+<meta name="app-version" content="2026-10-09-v87">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -6061,10 +6061,12 @@ function spayRowHtml(p){
 // Material Lifting is its own sum. Rental spellings share a sum (phatty/phatti, ghori/ghodi,
 // rehri/rehrian, mixture machine/mixer). Tap a sum to list the lines. A slice is counted once.
 // Kept by Sub-Contractor is paid cash the sub-contractor retained. On the main
-// Work spend view it is one section above the projects (one combined total).
-// It is not repeated inside each project's labour/rental list. Hyphens fold
-// to spaces, so "kept by sub-contractor", "kept by contractor", "sub contractor
-// kept", and "retained by sub-contractor" land in that same section.
+// Work spend view it is one section above the projects (one combined total),
+// shown even when the total is still 0. It is not repeated inside each
+// project's labour/rental list. Hyphens fold to spaces, so "kept by
+// sub-contractor", "kept by contractor", "kept by the sub-contractor",
+// "sub contractor kept", "kept by sub-con", and "retained by sub-contractor"
+// land in that same section.
 const WORK_SPEND_KEPT_KEY='canon:Kept by Sub-Contractor';
 const WORK_SPEND_CANON=[
   {label:'Shuttering', keys:['shuttering','shutterings','shuttering work','shuttering wala','shatring','shattring','shuttring','shutterng','shattering','shutering','shutter','شٹرنگ']},
@@ -6088,7 +6090,7 @@ const WORK_SPEND_CANON=[
   {label:'Generator', keys:['generator','generators','genrator','genrators','genset','gen set','diesel generator']},
   {label:'Water Pump', keys:['water pump','water pumps','waterpump','waterpumps','dewatering pump','pump','pumps']},
   {label:'Vibrator', keys:['vibrator','vibrators','vibrater','concrete vibrator','needle vibrator','poker vibrator']},
-  {label:'Kept by Sub-Contractor', keys:['kept by sub contractor','kept by contractor','sub contractor kept','retained by sub contractor']},
+  {label:'Kept by Sub-Contractor', keys:['kept by sub contractor','kept by the sub contractor','kept by contractor','kept by the contractor','sub contractor kept','retained by sub contractor','retained by the sub contractor','retained by contractor','kept by sub con','kept by subcon','sub con kept','subcon kept']},
   {label:'Other', keys:['other','دیگر']}
 ];
 function normWorkLabel(s){
@@ -6314,20 +6316,26 @@ function workSpendKeptAndLabour(pays){
   return {kept:rows.find(workSpendIsKept)||null,labour:rows.filter(r=>!workSpendIsKept(r))};
 }
 // Main Work spend block: combined kept-by cash, not inside a project.
-// Lines name the project. Starts collapsed; tap opens the same line detail.
+// Always rendered on the main Work spend view, including a zero total, so the
+// section is visible before any kept line exists. Lines name the project.
+// Starts collapsed; tap opens the same line detail.
 function workSpendKeptSectionHtml(row){
-  if(!row||!(row.amount>0.005))return '';
-  const n=(row.lines||[]).length;
-  const rowId=workSpendRowDomId('subw-kept-main',row.key);
+  const lines=(row&&row.lines)||[];
+  const amount=(row&&row.amount)||0;
+  const n=lines.length;
+  const rowId=workSpendRowDomId('subw-kept-main',(row&&row.key)||WORK_SPEND_KEPT_KEY);
   const open=collapsedGroups[safeGroupId(rowId)]===false;
+  const sub=n?`Paid cash · ${n} line${n===1?'':'s'}`:'No lines yet';
   const header=`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
       <div style="min-width:0">
         <div style="font-size:var(--fs-sm);font-weight:700">Kept by Sub-Contractor</div>
-        <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Paid cash · ${n} line${n===1?'':'s'}</div>
+        <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">${sub}</div>
       </div>
-      <div style="font-family:'JetBrains Mono',monospace;color:var(--red);font-weight:700;flex-shrink:0">${fmt(row.amount)}</div>
+      <div style="font-family:'JetBrains Mono',monospace;color:var(--red);font-weight:700;flex-shrink:0">${fmt(amount)}</div>
     </div>`;
-  const body=`<div style="background:var(--bg);border:1px solid var(--bor);border-radius:8px;overflow:hidden">${(row.lines||[]).map(sl=>workSpendLineHtml(sl,true)).join('')}</div>`;
+  const body=n
+    ?`<div style="background:var(--bg);border:1px solid var(--bor);border-radius:8px;overflow:hidden">${lines.map(sl=>workSpendLineHtml(sl,true)).join('')}</div>`
+    :`<div style="padding:12px 13px;font-size:var(--fs-xs);color:var(--mut)">No lines yet</div>`;
   return `<div style="font-size:var(--fs-xs);color:var(--gold);font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin:0 0 6px">Kept by Sub-Contractor</div>`
     +collapsibleSection(rowId,header,body,open);
 }
@@ -6335,8 +6343,8 @@ function renderSubWork(){
   const el=e$('list-sub');
   const ordered=orderedSubcons();
   const allPays=liveSubpays();
-  if(!ordered.length&&!allPays.length){el.innerHTML='<div class="empty"><div class="empty-i">👷</div><div class="empty-t">No sub-contractors yet</div></div>';updateListSelBar();return;}
   const keptHtml=workSpendKeptSectionHtml(workSpendKeptAndLabour(allPays).kept);
+  if(!ordered.length&&!allPays.length){el.innerHTML=keptHtml+'<div class="empty"><div class="empty-i">👷</div><div class="empty-t">No sub-contractors yet</div></div>';updateListSelBar();return;}
   const projects=workSpendProjects(allPays);
   const projectHtml=projects.map(pg=>{
     const paid=pg.pays.reduce((sum,p)=>sum+spayPaidAmt(p),0);
@@ -10483,7 +10491,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-10-09-v86';
+const APP_VERSION='2026-10-09-v87';
 // Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
 // GitHub Pages is the live OTA source of truth while Wasmer Edge GitHub deploys are failing.
 const OTA_ORIGIN='https://abbashafiz.github.io/Buildpro-crm';
