@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-10-09-v87">
+<meta name="app-version" content="2026-10-09-v88">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -6063,10 +6063,14 @@ function spayRowHtml(p){
 // Kept by Sub-Contractor is paid cash the sub-contractor retained. On the main
 // Work spend view it is one section above the projects (one combined total),
 // shown even when the total is still 0. It is not repeated inside each
-// project's labour/rental list. Hyphens fold to spaces, so "kept by
-// sub-contractor", "kept by contractor", "kept by the sub-contractor",
-// "sub contractor kept", "kept by sub-con", and "retained by sub-contractor"
-// land in that same section.
+// project's labour/rental list. Two kinds of cash land here, and they do not
+// overlap: a breakdown line whose labour type is Kept by Sub-Contractor, and
+// any paid leftover that was never assigned to a breakdown line (the payment
+// form's "Unallocated / kept by main sub-con"). The leftover is only cash paid
+// minus the breakdown sum — tagged kept lines stay their own lines. A zero
+// leftover adds no line. Hyphens fold to spaces, so "kept by sub-contractor",
+// "kept by contractor", "kept by the sub-contractor", "sub contractor kept",
+// "kept by sub-con", and "retained by sub-contractor" land in that same section.
 const WORK_SPEND_KEPT_KEY='canon:Kept by Sub-Contractor';
 const WORK_SPEND_CANON=[
   {label:'Shuttering', keys:['shuttering','shutterings','shuttering work','shuttering wala','shatring','shattring','shuttring','shutterng','shattering','shutering','shutter','شٹرنگ']},
@@ -6161,8 +6165,14 @@ function workSpendPick(){
 function workSpendCanon(raw){
   return workSpendPick(raw);
 }
-// Paid portion only. Each further-breakdown line keeps its own trade; leftover paid cash
-// uses the phase / description. Slice amounts add back to the cash paid.
+// Paid portion only. Each further-breakdown line keeps its own trade.
+// Cash paid above that breakdown is the unallocated remainder kept by the main
+// sub-contractor: one line in Kept by Sub-Contractor, named for this payment.
+// It is not filed under the phase or under Shuttering / Mason / the other trades.
+// An explicit Kept by Sub-Contractor breakdown line is already in the slices
+// and is not added again. A zero remainder adds nothing. No breakdown at all
+// still uses Phase (a whole Kept by Sub-Contractor payment stays in this block).
+// Slice amounts add back to the cash paid.
 function spayWorkSlices(p){
   const paid=spayPaidAmt(p);
   if(!(paid>0.005))return [];
@@ -6199,7 +6209,15 @@ function spayWorkSlices(p){
   });
   const used=slices.reduce((s,x)=>s+x.amount,0);
   const rest=paid-used;
-  if(rest>0.005)slices.push(finish([phase,desc],'',rest));
+  if(rest>0.005){
+    slices.push(Object.assign({},meta,{
+      raw:'Unallocated / kept by main sub-con',
+      canonKey:WORK_SPEND_KEPT_KEY,
+      canonLabel:'Kept by Sub-Contractor',
+      person:(p.subconName||'').trim(),
+      amount:rest
+    }));
+  }
   else if(slices.length&&rest<-0.005)slices[slices.length-1].amount+=rest;
   return slices.filter(x=>x.amount>0.005);
 }
@@ -6318,6 +6336,7 @@ function workSpendKeptAndLabour(pays){
 // Main Work spend block: combined kept-by cash, not inside a project.
 // Always rendered on the main Work spend view, including a zero total, so the
 // section is visible before any kept line exists. Lines name the project.
+// An unallocated remainder names the sub-contractor and is labeled as that leftover.
 // Starts collapsed; tap opens the same line detail.
 function workSpendKeptSectionHtml(row){
   const lines=(row&&row.lines)||[];
@@ -10491,7 +10510,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-10-09-v87';
+const APP_VERSION='2026-10-09-v88';
 // Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
 // GitHub Pages is the live OTA source of truth while Wasmer Edge GitHub deploys are failing.
 const OTA_ORIGIN='https://abbashafiz.github.io/Buildpro-crm';
