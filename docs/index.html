@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-10-09-v83">
+<meta name="app-version" content="2026-10-09-v84">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -1101,13 +1101,14 @@ select option{background:var(--s2);}
     <div class="fg"><label>Contract Value for This Project (PKR)</label><input type="number" id="sp-proj-contract" placeholder="Total agreed for this project"></div>
     <div class="f2">
       <div class="fg"><label>Phase / Milestone</label>
-        <select id="sp-phase"><option>Advance</option><option>Foundation</option><option>DPC Level</option><option>Lintel Level</option><option>Roof Slab</option><option>Structure Complete</option><option>Finishing</option><option>Final Payment</option><option>Other</option></select>
+        <select id="sp-phase"><option>Advance</option><option>Foundation</option><option>DPC Level</option><option>Lintel Level</option><option>Roof Slab</option><option>Structure Complete</option><option>Finishing</option><option>Final Payment</option><option>Kept by Sub-Contractor</option><option>Other</option></select>
       </div>
       <div class="fg"><label>Custom Stage (if other)</label><input id="sp-custom-stage" placeholder="e.g. 2nd floor slab done, tiling complete…"></div>
       <div class="fg"><label>Method</label>
         <select id="sp-method"><option>Cash</option><option>Bank Transfer</option><option>JazzCash</option><option>EasyPaisa</option><option>Cheque</option></select>
       </div>
     </div>
+    <div style="font-size:var(--fs-xs);color:var(--mut);margin:-4px 0 12px">A whole payment with no further breakdown uses this Phase in Work spend. <b style="color:var(--txt);font-weight:600">Kept by Sub-Contractor</b> groups that paid cash on its own.</div>
     <div class="fg"><label>Work Description (Kaam)</label><textarea id="sp-desc" placeholder="e.g. Foundation complete, 1st floor slab done, tiling 3 rooms…"></textarea></div>
     <div id="sp-ispaid-row" style="background:var(--bg);border:1px solid var(--bor);border-radius:10px;padding:12px 13px;margin-bottom:4px">
       <div style="font-size:var(--fs-sm);font-weight:700;color:var(--txt);margin-bottom:4px">💳 Payment status</div>
@@ -1136,7 +1137,7 @@ select option{background:var(--s2);}
     <!-- Further payment breakdown — who the sub-con paid onward (partnership tracking) -->
     <div style="margin-top:6px;padding-top:12px;border-top:1px solid var(--bor)">
       <div style="font-size:var(--fs-sm);font-weight:700;color:var(--txt);margin-bottom:4px">🔀 Further Payment Breakdown</div>
-      <div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:10px">Optional — pick a labour type on each line (Mason / Chunnai, Shuttering, Mixture Machine, Phatty…) so Work spend can group the same trade together.</div>
+      <div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:10px">Optional — pick a labour type on each line (Mason / Chunnai, Shuttering, Mixture Machine, Phatty, Kept by Sub-Contractor…) so Work spend can group the same trade together.</div>
       <div class="spbd-chips" id="sp-bd-chips"></div>
       <div class="li-wrap li-spbd">
         <div class="li-hd"><span>Labour Type</span><span>Person Name</span><span>Amount</span><span></span></div>
@@ -4975,6 +4976,7 @@ function saveSpay(){
 // (the field Work spend already reads). "Other" keeps a short custom label in that same field.
 // Rental / equipment types sit together after the labour trades. Each one is its own sum
 // (Phatty, Ghori, Rehri…), not one shared Rental bucket.
+// Kept by Sub-Contractor is cash the sub-contractor retained. It sits after rentals, before Other.
 const SP_BD_TRADE_OPTS=[
   {v:'Mason / Chunnai', canon:'Mason / Chunnai', g:'labour'},
   {v:'Shuttering', canon:'Shuttering', g:'labour'},
@@ -4995,16 +4997,19 @@ const SP_BD_TRADE_OPTS=[
   {v:'Scaffolding', canon:'Scaffolding', g:'rental'},
   {v:'Generator', canon:'Generator', g:'rental'},
   {v:'Water Pump', canon:'Water Pump', g:'rental'},
-  {v:'Vibrator', canon:'Vibrator', g:'rental'}
+  {v:'Vibrator', canon:'Vibrator', g:'rental'},
+  {v:'Kept by Sub-Contractor', canon:'Kept by Sub-Contractor', g:'kept'}
 ];
 const SP_BD_TRADES=SP_BD_TRADE_OPTS.map(o=>o.v).concat(['Other']);
 function spBdTradeSelectHtml(){
   const opt=o=>'<option value="'+o.v.replace(/"/g,'&quot;')+'">'+o.v+'</option>';
-  const labour=SP_BD_TRADE_OPTS.filter(o=>o.g!=='rental').map(opt).join('');
+  const labour=SP_BD_TRADE_OPTS.filter(o=>o.g==='labour').map(opt).join('');
   const rental=SP_BD_TRADE_OPTS.filter(o=>o.g==='rental').map(opt).join('');
+  const kept=SP_BD_TRADE_OPTS.filter(o=>o.g==='kept').map(opt).join('');
   const opts=['<option value="">Select labour type</option>',
     '<optgroup label="Labour">'+labour+'</optgroup>',
     '<optgroup label="Rental">'+rental+'</optgroup>',
+    kept,
     '<option value="Other">Other</option>'];
   return '<select class="bd-trade" onchange="syncSpBdTradeRow(this)">'+opts.join('')+'</select>';
 }
@@ -5945,7 +5950,7 @@ function fSubView(mode,el){
   const hint=e$('sub-filter-hint');
   if(hint){
     hint.textContent=subView==='work'
-      ?'One paid sum per labour type in each project. Tap Mason / Chunnai, Shuttering, Mixture Machine, Phatty, or any other sum to see the lines. Payments stay on Payments.'
+      ?'One paid sum per labour type in each project. Tap Mason / Chunnai, Shuttering, Mixture Machine, Phatty, Kept by Sub-Contractor, or any other sum to see the lines. Payments stay on Payments.'
       :(subFilter==='paid'?'Only fully paid payment lines':subFilter==='unpaid'?'Unpaid + partial — still due':'All payment lines — paid and still due');
   }
   renderSub();
@@ -6051,6 +6056,9 @@ function spayRowHtml(p){
 // Steel Fixing stays separate from Steel Binding; bare "binding" joins Steel Binding.
 // Material Lifting is its own sum. Rental spellings share a sum (phatty/phatti, ghori/ghodi,
 // rehri/rehrian, mixture machine/mixer). Tap a sum to list the lines. A slice is counted once.
+// Kept by Sub-Contractor is its own paid-cash sum. Hyphens fold to spaces, so
+// "kept by sub-contractor", "kept by contractor", "sub contractor kept", and
+// "retained by sub-contractor" land in that same group.
 const WORK_SPEND_CANON=[
   {label:'Shuttering', keys:['shuttering','shutterings','shuttering work','shuttering wala','shatring','shattring','shuttring','shutterng','shattering','shutering','shutter','شٹرنگ']},
   {label:'Steel Fixing', keys:['steel fixing','steel fixings','steel fix','steel fixer','steel fixers','fixing steel','steel fixing wala','steelfixing','steel fxing']},
@@ -6072,6 +6080,7 @@ const WORK_SPEND_CANON=[
   {label:'Generator', keys:['generator','generators','genrator','genrators','genset','gen set','diesel generator']},
   {label:'Water Pump', keys:['water pump','water pumps','waterpump','waterpumps','dewatering pump','pump','pumps']},
   {label:'Vibrator', keys:['vibrator','vibrators','vibrater','concrete vibrator','needle vibrator','poker vibrator']},
+  {label:'Kept by Sub-Contractor', keys:['kept by sub contractor','kept by contractor','sub contractor kept','retained by sub contractor']},
   {label:'Other', keys:['other','دیگر']}
 ];
 function normWorkLabel(s){
@@ -10435,7 +10444,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-10-09-v83';
+const APP_VERSION='2026-10-09-v84';
 // Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
 // GitHub Pages is the live OTA source of truth while Wasmer Edge GitHub deploys are failing.
 const OTA_ORIGIN='https://abbashafiz.github.io/Buildpro-crm';
