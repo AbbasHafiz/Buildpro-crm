@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-10-09-v84">
+<meta name="app-version" content="2026-10-09-v85">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -1137,7 +1137,7 @@ select option{background:var(--s2);}
     <!-- Further payment breakdown — who the sub-con paid onward (partnership tracking) -->
     <div style="margin-top:6px;padding-top:12px;border-top:1px solid var(--bor)">
       <div style="font-size:var(--fs-sm);font-weight:700;color:var(--txt);margin-bottom:4px">🔀 Further Payment Breakdown</div>
-      <div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:10px">Optional — pick a labour type on each line (Mason / Chunnai, Shuttering, Mixture Machine, Phatty, Kept by Sub-Contractor…) so Work spend can group the same trade together.</div>
+      <div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:10px">Optional — pick a labour type on each line (Mason / Chunnai, Plaster Mason, Shuttering, Mixture Machine, Phatty, Kept by Sub-Contractor…) so Work spend can group the same trade together.</div>
       <div class="spbd-chips" id="sp-bd-chips"></div>
       <div class="li-wrap li-spbd">
         <div class="li-hd"><span>Labour Type</span><span>Person Name</span><span>Amount</span><span></span></div>
@@ -4976,9 +4976,11 @@ function saveSpay(){
 // (the field Work spend already reads). "Other" keeps a short custom label in that same field.
 // Rental / equipment types sit together after the labour trades. Each one is its own sum
 // (Phatty, Ghori, Rehri…), not one shared Rental bucket.
+// Plaster Mason sits next to Mason / Chunnai. It is its own trade, not a spelling of Mason.
 // Kept by Sub-Contractor is cash the sub-contractor retained. It sits after rentals, before Other.
 const SP_BD_TRADE_OPTS=[
   {v:'Mason / Chunnai', canon:'Mason / Chunnai', g:'labour'},
+  {v:'Plaster Mason', canon:'Plaster Mason', g:'labour'},
   {v:'Shuttering', canon:'Shuttering', g:'labour'},
   {v:'Steel Binding', canon:'Steel Binding', g:'labour'},
   {v:'Steel Fixing', canon:'Steel Fixing', g:'labour'},
@@ -5950,7 +5952,7 @@ function fSubView(mode,el){
   const hint=e$('sub-filter-hint');
   if(hint){
     hint.textContent=subView==='work'
-      ?'One paid sum per labour type in each project. Tap Mason / Chunnai, Shuttering, Mixture Machine, Phatty, Kept by Sub-Contractor, or any other sum to see the lines. Payments stay on Payments.'
+      ?'One paid sum per labour type in each project. Tap Mason / Chunnai, Plaster Mason, Shuttering, Mixture Machine, Phatty, Kept by Sub-Contractor, or any other sum to see the lines. Payments stay on Payments.'
       :(subFilter==='paid'?'Only fully paid payment lines':subFilter==='unpaid'?'Unpaid + partial — still due':'All payment lines — paid and still due');
   }
   renderSub();
@@ -6053,6 +6055,8 @@ function spayRowHtml(p){
 // One sum per labour type inside a project. The further-breakdown dropdown stores its
 // label on breakdown.trade, which is grouped here. Older free text still counts
 // (Shatring → Shuttering, chunnai / Brick Chuuni Mason → Mason / Chunnai, Labour → General Labour).
+// Plaster Mason is its own sum next to Mason / Chunnai (plaster mason, plaster, plastering mason,
+// masons plaster). Those spellings do not fold into Mason / Chunnai.
 // Steel Fixing stays separate from Steel Binding; bare "binding" joins Steel Binding.
 // Material Lifting is its own sum. Rental spellings share a sum (phatty/phatti, ghori/ghodi,
 // rehri/rehrian, mixture machine/mixer). Tap a sum to list the lines. A slice is counted once.
@@ -6065,6 +6069,7 @@ const WORK_SPEND_CANON=[
   {label:'Steel Binding', keys:['steel binding','steel bindings','steel bind','steelbinding','steel binder','steel binders','steel binding wala','steelbinder','binding','bindings','binding wala','steel bind wala','سٹیل بائنڈنگ']},
   {label:'Material Lifting', keys:['material lifting','material lift','materials lifting','materials lift','lifting material','material lifting wala','maal lifting']},
   {label:'Mason / Chunnai', keys:['mason chunnai','mason chunai','mason','masons','brick chuuni mason','chuuni mason','chuuni','chunnai','chunai','chunni','chuni','raj mistri','brickwork','brickwork chuuni','contractor mason','contractor mason raj mistri','brick mason','mistri']},
+  {label:'Plaster Mason', keys:['plaster mason','plaster','plastering mason','masons plaster']},
   {label:'Electrician', keys:['electrician','electric','الیکٹریشن']},
   {label:'Plumber', keys:['plumber','plumbing','پلمبر']},
   {label:'Tile Fixer', keys:['tile fixer','tile work','tiling','tiles','ٹائل']},
@@ -10444,7 +10449,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-10-09-v84';
+const APP_VERSION='2026-10-09-v85';
 // Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
 // GitHub Pages is the live OTA source of truth while Wasmer Edge GitHub deploys are failing.
 const OTA_ORIGIN='https://abbashafiz.github.io/Buildpro-crm';
