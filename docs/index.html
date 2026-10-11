@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-10-09-v88">
+<meta name="app-version" content="2026-10-11-v89">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -1098,7 +1098,7 @@ select option{background:var(--s2);}
       <div class="fg"><label>Date</label><input type="date" id="sp-date"></div>
       <div class="fg"><label>Amount (PKR)</label><input type="number" id="sp-amt" placeholder="0" oninput="cSpBd();syncSpayPayHint()"></div>
     </div>
-    <div class="fg"><label>Contract Value for This Project (PKR)</label><input type="number" id="sp-proj-contract" placeholder="Total agreed for this project"></div>
+    <div class="fg"><label>Contract Value for This Project (PKR)</label><input type="number" id="sp-proj-contract" placeholder="Total agreed for this project" oninput="this.dataset.touched='1'"></div>
     <div class="f2">
       <div class="fg"><label>Phase / Milestone</label>
         <select id="sp-phase"><option>Advance</option><option>Foundation</option><option>DPC Level</option><option>Lintel Level</option><option>Roof Slab</option><option>Structure Complete</option><option>Finishing</option><option>Final Payment</option><option>Kept by Sub-Contractor</option><option>Other</option></select>
@@ -3253,6 +3253,7 @@ function oDs(dsId){
 function selDs(dsId,val,label){
   e$(dsId).classList.remove('on');const cfg=DS[dsId];if(!cfg)return;sv(cfg.tx,label);sv(cfg.id,val);
   if(dsId==='ds-sp-sub')refreshSpLoanRow();
+  if(dsId==='ds-sp-sub'||dsId==='ds-sp-proj')syncSpayContractField();
   if(dsId==='ds-wo-sub'){
     const sc=D.subcons.find(x=>x.id===val);
     if(sc){
@@ -3408,7 +3409,7 @@ function calcProjVal(){
 function iP(){sv('proj-eid','');e$('proj-eb').classList.remove('on');e$('proj-sh-t').textContent='New Project';['p-name','p-loc','p-plot','p-val','p-area','p-rate','p-notes','p-start','p-end','p-custom-stage','p-partner-name','p-my-share','p-partner-share'].forEach(id=>sv(id,''));const pip=e$('p-is-partner');if(pip)pip.checked=false;const ppf=e$('p-partner-fields');if(ppf)ppf.style.display='none';const pls=e$('p-lumpsum');if(pls)pls.checked=false;sv('p-cli-t','');sv('p-cli-id','');sv('p-phase','Foundation');const lbl=e$('proj-calc-label');if(lbl)lbl.textContent='Enter area × rate to calculate';const cv=e$('proj-calc-val');if(cv)cv.textContent='—';}
 function iCli(){sv('cli-eid','');e$('cli-eb').classList.remove('on');e$('cli-sh-t').textContent='New Client';['c-name','c-ph','c-cnic','c-city','c-email','c-addr'].forEach(id=>sv(id,''));}
 function iSub(){sv('sub-eid','');e$('sub-eb').classList.remove('on');e$('sub-sh-t').textContent='New Sub-Contractor';['s-name','s-ph','s-contract','s-notes','s-cnic'].forEach(id=>sv(id,''));sv('s-proj-t','');sv('s-proj-id','');}
-function iSpay(){sv('spay-eid','');e$('spay-eb').classList.remove('on');e$('spay-sh-t').textContent='Sub-Con Payment';['sp-sub-t','sp-sub-id','sp-proj-t','sp-proj-id','sp-desc','sp-custom-stage','sp-proj-contract','sp-paid-amt'].forEach(id=>sv(id,''));sv('sp-amt','');sv('sp-date',today());sv('sp-phase','Advance');sv('sp-method','Cash');clearSpBd();renderSpBdChips();refreshSpLoanRow();syncSpayPayHint();}
+function iSpay(){sv('spay-eid','');e$('spay-eb').classList.remove('on');e$('spay-sh-t').textContent='Sub-Con Payment';['sp-sub-t','sp-sub-id','sp-proj-t','sp-proj-id','sp-desc','sp-custom-stage','sp-proj-contract','sp-paid-amt'].forEach(id=>sv(id,''));sv('sp-amt','');sv('sp-date',today());sv('sp-phase','Advance');sv('sp-method','Cash');clearSpBd();renderSpBdChips();refreshSpLoanRow();syncSpayPayHint();resetSpayContractTouched();}
 function refreshSpLoanRow(){
   const row=e$('sp-loan-row');const cb=e$('sp-apply-loan');const hint=e$('sp-loan-hint');
   if(!row)return;
@@ -4856,7 +4857,7 @@ function fillSelectOrCustom(selId,customId,selVal,customVal,otherOpt){
 function eP(id){const r=D.projects.find(x=>x.id===id);if(!r)return;sv('proj-eid',id);e$('proj-eb').classList.add('on');e$('proj-sh-t').textContent='Edit Project';sv('p-name',r.name);sv('p-loc',r.loc);sv('p-plot',r.plot);sv('p-val',r.value);sv('p-notes',r.notes);fillSelectOrCustom('p-phase','p-custom-stage',r.phase||'Foundation',r.customStage||'','Custom');sv('p-area',r.area||'');sv('p-rate',r.rate||'');sv('p-partner-name',r.partnerName||'');sv('p-my-share',r.myShare||'');sv('p-partner-share',r.partnerShare||'');const pip2=e$('p-is-partner');if(pip2)pip2.checked=r.isPartner||false;const pls2=e$('p-lumpsum');if(pls2)pls2.checked=r.lumpSum||false;const ppf2=e$('p-partner-fields');if(ppf2)ppf2.style.display=r.isPartner?'block':'none';sv('p-start',r.start);sv('p-end',r.end);const c=D.clients.find(x=>x.id===r.clientId);sv('p-cli-t',c?c.name:'');sv('p-cli-id',r.clientId||'');O('sh-proj');}
 function eCli(id){const r=D.clients.find(x=>x.id===id);if(!r)return;sv('cli-eid',id);e$('cli-eb').classList.add('on');e$('cli-sh-t').textContent='Edit Client';sv('c-name',r.name);sv('c-ph',r.phone);sv('c-cnic',r.cnic);sv('c-city',r.city);sv('c-email',r.email);sv('c-addr',r.addr);O('sh-cli');}
 function eSub(id){const r=D.subcons.find(x=>x.id===id);if(!r)return;sv('sub-eid',id);e$('sub-eb').classList.add('on');e$('sub-sh-t').textContent='Edit Contractor';sv('s-name',r.name);sv('s-trade',r.trade);sv('s-ph',r.phone);sv('s-contract',r.contract);sv('s-ptype',r.ptype);sv('s-notes',r.notes);sv('s-cnic',r.cnic||'');const p=D.projects.find(x=>x.id===r.projectId);sv('s-proj-t',p?p.name:'');sv('s-proj-id',r.projectId||'');O('sh-sub');}
-function eSpay(id){const r=D.subpays.find(x=>x.id===id);if(!r)return;sv('spay-eid',id);e$('spay-eb').classList.add('on');e$('spay-sh-t').textContent='Edit Payment';const sc=D.subcons.find(x=>x.id===r.subconId);sv('sp-sub-t',sc?sc.name:r.subconName||'');sv('sp-sub-id',r.subconId||'');const p=D.projects.find(x=>x.id===r.projectId);sv('sp-proj-t',p?p.name:r.projectName||'');sv('sp-proj-id',r.projectId||'');sv('sp-date',r.date);sv('sp-amt',r.amount);sv('sp-proj-contract',r.projContract||'');fillSelectOrCustom('sp-phase','sp-custom-stage',r.phase,'','Other');sv('sp-method',r.method);sv('sp-desc',r.desc);sv('sp-paid-amt',String(spayPaidAmt(r)));clearSpBd();renderSpBdChips();(r.breakdown||[]).forEach(b=>addSpBd(b));if(!(r.breakdown||[]).length)cSpBd();refreshSpLoanRow();syncSpayPayHint();O('sh-spay');}
+function eSpay(id){const r=D.subpays.find(x=>x.id===id);if(!r)return;sv('spay-eid',id);e$('spay-eb').classList.add('on');e$('spay-sh-t').textContent='Edit Payment';const sc=D.subcons.find(x=>x.id===r.subconId);sv('sp-sub-t',sc?sc.name:r.subconName||'');sv('sp-sub-id',r.subconId||'');const p=D.projects.find(x=>x.id===r.projectId);sv('sp-proj-t',p?p.name:r.projectName||'');sv('sp-proj-id',r.projectId||'');sv('sp-date',r.date);sv('sp-amt',r.amount);sv('sp-proj-contract',spayContractFieldValue(r.subconId,r.projectId,r.projContract));resetSpayContractTouched();fillSelectOrCustom('sp-phase','sp-custom-stage',r.phase,'','Other');sv('sp-method',r.method);sv('sp-desc',r.desc);sv('sp-paid-amt',String(spayPaidAmt(r)));clearSpBd();renderSpBdChips();(r.breakdown||[]).forEach(b=>addSpBd(b));if(!(r.breakdown||[]).length)cSpBd();refreshSpLoanRow();syncSpayPayHint();O('sh-spay');}
 function eCpay(id){const r=D.cpays.find(x=>x.id===id);if(!r)return;sv('cpay-eid',id);e$('cpay-eb').classList.add('on');e$('cpay-sh-t').textContent='Edit Payment';const c=D.clients.find(x=>x.id===r.clientId);sv('cp-cli-t',c?c.name:'');sv('cp-cli-id',r.clientId||'');const p=D.projects.find(x=>x.id===r.projectId);sv('cp-proj-t',p?p.name:'');sv('cp-proj-id',r.projectId||'');sv('cp-date',r.date);sv('cp-time',r.time||'');sv('cp-amt',r.amount);sv('cp-pay-type',r.payType||'contract');const inv=D.invoices.find(x=>x.id===r.invoiceId);sv('cp-inv-t',inv?inv.num:'');sv('cp-inv-id',r.invoiceId||'');sv('cp-method',r.method);sv('cp-note',r.note);fillSelectOrCustom('cp-milestone','cp-custom-stage',r.milestone||'','','Other');O('sh-cpay');}
 function eInv(id){
   const r=D.invoices.find(x=>x.id===id);if(!r)return;
@@ -4965,7 +4966,13 @@ function saveSpay(){
   }
   const applyLoan=!!e$('sp-apply-loan')?.checked;
   ups('subpays',doc);
+  const contractRaw=e$('sp-proj-contract')?.value;
+  const contractSet=contractRaw!=null&&String(contractRaw).trim()!=='';
+  // This field is the project contract the card shows. Write it on subconContracts
+  // so a stale copy on another payment cannot keep the old figure.
+  if(contractSet&&doc.subconId&&doc.projectId)upsertSubconProjectContract(doc.subconId,doc.projectId,doc.projContract);
   if(applyLoan)applySpayToPersLoan(doc);
+  else if(contractSet&&doc.subconId&&doc.projectId)sched();
   X('sh-spay');renderAll();
   const st=spayPayStatus(doc);
   toast(eid?'Updated ✓':(st==='partial'?`Saved · paid ${fmt(doc.paidAmt)} / due ${fmt(spayDueAmt(doc))}`:(st==='unpaid'?`Saved · unpaid (due ${fmt(doc.amount)})`:`PKR ${fmt(doc.amount)} recorded ✓`))+(applyLoan?' + loan repayment':''));
@@ -5834,24 +5841,91 @@ function renderPay(){
 }
 
 // ════ SUB-CON PROJECT CONTRACT ════
+// The Contract box under a project row reads subconProjectContract().
+// An explicit subconContracts row (Contract button, or "Contract value for this project"
+// on the payment form) wins over projContract copies left on older payments.
+// A saved 0 must not fall through with || to that stale max — that kept 825,000 on screen.
+function numMoney(v){
+  if(typeof v==='number')return Number.isFinite(v)?v:0;
+  const n=parseFloat(String(v==null?'':v).replace(/,/g,'').trim());
+  return Number.isFinite(n)?n:0;
+}
+function explicitSubconContract(subconId,projectId){
+  if(!subconId||!projectId)return null;
+  return (D.subconContracts||[]).find(x=>x.subconId===subconId&&x.projectId===projectId)||null;
+}
+function subconProjectContract(subconId,projectId,pays){
+  const row=explicitSubconContract(subconId,projectId);
+  // Explicit row wins even when it is lower than a projContract copied onto an old payment.
+  if(row&&row.value!=null&&String(row.value).trim()!=='')return numMoney(row.value);
+  return (pays||[]).reduce((m,p)=>Math.max(m,numMoney(p.projContract)),0);
+}
+function subconContractTotal(subcon){
+  const rows=(D.subconContracts||[]).filter(x=>x&&x.subconId===subcon.id&&x.projectId&&x.value!=null&&String(x.value).trim()!=='');
+  if(!rows.length)return numMoney(subcon&&subcon.contract);
+  const seen=new Set();
+  let sum=0;
+  rows.forEach(x=>{
+    if(seen.has(x.projectId))return;
+    seen.add(x.projectId);
+    sum+=numMoney(x.value);
+  });
+  return sum;
+}
+function upsertSubconProjectContract(subconId,projectId,value,notes){
+  if(!subconId||!projectId)return null;
+  if(!D.subconContracts)D.subconContracts=[];
+  const val=numMoney(value);
+  const now=new Date().toISOString();
+  const idx=D.subconContracts.findIndex(x=>x.subconId===subconId&&x.projectId===projectId);
+  if(idx>=0){
+    const row=D.subconContracts[idx];
+    row.value=val;
+    if(notes!==undefined)row.notes=notes;
+    row.updatedAt=now;
+    return row;
+  }
+  const row={id:uid(),subconId,projectId,value:val,notes:notes||'',createdAt:now,updatedAt:now};
+  D.subconContracts.push(row);
+  return row;
+}
+function resetSpayContractTouched(){
+  const inp=e$('sp-proj-contract');
+  if(inp)delete inp.dataset.touched;
+}
+function spayContractFieldValue(subconId,projectId,fallback){
+  const pays=liveSubpays().filter(p=>p.subconId===subconId&&(p.projectId||'')===(projectId||''));
+  const n=subconProjectContract(subconId,projectId,pays);
+  if(n>0)return n;
+  const fb=numMoney(fallback);
+  return fb>0?fb:'';
+}
+function syncSpayContractField(){
+  const inp=e$('sp-proj-contract');if(!inp||inp.dataset.touched==='1')return;
+  const sid=e$('sp-sub-id')?.value||'';
+  const pid=e$('sp-proj-id')?.value||'';
+  if(!sid||!pid)return;
+  const n=spayContractFieldValue(sid,pid,0);
+  inp.value=n===''?'':String(n);
+}
 function openSpCon(subconId,projectId){
   const sc=D.subcons.find(x=>x.id===subconId);
   const pr=D.projects.find(x=>x.id===projectId);
-  const existing=(D.subconContracts||[]).find(x=>x.subconId===subconId&&x.projectId===projectId);
+  const pays=liveSubpays().filter(x=>x.subconId===subconId&&x.projectId===projectId);
+  const existing=explicitSubconContract(subconId,projectId);
+  const shown=subconProjectContract(subconId,projectId,pays);
   sv('spcon-sid',subconId);sv('spcon-pid',projectId);
-  sv('spcon-val',existing?.value||'');sv('spcon-notes',existing?.notes||'');
+  sv('spcon-val',shown>0?shown:'');sv('spcon-notes',existing?.notes||'');
   const t=e$('spcon-title');if(t)t.textContent=(sc?.name||'Sub-Con')+' — '+(pr?.name||'Project');
   const s=e$('spcon-sub');if(s)s.textContent=sc?.trade||'';
   O('sh-spcon');
 }
 function saveSpCon(){
   const sid=e$('spcon-sid').value;const pid=e$('spcon-pid').value;
-  const val=parseFloat(e$('spcon-val').value)||0;
+  if(!sid||!pid){toast('Could not save contract','err');return;}
+  const val=numMoney(e$('spcon-val').value);
   const notes=e$('spcon-notes').value;
-  if(!D.subconContracts)D.subconContracts=[];
-  const idx=D.subconContracts.findIndex(x=>x.subconId===sid&&x.projectId===pid);
-  if(idx>=0){D.subconContracts[idx].value=val;D.subconContracts[idx].notes=notes;}
-  else D.subconContracts.push({id:uid(),subconId:sid,projectId:pid,value:val,notes});
+  upsertSubconProjectContract(sid,pid,val,notes);
   sched();X('sh-spcon');renderSub();toast('Contract value saved ✓');
 }
 
@@ -5860,8 +5934,7 @@ async function pdfSubProjStatement(subconId,projectId){
   const sc=D.subcons.find(x=>x.id===subconId);
   const pr=D.projects.find(x=>x.id===projectId);
   const pays=liveSubpays().filter(x=>x.subconId===subconId&&x.projectId===projectId).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
-  const contract=(D.subconContracts||[]).find(x=>x.subconId===subconId&&x.projectId===projectId);
-  const contractVal=contract?.value||pays.reduce((m,p)=>Math.max(m,p.projContract||0),0);
+  const contractVal=subconProjectContract(subconId,projectId,pays);
   const totalPaid=pays.reduce((s,p)=>s+spayPaidAmt(p),0);
   // Signed remaining: overpayment shows negative until contract is increased / more funds received
   const remaining=contractVal>0?(contractVal-totalPaid):0;
@@ -6387,8 +6460,7 @@ function renderSubWork(){
     const allPaysRaw=allPays.filter(p=>p.subconId===s.id);
     const totalPaid=allPaysRaw.reduce((t,p)=>t+spayPaidAmt(p),0);
     const totalDue=allPaysRaw.reduce((t,p)=>t+spayDueAmt(p),0);
-    const projContracts=(D.subconContracts||[]).filter(x=>x.subconId===s.id);
-    const totalContract=projContracts.length>0?projContracts.reduce((sum,x)=>sum+x.value,0):(s.contract||0);
+    const totalContract=subconContractTotal(s);
     const rem=totalContract>0?(totalContract-totalPaid):0;
     const remClr=rem>0?'var(--gold)':rem<0?'var(--red)':'var(--grn)';
     const pct=totalContract>0?Math.min(100,Math.round(totalPaid/totalContract*100)):0;
@@ -6447,8 +6519,7 @@ function renderSub(){
     if(subFilter!=='all'&&!allPays.length)return'';
     const totalPaid=allPaysRaw.reduce((t,p)=>t+spayPaidAmt(p),0);
     const totalDue=allPaysRaw.reduce((t,p)=>t+spayDueAmt(p),0);
-    const projContracts=(D.subconContracts||[]).filter(x=>x.subconId===s.id);
-    const totalContract=projContracts.length>0?projContracts.reduce((sum,x)=>sum+x.value,0):(s.contract||0);
+    const totalContract=subconContractTotal(s);
     // Signed: paid over contract → negative remaining (until contract raised / more funds in)
     const rem=totalContract>0?(totalContract-totalPaid):0;
     const remClr=rem>0?'var(--gold)':rem<0?'var(--red)':'var(--grn)';
@@ -6460,8 +6531,7 @@ function renderSub(){
       const projPaysAll=allPaysRaw.filter(p=>(p.projectId||'__none__')===pid);
       const projPays=allPays.filter(p=>(p.projectId||'__none__')===pid).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
       const projTotal=projPaysAll.reduce((sum,p)=>sum+spayPaidAmt(p),0);
-      const scCon=(D.subconContracts||[]).find(x=>x.subconId===s.id&&x.projectId===pid);
-      const projContract=scCon?.value||projPaysAll.filter(p=>p.projContract>0).reduce((max,p)=>Math.max(max,p.projContract),0);
+      const projContract=subconProjectContract(s.id,pid,projPaysAll);
       const projRem=projContract>0?(projContract-projTotal):0;
       const projName=proj?proj.name:(pid==='__none__'?'No Project':projPays[0]?.projectName||'Unknown Project');
       return{pid,projName,projPays,projTotal,projContract,projRem};
@@ -6500,7 +6570,7 @@ function renderSub(){
       </div>`;
       const pBody=`${showProjStats?`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px">
               <div style="background:var(--bg);border-radius:7px;padding:8px;text-align:center">
-                <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--gold)">${pg.projContract>0?fmt(pg.projContract):'Tap ✏️'}</div>
+                <div data-role="proj-contract" style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--gold)">${pg.projContract>0?fmt(pg.projContract):'Tap ✏️'}</div>
                 <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Contract</div>
               </div>
               <div style="background:var(--bg);border-radius:7px;padding:8px;text-align:center">
@@ -6508,7 +6578,7 @@ function renderSub(){
                 <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Paid</div>
               </div>
               <div style="background:var(--bg);border-radius:7px;padding:8px;text-align:center">
-                <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:${pg.projRem>0?'var(--gold)':pg.projRem<0?'var(--red)':'var(--grn)'}">${pg.projContract>0?fmt(pg.projRem):'—'}</div>
+                <div data-role="proj-remaining" style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:${pg.projRem>0?'var(--gold)':pg.projRem<0?'var(--red)':'var(--grn)'}">${pg.projContract>0?fmt(pg.projRem):'—'}</div>
                 <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Remaining</div>
               </div>
             </div>`:''}
@@ -10510,7 +10580,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-10-09-v88';
+const APP_VERSION='2026-10-11-v89';
 // Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
 // GitHub Pages is the live OTA source of truth while Wasmer Edge GitHub deploys are failing.
 const OTA_ORIGIN='https://abbashafiz.github.io/Buildpro-crm';
