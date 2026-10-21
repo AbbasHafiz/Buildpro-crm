@@ -1,9 +1,10 @@
 // Bump APP_VERSION on every release so browsers detect a new service worker.
-const APP_VERSION = '2026-10-11-v89';
+const APP_VERSION = '2026-10-21-v90';
 const CACHE = 'buildpro-' + APP_VERSION;
 const CORE = ['/manifest.json', '/icon-192.png', '/icon-512.png'];
 
 self.addEventListener('message', e => {
+  if (e.origin && self.location && e.origin !== self.location.origin) return;
   if (e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
@@ -45,11 +46,8 @@ function isHtmlRequest(req) {
   }
 }
 
-self.addEventListener('fetch', e => {
-  const url = e.request.url;
-
-  // External / CDN — network only
-  if (
+function isCdn(url) {
+  return (
     url.includes('googleapis.com') ||
     url.includes('accounts.google.com') ||
     url.includes('googleusercontent.com') ||
@@ -58,8 +56,17 @@ self.addEventListener('fetch', e => {
     url.includes('fonts.gstatic.com') ||
     url.includes('cdnjs.cloudflare.com') ||
     url.includes('cdn.jsdelivr.net')
-  ) {
-    e.respondWith(fetch(e.request).catch(() => new Response('', { status: 503 })));
+  );
+}
+
+self.addEventListener('fetch', e => {
+  const url = e.request.url;
+  let sameOrigin = false;
+  try { sameOrigin = new URL(url).origin === self.location.origin; } catch (_) {}
+
+  // Never cache cross-origin API calls (Supabase auth/data). CDN scripts stay network-only.
+  if (!sameOrigin) {
+    if (isCdn(url)) e.respondWith(fetch(e.request).catch(() => new Response('', { status: 503 })));
     return;
   }
 

@@ -4,11 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#0a0908">
+<meta http-equiv="Content-Security-Policy" content="base-uri 'self'; object-src 'none'; frame-src 'none'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https: wss:; worker-src 'self'">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-10-11-v89">
+<meta name="app-version" content="2026-10-21-v90">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -374,6 +375,9 @@ select option{background:var(--s2);}
 .um-i{padding:10px 13px;font-size:var(--fs-md);color:var(--mut);cursor:pointer;border-radius:9px;}
 .um-i:hover{background:var(--s3);color:var(--txt);}
 .um-i.red{color:var(--red);}
+.admin-lock{background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:28px 18px;text-align:center;margin-bottom:12px;}
+.admin-lock h2{font-family:'Bebas Neue',sans-serif;letter-spacing:1.5px;color:var(--gold);font-size:32px;font-weight:400;margin:0;}
+.admin-lock p{color:var(--mut);font-size:var(--fs-sm);line-height:1.55;margin:10px 0 0;}
 
 /* LOGO UPLOAD IN PROFILE */
 .logo-upload-area{display:flex;align-items:center;gap:16px;background:var(--bg);border:1px solid var(--bor);border-radius:10px;padding:16px;margin-bottom:14px;cursor:pointer;}
@@ -430,6 +434,7 @@ select option{background:var(--s2);}
     <div class="um-nm" id="um-nm">—</div>
     <div class="um-i" onclick="syncNow();cMenu()">🔄 Sync Now</div>
     <div class="um-i" onclick="navTo('archive','Archive');cMenu()">📦 Archive</div>
+    <div class="um-i" onclick="navTo('admin','Admin');cMenu()">🔐 Admin</div>
     <div class="um-i" onclick="exportBk()">⬇ Export Backup</div>
     <div class="um-i" onclick="importBk()">⬆ Import Backup</div>
     <div class="um-i" onclick="openBackendSettings();cMenu()">⚙ Backend / Self-host</div>
@@ -807,6 +812,12 @@ select option{background:var(--s2);}
       </div>
 
       <div id="profile-pane-backend" style="display:none">
+        <div id="pgbe-lock" class="admin-lock" style="display:none">
+          <div style="font-size:26px;margin-bottom:6px">🔒</div>
+          <h2>ADMIN</h2>
+          <p>Backend settings are part of the admin panel. Sign in as the data owner, or use Local only on this device.</p>
+        </div>
+        <div id="pgbe-form">
         <div class="profile-section">
           <div class="ps-title">Current connection</div>
           <div class="ps-row"><span class="ps-lbl">Mode</span><span class="ps-val" id="pgbe-status-mode">—</span></div>
@@ -857,6 +868,36 @@ select option{background:var(--s2);}
           <button class="btn btn-gold" style="width:100%" onclick="saveBackendSettings('pgbe')">💾 Save &amp; Apply Backend</button>
           <button class="btn btn-grey" style="width:100%" onclick="resetBackendSettings()">Clear saved backend settings</button>
         </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADMIN (same shell as the rest of the app; writes require an owner session) -->
+    <div class="pg" id="pg-admin">
+      <div id="admin-lock" class="admin-lock">
+        <div style="font-size:28px;margin-bottom:6px">🔒</div>
+        <h2>ADMIN</h2>
+        <p>This panel is only for the signed-in owner of this data. Sign in with Google, or choose Local only on this device. Nothing here can be changed until then.</p>
+        <button class="btn btn-gold" style="width:100%;margin-top:16px" onclick="signOut()">Back to sign in</button>
+      </div>
+      <div id="admin-body" style="display:none">
+        <div class="profile-section">
+          <div class="ps-title">Session</div>
+          <div class="ps-row"><span class="ps-lbl">Name</span><span class="ps-val" id="ad-name">—</span></div>
+          <div class="ps-row"><span class="ps-lbl">Email</span><span class="ps-val" id="ad-email">—</span></div>
+          <div class="ps-row"><span class="ps-lbl">Mode</span><span class="ps-val" id="ad-mode">—</span></div>
+          <div class="ps-row"><span class="ps-lbl">Data owner</span><span class="ps-val" id="ad-uid">—</span></div>
+        </div>
+        <div class="profile-section">
+          <div class="ps-title">Owner tools</div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <button class="btn btn-gold" type="button" onclick="goAdminCompany()">Company profile</button>
+            <button class="btn btn-grey" type="button" onclick="goAdminBackend()">Backend / self-host</button>
+            <button class="btn btn-grey" type="button" onclick="exportBk()">Export backup</button>
+            <button class="btn btn-grey" type="button" onclick="importBk()">Import backup</button>
+          </div>
+        </div>
+        <div class="be-help">Cloud rows are read and written only for the signed-in user. Self-host projects still need the Row Level Security policy in SELFHOST.md — a browser check cannot replace that. OAuth redirects stay on this site. The service role key is rejected.</div>
       </div>
     </div>
 
@@ -916,6 +957,10 @@ select option{background:var(--s2);}
     <div class="bi" onclick="goPage('ledger',this,'General Ledger')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
       Ledger
+    </div>
+    <div class="bi" onclick="goPage('admin',this,'Admin')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="11" width="16" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+      Admin
     </div>
     <div class="bi" onclick="goPage('profile',this,'Company Profile')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
@@ -1674,7 +1719,7 @@ select option{background:var(--s2);}
   <div class="sh-grip"></div>
   <div class="sh-hd"><div class="sh-title">Backend Settings</div><button class="sh-x" onclick="X('sh-backend')">×</button></div>
   <div class="sh-body">
-    <div style="font-size:var(--fs-xs);color:var(--mut);line-height:1.55;margin-bottom:12px">Point this app at <strong style="color:var(--txt)">your</strong> Supabase project so a client can host their own database and Google Sign-In. Secrets stay in their account — only the public anon key is stored in the browser.</div>
+    <div style="font-size:var(--fs-xs);color:var(--mut);line-height:1.55;margin-bottom:12px">Point this app at <strong style="color:var(--txt)">your</strong> Supabase project so a client can host their own database and Google Sign-In. Secrets stay in their account — only the public anon key is stored in the browser. This screen is device setup before sign-in. Admin tools (backup, company, backend changes inside the app) stay locked until the data owner is signed in.</div>
     <div style="font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;font-weight:700">Connection mode</div>
     <div class="be-mode" id="be-mode">
       <label id="be-lab-hosted" style="display:none" onclick="bePickMode('hosted')">
@@ -2364,10 +2409,71 @@ function defaultBackendCfg(){
     deeplink:APP_DEEPLINK
   };
 }
+function jwtRole(key){
+  try{
+    const part=String(key||'').split('.')[1];
+    if(!part)return'';
+    const json=JSON.parse(atob(part.replace(/-/g,'+').replace(/_/g,'/')));
+    return String(json&&json.role||'');
+  }catch(e){return'';}
+}
+function validDeeplink(raw){
+  const s=String(raw||'').trim();
+  const m=s.match(/^([a-z][a-z0-9+.-]*):\/\/\S+$/i);
+  if(!m)return'';
+  const scheme=m[1].toLowerCase();
+  if(['http','https','javascript','data','file','blob','vbscript'].indexOf(scheme)>=0)return'';
+  return s;
+}
+function validSupabaseUrl(raw){
+  try{
+    const u=new URL(String(raw||'').trim());
+    if(u.username||u.password)return'';
+    if(u.protocol==='https:')return u.origin;
+    if(u.protocol==='http:'&&(u.hostname==='localhost'||u.hostname==='127.0.0.1'))return u.origin;
+  }catch(e){}
+  return'';
+}
+function redirectIsSafe(raw){
+  const s=String(raw||'').trim();
+  if(!s)return true;
+  if(validDeeplink(s))return true;
+  try{
+    const u=new URL(s);
+    if(u.username||u.password)return false;
+    if(u.origin===location.origin)return u.protocol==='https:'||u.protocol==='http:';
+    if((u.hostname==='localhost'||u.hostname==='127.0.0.1')&&(u.protocol==='http:'||u.protocol==='https:'))return true;
+  }catch(e){}
+  return false;
+}
+function safeRedirectUrl(raw){
+  const fallback=location.origin+location.pathname;
+  const s=String(raw||'').trim();
+  if(!s||!redirectIsSafe(s))return fallback;
+  if(validDeeplink(s))return s;
+  try{const u=new URL(s);return u.origin+u.pathname+u.search;}catch(e){return fallback;}
+}
+function sanitizeStoredBackend(raw){
+  const base=defaultBackendCfg();
+  const src=(raw&&typeof raw==='object'&&!Array.isArray(raw))?raw:{};
+  const mode=['hosted','custom','local'].indexOf(src.mode)>=0?src.mode:'hosted';
+  const deeplink=validDeeplink(src.deeplink)||APP_DEEPLINK;
+  const redirectRaw=String(src.redirectUrl||'').trim();
+  const redirectUrl=redirectRaw&&redirectIsSafe(redirectRaw)?redirectRaw:'';
+  const googleClientId=String(src.googleClientId||'').replace(/[\r\n]/g,'').trim().slice(0,200);
+  if(mode==='local')return Object.assign({},base,{mode:'local',supabaseUrl:'',supabaseAnonKey:'',redirectUrl:'',googleClientId:'',deeplink});
+  if(mode==='custom'){
+    const url=validSupabaseUrl(src.supabaseUrl);
+    let key=String(src.supabaseAnonKey||'').trim();
+    if(jwtRole(key)==='service_role')key='';
+    return {mode:'custom',supabaseUrl:url||'',supabaseAnonKey:key,redirectUrl,googleClientId,deeplink};
+  }
+  return Object.assign({},base,{mode:'hosted',supabaseUrl:'',supabaseAnonKey:'',redirectUrl,googleClientId,deeplink});
+}
 function loadBackendCfg(){
   try{
     const raw=localStorage.getItem(BP_BACKEND_KEY);
-    if(raw)return{...defaultBackendCfg(),...JSON.parse(raw)};
+    if(raw)return sanitizeStoredBackend(JSON.parse(raw));
   }catch(e){}
   return defaultBackendCfg();
 }
@@ -2376,20 +2482,19 @@ let backendCfg=loadBackendCfg();
 function resolveSupaCreds(){
   if(backendCfg.mode==='local')return null;
   if(backendCfg.mode==='custom'){
-    const url=String(backendCfg.supabaseUrl||'').trim().replace(/\/+$/,'');
+    const url=validSupabaseUrl(backendCfg.supabaseUrl);
     const key=String(backendCfg.supabaseAnonKey||'').trim();
-    if(url&&key)return{url,key};
-    return null;
+    if(!url||!key||jwtRole(key)==='service_role')return null;
+    return{url,key};
   }
+  if(jwtRole(HOSTED_SUPA_KEY)==='service_role')return null;
   return{url:HOSTED_SUPA_URL,key:HOSTED_SUPA_KEY};
 }
 function resolveRedirectTo(){
-  const custom=String(backendCfg.redirectUrl||'').trim();
-  if(custom)return custom;
-  return window.location.origin+window.location.pathname;
+  return safeRedirectUrl(backendCfg.redirectUrl);
 }
 function resolveDeeplink(){
-  return String(backendCfg.deeplink||APP_DEEPLINK).trim()||APP_DEEPLINK;
+  return validDeeplink(backendCfg.deeplink)||APP_DEEPLINK;
 }
 function backendModeLabel(){
   if(backendCfg.mode==='custom')return'Client Supabase';
@@ -2490,21 +2595,36 @@ function readBackendForm(prefix){
 }
 function saveBackendSettings(prefix){
   const p=prefix||'be';
+  if(appIsOpen()&&!isAdminSession()){
+    toast('Admin session required to change the backend','err');return;
+  }
   const next=readBackendForm(p);
   if(!SHOW_HOSTED_BACKEND_UI && next.mode==='hosted'){
     toast('Choose Client Supabase (self-host) or Local only','err');return;
   }
+  if(['hosted','custom','local'].indexOf(next.mode)<0){
+    toast('Choose a connection mode','err');return;
+  }
   if(next.mode==='custom'){
-    if(!next.supabaseUrl||!/^https?:\/\//i.test(next.supabaseUrl)){
-      toast('Enter a valid Supabase URL (https://….supabase.co)','err');return;
+    if(!validSupabaseUrl(next.supabaseUrl)){
+      toast('Enter an https Supabase project URL','err');return;
     }
     if(!next.supabaseAnonKey||next.supabaseAnonKey.length<20){
       toast('Paste the Supabase anon/public key','err');return;
     }
+    if(jwtRole(next.supabaseAnonKey)==='service_role'){
+      toast('Paste the anon/public key, not the service_role key','err');return;
+    }
+  }
+  if(next.redirectUrl&&!redirectIsSafe(next.redirectUrl)){
+    toast('Redirect must be this site’s URL or the app deeplink','err');return;
+  }
+  if(next.deeplink&&!validDeeplink(next.deeplink)){
+    toast('Deeplink must be an app link such as com.buildpro.crm://login-callback','err');return;
   }
   const prevMode=backendCfg.mode;
   const prevCreds=JSON.stringify(resolveSupaCreds());
-  backendCfg=next;
+  backendCfg=sanitizeStoredBackend(next);
   localStorage.setItem(BP_BACKEND_KEY,JSON.stringify(backendCfg));
   const newCreds=JSON.stringify(resolveSupaCreds());
   if(p==='be')X('sh-backend');
@@ -2518,6 +2638,9 @@ function saveBackendSettings(prefix){
   }
 }
 function resetBackendSettings(){
+  if(appIsOpen()&&!isAdminSession()){
+    toast('Admin session required to reset the backend','err');return;
+  }
   if(!confirm('Clear saved backend settings? The app will reload with default connection settings.'))return;
   localStorage.removeItem(BP_BACKEND_KEY);
   backendCfg=defaultBackendCfg();
@@ -2528,9 +2651,10 @@ async function testBackendConn(prefix){
   const p=prefix||'be';
   const st=e$((p==='pgbe'?'pgbe-':'be-')+'status');
   const form=readBackendForm(p);
-  const url=String(form.supabaseUrl||'').trim().replace(/\/+$/,'');
+  const url=validSupabaseUrl(form.supabaseUrl);
   const key=String(form.supabaseAnonKey||'').trim();
-  if(!url||!key){if(st){st.className='be-status err';st.textContent='Enter URL and anon key first.';}return;}
+  if(!url||!key){if(st){st.className='be-status err';st.textContent='Enter an https URL and the anon key first.';}return;}
+  if(jwtRole(key)==='service_role'){if(st){st.className='be-status err';st.textContent='That is a service_role key. Paste the anon/public key.';}toast('Use the anon/public key','err');return;}
   if(st){st.className='be-status';st.textContent='Testing…';}
   try{
     const health=await fetch(url+'/auth/v1/health',{headers:{apikey:key,'Content-Type':'application/json'}});
@@ -2561,7 +2685,8 @@ function fProfile(tab,el){
   if(co)co.style.display=profileTab==='company'?'':'none';
   if(be)be.style.display=profileTab==='backend'?'':'none';
   if(profileTab==='backend'){
-    fillBackendForm('pgbe');
+    syncPrivilegedUI();
+    if(isAdminSession())fillBackendForm('pgbe');
     if(e$('tb-pg'))e$('tb-pg').textContent='Backend / Self-host';
   }else if(e$('tb-pg'))e$('tb-pg').textContent='Company Profile';
 }
@@ -2571,6 +2696,7 @@ function continueOffline(){
     localStorage.setItem(BP_BACKEND_KEY,JSON.stringify(backendCfg));
   }
   curUid=null;
+  sessionUser=null;
   resetDataMemory();
   const local=readLocalData('local');
   if(local)applyDataObject(local);
@@ -2597,7 +2723,85 @@ async function savePdf(doc,filename){
   }catch(e){toast('PDF error: '+(e.message||e),'err');}
 }
 // Multi-device sync state
-let baseUpdatedAt=null,applyingRemote=false,rtChannel=null,curUid=null;
+let baseUpdatedAt=null,applyingRemote=false,rtChannel=null,curUid=null,sessionUser=null;
+function safeUid(id){
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id||''))?String(id):'';
+}
+function plainClone(v,d){
+  if((d||0)>20)return null;
+  if(v===null||typeof v!=='object')return v;
+  if(Array.isArray(v))return v.slice(0,20000).map(x=>plainClone(x,(d||0)+1));
+  const o={};
+  Object.keys(v).forEach(k=>{
+    if(k==='__proto__'||k==='constructor'||k==='prototype')return;
+    o[k]=plainClone(v[k],(d||0)+1);
+  });
+  return o;
+}
+function safeImgUrl(url){
+  const s=String(url||'').trim();
+  if(!s||s==='__local__')return'';
+  if(/^data:image\/(png|jpeg|jpg|webp|gif);base64,/i.test(s)){
+    if(s.length>12*1024*1024)return'';
+    return s;
+  }
+  try{
+    const u=new URL(s);
+    if(u.username||u.password)return'';
+    if(u.protocol==='https:')return u.href;
+    if(u.protocol==='http:'&&(u.hostname==='localhost'||u.hostname==='127.0.0.1'))return u.href;
+  }catch(e){}
+  return'';
+}
+function appIsOpen(){
+  const app=document.getElementById('app');
+  return !!(app&&app.classList.contains('on'));
+}
+function isAdminSession(){
+  if(!appIsOpen())return false;
+  if(backendCfg.mode==='local')return true;
+  const id=safeUid(curUid);
+  return !!(id&&sessionUser&&safeUid(sessionUser.id)===id);
+}
+function requireAdmin(action){
+  if(isAdminSession())return true;
+  toast('Admin session required'+(action?' to '+action:''),'err');
+  return false;
+}
+function renderAdmin(){
+  const meta=sessionUser&&sessionUser.user_metadata||{};
+  const name=meta.full_name||meta.name||(sessionUser&&sessionUser.email)||(backendCfg.mode==='local'?'Local owner':'—');
+  const email=(sessionUser&&sessionUser.email)||(backendCfg.mode==='local'?'This device':'—');
+  const set=(id,v)=>{const el=e$(id);if(el)el.textContent=v||'—';};
+  set('ad-name',name);
+  set('ad-email',email);
+  set('ad-mode',backendModeLabel());
+  const id=safeUid(curUid);
+  set('ad-uid',id?(id.slice(0,8)+'…'+id.slice(-4)):(backendCfg.mode==='local'?'On this device':'—'));
+}
+function syncPrivilegedUI(){
+  const ok=isAdminSession();
+  const lock=e$('admin-lock'),body=e$('admin-body');
+  if(lock)lock.style.display=ok?'none':'block';
+  if(body)body.style.display=ok?'block':'none';
+  const form=e$('pgbe-form'),beLock=e$('pgbe-lock');
+  if(form)form.style.display=ok?'block':'none';
+  if(beLock)beLock.style.display=ok?'none':'block';
+  if(!ok&&e$('pgbe-key'))e$('pgbe-key').value='';
+  if(ok)renderAdmin();
+}
+function goAdminCompany(){
+  if(!requireAdmin('open company settings'))return;
+  const bi=[...document.querySelectorAll('.bnav .bi')].find(el=>/goPage\('profile'/.test(el.getAttribute('onclick')||''));
+  goPage('profile',bi||null,'Company Profile');
+  fProfile('company');
+}
+function goAdminBackend(){
+  if(!requireAdmin('open backend settings'))return;
+  const bi=[...document.querySelectorAll('.bnav .bi')].find(el=>/goPage\('profile'/.test(el.getAttribute('onclick')||''));
+  goPage('profile',bi||null,'Backend / Self-host');
+  fProfile('backend');
+}
 const COLLECTIONS=['clients','projects','subcons','subpays','cpays','invoices','estimates','agreements','tasks','expenses','investors','banks','subconContracts','personals','workorders','stock'];
 
 // ════ DATA (per Google user — never share localStorage across accounts) ════
@@ -2618,7 +2822,8 @@ function emptyData(){
 let D=emptyData();
 function dataStorageKey(uid){
   if(backendCfg&&backendCfg.mode==='local')return BP_DATA_PREFIX+':local';
-  if(uid)return BP_DATA_PREFIX+':'+uid;
+  const id=safeUid(uid);
+  if(id)return BP_DATA_PREFIX+':'+id;
   return BP_DATA_PREFIX+':anon';
 }
 function resetDataMemory(){
@@ -2629,17 +2834,20 @@ function resetDataMemory(){
   if(rtChannel&&supa){try{supa.removeChannel(rtChannel);}catch(e){}rtChannel=null;}
 }
 function applyDataObject(p){
-  if(!p||typeof p!=='object')return;
+  if(!p||typeof p!=='object'||Array.isArray(p))return;
+  p=plainClone(p)||{};
   const keys=['company',...COLLECTIONS,'_tomb'];
   keys.forEach(k=>{if(p[k]!==undefined)D[k]=p[k];});
   COLLECTIONS.forEach(k=>{if(!Array.isArray(D[k]))D[k]=[];});
   if(!Array.isArray(D._tomb))D._tomb=[];
+  if(!D.company||typeof D.company!=='object'||Array.isArray(D.company))D.company=emptyData().company;
+  if(D.company.logo)D.company.logo=safeImgUrl(D.company.logo)||'';
 }
 function readLocalData(uid){
   const key=dataStorageKey(uid);
   try{
     const raw=localStorage.getItem(key);
-    if(raw)return JSON.parse(raw);
+    if(raw)return plainClone(JSON.parse(raw));
   }catch(e){}
   return null;
 }
@@ -2655,7 +2863,7 @@ function claimLegacyLocalIfSafe(uid){
     localStorage.setItem(BP_DATA_PREFIX+':'+uid,legacy);
     localStorage.setItem(BP_DATA_OWNER,uid);
     localStorage.removeItem(BP_DATA_PREFIX);
-    return JSON.parse(legacy);
+    return plainClone(JSON.parse(legacy));
   }catch(e){return null;}
 }
 function writeLocalData(uid){
@@ -2683,7 +2891,7 @@ function writeLocalData(uid){
 //  - deletions propagate via tombstones (_tomb) so a deleted record is not resurrected by the other device
 //  - company profile keeps whichever copy was edited most recently (_u timestamp)
 function mergeData(mine,theirs){
-  mine=mine||{};theirs=theirs||{};
+  mine=plainClone(mine)||{};theirs=plainClone(theirs)||{};
   const out={};
   const cutoff=new Date(Date.now()-30*86400000).toISOString(); // prune tombstones older than 30 days
   const tombs={};
@@ -2755,6 +2963,7 @@ function initSupa(){
       try{sessionStorage.setItem('bp_user_switched','1');}catch(e){}
       resetDataMemory();
       curUid=null;
+      sessionUser=null;
       document.getElementById('app').classList.remove('on');
       document.getElementById('login').style.display='flex';
       toast('Signed out','info');
@@ -2832,6 +3041,7 @@ async function signOut(){
     writeLocalData('local');
     resetDataMemory();
     curUid=null;
+    sessionUser=null;
     document.getElementById('app').classList.remove('on');
     document.getElementById('login').style.display='flex';
     cMenu();toast('Signed out','info');
@@ -2842,6 +3052,7 @@ async function signOut(){
   if(supa)await supa.auth.signOut();
   resetDataMemory();
   curUid=null;
+  sessionUser=null;
   document.getElementById('app').classList.remove('on');
   document.getElementById('login').style.display='flex';
   cMenu();toast('Signed out','info');
@@ -2878,6 +3089,7 @@ function setUserAvatar(url){
   const ava=e$('ava');
   if(!img)return;
   clearUserAvatar();
+  url=safeImgUrl(url);
   if(!url)return;
   // Google avatars (lh3.googleusercontent.com) often fail in Android WebView
   // unless Referer is omitted — Capacitor loads as https://localhost.
@@ -2910,21 +3122,28 @@ function updateUserUI(user){
 }
 
 async function loadSupaData(user){
+  const uid=safeUid(user&&user.id);
+  if(!uid){
+    setSync('error');
+    toast('This sign-in cannot be used — account id was rejected','err');
+    return;
+  }
   setSync('loading');
   // Critical: wipe previous Google user's in-memory data before loading this account
-  if(curUid&&curUid!==user.id){
+  if(curUid&&curUid!==uid){
     try{writeLocalData(curUid);}catch(e){}
   }
   resetDataMemory();
-  curUid=user.id;
+  curUid=uid;
+  sessionUser=user;
   try{
     // Load ONLY this user's scoped local cache (never the shared legacy key from another account)
-    let local=readLocalData(user.id);
-    if(!local)local=claimLegacyLocalIfSafe(user.id);
+    let local=readLocalData(uid);
+    if(!local)local=claimLegacyLocalIfSafe(uid);
     if(local)applyDataObject(local);
 
     // Server row for THIS user_id only
-    const{data,error}=await supa.from('buildpro_data').select('data,updated_at').eq('user_id',user.id).single();
+    const{data,error}=await supa.from('buildpro_data').select('data,updated_at').eq('user_id',uid).single();
     if(!error&&data?.data){
       // Merge this user's local cache with their cloud row — not anyone else's
       D=mergeData(D,data.data);
@@ -2934,7 +3153,7 @@ async function loadSupaData(user){
       // Brand-new account: stay empty (do not import another user's CRM)
       D=emptyData();
     }
-    writeLocalData(user.id);
+    writeLocalData(uid);
     setSync('synced');
   }catch(e){
     setSync('error');
@@ -2946,31 +3165,34 @@ async function writeSupabase(){
   if(!supa){writeLocalData(curUid);setSync('pending');return;}
   const{data:{session}}=await supa.auth.getSession();
   if(!session){writeLocalData(curUid);setSync('pending');return;}
+  const uid=safeUid(session.user&&session.user.id);
+  if(!uid){writeLocalData(curUid);setSync('error');return;}
   // Never write if in-memory uid does not match the session (account switch race)
-  if(curUid&&session.user.id!==curUid){
+  if(curUid&&uid!==curUid){
     setSync('error');
     return;
   }
-  curUid=session.user.id;
+  curUid=uid;
+  sessionUser=session.user;
   try{
-    writeLocalData(session.user.id);
+    writeLocalData(uid);
     // Conflict guard: if another device wrote since we last synced, merge first so nothing is clobbered.
-    const{data:srv}=await supa.from('buildpro_data').select('data,updated_at').eq('user_id',session.user.id).single();
+    const{data:srv}=await supa.from('buildpro_data').select('data,updated_at').eq('user_id',uid).single();
     if(srv&&srv.updated_at&&baseUpdatedAt&&srv.updated_at!==baseUpdatedAt&&srv.data){
       D=mergeData(D,srv.data);
       if(!applyingRemote){applyingRemote=true;try{renderAll();refreshProfileUI();}catch(e){}applyingRemote=false;}
     }
     const nowTs=new Date().toISOString();
     const{error}=await supa.from('buildpro_data').upsert({
-      user_id:session.user.id,
-      data:D,
+      user_id:uid,
+      data:plainClone(D)||D,
       updated_at:nowTs
     },{onConflict:'user_id'});
     if(error)throw error;
     baseUpdatedAt=nowTs;
-    writeLocalData(session.user.id);
+    writeLocalData(uid);
     setSync('synced');
-  }catch(e){writeLocalData(session.user.id);setSync('pending');}
+  }catch(e){writeLocalData(uid);setSync('pending');}
 }
 
 // Pull the latest server data into the running app (merge, don't clobber local edits).
@@ -2979,13 +3201,15 @@ async function pullRemote(){
   try{
     const{data:{session}}=await supa.auth.getSession();
     if(!session)return;
-    if(curUid&&session.user.id!==curUid)return;
-    const{data:srv}=await supa.from('buildpro_data').select('data,updated_at').eq('user_id',session.user.id).single();
+    const uid=safeUid(session.user&&session.user.id);
+    if(!uid)return;
+    if(curUid&&uid!==curUid)return;
+    const{data:srv}=await supa.from('buildpro_data').select('data,updated_at').eq('user_id',uid).single();
     if(srv&&srv.updated_at&&srv.updated_at!==baseUpdatedAt&&srv.data){
       applyingRemote=true;
       D=mergeData(D,srv.data);
       baseUpdatedAt=srv.updated_at;
-      writeLocalData(session.user.id);
+      writeLocalData(uid);
       try{renderAll();refreshProfileUI();}catch(e){}
       applyingRemote=false;
       setSync('synced');
@@ -2995,11 +3219,12 @@ async function pullRemote(){
 
 // Live updates from other devices via Supabase realtime (best effort; polling/focus cover the fallback).
 function startRealtime(){
-  if(!supa||!curUid)return;
+  const uid=safeUid(curUid);
+  if(!supa||!uid)return;
   try{
     if(rtChannel){supa.removeChannel(rtChannel);rtChannel=null;}
-    rtChannel=supa.channel('bp-'+curUid)
-      .on('postgres_changes',{event:'*',schema:'public',table:'buildpro_data',filter:'user_id=eq.'+curUid},()=>{pullRemote();})
+    rtChannel=supa.channel('bp-'+uid)
+      .on('postgres_changes',{event:'*',schema:'public',table:'buildpro_data',filter:'user_id=eq.'+uid},()=>{pullRemote();})
       .subscribe();
   }catch(e){}
 }
@@ -3060,8 +3285,8 @@ function goPage(p,el,title){
   if(p==='profile'){refreshProfileUI();fProfile(profileTab==='backend'?'backend':'company');}
   else renderPage(p);
 }
-function renderPage(p){if(p==='dash')renderDash();else if(p==='proj')renderProj();else if(p==='inv')renderInv();else if(p==='est')renderEst();else if(p==='pay')renderPay();else if(p==='sub')renderSub();else if(p==='agr')renderAgr();else if(p==='cli')renderCli();else if(p==='archive')renderArchive();else if(p==='tasks'){if(typeof tasksTabMode!=='undefined'&&tasksTabMode==='jobs')renderWorkOrders();else renderTasks();}else if(p==='exp')renderExp();else if(p==='ledger')renderLedger();}
-function renderAll(){renderDash();renderProj();renderInv();renderEst();renderPay();renderSub();renderAgr();renderCli();renderTasks();renderWorkOrders();renderExp();renderLedger();renderArchive();updateDots();}
+function renderPage(p){if(p==='admin'){syncPrivilegedUI();return;}if(p==='dash')renderDash();else if(p==='proj')renderProj();else if(p==='inv')renderInv();else if(p==='est')renderEst();else if(p==='pay')renderPay();else if(p==='sub')renderSub();else if(p==='agr')renderAgr();else if(p==='cli')renderCli();else if(p==='archive')renderArchive();else if(p==='tasks'){if(typeof tasksTabMode!=='undefined'&&tasksTabMode==='jobs')renderWorkOrders();else renderTasks();}else if(p==='exp')renderExp();else if(p==='ledger')renderLedger();}
+function renderAll(){renderDash();renderProj();renderInv();renderEst();renderPay();renderSub();renderAgr();renderCli();renderTasks();renderWorkOrders();renderExp();renderLedger();renderArchive();updateDots();syncPrivilegedUI();}
 
 // ════ ARCHIVE (soft-hide; not tombstones) ════
 const ARCHIVE_STORES=['projects','clients','agreements','subcons','expenses','invoices','estimates','tasks','workorders','personals','cpays','subpays','stock'];
@@ -3142,21 +3367,21 @@ function renderArchive(){
     const gid='arch-grp-'+store;
     const open=!collapsedGroups[gid];
     const header=`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%">
-      <span style="font-size:var(--fs-sm);font-weight:700">${ARCHIVE_LABELS[store]||store}</span>
-      <span style="font-size:var(--fs-xs);color:var(--mut);font-family:'JetBrains Mono',monospace">${rows.length}</span>
+      <span style="font-size:var(--fs-sm);font-weight:700">${htmlEsc(ARCHIVE_LABELS[store]||store)}</span>
+      <span style="font-size:var(--fs-xs);color:var(--mut);font-family:'JetBrains Mono',monospace">${htmlEsc(rows.length)}</span>
     </div>`;
     const body=rows.map(r=>{
       const when=r.archivedAt?String(r.archivedAt).slice(0,10):'';
       const sub=archiveSubline(store,r);
       return`<div class="card" style="margin-bottom:8px">
         <div class="card-top"><div style="flex:1;min-width:0">
-          <div class="card-nm">${archiveLabel(store,r)}</div>
-          ${sub?`<div class="card-sub">${sub}</div>`:''}
-          ${when?`<div class="card-sub">Archived ${when}</div>`:''}
+          <div class="card-nm">${htmlEsc(archiveLabel(store,r))}</div>
+          ${sub?`<div class="card-sub">${htmlEsc(sub)}</div>`:''}
+          ${when?`<div class="card-sub">Archived ${htmlEsc(when)}</div>`:''}
         </div></div>
         <div class="card-acts">
-          <button class="ca grn" onclick="restoreRec('${store}','${r.id}')">↩ Restore</button>
-          <button class="ca red" onclick="del('${store}','${r.id}')">🗑 Delete</button>
+          <button class="ca grn" onclick="restoreRec('${jsq(store)}','${jsq(r.id)}')">↩ Restore</button>
+          <button class="ca red" onclick="del('${jsq(store)}','${jsq(r.id)}')">🗑 Delete</button>
         </div>
       </div>`;
     }).join('');
@@ -3166,7 +3391,7 @@ function renderArchive(){
     el.innerHTML='<div class="empty"><div class="empty-i">📦</div><div class="empty-t">No archived records.<br>Use Archive on a card instead of Delete to keep it here.</div></div>';
     return;
   }
-  el.innerHTML=`<div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:10px">${n} archived record${n===1?'':'s'}</div>`+sections;
+  el.innerHTML=`<div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:10px">${htmlEsc(n)} archived record${htmlEsc(n===1?'':'s')}</div>`+sections;
 }
 
 // ════ HELPERS ════
@@ -3188,7 +3413,7 @@ const fmt=n=>(n||0).toLocaleString('en-PK',{minimumFractionDigits:0,maximumFract
 const nW=n=>{if(n>=10000000)return(n/10000000).toFixed(2)+' Crore';if(n>=100000)return(n/100000).toFixed(2)+' Lakh';if(n>=1000)return(n/1000).toFixed(0)+' Thousand';return String(n||0);};
 const e$=id=>document.getElementById(id);
 const sv=(id,v)=>{const el=e$(id);if(el)el.value=(v===null||v===undefined)?'':String(v);};
-function bdg(s){const m={paid:'b-g',pending:'b-y',overdue:'b-r',draft:'b-m',signed:'b-b',active:'b-b',sent:'b-y',approved:'b-g',completed:'b-g'};return`<span class="b ${m[s]||'b-m'}">${s}</span>`;}
+function bdg(s){const m={paid:'b-g',pending:'b-y',overdue:'b-r',draft:'b-m',signed:'b-b',active:'b-b',sent:'b-y',approved:'b-g',completed:'b-g'};return`<span class="b ${htmlEsc(m[s]||'b-m')}">${htmlEsc(s)}</span>`;}
 function trC(t){const m={'Contractor / Mason (Raj Mistri)':'b-y',Electrician:'b-b',Plumber:'b-b','Tile Work':'b-p',Painting:'b-p','Steel / Iron Work':'b-m',Excavation:'b-m',Carpenter:'b-m',Waterproofing:'b-p'};return m[t]||'b-m';}
 function toast(msg,type='ok'){const e=e$('toast');e$('tmsg').textContent=msg;e$('tdot').style.background=type==='ok'?'var(--grn)':type==='err'?'var(--red)':'var(--blu)';e.classList.add('on');setTimeout(()=>e.classList.remove('on'),3200);}
 
@@ -3239,10 +3464,10 @@ function oDs(dsId){
     if(cfg.t==='projects'){ref='Project';const c=D.clients.find(x=>x.id===item.clientId);sub=(item.loc||'')+(c?' · '+c.name:'');}
     if(cfg.t==='subcons'){ref=item.trade;sub=item.phone||'';}
     if(cfg.t==='invoices'){ref=item.num+' · '+item.invType;sub=item.clientName+' · PKR '+fmt(item.total);}
-    return`<div class="ds-item" onclick="selDs('${dsId}','${item.id}','${esc(item.name||item.num||'')}')">
-      <div class="ds-ref">${ref}</div>
-      <div class="ds-nm">${item.name||item.num}</div>
-      ${sub?`<div class="ds-sub">${sub}</div>`:''}
+    return`<div class="ds-item" onclick="selDs('${jsq(dsId)}','${jsq(item.id)}','${esc(item.name||item.num||'')}')">
+      <div class="ds-ref">${htmlEsc(ref)}</div>
+      <div class="ds-nm">${htmlEsc(item.name||item.num)}</div>
+      ${sub?`<div class="ds-sub">${htmlEsc(sub)}</div>`:''}
     </div>`;
   }).join('');
   if(cfg.t==='clients')html+=`<div class="ds-add" onclick="X(curSh());O('sh-cli');iCli()">+ Add New Client</div>`;
@@ -3269,7 +3494,13 @@ function selDs(dsId,val,label){
     }
   }
 }
-const esc=s=>(s||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+function htmlEsc(s){
+  return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function jsq(s){
+  return String(s??'').replace(/[\u0000-\u001f\u2028\u2029\\'"<>&]/g,ch=>'\\u'+ch.charCodeAt(0).toString(16).padStart(4,'0'));
+}
+const esc=jsq;
 function curSh(){const op=document.querySelector('.sh-ov.on');return op?op.id:'';}
 
 // ════ INVOICE TYPE SWITCHER ════
@@ -3294,11 +3525,11 @@ function switchInvType(type,el){
 function addLI(t,mode){
   let tmpl='';
   if(mode==='lab'){
-    tmpl=`<input class="ld" placeholder="e.g. Mason (Raj Mistri)" oninput="cLI('${t}')"><input class="lq" type="number" value="1" placeholder="Days" oninput="cLI('${t}')"><input class="lr" type="number" value="0" placeholder="Rate/Day" oninput="cLI('${t}')"><input class="la" type="number" readonly style="background:var(--s2)" placeholder="Amount"><button class="li-del" onclick="this.parentElement.remove();cLI('${t}')">×</button>`;
+    tmpl=`<input class="ld" placeholder="e.g. Mason (Raj Mistri)" oninput="cLI('${jsq(t)}')"><input class="lq" type="number" value="1" placeholder="Days" oninput="cLI('${jsq(t)}')"><input class="lr" type="number" value="0" placeholder="Rate/Day" oninput="cLI('${jsq(t)}')"><input class="la" type="number" readonly style="background:var(--s2)" placeholder="Amount"><button class="li-del" onclick="this.parentElement.remove();cLI('${jsq(t)}')">×</button>`;
   } else if(mode==='prg'){
-    tmpl=`<input class="ld" placeholder="e.g. Foundation, Slab Work" oninput="cLI('${t}')"><input class="lq" type="number" value="0" placeholder="%" oninput="cLI('${t}')"><input class="lr" type="number" value="0" placeholder="Amount PKR" oninput="cLI('${t}')"><button class="li-del" onclick="this.parentElement.remove();cLI('${t}')">×</button>`;
+    tmpl=`<input class="ld" placeholder="e.g. Foundation, Slab Work" oninput="cLI('${jsq(t)}')"><input class="lq" type="number" value="0" placeholder="%" oninput="cLI('${jsq(t)}')"><input class="lr" type="number" value="0" placeholder="Amount PKR" oninput="cLI('${jsq(t)}')"><button class="li-del" onclick="this.parentElement.remove();cLI('${jsq(t)}')">×</button>`;
   } else {
-    tmpl=`<input class="ld" placeholder="Description" oninput="cLI('${t}')"><input class="lq" type="number" value="1" oninput="cLI('${t}')"><input class="lu" placeholder="sft"><input class="lr" type="number" value="0" oninput="cLI('${t}')"><button class="li-del" onclick="this.parentElement.remove();cLI('${t}')">×</button>`;
+    tmpl=`<input class="ld" placeholder="Description" oninput="cLI('${jsq(t)}')"><input class="lq" type="number" value="1" oninput="cLI('${jsq(t)}')"><input class="lu" placeholder="sft"><input class="lr" type="number" value="0" oninput="cLI('${jsq(t)}')"><button class="li-del" onclick="this.parentElement.remove();cLI('${jsq(t)}')">×</button>`;
   }
   const div=document.createElement('div');div.className='li-row';div.innerHTML=tmpl;
   e$('li-'+t).appendChild(div);cLI(t);
@@ -3667,12 +3898,12 @@ function renderBoqScope(selected){
   el.innerHTML=items.map(c=>{
     const on=selected?!!selected[c.id]:!!c.def;
     const stageHdr=c.stage!==lastStage
-      ?`<div style="grid-column:1/-1;font-size:10px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.6px;margin:${lastStage?'8px':0} 0 2px">${BOQ_STAGE_LABEL[c.stage]||c.stage}</div>`
+      ?`<div style="grid-column:1/-1;font-size:10px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.6px;margin:${htmlEsc(lastStage?'8px':0)} 0 2px">${htmlEsc(BOQ_STAGE_LABEL[c.stage]||c.stage)}</div>`
       :'';
     lastStage=c.stage;
-    return stageHdr+`<label style="display:flex;align-items:flex-start;gap:8px;background:var(--bg);border:1px solid ${on?'rgba(82,181,106,.35)':'rgba(224,85,85,.28)'};border-radius:8px;padding:9px 10px;cursor:pointer">
-      <input type="checkbox" class="boq-scope" data-id="${c.id}" ${on?'checked':''} onchange="refreshBoqScopeStyles()" style="width:16px;height:16px;accent-color:var(--grn);flex-shrink:0;margin-top:1px">
-      <span style="font-size:var(--fs-xs);color:var(--txt);line-height:1.35;font-weight:500">${c.label}<span style="color:var(--mut2);font-weight:400"> · ${c.unit}</span></span>
+    return stageHdr+`<label style="display:flex;align-items:flex-start;gap:8px;background:var(--bg);border:1px solid ${htmlEsc(on?'rgba(82,181,106,.35)':'rgba(224,85,85,.28)')};border-radius:8px;padding:9px 10px;cursor:pointer">
+      <input type="checkbox" class="boq-scope" data-id="${htmlEsc(c.id)}" ${htmlEsc(on?'checked':'')} onchange="refreshBoqScopeStyles()" style="width:16px;height:16px;accent-color:var(--grn);flex-shrink:0;margin-top:1px">
+      <span style="font-size:var(--fs-xs);color:var(--txt);line-height:1.35;font-weight:500">${htmlEsc(c.label)}<span style="color:var(--mut2);font-weight:400"> · ${htmlEsc(c.unit)}</span></span>
     </label>`;
   }).join('');
   renderBoqCustomList();
@@ -3680,10 +3911,10 @@ function renderBoqScope(selected){
 function renderBoqCustomList(){
   const el=e$('boq-custom-list');if(!el)return;
   if(!boqCustomItems.length){el.innerHTML='';return;}
-  el.innerHTML=boqCustomItems.map(c=>`<label style="display:flex;align-items:flex-start;gap:8px;background:var(--bg);border:1px solid ${c.included?'rgba(82,181,106,.35)':'rgba(224,85,85,.28)'};border-radius:8px;padding:9px 10px;cursor:pointer">
-    <input type="checkbox" class="boq-custom" data-id="${c.id}" ${c.included?'checked':''} onchange="toggleBoqCustom('${c.id}',this.checked)" style="width:16px;height:16px;accent-color:var(--grn);flex-shrink:0;margin-top:1px">
-    <span style="font-size:var(--fs-xs);color:var(--txt);line-height:1.35;font-weight:500;flex:1">${c.label}<span style="color:var(--mut2);font-weight:400"> · ${c.unit||'job'}</span></span>
-    <button type="button" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;flex-shrink:0;padding:0 2px" onclick="event.preventDefault();delBoqCustomItem('${c.id}')">×</button>
+  el.innerHTML=boqCustomItems.map(c=>`<label style="display:flex;align-items:flex-start;gap:8px;background:var(--bg);border:1px solid ${htmlEsc(c.included?'rgba(82,181,106,.35)':'rgba(224,85,85,.28)')};border-radius:8px;padding:9px 10px;cursor:pointer">
+    <input type="checkbox" class="boq-custom" data-id="${htmlEsc(c.id)}" ${htmlEsc(c.included?'checked':'')} onchange="toggleBoqCustom('${jsq(c.id)}',this.checked)" style="width:16px;height:16px;accent-color:var(--grn);flex-shrink:0;margin-top:1px">
+    <span style="font-size:var(--fs-xs);color:var(--txt);line-height:1.35;font-weight:500;flex:1">${htmlEsc(c.label)}<span style="color:var(--mut2);font-weight:400"> · ${htmlEsc(c.unit||'job')}</span></span>
+    <button type="button" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;flex-shrink:0;padding:0 2px" onclick="event.preventDefault();delBoqCustomItem('${jsq(c.id)}')">×</button>
   </label>`).join('');
 }
 function addBoqCustomItem(){
@@ -3827,7 +4058,7 @@ let agrNotIncluded=[]; // {key,label,rate,unit}
 let agrPaySched=[]; // {id,stage,amount,note}
 let agrScopeOrder=[]; // included item ids (catalogue + custom) in display order
 let agrDragState=null;
-function agrEsc(s){return String(s??'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');}
+function agrEsc(s){return htmlEsc(s);}
 function agrStageTitle(stage){
   return (agrStageLabels[stage]||BOQ_STAGE_LABEL[stage]||stage).trim();
 }
@@ -3913,14 +4144,14 @@ function agrSetItemStage(kind,key,toStage){
 function agrMoveBtnHtml(kind,key,stage){
   // Toggle Brown ↔ Grey on included rows
   if(stage==='brown'){
-    return`<button type="button" title="Move to Grey Structure" style="background:rgba(200,200,200,.12);border:1px solid var(--bor);color:var(--mut);cursor:pointer;font-size:10px;flex-shrink:0;padding:3px 7px;border-radius:6px;font-weight:700" onclick="moveAgrScopeItem('${kind}','${key}','grey')">→ Grey</button>`;
+    return`<button type="button" title="Move to Grey Structure" style="background:rgba(200,200,200,.12);border:1px solid var(--bor);color:var(--mut);cursor:pointer;font-size:10px;flex-shrink:0;padding:3px 7px;border-radius:6px;font-weight:700" onclick="moveAgrScopeItem('${jsq(kind)}','${jsq(key)}','grey')">→ Grey</button>`;
   }
   if(stage==='grey'){
-    return`<button type="button" title="Move to Brown Structure" style="background:rgba(201,123,58,.12);border:1px solid rgba(201,123,58,.35);color:var(--gold);cursor:pointer;font-size:10px;flex-shrink:0;padding:3px 7px;border-radius:6px;font-weight:700" onclick="moveAgrScopeItem('${kind}','${key}','brown')">→ Brown</button>`;
+    return`<button type="button" title="Move to Brown Structure" style="background:rgba(201,123,58,.12);border:1px solid rgba(201,123,58,.35);color:var(--gold);cursor:pointer;font-size:10px;flex-shrink:0;padding:3px 7px;border-radius:6px;font-weight:700" onclick="moveAgrScopeItem('${jsq(kind)}','${jsq(key)}','brown')">→ Brown</button>`;
   }
   // Finishing (or other): offer both directions into brown/grey
-  return`<button type="button" title="Move to Brown Structure" style="background:rgba(201,123,58,.12);border:1px solid rgba(201,123,58,.35);color:var(--gold);cursor:pointer;font-size:10px;flex-shrink:0;padding:3px 7px;border-radius:6px;font-weight:700" onclick="moveAgrScopeItem('${kind}','${key}','brown')">→ Brown</button>
-    <button type="button" title="Move to Grey Structure" style="background:rgba(200,200,200,.12);border:1px solid var(--bor);color:var(--mut);cursor:pointer;font-size:10px;flex-shrink:0;padding:3px 7px;border-radius:6px;font-weight:700" onclick="moveAgrScopeItem('${kind}','${key}','grey')">→ Grey</button>`;
+  return`<button type="button" title="Move to Brown Structure" style="background:rgba(201,123,58,.12);border:1px solid rgba(201,123,58,.35);color:var(--gold);cursor:pointer;font-size:10px;flex-shrink:0;padding:3px 7px;border-radius:6px;font-weight:700" onclick="moveAgrScopeItem('${jsq(kind)}','${jsq(key)}','brown')">→ Brown</button>
+    <button type="button" title="Move to Grey Structure" style="background:rgba(200,200,200,.12);border:1px solid var(--bor);color:var(--mut);cursor:pointer;font-size:10px;flex-shrink:0;padding:3px 7px;border-radius:6px;font-weight:700" onclick="moveAgrScopeItem('${jsq(kind)}','${jsq(key)}','grey')">→ Grey</button>`;
 }
 function moveAgrScopeItem(kind,key,toStage){
   if(toStage!=='brown'&&toStage!=='grey'&&toStage!=='finishing'){toast('Pick Brown, Grey, or Finishing','err');return;}
@@ -4181,7 +4412,7 @@ function agrItemRowHtml(opts){
   const actions=opts.actions||'';
   const stageAttr=opts.stage?` data-stage="${opts.stage}"`:'';
   const drag=opts.drag?`<span class="agr-drag-h" title="Drag to reorder" aria-label="Drag to reorder">⠿</span>`:'';
-  return `<div class="agr-item-row" data-kind="${opts.kind}" data-key="${opts.key}"${stageAttr} style="background:var(--bg);border:1px solid ${border};border-radius:8px;padding:7px 8px">
+  return `<div class="agr-item-row" data-kind="${htmlEsc(opts.kind)}" data-key="${htmlEsc(opts.key)}"${stageAttr} style="background:var(--bg);border:1px solid ${htmlEsc(border)};border-radius:8px;padding:7px 8px">
     <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">
       ${drag}
       <input class="agr-fld-lbl urdu-field" dir="auto" value="${agrEsc(opts.label)}" placeholder="Item name / نام" style="flex:1;min-width:0;font-size:var(--fs-xs);padding:6px 8px;background:var(--s2);border:1px solid var(--bor);border-radius:6px;color:var(--txt)">
@@ -4311,9 +4542,9 @@ function refreshAgrAddPicker(){
     if(c.stage!==stage){
       if(stage)html+='</optgroup>';
       stage=c.stage;
-      html+=`<optgroup label="${agrStageTitle(stage)}">`;
+      html+=`<optgroup label="${htmlEsc(agrStageTitle(stage))}">`;
     }
-    html+=`<option value="${c.id}">${c.label}</option>`;
+    html+=`<option value="${htmlEsc(c.id)}">${htmlEsc(c.label)}</option>`;
   });
   if(stage)html+='</optgroup>';
   if(!avail.length)html+='<option value="" disabled>All catalogue items already listed</option>';
@@ -4389,14 +4620,14 @@ function renderAgrClauses(selected){
     if(!keys.length)return;
     any=true;
     const title=agrStageTitle(stage);
-    html+=`<div class="agr-stage-block" data-stage="${stage}" style="margin:${html?'10px':'0'} 0 0">
-      <input class="agr-stage-lbl" data-stage="${stage}" value="${agrEsc(title)}">
-      <div class="agr-stage-items" data-stage="${stage}">`;
+    html+=`<div class="agr-stage-block" data-stage="${htmlEsc(stage)}" style="margin:${htmlEsc(html?'10px':'0')} 0 0">
+      <input class="agr-stage-lbl" data-stage="${htmlEsc(stage)}" value="${agrEsc(title)}">
+      <div class="agr-stage-items" data-stage="${htmlEsc(stage)}">`;
     keys.forEach(key=>{
       if(agrActiveIds[key]){
         const st=agrCatStage(key);
         const actions=`${agrMoveBtnHtml('cat',key,st)}
-          <button type="button" title="Move to Not Included" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;flex-shrink:0;padding:0 2px;font-weight:700" onclick="removeAgrScopeItem('${key}')">✕</button>`;
+          <button type="button" title="Move to Not Included" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;flex-shrink:0;padding:0 2px;font-weight:700" onclick="removeAgrScopeItem('${jsq(key)}')">✕</button>`;
         html+=agrItemRowHtml({
           kind:'cat',key,stage:st,drag:true,
           label:agrCatLabel(key),
@@ -4407,7 +4638,7 @@ function renderAgrClauses(selected){
       }else{
         const c=agrCustomItems.find(x=>x.id===key);if(!c)return;
         const actions=`${agrMoveBtnHtml('custom',c.id,c.stage)}
-          <button type="button" title="Move to Not Included" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;flex-shrink:0;padding:0 2px;font-weight:700" onclick="delAgrCustomItem('${c.id}')">✕</button>`;
+          <button type="button" title="Move to Not Included" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;flex-shrink:0;padding:0 2px;font-weight:700" onclick="delAgrCustomItem('${jsq(c.id)}')">✕</button>`;
         html+=agrItemRowHtml({
           kind:'custom',key:c.id,stage:c.stage,drag:true,
           label:c.label,unit:c.unit||'job',rate:c.rate||'',
@@ -4476,8 +4707,8 @@ function renderAgrNotIncluded(){
     return;
   }
   el.innerHTML=agrNotIncluded.map(c=>{
-    const actions=`<button type="button" title="Restore to Included" style="background:none;border:none;color:var(--grn);cursor:pointer;font-size:12px;flex-shrink:0;padding:0 2px;font-weight:700" onclick="restoreAgrNotIncluded('${c.key}')">↩</button>
-      <button type="button" title="Delete" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;flex-shrink:0;padding:0 2px;font-weight:700" onclick="delAgrNotIncluded('${c.key}')">✕</button>`;
+    const actions=`<button type="button" title="Restore to Included" style="background:none;border:none;color:var(--grn);cursor:pointer;font-size:12px;flex-shrink:0;padding:0 2px;font-weight:700" onclick="restoreAgrNotIncluded('${jsq(c.key)}')">↩</button>
+      <button type="button" title="Delete" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;flex-shrink:0;padding:0 2px;font-weight:700" onclick="delAgrNotIncluded('${jsq(c.key)}')">✕</button>`;
     return agrItemRowHtml({kind:'ni',key:c.key,label:c.label,unit:c.unit||'job',rate:c.rate||'',border:'rgba(224,85,85,.35)',actions,drag:true});
   }).join('');
   agrBindNotInclDrag();
@@ -4591,11 +4822,11 @@ function renderAgrPayRows(){
     return;
   }
   el.innerHTML=agrPaySched.map(p=>{
-    return `<div class="agr-pay-row" data-id="${p.id}" style="display:grid;grid-template-columns:1.4fr 0.9fr 1fr 28px;gap:6px;align-items:center">
+    return `<div class="agr-pay-row" data-id="${htmlEsc(p.id)}" style="display:grid;grid-template-columns:1.4fr 0.9fr 1fr 28px;gap:6px;align-items:center">
       <input class="agr-pay-stage urdu-field" dir="auto" value="${agrEsc(p.stage)}" placeholder="Stage / work done" style="font-size:var(--fs-xs);padding:8px 9px">
       <input class="agr-pay-amt urdu-field" dir="auto" value="${agrEsc(p.amount)}" placeholder="Amount / %" style="font-size:var(--fs-xs);padding:8px 9px" oninput="updateAgrPayTotal()" onchange="updateAgrPayTotal()">
       <input class="agr-pay-note urdu-field" dir="auto" value="${agrEsc(p.note)}" placeholder="Note" style="font-size:var(--fs-xs);padding:8px 9px">
-      <button type="button" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;font-weight:700" onclick="delAgrPayRow('${p.id}')">✕</button>
+      <button type="button" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;font-weight:700" onclick="delAgrPayRow('${jsq(p.id)}')">✕</button>
     </div>`;
   }).join('');
   updateAgrPayTotal();
@@ -5061,7 +5292,7 @@ function syncSpBdTradeRow(sel){
 }
 function renderSpBdChips(){
   const el=e$('sp-bd-chips');if(!el)return;
-  el.innerHTML=SP_BD_TRADES.map(t=>`<button type="button" class="spbd-chip" onclick="addSpBd({trade:'${t.replace(/'/g,"\\'")}'})">+ ${t}</button>`).join('');
+  el.innerHTML=SP_BD_TRADES.map(t=>`<button type="button" class="spbd-chip" onclick="addSpBd({trade:'${jsq(t.replace(/'/g,"\\'"))}'})">+ ${htmlEsc(t)}</button>`).join('');
 }
 function clearSpBd(){const el=e$('li-spbd');if(el)el.innerHTML='';const tot=e$('li-spbd-tot');if(tot)tot.textContent='PKR 0';const h=e$('sp-bd-hint');if(h)h.style.display='none';}
 function addSpBd(item){
@@ -5213,7 +5444,9 @@ function handleLogo(inp){
   const rd=new FileReader();
   rd.onload=ev=>{
     if(!D.company)D.company={};
-    D.company.logo=ev.target.result;
+    const logo=safeImgUrl(ev.target.result);
+    if(!logo){toast('Use a PNG, JPG, WEBP, or GIF logo','err');return;}
+    D.company.logo=logo;
     D.company.logoPdf='';D.company.logoPdfFormat='';
     D.company._u=new Date().toISOString();
     const img=e$('logo-img');if(img){img.src=D.company.logo;img.classList.add('on');}
@@ -5226,8 +5459,9 @@ function openProfileSheet(){
   const c=D.company||{};
   sv('co-name',c.name);sv('co-ph',c.phone);sv('co-email',c.email);sv('co-addr',c.addr);sv('co-city',c.city);sv('co-ntn',c.ntn);sv('co-bank',c.bank);sv('co-acc',c.acc);sv('co-acc-t',c.accT);sv('co-iban',c.iban);
   const img=e$('logo-img');const ph=e$('logo-ph');
-  if(c.logo&&c.logo!=='__local__'){
-    if(img){img.src=c.logo;img.classList.add('on');}
+  const sheetLogo=safeImgUrl(c.logo);
+  if(sheetLogo){
+    if(img){img.src=sheetLogo;img.classList.add('on');}
     if(ph)ph.style.display='none';
   }else{
     if(img){img.removeAttribute('src');img.classList.remove('on');}
@@ -5268,8 +5502,9 @@ function refreshProfileUI(){
   if(e$('cp-ntn-txt'))e$('cp-ntn-txt').textContent=c.ntn?'NTN: '+c.ntn:'';
   const tb=e$('tb-logo');if(tb)tb.textContent=companyShortName(c.name);
   const logoImg=e$('cp-logo-img');const logoPh=e$('cp-logo-ph');
-  if(logoImg&&c.logo&&c.logo!=='__local__'){
-    logoImg.src=c.logo;logoImg.classList.add('on');
+  const safeLogo=safeImgUrl(c.logo);
+  if(logoImg&&safeLogo){
+    logoImg.src=safeLogo;logoImg.classList.add('on');
     if(logoPh)logoPh.style.display='none';
   }else if(logoImg){
     logoImg.removeAttribute('src');logoImg.classList.remove('on');
@@ -5458,7 +5693,7 @@ function listSelKeyForPage(){
 }
 function selBox(key,id,store){
   const on=!!(listSel[key]&&listSel[key][id]);
-  return`<label style="display:flex;align-items:flex-start;padding-top:3px;margin-right:10px" onclick="event.stopPropagation()"><input type="checkbox" class="list-sel" data-lkey="${key}" data-lid="${id}" ${on?'checked':''} onchange="toggleListSel('${key}','${id}',this.checked,'${store}')" style="width:18px;height:18px;accent-color:var(--gold);cursor:pointer"></label>`;
+  return`<label style="display:flex;align-items:flex-start;padding-top:3px;margin-right:10px" onclick="event.stopPropagation()"><input type="checkbox" class="list-sel" data-lkey="${htmlEsc(key)}" data-lid="${htmlEsc(id)}" ${htmlEsc(on?'checked':'')} onchange="toggleListSel('${jsq(key)}','${jsq(id)}',this.checked,'${jsq(store)}')" style="width:18px;height:18px;accent-color:var(--gold);cursor:pointer"></label>`;
 }
 function toggleListSel(key,id,on,store){
   if(!listSel[key])listSel[key]={};
@@ -5571,8 +5806,8 @@ function renderDash(){
       {label:'Pending Tasks',val:pendingTasks,clr:pendingTasks>0?'var(--gold)':'var(--mut)'},
       {label:'Unpaid Expenses',val:unpaidExp,clr:unpaidExp>0?'var(--red)':'var(--mut)'},
     ].map(s=>`<div style="background:var(--s2);border-radius:8px;padding:9px 6px;text-align:center">
-      <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-lg);font-weight:700;color:${s.clr}">${s.val}</div>
-      <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px;line-height:1.3">${s.label}</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-lg);font-weight:700;color:${htmlEsc(s.clr)}">${htmlEsc(s.val)}</div>
+      <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px;line-height:1.3">${htmlEsc(s.label)}</div>
     </div>`).join('');
   }
 
@@ -5598,9 +5833,9 @@ function renderDash(){
       od.innerHTML=outstanding.map(({p,rec,bal,pct,cli})=>`
       <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--bor)" onclick="navTo('proj','Projects')" style="cursor:pointer">
         <div style="flex:1;min-width:0;margin-right:12px">
-          <div style="font-size:var(--fs-sm);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}</div>
-          <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">${cli?cli.name:''} · ${pct}% collected</div>
-          <div class="pbar-wrap" style="margin-top:5px;height:3px"><div class="pbar" style="width:${pct}%;height:3px"></div></div>
+          <div style="font-size:var(--fs-sm);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${htmlEsc(p.name)}</div>
+          <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">${htmlEsc(cli?cli.name:'')} · ${htmlEsc(pct)}% collected</div>
+          <div class="pbar-wrap" style="margin-top:5px;height:3px"><div class="pbar" style="width:${htmlEsc(pct)}%;height:3px"></div></div>
         </div>
         <div style="text-align:right;flex-shrink:0">
           <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--red);font-weight:700">${fmt(bal)}</div>
@@ -5622,7 +5857,7 @@ function renderDash(){
   const al=e$('act-list');
   if(al){
     if(!acts.length){al.innerHTML='<div style="font-size:var(--fs-sm);color:var(--mut);padding:6px 0">No activity yet</div>';}
-    else al.innerHTML='<div class="act-wrap">'+acts.map(a=>`<div class="act-row"><div><div class="act-type">${a.type}</div><div class="act-nm">${a.name||'—'}</div>${a.sub?`<div class="act-proj">${a.sub}</div>`:''}</div><div><div class="act-amt" style="color:${a.clr}">${fmt(a.amt)}</div><div class="act-date">${a.date||'—'}</div></div></div>`).join('')+'</div>';
+    else al.innerHTML='<div class="act-wrap">'+acts.map(a=>`<div class="act-row"><div><div class="act-type">${htmlEsc(a.type)}</div><div class="act-nm">${htmlEsc(a.name||'—')}</div>${a.sub?`<div class="act-proj">${htmlEsc(a.sub)}</div>`:''}</div><div><div class="act-amt" style="color:${htmlEsc(a.clr)}">${fmt(a.amt)}</div><div class="act-date">${htmlEsc(a.date||'—')}</div></div></div>`).join('')+'</div>';
   }
 }
 
@@ -5650,29 +5885,29 @@ function renderUnpaidSuppliers(){
   el.innerHTML=rows.slice(0,8).map(r=>`
     <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--bor);cursor:pointer" onclick="navTo('exp','Expenses & Budget')">
       <div style="flex:1;min-width:0;margin-right:12px">
-        <div style="font-size:var(--fs-sm);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.name}</div>
-        <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">${r.n} unpaid · ${[...r.projects].slice(0,2).join(', ')||'—'}</div>
+        <div style="font-size:var(--fs-sm);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${htmlEsc(r.name)}</div>
+        <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">${htmlEsc(r.n)} unpaid · ${htmlEsc([...r.projects].slice(0,2).join(', ')||'—')}</div>
       </div>
       <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--red);font-weight:700;flex-shrink:0">${fmt(r.amt)}</div>
-    </div>`).join('')+(rows.length>8?`<div style="font-size:var(--fs-xs);color:var(--mut);padding-top:8px">+${rows.length-8} more — open Expenses</div>`:'');
+    </div>`).join('')+(rows.length>8?`<div style="font-size:var(--fs-xs);color:var(--mut);padding-top:8px">+${htmlEsc(rows.length-8)} more — open Expenses</div>`:'');
 }
 
 // ════ RENDER INVOICES ════
 function renderInv(){
   const el=e$('list-inv');let rows=fInvF==='all'?activeRows(D.invoices):activeRows(D.invoices).filter(r=>r.status===fInvF);
   rows=[...rows].sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.createdAt||'').localeCompare(a.createdAt||''));
-  if(!rows.length){el.innerHTML=`<div class="empty"><div class="empty-i">🧾</div><div class="empty-t">No invoices${fInvF!=='all'?' with status "'+fInvF+'"':' yet'}</div></div>`;updateListSelBar();return;}
+  if(!rows.length){el.innerHTML=`<div class="empty"><div class="empty-i">🧾</div><div class="empty-t">No invoices${htmlEsc(fInvF!=='all'?' with status "'+fInvF+'"':' yet')}</div></div>`;updateListSelBar();return;}
   const typeLabel={standard:'Standard',labour:'Labour',progress:'Progress Billing',material:'Material'};
   el.innerHTML=rows.map(r=>`<div class="card">
-    <div class="card-top">${selBox('inv',r.id,'invoices')}<div style="flex:1;min-width:0"><div class="card-num">${r.num} · <span style="color:var(--mut)">${typeLabel[r.invType||'standard']||'Standard'}</span></div><div class="card-nm">${r.clientName}</div><div class="card-sub">${r.projectName||'—'} ${r.period?'· '+r.period:''}</div></div>${bdg(r.status)}</div>
-    <div class="card-mid"><div class="card-amt">PKR ${fmt(r.total)}</div><div class="card-date">Due: ${r.due||'—'}</div></div>
+    <div class="card-top">${selBox('inv',r.id,'invoices')}<div style="flex:1;min-width:0"><div class="card-num">${htmlEsc(r.num)} · <span style="color:var(--mut)">${htmlEsc(typeLabel[r.invType||'standard']||'Standard')}</span></div><div class="card-nm">${htmlEsc(r.clientName)}</div><div class="card-sub">${htmlEsc(r.projectName||'—')} ${htmlEsc(r.period?'· '+r.period:'')}</div></div>${bdg(r.status)}</div>
+    <div class="card-mid"><div class="card-amt">PKR ${fmt(r.total)}</div><div class="card-date">Due: ${htmlEsc(r.due||'—')}</div></div>
     <div class="card-acts">
-      <button class="ca blu" onclick="eInv('${r.id}')">✏️ Edit</button>
-      <button class="ca gold" onclick="pdfInv('${r.id}')">⬇ PDF</button>
-      <button class="ca grn" onclick="O('sh-cpay');iCpay();sv('cp-inv-t','${esc(r.num)}');sv('cp-inv-id','${r.id}');sv('cp-cli-t','${esc(r.clientName)}');sv('cp-cli-id','${r.clientId||''}')">💳 Pay</button>
-      <button class="ca" style="color:#25D366;border-color:rgba(37,211,102,.25);background:rgba(37,211,102,.06);flex:none;padding:8px 10px" onclick="waInv('${r.id}')">📤</button>
-      <button class="ca arch" onclick="archiveRec('invoices','${r.id}')">📦 Archive</button>
-      <button class="ca red" onclick="del('invoices','${r.id}')">🗑</button>
+      <button class="ca blu" onclick="eInv('${jsq(r.id)}')">✏️ Edit</button>
+      <button class="ca gold" onclick="pdfInv('${jsq(r.id)}')">⬇ PDF</button>
+      <button class="ca grn" onclick="O('sh-cpay');iCpay();sv('cp-inv-t','${esc(r.num)}');sv('cp-inv-id','${jsq(r.id)}');sv('cp-cli-t','${esc(r.clientName)}');sv('cp-cli-id','${jsq(r.clientId||'')}')">💳 Pay</button>
+      <button class="ca" style="color:#25D366;border-color:rgba(37,211,102,.25);background:rgba(37,211,102,.06);flex:none;padding:8px 10px" onclick="waInv('${jsq(r.id)}')">📤</button>
+      <button class="ca arch" onclick="archiveRec('invoices','${jsq(r.id)}')">📦 Archive</button>
+      <button class="ca red" onclick="del('invoices','${jsq(r.id)}')">🗑</button>
     </div></div>`).join('');
   updateListSelBar();
 }
@@ -5687,15 +5922,15 @@ function renderEst(){
     const inc=(r.inclusions||[]).length;const exc=Array.isArray(r.exclusions)?r.exclusions.length:0;
     const st=structLbl[r.structure]||'';
     return`<div class="card">
-    <div class="card-top">${selBox('est',r.id,'estimates')}<div style="flex:1;min-width:0"><div class="card-num">${r.num}${st?` · <span style="color:var(--mut)">${st}</span>`:''}</div><div class="card-nm">${r.clientName}</div><div class="card-sub">${r.projectName||'—'}${inc||exc?` · ✓${inc} include · ✕${exc} exclude`:''}</div></div>${bdg(r.status)}</div>
-    <div class="card-mid"><div class="card-amt">PKR ${fmt(r.total)}</div><div class="card-date">${r.date||'—'}</div></div>
+    <div class="card-top">${selBox('est',r.id,'estimates')}<div style="flex:1;min-width:0"><div class="card-num">${htmlEsc(r.num)}${st?` · <span style="color:var(--mut)">${htmlEsc(st)}</span>`:''}</div><div class="card-nm">${htmlEsc(r.clientName)}</div><div class="card-sub">${htmlEsc(r.projectName||'—')}${inc||exc?` · ✓${htmlEsc(inc)} include · ✕${htmlEsc(exc)} exclude`:''}</div></div>${bdg(r.status)}</div>
+    <div class="card-mid"><div class="card-amt">PKR ${fmt(r.total)}</div><div class="card-date">${htmlEsc(r.date||'—')}</div></div>
     <div class="card-acts">
-      <button class="ca blu" onclick="eEst('${r.id}')">✏️ Edit</button>
-      <button class="ca gold" onclick="pdfEst('${r.id}')">⬇ PDF</button>
-      <button class="ca" style="color:var(--pur);border-color:rgba(155,127,212,.3);background:rgba(155,127,212,.08)" onclick="pdfBoqVsActual('${r.id}')">⚖ vs Actual</button>
-      <button class="ca ora" onclick="est2inv('${r.id}')">→ Invoice</button>
-      <button class="ca arch" onclick="archiveRec('estimates','${r.id}')">📦 Archive</button>
-      <button class="ca red" onclick="del('estimates','${r.id}')">🗑</button>
+      <button class="ca blu" onclick="eEst('${jsq(r.id)}')">✏️ Edit</button>
+      <button class="ca gold" onclick="pdfEst('${jsq(r.id)}')">⬇ PDF</button>
+      <button class="ca" style="color:var(--pur);border-color:rgba(155,127,212,.3);background:rgba(155,127,212,.08)" onclick="pdfBoqVsActual('${jsq(r.id)}')">⚖ vs Actual</button>
+      <button class="ca ora" onclick="est2inv('${jsq(r.id)}')">→ Invoice</button>
+      <button class="ca arch" onclick="archiveRec('estimates','${jsq(r.id)}')">📦 Archive</button>
+      <button class="ca red" onclick="del('estimates','${jsq(r.id)}')">🗑</button>
     </div></div>`;
   }).join('');
   updateListSelBar();
@@ -5723,14 +5958,14 @@ function collapsibleSection(id,headerHTML,bodyHTML,open){
   const gid=safeGroupId(id);
   const shown=collapsedGroups[gid]?false:!!open;
   return`<div class="grp" style="margin-bottom:12px">
-    <div class="grp-hd" role="button" tabindex="0" data-gid="${gid}"
-      onclick="toggleGroup('${gid}',event)"
-      onkeydown="if(event.key==='Enter'||event.key===' '){toggleGroup('${gid}',event)}"
+    <div class="grp-hd" role="button" tabindex="0" data-gid="${htmlEsc(gid)}"
+      onclick="toggleGroup('${jsq(gid)}',event)"
+      onkeydown="if(event.key==='Enter'||event.key===' '){toggleGroup('${jsq(gid)}',event)}"
       style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 13px;background:var(--s2);border:1px solid var(--bor);border-radius:10px;cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:manipulation">
-      <span id="${gid}-chev" style="display:inline-block;width:14px;flex-shrink:0;color:var(--mut)">${shown?'▾':'▸'}</span>
+      <span id="${htmlEsc(gid)}-chev" style="display:inline-block;width:14px;flex-shrink:0;color:var(--mut)">${htmlEsc(shown?'▾':'▸')}</span>
       <div style="flex:1;min-width:0">${headerHTML}</div>
     </div>
-    <div id="${gid}" class="grp-body${shown?'':' grp-body-hidden'}" style="margin-top:8px;${shown?'':'display:none'}">${bodyHTML}</div>
+    <div id="${htmlEsc(gid)}" class="grp-body${htmlEsc(shown?'':' grp-body-hidden')}" style="margin-top:8px;${htmlEsc(shown?'':'display:none')}">${bodyHTML}</div>
   </div>`;
 }
 
@@ -5750,12 +5985,12 @@ function renderPay(){
       return`<div style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:12px 14px;margin-bottom:8px">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
           <div>
-            <div style="font-size:var(--fs-md);font-weight:700">${p.name}</div>
-            <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">${cli?cli.name:''} ${p.loc?'· '+p.loc:''}</div>
+            <div style="font-size:var(--fs-md);font-weight:700">${htmlEsc(p.name)}</div>
+            <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">${htmlEsc(cli?cli.name:'')} ${htmlEsc(p.loc?'· '+p.loc:'')}</div>
           </div>
           <div style="display:flex;gap:6px;flex-shrink:0">
-            <button class="ca gold" style="flex:none;padding:6px 12px;font-size:var(--fs-xs)" onclick="pdfProjPayments('${p.id}')">⬇ PDF</button>
-            <button class="ca" style="flex:none;padding:6px 10px;font-size:var(--fs-xs);color:#25D366;border-color:rgba(37,211,102,.25);background:rgba(37,211,102,.06)" onclick="waOwnerStatement('${p.id}')">📤 WA</button>
+            <button class="ca gold" style="flex:none;padding:6px 12px;font-size:var(--fs-xs)" onclick="pdfProjPayments('${jsq(p.id)}')">⬇ PDF</button>
+            <button class="ca" style="flex:none;padding:6px 10px;font-size:var(--fs-xs);color:#25D366;border-color:rgba(37,211,102,.25);background:rgba(37,211,102,.06)" onclick="waOwnerStatement('${jsq(p.id)}')">📤 WA</button>
           </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
@@ -5768,7 +6003,7 @@ function renderPay(){
             <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Sub-Con Paid</div>
           </div>
           <div style="background:var(--s2);border-radius:8px;padding:8px;text-align:center">
-            <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:${(p.value||0)-rec>0?'var(--gold)':(p.value||0)-rec<0?'var(--red)':'var(--grn)'}">${fmt((p.value||0)-rec)}</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:${htmlEsc((p.value||0)-rec>0?'var(--gold)':(p.value||0)-rec<0?'var(--red)':'var(--grn)')}">${fmt((p.value||0)-rec)}</div>
             <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Remaining</div>
           </div>
         </div>
@@ -5796,21 +6031,21 @@ function renderPay(){
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
         ${selBox('pay',p.id,isIn?'cpays':'subpays')}
         <div style="flex:1;min-width:0">
-          <div class="pay-type" style="color:${isIn?'var(--grn)':'var(--red)'}">${isIn?'💳 Received from Client':'💸 Paid to Sub-Con'}</div>
-          <div class="pay-nm">${isIn?(p.clientName||'—'):(p.subconName||'—')}</div>
-          <div class="pay-sub">${isIn?(p.milestone||p.invoiceRef||p.projectName||'—'):(p.phase+' · '+(p.projectName||'—'))}</div>
-          ${bd.length?`<div style="margin-top:7px;display:flex;flex-wrap:wrap;gap:5px">${bd.map(b=>`<span style="font-size:9px;padding:3px 7px;border-radius:6px;background:var(--s2);border:1px solid var(--bor);color:var(--mut)">${b.trade||'Other'}${b.name?' · '+b.name:''} · <b style="color:var(--txt)">${fmt(b.amount)}</b></span>`).join('')}</div>`:''}
+          <div class="pay-type" style="color:${htmlEsc(isIn?'var(--grn)':'var(--red)')}">${htmlEsc(isIn?'💳 Received from Client':'💸 Paid to Sub-Con')}</div>
+          <div class="pay-nm">${htmlEsc(isIn?(p.clientName||'—'):(p.subconName||'—'))}</div>
+          <div class="pay-sub">${htmlEsc(isIn?(p.milestone||p.invoiceRef||p.projectName||'—'):(p.phase+' · '+(p.projectName||'—')))}</div>
+          ${bd.length?`<div style="margin-top:7px;display:flex;flex-wrap:wrap;gap:5px">${bd.map(b=>`<span style="font-size:9px;padding:3px 7px;border-radius:6px;background:var(--s2);border:1px solid var(--bor);color:var(--mut)">${htmlEsc(b.trade||'Other')}${htmlEsc(b.name?' · '+b.name:'')} · <b style="color:var(--txt)">${fmt(b.amount)}</b></span>`).join('')}</div>`:''}
         </div>
-        <div class="pay-amt" style="color:${isIn?'var(--grn)':'var(--red)'}">${isIn?'+':'-'}${fmt(p.amount)}</div>
+        <div class="pay-amt" style="color:${htmlEsc(isIn?'var(--grn)':'var(--red)')}">${htmlEsc(isIn?'+':'-')}${fmt(p.amount)}</div>
       </div>
       <div class="pay-bot">
-        <span class="pay-meta">${fmtDT(p.date,p.time?fmtTime12(p.time):'')} · ${p.method||'Cash'}${isIn&&p.payType==='misc'?' · Misc advance':''}${bd.length?' · '+bd.length+' further':''}</span>
+        <span class="pay-meta">${fmtDT(p.date,p.time?fmtTime12(p.time):'')} · ${htmlEsc(p.method||'Cash')}${htmlEsc(isIn&&p.payType==='misc'?' · Misc advance':'')}${htmlEsc(bd.length?' · '+bd.length+' further':'')}</span>
         <div style="display:flex;gap:7px">
-          <button class="ca gold" style="padding:5px 10px;font-size:var(--fs-xs);flex:none" onclick="${isIn?`pdfCpayConfirm('${p.id}')`:`pdfSpayConfirm('${p.id}')`}">⬇ PDF</button>
-          <button class="ca" style="padding:5px 10px;font-size:var(--fs-xs);flex:none;color:#25D366;border-color:rgba(37,211,102,.25);background:rgba(37,211,102,.06)" onclick="${isIn?`waCpay('${p.id}')`:`waSpay('${p.id}')`}">📤</button>
-          <button class="ca blu" style="padding:5px 12px;font-size:var(--fs-xs)" onclick="${isIn?'eCpay':'eSpay'}('${p.id}')">✏️ Edit</button>
-          <button class="ca arch" style="padding:5px 10px;font-size:var(--fs-xs)" onclick="archiveRec('${isIn?'cpays':'subpays'}','${p.id}')">📦</button>
-          <button class="ca red" style="padding:5px 12px;font-size:var(--fs-xs)" onclick="del('${isIn?'cpays':'subpays'}','${p.id}')">🗑</button>
+          <button class="ca gold" style="padding:5px 10px;font-size:var(--fs-xs);flex:none" onclick="${isIn?`pdfCpayConfirm('${jsq(p.id)}')`:`pdfSpayConfirm('${jsq(p.id)}')`}">⬇ PDF</button>
+          <button class="ca" style="padding:5px 10px;font-size:var(--fs-xs);flex:none;color:#25D366;border-color:rgba(37,211,102,.25);background:rgba(37,211,102,.06)" onclick="${isIn?`waCpay('${jsq(p.id)}')`:`waSpay('${jsq(p.id)}')`}">📤</button>
+          <button class="ca blu" style="padding:5px 12px;font-size:var(--fs-xs)" onclick="${htmlEsc(isIn?'eCpay':'eSpay')}('${jsq(p.id)}')">✏️ Edit</button>
+          <button class="ca arch" style="padding:5px 10px;font-size:var(--fs-xs)" onclick="archiveRec('${jsq(isIn?'cpays':'subpays')}','${jsq(p.id)}')">📦</button>
+          <button class="ca red" style="padding:5px 12px;font-size:var(--fs-xs)" onclick="del('${jsq(isIn?'cpays':'subpays')}','${jsq(p.id)}')">🗑</button>
         </div>
       </div>
     </div>`;
@@ -5832,7 +6067,7 @@ function renderPay(){
     const cin=g.rows.filter(r=>r.dir==='in').reduce((s,r)=>s+r.amount,0);
     const cout=g.rows.filter(r=>r.dir==='out').reduce((s,r)=>s+r.amount,0);
     const header=`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
-        <div style="font-size:var(--fs-sm);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">👤 ${g.name} <span style="color:var(--mut);font-weight:400;font-size:var(--fs-xs)">· ${g.rows.length}</span></div>
+        <div style="font-size:var(--fs-sm);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">👤 ${htmlEsc(g.name)} <span style="color:var(--mut);font-weight:400;font-size:var(--fs-xs)">· ${htmlEsc(g.rows.length)}</span></div>
         <div style="font-size:var(--fs-xs);font-family:'JetBrains Mono',monospace;flex-shrink:0">${cin?`<span style="color:var(--grn)">+${fmt(cin)}</span>`:''}${cin&&cout?' <span style="color:var(--mut)">|</span> ':''}${cout?`<span style="color:var(--red)">-${fmt(cout)}</span>`:''}</div>
       </div>`;
     return collapsibleSection(gid,header,g.rows.map(renderPayCard).join(''),open);
@@ -6103,21 +6338,21 @@ function spayRowHtml(p){
       ${selBox('sub',p.id,'subpays')}
       <div style="flex:1;min-width:0">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
-          <div style="font-size:var(--fs-sm);font-weight:600;min-width:0;flex:1">${p.phase||'—'} ${spayPayBadge(p)}</div>
+          <div style="font-size:var(--fs-sm);font-weight:600;min-width:0;flex:1">${htmlEsc(p.phase||'—')} ${spayPayBadge(p)}</div>
           <div style="text-align:right;flex-shrink:0">
-            <div style="font-family:'JetBrains Mono',monospace;color:${amtColor}">${fmt(p.amount)}</div>
+            <div style="font-family:'JetBrains Mono',monospace;color:${htmlEsc(amtColor)}">${fmt(p.amount)}</div>
             ${st==='partial'?`<div style="font-size:9px;color:var(--mut);margin-top:2px">Paid ${fmt(spayPaidAmt(p))}</div>`:''}
           </div>
         </div>
-        <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">${p.date||'—'} · ${p.method||'Cash'}</div>
-        ${p.desc?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">${p.desc}</div>`:''}
+        <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">${htmlEsc(p.date||'—')} · ${htmlEsc(p.method||'Cash')}</div>
+        ${p.desc?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">${htmlEsc(p.desc)}</div>`:''}
         ${st==='partial'?`<div style="font-size:var(--fs-xs);color:var(--ora);margin-top:3px">Due PKR ${fmt(spayDueAmt(p))}</div>`:''}
-        ${(p.breakdown||[]).length?`<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">${p.breakdown.map(b=>`<span style="font-size:9px;padding:2px 6px;border-radius:5px;background:var(--bg);border:1px solid var(--bor);color:var(--mut)">${b.trade||'Other'}${b.name?' · '+b.name:''}: <b style="color:var(--txt)">${fmt(b.amount)}</b></span>`).join('')}</div>`:''}
+        ${(p.breakdown||[]).length?`<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">${p.breakdown.map(b=>`<span style="font-size:9px;padding:2px 6px;border-radius:5px;background:var(--bg);border:1px solid var(--bor);color:var(--mut)">${htmlEsc(b.trade||'Other')}${htmlEsc(b.name?' · '+b.name:'')}: <b style="color:var(--txt)">${fmt(b.amount)}</b></span>`).join('')}</div>`:''}
         <div class="row-acts">
-          <button style="color:${spayIsFullyPaid(p)?'var(--mut)':'var(--grn)'};font-weight:600" onclick="markSpayPaid('${p.id}')">${spayIsFullyPaid(p)?'↩ Unpaid':(spayHasDue(p)?'💰 Pay':'✅ Paid')}</button>
-          <button style="color:var(--blu)" onclick="eSpay('${p.id}')">Edit</button>
-          <button style="color:var(--mut)" onclick="archiveRec('subpays','${p.id}')">Archive</button>
-          <button style="color:var(--red)" onclick="del('subpays','${p.id}')">Del</button>
+          <button style="color:${htmlEsc(spayIsFullyPaid(p)?'var(--mut)':'var(--grn)')};font-weight:600" onclick="markSpayPaid('${jsq(p.id)}')">${htmlEsc(spayIsFullyPaid(p)?'↩ Unpaid':(spayHasDue(p)?'💰 Pay':'✅ Paid'))}</button>
+          <button style="color:var(--blu)" onclick="eSpay('${jsq(p.id)}')">Edit</button>
+          <button style="color:var(--mut)" onclick="archiveRec('subpays','${jsq(p.id)}')">Archive</button>
+          <button style="color:var(--red)" onclick="del('subpays','${jsq(p.id)}')">Del</button>
         </div>
       </div>
     </div>
@@ -6360,7 +6595,7 @@ function workSpendRowsHtml(rows,scopeId,opts){
     const header=`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
       <div style="min-width:0">
         <div style="font-size:var(--fs-sm);font-weight:600">${agrEsc(r.label)}</div>
-        <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">${n} line${n===1?'':'s'}</div>
+        <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">${htmlEsc(n)} line${htmlEsc(n===1?'':'s')}</div>
       </div>
       <div style="font-family:'JetBrains Mono',monospace;color:var(--red);font-weight:700;flex-shrink:0">${fmt(r.amount)}</div>
     </div>`;
@@ -6421,7 +6656,7 @@ function workSpendKeptSectionHtml(row){
   const header=`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
       <div style="min-width:0">
         <div style="font-size:var(--fs-sm);font-weight:700">Kept by Sub-Contractor</div>
-        <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">${sub}</div>
+        <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">${htmlEsc(sub)}</div>
       </div>
       <div style="font-family:'JetBrains Mono',monospace;color:var(--red);font-weight:700;flex-shrink:0">${fmt(amount)}</div>
     </div>`;
@@ -6446,7 +6681,7 @@ function renderSubWork(){
     const open=!collapsedGroups[id];
     const title=(pg.pid==='__none__'?'📌 ':'📁 ')+agrEsc(pg.projName);
     const header=`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
-      <div style="font-size:var(--fs-sm);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">${title} <span style="color:var(--mut);font-weight:400;font-size:var(--fs-xs)">· Paid</span></div>
+      <div style="font-size:var(--fs-sm);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">${htmlEsc(title)} <span style="color:var(--mut);font-weight:400;font-size:var(--fs-xs)">· Paid</span></div>
       <span style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-xs);color:var(--red);flex-shrink:0">-${fmt(paid)}</span>
     </div>`;
     const emptyHtml=split.kept&&!split.labour.length
@@ -6469,12 +6704,12 @@ function renderSubWork(){
     const header=`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
       ${selBox('sub',s.id,'subcons')}
       <div style="min-width:0;flex:1">
-        <div style="font-size:var(--fs-sm);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${agrEsc(s.name)} <span style="color:var(--mut);font-weight:400;font-size:var(--fs-xs)">· ${allPaysRaw.length}</span></div>
-        <div style="margin-top:3px"><span class="b ${trC(s.trade)}">${agrEsc(s.trade||'')}</span>${s.phone?`<span style="font-size:var(--fs-xs);color:var(--mut);margin-left:6px">${agrEsc(s.phone)}</span>`:''}</div>
+        <div style="font-size:var(--fs-sm);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${agrEsc(s.name)} <span style="color:var(--mut);font-weight:400;font-size:var(--fs-xs)">· ${htmlEsc(allPaysRaw.length)}</span></div>
+        <div style="margin-top:3px"><span class="b ${htmlEsc(trC(s.trade))}">${agrEsc(s.trade||'')}</span>${s.phone?`<span style="font-size:var(--fs-xs);color:var(--mut);margin-left:6px">${agrEsc(s.phone)}</span>`:''}</div>
       </div>
       <div style="text-align:right;flex-shrink:0;font-size:var(--fs-xs);font-family:'JetBrains Mono',monospace">
         <div style="color:var(--red)">-${fmt(totalPaid)}</div>
-        <div style="color:${remClr};margin-top:2px">${fmt(Math.abs(rem))} ${rem<0?'over':'left'}</div>
+        <div style="color:${htmlEsc(remClr)};margin-top:2px">${fmt(Math.abs(rem))} ${htmlEsc(rem<0?'over':'left')}</div>
         ${totalDue>0?`<div style="color:var(--ora);margin-top:2px">${fmt(totalDue)} due</div>`:''}
       </div>
     </div>`;
@@ -6482,16 +6717,16 @@ function renderSubWork(){
       <div class="sub-stats">
         <div class="sub-stat"><div class="sub-stat-val" style="color:var(--gold)">${fmt(totalContract)}</div><div class="sub-stat-lbl">Total Contract</div></div>
         <div class="sub-stat"><div class="sub-stat-val" style="color:var(--red)">${fmt(totalPaid)}</div><div class="sub-stat-lbl">Total Paid</div></div>
-        <div class="sub-stat"><div class="sub-stat-val" style="color:${remClr}">${fmt(rem)}</div><div class="sub-stat-lbl">Remaining</div></div>
+        <div class="sub-stat"><div class="sub-stat-val" style="color:${htmlEsc(remClr)}">${fmt(rem)}</div><div class="sub-stat-lbl">Remaining</div></div>
       </div>
       ${totalDue>0?`<div style="font-size:var(--fs-xs);color:var(--ora);margin-bottom:8px">⏳ Pending on payment lines: PKR ${fmt(totalDue)} (not in Total Paid or work spend)</div>`:''}
-      <div class="pbar-wrap"><div class="pbar" style="width:${pct}%"></div></div>
-      <div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:14px">Paid ${pct}% of total contract · trade sums are on the project above</div>
+      <div class="pbar-wrap"><div class="pbar" style="width:${htmlEsc(pct)}%"></div></div>
+      <div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:14px">Paid ${htmlEsc(pct)}% of total contract · trade sums are on the project above</div>
       <div class="card-acts" style="margin-top:4px">
-        <button class="ca blu" onclick="eSub('${s.id}')">✏️ Edit</button>
-        <button class="ca gold" onclick="O('sh-spay');iSpay();sv('sp-sub-t','${esc(s.name)}');sv('sp-sub-id','${s.id}')">+ Pay</button>
-        <button class="ca arch" onclick="archiveRec('subcons','${s.id}')">📦 Archive</button>
-        <button class="ca red" onclick="del('subcons','${s.id}')">🗑</button>
+        <button class="ca blu" onclick="eSub('${jsq(s.id)}')">✏️ Edit</button>
+        <button class="ca gold" onclick="O('sh-spay');iSpay();sv('sp-sub-t','${esc(s.name)}');sv('sp-sub-id','${jsq(s.id)}')">+ Pay</button>
+        <button class="ca arch" onclick="archiveRec('subcons','${jsq(s.id)}')">📦 Archive</button>
+        <button class="ca red" onclick="del('subcons','${jsq(s.id)}')">🗑</button>
       </div>
     </div>`;
     return collapsibleSection(gid,header,body,open);
@@ -6547,12 +6782,12 @@ function renderSub(){
     const header=`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
       ${selBox('sub',s.id,'subcons')}
       <div style="min-width:0;flex:1">
-        <div style="font-size:var(--fs-sm);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.name} <span style="color:var(--mut);font-weight:400;font-size:var(--fs-xs)">· ${allPays.length}</span></div>
-        <div style="margin-top:3px"><span class="b ${trC(s.trade)}">${s.trade}</span>${s.phone?`<span style="font-size:var(--fs-xs);color:var(--mut);margin-left:6px">${s.phone}</span>`:''}</div>
+        <div style="font-size:var(--fs-sm);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${htmlEsc(s.name)} <span style="color:var(--mut);font-weight:400;font-size:var(--fs-xs)">· ${htmlEsc(allPays.length)}</span></div>
+        <div style="margin-top:3px"><span class="b ${htmlEsc(trC(s.trade))}">${htmlEsc(s.trade)}</span>${s.phone?`<span style="font-size:var(--fs-xs);color:var(--mut);margin-left:6px">${htmlEsc(s.phone)}</span>`:''}</div>
       </div>
       <div style="text-align:right;flex-shrink:0;font-size:var(--fs-xs);font-family:'JetBrains Mono',monospace">
         <div style="color:var(--red)">-${fmt(totalPaid)}</div>
-        <div style="color:${remClr};margin-top:2px">${fmt(Math.abs(rem))} ${rem<0?'over':'left'}</div>
+        <div style="color:${htmlEsc(remClr)};margin-top:2px">${fmt(Math.abs(rem))} ${htmlEsc(rem<0?'over':'left')}</div>
         ${totalDue>0?`<div style="color:var(--ora);margin-top:2px">${fmt(totalDue)} due</div>`:''}
       </div>
     </div>`;
@@ -6561,16 +6796,16 @@ function renderSub(){
       const pgid='sub-proj-'+s.id+'-'+pg.pid;
       const pOpen=!collapsedGroups[pgid];
       const pHeader=`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
-        <div style="font-size:var(--fs-sm);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">📁 ${pg.projName} <span style="color:var(--mut);font-weight:400;font-size:var(--fs-xs)">· ${pg.projPays.length}</span></div>
+        <div style="font-size:var(--fs-sm);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">📁 ${htmlEsc(pg.projName)} <span style="color:var(--mut);font-weight:400;font-size:var(--fs-xs)">· ${htmlEsc(pg.projPays.length)}</span></div>
         <div style="display:flex;gap:7px;align-items:center;flex-shrink:0">
           <span style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-xs);color:var(--red)">-${fmt(pg.projTotal)}</span>
-          <button class="ca gold" style="padding:5px 9px;font-size:var(--fs-xs);flex:none" onclick="event.stopPropagation();pdfSubProjStatement('${s.id}','${pg.pid}')">⬇ PDF</button>
-          <button class="ca blu" style="padding:5px 9px;font-size:var(--fs-xs);flex:none" onclick="event.stopPropagation();openSpCon('${s.id}','${pg.pid}')">✏️ Contract</button>
+          <button class="ca gold" style="padding:5px 9px;font-size:var(--fs-xs);flex:none" onclick="event.stopPropagation();pdfSubProjStatement('${jsq(s.id)}','${jsq(pg.pid)}')">⬇ PDF</button>
+          <button class="ca blu" style="padding:5px 9px;font-size:var(--fs-xs);flex:none" onclick="event.stopPropagation();openSpCon('${jsq(s.id)}','${jsq(pg.pid)}')">✏️ Contract</button>
         </div>
       </div>`;
       const pBody=`${showProjStats?`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px">
               <div style="background:var(--bg);border-radius:7px;padding:8px;text-align:center">
-                <div data-role="proj-contract" style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--gold)">${pg.projContract>0?fmt(pg.projContract):'Tap ✏️'}</div>
+                <div data-role="proj-contract" style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--gold)">${htmlEsc(pg.projContract>0?fmt(pg.projContract):'Tap ✏️')}</div>
                 <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Contract</div>
               </div>
               <div style="background:var(--bg);border-radius:7px;padding:8px;text-align:center">
@@ -6578,7 +6813,7 @@ function renderSub(){
                 <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Paid</div>
               </div>
               <div style="background:var(--bg);border-radius:7px;padding:8px;text-align:center">
-                <div data-role="proj-remaining" style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:${pg.projRem>0?'var(--gold)':pg.projRem<0?'var(--red)':'var(--grn)'}">${pg.projContract>0?fmt(pg.projRem):'—'}</div>
+                <div data-role="proj-remaining" style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:${htmlEsc(pg.projRem>0?'var(--gold)':pg.projRem<0?'var(--red)':'var(--grn)')}">${htmlEsc(pg.projContract>0?fmt(pg.projRem):'—')}</div>
                 <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Remaining</div>
               </div>
             </div>`:''}
@@ -6595,18 +6830,18 @@ function renderSub(){
       <div class="sub-stats">
         <div class="sub-stat"><div class="sub-stat-val" style="color:var(--gold)">${fmt(totalContract)}</div><div class="sub-stat-lbl">Total Contract</div></div>
         <div class="sub-stat"><div class="sub-stat-val" style="color:var(--red)">${fmt(totalPaid)}</div><div class="sub-stat-lbl">Total Paid</div></div>
-        <div class="sub-stat"><div class="sub-stat-val" style="color:${remClr}">${fmt(rem)}</div><div class="sub-stat-lbl">Remaining</div></div>
+        <div class="sub-stat"><div class="sub-stat-val" style="color:${htmlEsc(remClr)}">${fmt(rem)}</div><div class="sub-stat-lbl">Remaining</div></div>
       </div>
       ${totalDue>0?`<div style="font-size:var(--fs-xs);color:var(--ora);margin-bottom:8px">⏳ Pending on payment lines: PKR ${fmt(totalDue)} (not in Total Paid)</div>`:''}
-      <div class="pbar-wrap"><div class="pbar" style="width:${pct}%"></div></div>
-      <div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:14px">Paid ${pct}% of total contract</div>
+      <div class="pbar-wrap"><div class="pbar" style="width:${htmlEsc(pct)}%"></div></div>
+      <div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:14px">Paid ${htmlEsc(pct)}% of total contract</div>
       ${projectsHtml}
       ${unlinkedHtml}
       <div class="card-acts" style="margin-top:4px">
-        <button class="ca blu" onclick="eSub('${s.id}')">✏️ Edit</button>
-        <button class="ca gold" onclick="O('sh-spay');iSpay();sv('sp-sub-t','${esc(s.name)}');sv('sp-sub-id','${s.id}')">+ Pay</button>
-        <button class="ca arch" onclick="archiveRec('subcons','${s.id}')">📦 Archive</button>
-        <button class="ca red" onclick="del('subcons','${s.id}')">🗑</button>
+        <button class="ca blu" onclick="eSub('${jsq(s.id)}')">✏️ Edit</button>
+        <button class="ca gold" onclick="O('sh-spay');iSpay();sv('sp-sub-t','${esc(s.name)}');sv('sp-sub-id','${jsq(s.id)}')">+ Pay</button>
+        <button class="ca arch" onclick="archiveRec('subcons','${jsq(s.id)}')">📦 Archive</button>
+        <button class="ca red" onclick="del('subcons','${jsq(s.id)}')">🗑</button>
       </div>
     </div>`;
     return collapsibleSection(gid,header,body,open);
@@ -6626,13 +6861,13 @@ function renderAgr(){
     const inc=(r.inclusions||[]).length;const exc=Array.isArray(r.exclusions)?r.exclusions.length:0;
     const typeShow=(r.agrTypeCustom||typeLbl[r.agrType]||r.agrType||'—');
     return`<div class="card">
-    <div class="card-top">${selBox('agr',r.id,'agreements')}<div style="flex:1;min-width:0"><div class="card-num">${r.num} · <span style="color:var(--mut)">${typeShow}</span></div><div class="card-nm">${r.clientName}</div><div class="card-sub">${r.projectName||'—'}${inc||exc?` · ✓${inc} include · ✕${exc} exclude`:''}</div></div>${bdg(r.status)}</div>
-    <div class="card-mid"><div class="card-amt">${r.agrType==='costpct'?(r.rate?r.rate+'%':'—'):('PKR '+fmt(r.value))}</div><div class="card-date">${r.date||'—'}</div></div>
+    <div class="card-top">${selBox('agr',r.id,'agreements')}<div style="flex:1;min-width:0"><div class="card-num">${htmlEsc(r.num)} · <span style="color:var(--mut)">${htmlEsc(typeShow)}</span></div><div class="card-nm">${htmlEsc(r.clientName)}</div><div class="card-sub">${htmlEsc(r.projectName||'—')}${inc||exc?` · ✓${htmlEsc(inc)} include · ✕${htmlEsc(exc)} exclude`:''}</div></div>${bdg(r.status)}</div>
+    <div class="card-mid"><div class="card-amt">${htmlEsc(r.agrType==='costpct'?(r.rate?r.rate+'%':'—'):('PKR '+fmt(r.value)))}</div><div class="card-date">${htmlEsc(r.date||'—')}</div></div>
     <div class="card-acts">
-      <button class="ca blu" onclick="eAgr('${r.id}')">✏️ Edit</button>
-      <button class="ca gold" onclick="pdfAgr('${r.id}')">⬇ PDF</button>
-      <button class="ca arch" onclick="archiveRec('agreements','${r.id}')">📦 Archive</button>
-      <button class="ca red" onclick="del('agreements','${r.id}')">🗑</button>
+      <button class="ca blu" onclick="eAgr('${jsq(r.id)}')">✏️ Edit</button>
+      <button class="ca gold" onclick="pdfAgr('${jsq(r.id)}')">⬇ PDF</button>
+      <button class="ca arch" onclick="archiveRec('agreements','${jsq(r.id)}')">📦 Archive</button>
+      <button class="ca red" onclick="del('agreements','${jsq(r.id)}')">🗑</button>
     </div></div>`;
   }).join('');
   updateListSelBar();
@@ -6646,17 +6881,17 @@ function renderCli(){
   el.innerHTML=clis.map(r=>`<div class="card">
     <div class="card-top">
       <div>
-        <div class="card-nm">${r.name}</div>
-        <div class="card-sub">${[r.phone,r.city].filter(Boolean).join(' · ')}</div>
-        ${r.cnic?`<div class="card-sub">CNIC: ${r.cnic}</div>`:''}
-        ${r.email?`<div class="card-sub">${r.email}</div>`:''}
-        ${r.addr?`<div class="card-sub">${r.addr}</div>`:''}
+        <div class="card-nm">${htmlEsc(r.name)}</div>
+        <div class="card-sub">${htmlEsc([r.phone,r.city].filter(Boolean).join(' · '))}</div>
+        ${r.cnic?`<div class="card-sub">CNIC: ${htmlEsc(r.cnic)}</div>`:''}
+        ${r.email?`<div class="card-sub">${htmlEsc(r.email)}</div>`:''}
+        ${r.addr?`<div class="card-sub">${htmlEsc(r.addr)}</div>`:''}
       </div>
     </div>
     <div class="card-acts">
-      <button class="ca blu" onclick="eCli('${r.id}')">✏️ Edit</button>
-      <button class="ca arch" onclick="archiveRec('clients','${r.id}')">📦 Archive</button>
-      <button class="ca red" onclick="del('clients','${r.id}')">🗑 Delete</button>
+      <button class="ca blu" onclick="eCli('${jsq(r.id)}')">✏️ Edit</button>
+      <button class="ca arch" onclick="archiveRec('clients','${jsq(r.id)}')">📦 Archive</button>
+      <button class="ca red" onclick="del('clients','${jsq(r.id)}')">🗑 Delete</button>
     </div>
   </div>`).join('');
 }
@@ -7617,26 +7852,26 @@ function renderTasks(){
   if(!rows.length){el.innerHTML='<div class="empty"><div class="empty-i">📋</div><div class="empty-t">No tasks yet.<br>Tap + to add a task.</div></div>';updateListSelBar();return;}
   const statusColor={pending:'var(--gold)',inprogress:'var(--blu)',done:'var(--grn)',blocked:'var(--red)'};
   const priorityIcon={high:'🔴',medium:'🟡',low:'🟢'};
-  el.innerHTML=rows.map(r=>`<div class="card" style="border-left:3px solid ${statusColor[r.status]||'var(--bor)'}">
+  el.innerHTML=rows.map(r=>`<div class="card" style="border-left:3px solid ${htmlEsc(statusColor[r.status]||'var(--bor)')}">
     <div class="card-top">
       ${selBox('tasks',r.id,'tasks')}
       <div style="flex:1;min-width:0">
-        <div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:4px">${priorityIcon[r.priority]||''} ${r.priority||''} · ${r.projectName||'No Project'}</div>
-        <div class="card-nm">${r.title}</div>
-        ${r.assign?`<div class="card-sub">👤 ${r.assign}</div>`:''}
+        <div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:4px">${htmlEsc(priorityIcon[r.priority]||'')} ${htmlEsc(r.priority||'')} · ${htmlEsc(r.projectName||'No Project')}</div>
+        <div class="card-nm">${htmlEsc(r.title)}</div>
+        ${r.assign?`<div class="card-sub">👤 ${htmlEsc(r.assign)}</div>`:''}
       </div>
-      <span class="b" style="background:${statusColor[r.status]}18;color:${statusColor[r.status]}">${r.status==='inprogress'?'In Progress':r.status==='done'?'Done ✅':r.status==='blocked'?'Blocked ⛔':'Pending'}</span>
+      <span class="b" style="background:${htmlEsc(statusColor[r.status])}18;color:${htmlEsc(statusColor[r.status])}">${htmlEsc(r.status==='inprogress'?'In Progress':r.status==='done'?'Done ✅':r.status==='blocked'?'Blocked ⛔':'Pending')}</span>
     </div>
     <div style="display:flex;gap:12px;font-size:var(--fs-xs);color:var(--mut);margin-bottom:10px">
-      ${r.start?`<span>Start: ${r.start}</span>`:''}
-      ${r.due?`<span>Due: <span style="color:var(--red)">${r.due}</span></span>`:''}
+      ${r.start?`<span>Start: ${htmlEsc(r.start)}</span>`:''}
+      ${r.due?`<span>Due: <span style="color:var(--red)">${htmlEsc(r.due)}</span></span>`:''}
     </div>
-    ${r.notes?`<div style="font-size:var(--fs-sm);color:var(--mut);margin-bottom:10px">${r.notes}</div>`:''}
+    ${r.notes?`<div style="font-size:var(--fs-sm);color:var(--mut);margin-bottom:10px">${htmlEsc(r.notes)}</div>`:''}
     <div class="card-acts">
-      ${r.status!=='done'?`<button class="ca grn" onclick="markDone('${r.id}')">✅ Done</button>`:''}
-      <button class="ca blu" onclick="eTask('${r.id}')">✏️ Edit</button>
-      <button class="ca arch" onclick="archiveRec('tasks','${r.id}')">📦 Archive</button>
-      <button class="ca red" onclick="del('tasks','${r.id}')">🗑</button>
+      ${r.status!=='done'?`<button class="ca grn" onclick="markDone('${jsq(r.id)}')">✅ Done</button>`:''}
+      <button class="ca blu" onclick="eTask('${jsq(r.id)}')">✏️ Edit</button>
+      <button class="ca arch" onclick="archiveRec('tasks','${jsq(r.id)}')">📦 Archive</button>
+      <button class="ca red" onclick="del('tasks','${jsq(r.id)}')">🗑</button>
     </div>
   </div>`).join('');
   updateListSelBar();
@@ -7761,32 +7996,32 @@ function renderWorkOrders(){
   el.innerHTML=filtered.map(r=>{
     const st=r.status||'assigned';
     const urCls=t=>hasUrdu(t)?' card-urdu':'';
-    return`<div class="card" style="border-left:3px solid ${stColor[st]||'var(--bor)'}">
+    return`<div class="card" style="border-left:3px solid ${htmlEsc(stColor[st]||'var(--bor)')}">
       <div class="card-top">
         ${selBox('workorders',r.id,'workorders')}
         <div style="flex:1;min-width:0">
-          <div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:4px">${r.num||''} · ${prIcon[r.priority]||''} ${(r.priority||'normal')} · ${woTradeLabel(r.trade,'both')}</div>
-          <div class="card-nm${urCls(r.title)}">${r.title}</div>
-          <div class="card-sub">👷 ${r.workerName||r.subconName||'—'}${r.projectName?' · '+r.projectName:''}</div>
-          ${r.area?`<div class="card-sub${urCls(r.area)}">📍 ${r.area}</div>`:''}
+          <div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:4px">${htmlEsc(r.num||'')} · ${htmlEsc(prIcon[r.priority]||'')} ${(htmlEsc(r.priority||'normal'))} · ${htmlEsc(woTradeLabel(r.trade,'both'))}</div>
+          <div class="card-nm${htmlEsc(urCls(r.title))}">${htmlEsc(r.title)}</div>
+          <div class="card-sub">👷 ${htmlEsc(r.workerName||r.subconName||'—')}${htmlEsc(r.projectName?' · '+r.projectName:'')}</div>
+          ${r.area?`<div class="card-sub${htmlEsc(urCls(r.area))}">📍 ${htmlEsc(r.area)}</div>`:''}
         </div>
-        <span class="b" style="background:${stColor[st]}18;color:${stColor[st]}">${stLabel[st]||st}</span>
+        <span class="b" style="background:${htmlEsc(stColor[st])}18;color:${htmlEsc(stColor[st])}">${htmlEsc(stLabel[st]||st)}</span>
       </div>
-      ${r.whatToDo?`<div class="${urCls(r.whatToDo).trim()}" style="font-size:var(--fs-sm);color:var(--txt);margin-bottom:6px"><b style="color:var(--mut);font-size:var(--fs-xs);font-family:Inter,sans-serif;direction:ltr;display:block;text-align:left">WHAT · کیا کرنا ہے</b>${r.whatToDo}</div>`:''}
-      ${r.changes?`<div class="${urCls(r.changes).trim()}" style="font-size:var(--fs-sm);color:var(--ora);margin-bottom:8px;background:rgba(232,148,75,.08);border-radius:8px;padding:8px 10px"><b style="font-size:var(--fs-xs);font-family:Inter,sans-serif;direction:ltr;display:block;text-align:left;color:var(--mut)">CHANGES · تبدیلی</b>${r.changes}</div>`:''}
+      ${r.whatToDo?`<div class="${htmlEsc(urCls(r.whatToDo).trim())}" style="font-size:var(--fs-sm);color:var(--txt);margin-bottom:6px"><b style="color:var(--mut);font-size:var(--fs-xs);font-family:Inter,sans-serif;direction:ltr;display:block;text-align:left">WHAT · کیا کرنا ہے</b>${htmlEsc(r.whatToDo)}</div>`:''}
+      ${r.changes?`<div class="${htmlEsc(urCls(r.changes).trim())}" style="font-size:var(--fs-sm);color:var(--ora);margin-bottom:8px;background:rgba(232,148,75,.08);border-radius:8px;padding:8px 10px"><b style="font-size:var(--fs-xs);font-family:Inter,sans-serif;direction:ltr;display:block;text-align:left;color:var(--mut)">CHANGES · تبدیلی</b>${htmlEsc(r.changes)}</div>`:''}
       <div style="display:flex;gap:12px;font-size:var(--fs-xs);color:var(--mut);margin-bottom:10px">
-        <span>Date: ${r.date||'—'}</span>
-        ${r.due?`<span>Due: <span style="color:var(--red)">${r.due}</span></span>`:''}
-        <span>${(r.lang||'both')==='ur'?'اردو':(r.lang||'both')==='en'?'EN':'EN+اردو'}</span>
+        <span>Date: ${htmlEsc(r.date||'—')}</span>
+        ${r.due?`<span>Due: <span style="color:var(--red)">${htmlEsc(r.due)}</span></span>`:''}
+        <span>${htmlEsc((r.lang||'both')==='ur'?'اردو':(r.lang||'both')==='en'?'EN':'EN+اردو')}</span>
       </div>
       <div class="card-acts">
-        ${st!=='done'&&st!=='cancelled'?`<button class="ca blu" onclick="setWorkOrderStatus('${r.id}','inprogress')">▶ Start</button>`:''}
-        ${st!=='done'?`<button class="ca grn" onclick="setWorkOrderStatus('${r.id}','done')">✅ Done</button>`:''}
-        <button class="ca gold" onclick="pdfWorkOrder('${r.id}')">⬇ PDF</button>
-        <button class="ca" style="color:#25D366;border-color:rgba(37,211,102,.25);background:rgba(37,211,102,.06)" onclick="waWorkOrder('${r.id}')">📤</button>
-        <button class="ca blu" onclick="eWorkOrder('${r.id}')">✏️ Edit</button>
-        <button class="ca arch" onclick="archiveRec('workorders','${r.id}')">📦 Archive</button>
-        <button class="ca red" onclick="del('workorders','${r.id}')">🗑</button>
+        ${st!=='done'&&st!=='cancelled'?`<button class="ca blu" onclick="setWorkOrderStatus('${jsq(r.id)}','inprogress')">▶ Start</button>`:''}
+        ${st!=='done'?`<button class="ca grn" onclick="setWorkOrderStatus('${jsq(r.id)}','done')">✅ Done</button>`:''}
+        <button class="ca gold" onclick="pdfWorkOrder('${jsq(r.id)}')">⬇ PDF</button>
+        <button class="ca" style="color:#25D366;border-color:rgba(37,211,102,.25);background:rgba(37,211,102,.06)" onclick="waWorkOrder('${jsq(r.id)}')">📤</button>
+        <button class="ca blu" onclick="eWorkOrder('${jsq(r.id)}')">✏️ Edit</button>
+        <button class="ca arch" onclick="archiveRec('workorders','${jsq(r.id)}')">📦 Archive</button>
+        <button class="ca red" onclick="del('workorders','${jsq(r.id)}')">🗑</button>
       </div>
     </div>`;
   }).join('');
@@ -8232,10 +8467,10 @@ function updateMiscReconBanner(){
     const hand=p.cashInHand||0;
     const spent=(D.expenses||[]).filter(e=>e.projectId===p.id&&e.fundedBy==='cashinhand').reduce((s,e)=>s+expPaidAmt(e),0);
     if(miscSum>0&&Math.abs(hand-miscSum)>0.5){
-      issues.push(`<b>${p.name}</b>: Misc advances recorded PKR ${fmt(miscSum)} but cash-in-hand is PKR ${fmt(hand)}`);
+      issues.push(`<b>${htmlEsc(p.name)}</b>: Misc advances recorded PKR ${fmt(miscSum)} but cash-in-hand is PKR ${fmt(hand)}`);
     }
     if(spent>hand+0.5){
-      issues.push(`<b>${p.name}</b>: Misc spent PKR ${fmt(spent)} exceeds cash given PKR ${fmt(hand)} (over by ${fmt(spent-hand)})`);
+      issues.push(`<b>${htmlEsc(p.name)}</b>: Misc spent PKR ${fmt(spent)} exceeds cash given PKR ${fmt(hand)} (over by ${fmt(spent-hand)})`);
     }
   });
   if(!issues.length){box.style.display='none';box.innerHTML='';return;}
@@ -8370,11 +8605,11 @@ function renderExp(){
     const gid='exp-grp-'+(isOwnerMode?'own-':'con-')+pid;
     const open=!collapsedGroups[gid];
     const pdfBtns=isOwnerMode
-      ?`<button class="ca" style="flex:none;padding:5px 9px;font-size:var(--fs-xs);color:#4D94D4;border-color:rgba(77,148,212,.3);background:rgba(77,148,212,.06)" onclick="event.stopPropagation();pdfExpProjectOwner('${pid}','${esc(projName)}')">⬇ Owner</button>
-         <button class="ca" style="flex:none;padding:5px 9px;font-size:var(--fs-xs);color:#4D94D4;border-color:rgba(77,148,212,.3);background:rgba(77,148,212,.06)" onclick="event.stopPropagation();pdfReimbursement('${pid}','${esc(projName)}')">⬇ Reimb</button>`
-      :`<button class="ca gold" style="flex:none;padding:5px 9px;font-size:var(--fs-xs)" onclick="event.stopPropagation();pdfExpProjectContractor('${pid}','${esc(projName)}')">⬇ PDF</button>`;
+      ?`<button class="ca" style="flex:none;padding:5px 9px;font-size:var(--fs-xs);color:#4D94D4;border-color:rgba(77,148,212,.3);background:rgba(77,148,212,.06)" onclick="event.stopPropagation();pdfExpProjectOwner('${jsq(pid)}','${esc(projName)}')">⬇ Owner</button>
+         <button class="ca" style="flex:none;padding:5px 9px;font-size:var(--fs-xs);color:#4D94D4;border-color:rgba(77,148,212,.3);background:rgba(77,148,212,.06)" onclick="event.stopPropagation();pdfReimbursement('${jsq(pid)}','${esc(projName)}')">⬇ Reimb</button>`
+      :`<button class="ca gold" style="flex:none;padding:5px 9px;font-size:var(--fs-xs)" onclick="event.stopPropagation();pdfExpProjectContractor('${jsq(pid)}','${esc(projName)}')">⬇ PDF</button>`;
     const header=`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
-      <div style="font-size:var(--fs-sm);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">📁 ${projName} <span style="color:var(--mut);font-weight:400;font-size:var(--fs-xs)">· ${entryCount}</span></div>
+      <div style="font-size:var(--fs-sm);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">📁 ${htmlEsc(projName)} <span style="color:var(--mut);font-weight:400;font-size:var(--fs-xs)">· ${htmlEsc(entryCount)}</span></div>
       <div style="display:flex;align-items:center;gap:7px;flex-shrink:0">
         <span style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-xs);color:var(--red)">-${fmt(totalDisplay)}</span>
         ${pdfBtns}
@@ -8385,23 +8620,23 @@ function renderExp(){
           <div style="display:grid;grid-template-columns:1.2fr 1fr 0.85fr;gap:7px;margin-bottom:7px">
             <div>
               <div style="font-size:9px;color:var(--mut2);margin-bottom:3px">Amount (PKR)</div>
-              <input type="number" class="cih-amt" value="${cashInHand||''}" placeholder="0" data-pid="${pid}"
+              <input type="number" class="cih-amt" value="${htmlEsc(cashInHand||'')}" placeholder="0" data-pid="${htmlEsc(pid)}"
                 style="background:var(--bg);border:1px solid var(--bor);border-radius:8px;padding:9px 11px;font-size:var(--fs-md);color:var(--gold);font-family:'JetBrains Mono',monospace;width:100%">
             </div>
             <div>
               <div style="font-size:9px;color:var(--mut2);margin-bottom:3px">Received Date</div>
-              <input type="date" class="cih-date" value="${proj.cashInHandDate||''}" data-pid="${pid}"
+              <input type="date" class="cih-date" value="${htmlEsc(proj.cashInHandDate||'')}" data-pid="${htmlEsc(pid)}"
                 style="background:var(--bg);border:1px solid var(--bor);border-radius:8px;padding:9px 11px;font-size:var(--fs-sm);color:var(--txt);width:100%">
             </div>
             <div>
               <div style="font-size:9px;color:var(--mut2);margin-bottom:3px">Received Time</div>
-              <input type="time" class="cih-time" value="${proj.cashInHandTime||''}" data-pid="${pid}"
+              <input type="time" class="cih-time" value="${htmlEsc(proj.cashInHandTime||'')}" data-pid="${htmlEsc(pid)}"
                 style="background:var(--bg);border:1px solid var(--bor);border-radius:8px;padding:9px 11px;font-size:var(--fs-sm);color:var(--txt);width:100%">
             </div>
           </div>
           <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center">
-            <button type="button" class="btn btn-gold btn-sm" style="padding:7px 12px;font-size:var(--fs-xs);flex:none" onclick="saveCashInHandFromUI('${pid}')">💾 Save Cash</button>
-            <button type="button" class="btn btn-grey btn-sm" style="padding:7px 12px;font-size:var(--fs-xs);flex:none;color:#4D94D4;border-color:rgba(77,148,212,.3)" onclick="openMiscAdvanceForProject('${pid}')">+ Record Advance</button>
+            <button type="button" class="btn btn-gold btn-sm" style="padding:7px 12px;font-size:var(--fs-xs);flex:none" onclick="saveCashInHandFromUI('${jsq(pid)}')">💾 Save Cash</button>
+            <button type="button" class="btn btn-grey btn-sm" style="padding:7px 12px;font-size:var(--fs-xs);flex:none;color:#4D94D4;border-color:rgba(77,148,212,.3)" onclick="openMiscAdvanceForProject('${jsq(pid)}')">+ Record Advance</button>
             ${proj.cashInHandDate||proj.cashInHandTime?`<span style="font-size:var(--fs-xs);color:var(--mut)">Last received: <b style="color:var(--txt)">${fmtDT(proj.cashInHandDate,proj.cashInHandTime?fmtTime12(proj.cashInHandTime):'')} </b></span>`:''}
           </div>
           ${(()=>{
@@ -8413,11 +8648,11 @@ function renderExp(){
               ${miscAdv.map(p=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--bor);gap:8px">
                 <div style="font-size:var(--fs-xs);color:var(--mut);min-width:0">
                   <span style="color:var(--txt);font-weight:600">${fmtDT(p.date,p.time?fmtTime12(p.time):'')}</span>
-                  ${p.method?` · ${p.method}`:''}${p.note?` · ${p.note}`:''}
+                  ${p.method?` · ${htmlEsc(p.method)}`:''}${p.note?` · ${htmlEsc(p.note)}`:''}
                 </div>
                 <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
                   <span style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-xs);color:var(--gold);font-weight:700">${fmt(p.amount)}</span>
-                  <button type="button" style="background:none;border:none;color:var(--mut);cursor:pointer;font-size:11px;padding:2px" onclick="eCpay('${p.id}')">✏️</button>
+                  <button type="button" style="background:none;border:none;color:var(--mut);cursor:pointer;font-size:11px;padding:2px" onclick="eCpay('${jsq(p.id)}')">✏️</button>
                 </div>
               </div>`).join('')}
             </div>`;
@@ -8432,43 +8667,43 @@ function renderExp(){
             <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Misc Spent</div>
           </div>
           <div style="background:var(--s2);border-radius:8px;padding:8px;text-align:center">
-            <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:${balance>=0?'var(--grn)':'var(--red)'}">${fmt(Math.abs(balance))}</div>
-            <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">${balance>=0?'Left':'Over'}</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:${htmlEsc(balance>=0?'var(--grn)':'var(--red)')}">${fmt(Math.abs(balance))}</div>
+            <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">${htmlEsc(balance>=0?'Left':'Over')}</div>
           </div>
         </div>
-        <div class="pbar-wrap" style="margin-top:8px"><div class="pbar" style="width:${pct}%;background:${pct>90?'var(--red)':pct>70?'var(--gold)':'var(--grn)'}"></div></div>`:''}
+        <div class="pbar-wrap" style="margin-top:8px"><div class="pbar" style="width:${htmlEsc(pct)}%;background:${htmlEsc(pct>90?'var(--red)':pct>70?'var(--gold)':'var(--grn)')}"></div></div>`:''}
         </div>`:'';
     const rowsHtml=(()=>{
         const internalRows=projRows.filter(r=>(r.fundedBy||'contract')==='contract');
         const ownerRows=projRows.filter(r=>r.fundedBy==='cashinhand');
         const behalfRowsF=projRows.filter(r=>r.fundedBy==='onbehalf');
-        const renderRow=r=>`<div style="padding:11px 14px;border-bottom:1px solid var(--bor);${selectedExpIds[r.id]?'background:rgba(232,184,75,.07)':''}">
+        const renderRow=r=>`<div style="padding:11px 14px;border-bottom:1px solid var(--bor);${htmlEsc(selectedExpIds[r.id]?'background:rgba(232,184,75,.07)':'')}">
           <div style="display:flex;align-items:flex-start;gap:10px">
             <label style="display:flex;align-items:flex-start;padding-top:2px;flex-shrink:0;cursor:pointer" onclick="event.stopPropagation()">
-              <input type="checkbox" class="exp-sel" data-eid="${r.id}" ${selectedExpIds[r.id]?'checked':''} onchange="toggleExpSelect('${r.id}',this.checked)" style="width:18px;height:18px;accent-color:var(--gold);cursor:pointer">
+              <input type="checkbox" class="exp-sel" data-eid="${htmlEsc(r.id)}" ${htmlEsc(selectedExpIds[r.id]?'checked':'')} onchange="toggleExpSelect('${jsq(r.id)}',this.checked)" style="width:18px;height:18px;accent-color:var(--gold);cursor:pointer">
             </label>
             <div style="flex:1;min-width:0">
               <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
-                <div style="font-size:var(--fs-sm);font-weight:600;min-width:0;flex:1">${catIcon[r.cat]||'📦'} ${r.desc} ${expPayBadge(r)}</div>
+                <div style="font-size:var(--fs-sm);font-weight:600;min-width:0;flex:1">${htmlEsc(catIcon[r.cat]||'📦')} ${htmlEsc(r.desc)} ${expPayBadge(r)}</div>
                 <div style="text-align:right;flex-shrink:0">
                   <div style="font-family:'JetBrains Mono',monospace;color:var(--red);font-size:var(--fs-md)">${fmt(r.amount)}</div>
                   ${expPayStatus(r)==='partial'?`<div style="font-size:9px;color:var(--mut);margin-top:2px">Paid ${fmt(expPaidAmt(r))}</div>`:''}
                 </div>
               </div>
-              <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">${r.date} · ${r.paid} · <span class="b b-m" style="font-size:9px">${(r.cat==='material'&&(r.matItem||resolveExpMatItem(r)))?(r.matItem||resolveExpMatItem(r)):r.cat}</span>${expHasDue(r)?` · <span style="color:var(--ora)">Due ${fmt(expDueAmt(r))}</span>`:''}</div>
-              ${r.paidTo?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">To: ${r.paidTo}</div>`:''}
-              ${r.notes?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">${r.notes}</div>`:''}
+              <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">${htmlEsc(r.date)} · ${htmlEsc(r.paid)} · <span class="b b-m" style="font-size:9px">${htmlEsc((r.cat==='material'&&(r.matItem||resolveExpMatItem(r)))?(r.matItem||resolveExpMatItem(r)):r.cat)}</span>${expHasDue(r)?` · <span style="color:var(--ora)">Due ${fmt(expDueAmt(r))}</span>`:''}</div>
+              ${r.paidTo?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">To: ${htmlEsc(r.paidTo)}</div>`:''}
+              ${r.notes?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">${htmlEsc(r.notes)}</div>`:''}
               <div style="display:flex;gap:5px;margin-top:6px;flex-wrap:wrap">
-                <button style="font-size:9px;padding:3px 7px;border-radius:6px;border:1px solid ${(r.fundedBy||'contract')==='contract'?'var(--gold)':'var(--bor)'};background:${(r.fundedBy||'contract')==='contract'?'rgba(232,184,75,.15)':'transparent'};color:${(r.fundedBy||'contract')==='contract'?'var(--gold)':'var(--mut)'};cursor:pointer;font-family:Inter,sans-serif" onclick="setExpFunding('${r.id}','contract')">Contractor</button>
-                <button style="font-size:9px;padding:3px 7px;border-radius:6px;border:1px solid ${r.fundedBy==='cashinhand'?'#4D94D4':'var(--bor)'};background:${r.fundedBy==='cashinhand'?'rgba(77,148,212,.15)':'transparent'};color:${r.fundedBy==='cashinhand'?'#4D94D4':'var(--mut)'};cursor:pointer;font-family:Inter,sans-serif" onclick="setExpFunding('${r.id}','cashinhand')">Owner Cash</button>
-                <button style="font-size:9px;padding:3px 7px;border-radius:6px;border:1px solid ${r.fundedBy==='onbehalf'?'var(--red)':'var(--bor)'};background:${r.fundedBy==='onbehalf'?'rgba(224,85,85,.12)':'transparent'};color:${r.fundedBy==='onbehalf'?'var(--red)':'var(--mut)'};cursor:pointer;font-family:Inter,sans-serif" onclick="setExpFunding('${r.id}','onbehalf')">On Behalf</button>
+                <button style="font-size:9px;padding:3px 7px;border-radius:6px;border:1px solid ${htmlEsc((r.fundedBy||'contract')==='contract'?'var(--gold)':'var(--bor)')};background:${htmlEsc((r.fundedBy||'contract')==='contract'?'rgba(232,184,75,.15)':'transparent')};color:${htmlEsc((r.fundedBy||'contract')==='contract'?'var(--gold)':'var(--mut)')};cursor:pointer;font-family:Inter,sans-serif" onclick="setExpFunding('${jsq(r.id)}','contract')">Contractor</button>
+                <button style="font-size:9px;padding:3px 7px;border-radius:6px;border:1px solid ${htmlEsc(r.fundedBy==='cashinhand'?'#4D94D4':'var(--bor)')};background:${htmlEsc(r.fundedBy==='cashinhand'?'rgba(77,148,212,.15)':'transparent')};color:${htmlEsc(r.fundedBy==='cashinhand'?'#4D94D4':'var(--mut)')};cursor:pointer;font-family:Inter,sans-serif" onclick="setExpFunding('${jsq(r.id)}','cashinhand')">Owner Cash</button>
+                <button style="font-size:9px;padding:3px 7px;border-radius:6px;border:1px solid ${htmlEsc(r.fundedBy==='onbehalf'?'var(--red)':'var(--bor)')};background:${htmlEsc(r.fundedBy==='onbehalf'?'rgba(224,85,85,.12)':'transparent')};color:${htmlEsc(r.fundedBy==='onbehalf'?'var(--red)':'var(--mut)')};cursor:pointer;font-family:Inter,sans-serif" onclick="setExpFunding('${jsq(r.id)}','onbehalf')">On Behalf</button>
               </div>
               <div class="row-acts">
-                <button style="color:${expIsFullyPaid(r)?'var(--mut)':'var(--grn)'};font-weight:600" onclick="markExpPaid('${r.id}')">${expIsFullyPaid(r)?'↩ Unpaid':(expHasDue(r)?'💰 Pay':'✅ Paid')}</button>
-                <button style="color:#4D94D4" onclick="cycleFunded('${r.id}')" title="Change funding side">⇄ ${({contract:'Owner Cash',cashinhand:'On Behalf',onbehalf:'Internal'})[r.fundedBy||'contract']}</button>
-                <button style="color:var(--blu)" onclick="eExp('${r.id}')">Edit</button>
-                <button style="color:var(--mut)" onclick="archiveRec('expenses','${r.id}')">Archive</button>
-                <button style="color:var(--red)" onclick="del('expenses','${r.id}')">Del</button>
+                <button style="color:${htmlEsc(expIsFullyPaid(r)?'var(--mut)':'var(--grn)')};font-weight:600" onclick="markExpPaid('${jsq(r.id)}')">${htmlEsc(expIsFullyPaid(r)?'↩ Unpaid':(expHasDue(r)?'💰 Pay':'✅ Paid'))}</button>
+                <button style="color:#4D94D4" onclick="cycleFunded('${jsq(r.id)}')" title="Change funding side">⇄ ${htmlEsc(({contract:'Owner Cash',cashinhand:'On Behalf',onbehalf:'Internal'})[r.fundedBy||'contract'])}</button>
+                <button style="color:var(--blu)" onclick="eExp('${jsq(r.id)}')">Edit</button>
+                <button style="color:var(--mut)" onclick="archiveRec('expenses','${jsq(r.id)}')">Archive</button>
+                <button style="color:var(--red)" onclick="del('expenses','${jsq(r.id)}')">Del</button>
               </div>
             </div>
           </div>
@@ -8478,28 +8713,28 @@ function renderExp(){
           const subBody=projSubpays.map(p=>`<div style="padding:11px 14px;border-bottom:1px solid var(--bor);background:var(--s1)">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
               <div style="min-width:0;flex:1">
-                <div style="font-size:var(--fs-sm);font-weight:600">💸 ${p.subconName||'Sub-Con'} ${spayPayBadge(p)}</div>
-                <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">${p.date||'—'} · ${p.method||'Cash'} · <span class="b b-m" style="font-size:9px">${p.phase||'—'}</span></div>
-                ${p.desc?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">${p.desc}</div>`:''}
+                <div style="font-size:var(--fs-sm);font-weight:600">💸 ${htmlEsc(p.subconName||'Sub-Con')} ${spayPayBadge(p)}</div>
+                <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">${htmlEsc(p.date||'—')} · ${htmlEsc(p.method||'Cash')} · <span class="b b-m" style="font-size:9px">${htmlEsc(p.phase||'—')}</span></div>
+                ${p.desc?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">${htmlEsc(p.desc)}</div>`:''}
                 ${spayPayStatus(p)==='partial'?`<div style="font-size:var(--fs-xs);color:var(--ora);margin-top:3px">Due PKR ${fmt(spayDueAmt(p))}</div>`:''}
-                ${(p.breakdown||[]).length?`<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">${p.breakdown.map(b=>`<span style="font-size:9px;padding:2px 6px;border-radius:5px;background:var(--bg);border:1px solid var(--bor);color:var(--mut)">${b.trade||'Other'}${b.name?' · '+b.name:''}: <b style="color:var(--txt)">${fmt(b.amount)}</b></span>`).join('')}</div>`:''}
+                ${(p.breakdown||[]).length?`<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">${p.breakdown.map(b=>`<span style="font-size:9px;padding:2px 6px;border-radius:5px;background:var(--bg);border:1px solid var(--bor);color:var(--mut)">${htmlEsc(b.trade||'Other')}${htmlEsc(b.name?' · '+b.name:'')}: <b style="color:var(--txt)">${fmt(b.amount)}</b></span>`).join('')}</div>`:''}
               </div>
               <div style="text-align:right;flex-shrink:0">
-                <div style="font-family:'JetBrains Mono',monospace;color:${spayPayStatus(p)==='unpaid'?'var(--ora)':'var(--red)'};font-size:var(--fs-md)">${fmt(p.amount)}</div>
+                <div style="font-family:'JetBrains Mono',monospace;color:${htmlEsc(spayPayStatus(p)==='unpaid'?'var(--ora)':'var(--red)')};font-size:var(--fs-md)">${fmt(p.amount)}</div>
                 ${spayPayStatus(p)==='partial'?`<div style="font-size:9px;color:var(--mut);margin-top:2px">Paid ${fmt(spayPaidAmt(p))}</div>`:''}
               </div>
             </div>
             <div class="row-acts">
-              <button style="color:${spayIsFullyPaid(p)?'var(--mut)':'var(--grn)'};font-weight:600" onclick="markSpayPaid('${p.id}')">${spayIsFullyPaid(p)?'↩ Unpaid':(spayHasDue(p)?'💰 Pay':'✅ Paid')}</button>
-              <button style="color:var(--blu)" onclick="eSpay('${p.id}')">Edit</button>
-              <button style="color:var(--mut)" onclick="archiveRec('subpays','${p.id}')">Archive</button>
-              <button style="color:var(--red)" onclick="del('subpays','${p.id}')">Del</button>
+              <button style="color:${htmlEsc(spayIsFullyPaid(p)?'var(--mut)':'var(--grn)')};font-weight:600" onclick="markSpayPaid('${jsq(p.id)}')">${htmlEsc(spayIsFullyPaid(p)?'↩ Unpaid':(spayHasDue(p)?'💰 Pay':'✅ Paid'))}</button>
+              <button style="color:var(--blu)" onclick="eSpay('${jsq(p.id)}')">Edit</button>
+              <button style="color:var(--mut)" onclick="archiveRec('subpays','${jsq(p.id)}')">Archive</button>
+              <button style="color:var(--red)" onclick="del('subpays','${jsq(p.id)}')">Del</button>
             </div>
           </div>`).join('');
           const subDue=projSubpays.reduce((s,p)=>s+spayDueAmt(p),0);
           html+=`<div style="padding:8px 10px 0">${collapsibleSection('exp-sub-'+pid,
             `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%">
-              <span style="font-size:var(--fs-xs);font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.4px">👷 Sub-Contractor Payments · ${projSubpays.length}</span>
+              <span style="font-size:var(--fs-xs);font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.4px">👷 Sub-Contractor Payments · ${htmlEsc(projSubpays.length)}</span>
               <span style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-xs);color:var(--red);flex-shrink:0">${fmt(subSpent)}${subDue>0?` · <span style="color:var(--ora)">${fmt(subDue)} due</span>`:''}</span>
             </div>`,
             `<div style="border:1px solid var(--bor);border-radius:8px;overflow:hidden">${subBody}</div>`,
@@ -8514,9 +8749,9 @@ function renderExp(){
             `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%">
               <span style="display:flex;align-items:center;gap:8px;min-width:0">
                 <label onclick="event.stopPropagation()" title="Select all in this section" style="display:flex;align-items:center;cursor:pointer">
-                  <input type="checkbox" ${allIntSel?'checked':''} onchange="toggleSelectExpGroup([${intIds.map(id=>`'${id}'`).join(',')}],this.checked)" style="width:16px;height:16px;accent-color:var(--gold);cursor:pointer">
+                  <input type="checkbox" ${htmlEsc(allIntSel?'checked':'')} onchange="toggleSelectExpGroup([${intIds.map(id=>`'${jsq(id)}'`).join(',')}],this.checked)" style="width:16px;height:16px;accent-color:var(--gold);cursor:pointer">
                 </label>
-                <span style="font-size:var(--fs-xs);font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.4px">💼 Contractor Expenses · ${internalRows.length}</span>
+                <span style="font-size:var(--fs-xs);font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.4px">💼 Contractor Expenses · ${htmlEsc(internalRows.length)}</span>
               </span>
               <span style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-xs);color:var(--red);flex-shrink:0">${fmt(intPaid)}${intDue>0?` · <span style="color:var(--ora)">${fmt(intDue)} due</span>`:''}</span>
             </div>`,
@@ -8528,7 +8763,7 @@ function renderExp(){
           const allOwnSel=ownIds.every(id=>selectedExpIds[id]);
           html+=`<div style="padding:7px 14px;background:rgba(77,148,212,.08);border-bottom:1px solid var(--bor);font-size:var(--fs-xs);font-weight:700;color:#4D94D4;text-transform:uppercase;letter-spacing:.5px;display:flex;align-items:center;gap:8px">
             <label onclick="event.stopPropagation()" style="display:flex;align-items:center;cursor:pointer">
-              <input type="checkbox" ${allOwnSel?'checked':''} onchange="toggleSelectExpGroup([${ownIds.map(id=>`'${id}'`).join(',')}],this.checked)" style="width:16px;height:16px;accent-color:#4D94D4;cursor:pointer">
+              <input type="checkbox" ${htmlEsc(allOwnSel?'checked':'')} onchange="toggleSelectExpGroup([${ownIds.map(id=>`'${jsq(id)}'`).join(',')}],this.checked)" style="width:16px;height:16px;accent-color:#4D94D4;cursor:pointer">
             </label>
             <span>🪣 Owner Misc Cash — spent from owner's advance</span>
           </div>`;
@@ -8537,32 +8772,32 @@ function renderExp(){
         if(behalfRowsF.length){
           const rBadge={unpaid:'<span style="color:var(--red);font-size:var(--fs-xs)">🔴 Unpaid</span>',pending:'<span style="color:var(--gold);font-size:var(--fs-xs)">🟡 Pending</span>',paid:'<span style="color:var(--grn);font-size:var(--fs-xs)">✅ Paid</span>'};
           const rNext={unpaid:'🟡 Pending',pending:'✅ Paid',paid:'🔴 Unpaid'};
-          const renderRowB=r=>{const st=rst(r);return`<div style="padding:11px 14px;border-bottom:1px solid var(--bor);${selectedExpIds[r.id]?'background:rgba(232,184,75,.07)':''}">
+          const renderRowB=r=>{const st=rst(r);return`<div style="padding:11px 14px;border-bottom:1px solid var(--bor);${htmlEsc(selectedExpIds[r.id]?'background:rgba(232,184,75,.07)':'')}">
           <div style="display:flex;align-items:flex-start;gap:10px">
             <label style="display:flex;align-items:flex-start;padding-top:2px;flex-shrink:0;cursor:pointer" onclick="event.stopPropagation()">
-              <input type="checkbox" class="exp-sel" data-eid="${r.id}" ${selectedExpIds[r.id]?'checked':''} onchange="toggleExpSelect('${r.id}',this.checked)" style="width:18px;height:18px;accent-color:var(--gold);cursor:pointer">
+              <input type="checkbox" class="exp-sel" data-eid="${htmlEsc(r.id)}" ${htmlEsc(selectedExpIds[r.id]?'checked':'')} onchange="toggleExpSelect('${jsq(r.id)}',this.checked)" style="width:18px;height:18px;accent-color:var(--gold);cursor:pointer">
             </label>
             <div style="flex:1;min-width:0">
               <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
-                <div style="font-size:var(--fs-sm);font-weight:600;min-width:0;flex:1">${catIcon[r.cat]||'📦'} ${r.desc} ${rBadge[st]}</div>
+                <div style="font-size:var(--fs-sm);font-weight:600;min-width:0;flex:1">${htmlEsc(catIcon[r.cat]||'📦')} ${htmlEsc(r.desc)} ${htmlEsc(rBadge[st])}</div>
                 <div style="text-align:right;flex-shrink:0">
                   <div style="font-family:'JetBrains Mono',monospace;color:var(--red);font-size:var(--fs-md)">${fmt(r.amount)}</div>
                 </div>
               </div>
-              <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">${r.date} · ${r.paid} · <span class="b b-m" style="font-size:9px">${r.cat}</span></div>
-              ${r.paidTo?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">To: ${r.paidTo}</div>`:''}
-              ${r.notes?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">${r.notes}</div>`:''}
+              <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">${htmlEsc(r.date)} · ${htmlEsc(r.paid)} · <span class="b b-m" style="font-size:9px">${htmlEsc(r.cat)}</span></div>
+              ${r.paidTo?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">To: ${htmlEsc(r.paidTo)}</div>`:''}
+              ${r.notes?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">${htmlEsc(r.notes)}</div>`:''}
               <div style="display:flex;gap:5px;margin-top:6px;flex-wrap:wrap">
-                <button style="font-size:9px;padding:3px 7px;border-radius:6px;border:1px solid var(--bor);background:transparent;color:var(--mut);cursor:pointer;font-family:Inter,sans-serif" onclick="setExpFunding('${r.id}','contract')">Contractor</button>
-                <button style="font-size:9px;padding:3px 7px;border-radius:6px;border:1px solid var(--bor);background:transparent;color:var(--mut);cursor:pointer;font-family:Inter,sans-serif" onclick="setExpFunding('${r.id}','cashinhand')">Owner Cash</button>
-                <button style="font-size:9px;padding:3px 7px;border-radius:6px;border:1px solid var(--red);background:rgba(224,85,85,.12);color:var(--red);cursor:pointer;font-family:Inter,sans-serif" onclick="setExpFunding('${r.id}','onbehalf')">On Behalf</button>
+                <button style="font-size:9px;padding:3px 7px;border-radius:6px;border:1px solid var(--bor);background:transparent;color:var(--mut);cursor:pointer;font-family:Inter,sans-serif" onclick="setExpFunding('${jsq(r.id)}','contract')">Contractor</button>
+                <button style="font-size:9px;padding:3px 7px;border-radius:6px;border:1px solid var(--bor);background:transparent;color:var(--mut);cursor:pointer;font-family:Inter,sans-serif" onclick="setExpFunding('${jsq(r.id)}','cashinhand')">Owner Cash</button>
+                <button style="font-size:9px;padding:3px 7px;border-radius:6px;border:1px solid var(--red);background:rgba(224,85,85,.12);color:var(--red);cursor:pointer;font-family:Inter,sans-serif" onclick="setExpFunding('${jsq(r.id)}','onbehalf')">On Behalf</button>
               </div>
               <div class="row-acts">
-                <button style="color:var(--gold);font-weight:600" onclick="cycleReimburse('${r.id}')">→ ${rNext[st]}</button>
-                <button style="color:#4D94D4" onclick="cycleFunded('${r.id}')" title="Change funding side">⇄ Internal</button>
-                <button style="color:var(--blu)" onclick="eExp('${r.id}')">Edit</button>
-                <button style="color:var(--mut)" onclick="archiveRec('expenses','${r.id}')">Archive</button>
-                <button style="color:var(--red)" onclick="del('expenses','${r.id}')">Del</button>
+                <button style="color:var(--gold);font-weight:600" onclick="cycleReimburse('${jsq(r.id)}')">→ ${htmlEsc(rNext[st])}</button>
+                <button style="color:#4D94D4" onclick="cycleFunded('${jsq(r.id)}')" title="Change funding side">⇄ Internal</button>
+                <button style="color:var(--blu)" onclick="eExp('${jsq(r.id)}')">Edit</button>
+                <button style="color:var(--mut)" onclick="archiveRec('expenses','${jsq(r.id)}')">Archive</button>
+                <button style="color:var(--red)" onclick="del('expenses','${jsq(r.id)}')">Del</button>
               </div>
             </div>
           </div>
@@ -8571,7 +8806,7 @@ function renderExp(){
           const allBehSel=behIds.every(id=>selectedExpIds[id]);
           html+=`<div style="padding:7px 14px;background:rgba(224,85,85,.08);border-bottom:1px solid var(--bor);font-size:var(--fs-xs);font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.5px;display:flex;align-items:center;gap:8px">
             <label onclick="event.stopPropagation()" style="display:flex;align-items:center;cursor:pointer">
-              <input type="checkbox" ${allBehSel?'checked':''} onchange="toggleSelectExpGroup([${behIds.map(id=>`'${id}'`).join(',')}],this.checked)" style="width:16px;height:16px;accent-color:var(--gold);cursor:pointer">
+              <input type="checkbox" ${htmlEsc(allBehSel?'checked':'')} onchange="toggleSelectExpGroup([${behIds.map(id=>`'${jsq(id)}'`).join(',')}],this.checked)" style="width:16px;height:16px;accent-color:var(--gold);cursor:pointer">
             </label>
             <span>🤝 On Behalf of Owner — reimbursable (not contract spend)</span>
           </div>`;
@@ -8778,9 +9013,9 @@ function personalSectionHtml(){
       return`<div style="padding:11px 14px;border-bottom:1px solid var(--bor)">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
           <div style="min-width:0;flex:1">
-            <div style="font-size:var(--fs-sm);font-weight:600">${r.subconName||'Sub-Con'} ${open?'<span style="color:var(--red);font-size:var(--fs-xs)">🔴 Outstanding</span>':'<span style="color:var(--grn);font-size:var(--fs-xs)">✅ Repaid</span>'}</div>
-            <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">${r.date||'—'} · ${r.method||'Cash'}${r.projectName?' · '+r.projectName:''}</div>
-            ${r.notes?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">${r.notes}</div>`:''}
+            <div style="font-size:var(--fs-sm);font-weight:600">${htmlEsc(r.subconName||'Sub-Con')} ${open?'<span style="color:var(--red);font-size:var(--fs-xs)">🔴 Outstanding</span>':'<span style="color:var(--grn);font-size:var(--fs-xs)">✅ Repaid</span>'}</div>
+            <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">${htmlEsc(r.date||'—')} · ${htmlEsc(r.method||'Cash')}${htmlEsc(r.projectName?' · '+r.projectName:'')}</div>
+            ${r.notes?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">${htmlEsc(r.notes)}</div>`:''}
             <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:4px">Loan ${fmt(r.amount)}${paid?` · Paid ${fmt(paid)}`:''}${open?` · <b style="color:var(--red)">Bal ${fmt(bal)}</b>`:''}</div>
           </div>
           <div style="text-align:right;flex-shrink:0">
@@ -8788,31 +9023,31 @@ function personalSectionHtml(){
           </div>
         </div>
         <div class="row-acts">
-          ${open?`<button style="color:var(--grn);font-weight:600" onclick="iPersRepay('${r.id}')">💰 Repay</button>`:''}
-          <button style="color:var(--gold);font-weight:600" onclick="markPersonalRepaid('${r.id}')">${open?'✅ Full':'↩ Reopen'}</button>
-          <button style="color:var(--blu)" onclick="ePersonal('${r.id}')">Edit</button>
-          <button style="color:var(--mut)" onclick="archiveRec('personals','${r.id}')">Archive</button>
-          <button style="color:var(--red)" onclick="del('personals','${r.id}')">Del</button>
+          ${open?`<button style="color:var(--grn);font-weight:600" onclick="iPersRepay('${jsq(r.id)}')">💰 Repay</button>`:''}
+          <button style="color:var(--gold);font-weight:600" onclick="markPersonalRepaid('${jsq(r.id)}')">${htmlEsc(open?'✅ Full':'↩ Reopen')}</button>
+          <button style="color:var(--blu)" onclick="ePersonal('${jsq(r.id)}')">Edit</button>
+          <button style="color:var(--mut)" onclick="archiveRec('personals','${jsq(r.id)}')">Archive</button>
+          <button style="color:var(--red)" onclick="del('personals','${jsq(r.id)}')">Del</button>
         </div>
-        ${reps.length?`<div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--bor)">${reps.map(p=>`<div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--mut);padding:2px 0"><span>${p.date||'—'} · ${p.method||'Cash'}${p.note?' · '+p.note:''}${p.linkedSpayId?' · via work pay':''}</span><span style="font-family:'JetBrains Mono',monospace;color:var(--grn)">-${fmt(p.amount)}</span></div>`).join('')}</div>`:''}
+        ${reps.length?`<div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--bor)">${reps.map(p=>`<div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--mut);padding:2px 0"><span>${htmlEsc(p.date||'—')} · ${htmlEsc(p.method||'Cash')}${htmlEsc(p.note?' · '+p.note:'')}${htmlEsc(p.linkedSpayId?' · via work pay':'')}</span><span style="font-family:'JetBrains Mono',monospace;color:var(--grn)">-${fmt(p.amount)}</span></div>`).join('')}</div>`:''}
       </div>`;
     }).join('')}
     ${draws.length?`<div style="padding:7px 14px;background:rgba(232,148,75,.08);border-bottom:1px solid var(--bor);font-size:var(--fs-xs);font-weight:700;color:var(--ora);text-transform:uppercase;letter-spacing:.5px">🙋 I Took &amp; Spent</div>`:''}
     ${draws.map(r=>`<div style="padding:11px 14px;border-bottom:1px solid var(--bor)">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
         <div style="min-width:0;flex:1">
-          <div style="font-size:var(--fs-sm);font-weight:600">${r.spentOn||'Personal use'}</div>
-          <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">${r.date||'—'} · ${r.method||'Cash'}${r.subconName?' · via '+r.subconName:''}${r.projectName?' · '+r.projectName:''}</div>
-          ${r.notes?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">${r.notes}</div>`:''}
+          <div style="font-size:var(--fs-sm);font-weight:600">${htmlEsc(r.spentOn||'Personal use')}</div>
+          <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">${htmlEsc(r.date||'—')} · ${htmlEsc(r.method||'Cash')}${htmlEsc(r.subconName?' · via '+r.subconName:'')}${htmlEsc(r.projectName?' · '+r.projectName:'')}</div>
+          ${r.notes?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">${htmlEsc(r.notes)}</div>`:''}
         </div>
         <div style="text-align:right;flex-shrink:0">
           <div style="font-family:'JetBrains Mono',monospace;color:var(--ora);font-size:var(--fs-md)">${fmt(r.amount)}</div>
         </div>
       </div>
       <div class="row-acts">
-        <button style="color:var(--blu)" onclick="ePersonal('${r.id}')">Edit</button>
-        <button style="color:var(--mut)" onclick="archiveRec('personals','${r.id}')">Archive</button>
-        <button style="color:var(--red)" onclick="del('personals','${r.id}')">Del</button>
+        <button style="color:var(--blu)" onclick="ePersonal('${jsq(r.id)}')">Edit</button>
+        <button style="color:var(--mut)" onclick="archiveRec('personals','${jsq(r.id)}')">Archive</button>
+        <button style="color:var(--red)" onclick="del('personals','${jsq(r.id)}')">Del</button>
       </div>
     </div>`).join('')}
   </div>`;
@@ -9622,7 +9857,7 @@ function renderProjCheckSheet(){
       const items=p.stageChecks[s]||[];
       const d=items.filter(i=>i.done).length;
       const mark=items.length&&d===items.length?'✓ ':''
-      return`<button type="button" class="chk-stage-tab ${s===pchkStage?'on':''}" onclick="setPchkStage('${s}')">${mark}${s}${items.length?` (${d}/${items.length})`:''}</button>`;
+      return`<button type="button" class="chk-stage-tab ${htmlEsc(s===pchkStage?'on':'')}" onclick="setPchkStage('${jsq(s)}')">${htmlEsc(mark)}${htmlEsc(s)}${items.length?` (${htmlEsc(d)}/${htmlEsc(items.length)})`:''}</button>`;
     }).join('');
   }
   const items=p.stageChecks[pchkStage]||[];
@@ -9633,13 +9868,13 @@ function renderProjCheckSheet(){
   const list=e$('pchk-list');
   if(list){
     if(!items.length)list.innerHTML='<div style="font-size:var(--fs-sm);color:var(--mut);padding:8px 0">No checks yet — add custom items below.</div>';
-    else list.innerHTML=items.map(i=>`<div class="chk-item ${i.done?'done':''}">
-      <input type="checkbox" ${i.done?'checked':''} onchange="toggleProjCheck('${pid}','${pchkStage}','${i.id}')">
+    else list.innerHTML=items.map(i=>`<div class="chk-item ${htmlEsc(i.done?'done':'')}">
+      <input type="checkbox" ${htmlEsc(i.done?'checked':'')} onchange="toggleProjCheck('${jsq(pid)}','${jsq(pchkStage)}','${jsq(i.id)}')">
       <div style="flex:1;min-width:0">
-        <div class="chk-txt" style="font-size:var(--fs-sm);font-weight:600;line-height:1.35">${i.text}</div>
-        ${i.doneAt?`<div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">Checked ${i.doneAt}</div>`:''}
+        <div class="chk-txt" style="font-size:var(--fs-sm);font-weight:600;line-height:1.35">${htmlEsc(i.text)}</div>
+        ${i.doneAt?`<div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">Checked ${htmlEsc(i.doneAt)}</div>`:''}
       </div>
-      <button style="font-size:var(--fs-xs);color:var(--red);background:none;border:none;cursor:pointer;flex-shrink:0" onclick="delProjCheckItem('${pid}','${pchkStage}','${i.id}')">×</button>
+      <button style="font-size:var(--fs-xs);color:var(--red);background:none;border:none;cursor:pointer;flex-shrink:0" onclick="delProjCheckItem('${jsq(pid)}','${jsq(pchkStage)}','${jsq(i.id)}')">×</button>
     </div>`).join('');
   }
   renderOwnerChangesList(p);
@@ -9689,23 +9924,23 @@ function renderOwnerChangesList(p){
     return;
   }
   const stLabel={pending:'🔴 Pending',told:'🟡 Told',done:'✅ Done'};
-  el.innerHTML=rows.map(c=>`<div class="ochg-card ${c.status||'pending'}">
+  el.innerHTML=rows.map(c=>`<div class="ochg-card ${htmlEsc(c.status||'pending')}">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
       <div style="min-width:0">
-        <div style="font-size:var(--fs-sm);font-weight:700">${c.title||'Change'}</div>
-        <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">${c.date||'—'} · ${c.stage||'—'} · ${stLabel[c.status||'pending']||c.status}</div>
-        ${c.detail?`<div style="font-size:var(--fs-xs);color:var(--txt);margin-top:6px;line-height:1.4">${c.detail}</div>`:''}
-        ${c.subconName?`<div style="font-size:var(--fs-xs);color:var(--blu);margin-top:5px">Tell: ${c.subconName}</div>`:''}
-        ${c.notes?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:4px">${c.notes}</div>`:''}
+        <div style="font-size:var(--fs-sm);font-weight:700">${htmlEsc(c.title||'Change')}</div>
+        <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">${htmlEsc(c.date||'—')} · ${htmlEsc(c.stage||'—')} · ${htmlEsc(stLabel[c.status||'pending']||c.status)}</div>
+        ${c.detail?`<div style="font-size:var(--fs-xs);color:var(--txt);margin-top:6px;line-height:1.4">${htmlEsc(c.detail)}</div>`:''}
+        ${c.subconName?`<div style="font-size:var(--fs-xs);color:var(--blu);margin-top:5px">Tell: ${htmlEsc(c.subconName)}</div>`:''}
+        ${c.notes?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:4px">${htmlEsc(c.notes)}</div>`:''}
       </div>
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:9px">
-      ${(c.status||'pending')==='pending'?`<button class="ca gold" style="padding:5px 10px;font-size:var(--fs-xs);flex:none" onclick="markOwnerChangeStatus('${p.id}','${c.id}','told')">Mark Told</button>`:''}
-      ${(c.status||'')!=='done'?`<button class="ca grn" style="padding:5px 10px;font-size:var(--fs-xs);flex:none" onclick="markOwnerChangeStatus('${p.id}','${c.id}','done')">Mark Done</button>`:''}
-      <button class="ca" style="padding:5px 10px;font-size:var(--fs-xs);flex:none;background:rgba(77,148,212,.1);color:#4D94D4;border-color:rgba(77,148,212,.3)" onclick="assignJobFromOwnerChange('${p.id}','${c.id}')">👷 Assign Job</button>
-      <button class="ca" style="padding:5px 10px;font-size:var(--fs-xs);flex:none;color:#25D366;border-color:rgba(37,211,102,.25);background:rgba(37,211,102,.06)" onclick="waOwnerChange('${p.id}','${c.id}')">📤 WA</button>
-      <button class="ca blu" style="padding:5px 10px;font-size:var(--fs-xs);flex:none" onclick="eOwnerChange('${p.id}','${c.id}')">Edit</button>
-      <button class="ca red" style="padding:5px 10px;font-size:var(--fs-xs);flex:none" onclick="delOwnerChange('${p.id}','${c.id}')">Del</button>
+      ${(c.status||'pending')==='pending'?`<button class="ca gold" style="padding:5px 10px;font-size:var(--fs-xs);flex:none" onclick="markOwnerChangeStatus('${jsq(p.id)}','${jsq(c.id)}','told')">Mark Told</button>`:''}
+      ${(c.status||'')!=='done'?`<button class="ca grn" style="padding:5px 10px;font-size:var(--fs-xs);flex:none" onclick="markOwnerChangeStatus('${jsq(p.id)}','${jsq(c.id)}','done')">Mark Done</button>`:''}
+      <button class="ca" style="padding:5px 10px;font-size:var(--fs-xs);flex:none;background:rgba(77,148,212,.1);color:#4D94D4;border-color:rgba(77,148,212,.3)" onclick="assignJobFromOwnerChange('${jsq(p.id)}','${jsq(c.id)}')">👷 Assign Job</button>
+      <button class="ca" style="padding:5px 10px;font-size:var(--fs-xs);flex:none;color:#25D366;border-color:rgba(37,211,102,.25);background:rgba(37,211,102,.06)" onclick="waOwnerChange('${jsq(p.id)}','${jsq(c.id)}')">📤 WA</button>
+      <button class="ca blu" style="padding:5px 10px;font-size:var(--fs-xs);flex:none" onclick="eOwnerChange('${jsq(p.id)}','${jsq(c.id)}')">Edit</button>
+      <button class="ca red" style="padding:5px 10px;font-size:var(--fs-xs);flex:none" onclick="delOwnerChange('${jsq(p.id)}','${jsq(c.id)}')">Del</button>
     </div>
   </div>`).join('');
 }
@@ -9853,9 +10088,9 @@ function renderProjStockSheet(){
     if(!bals.length)balEl.innerHTML='<div style="font-size:var(--fs-sm);color:var(--mut);padding:10px 0">No stock yet. Tap Stock In when material arrives on site.</div>';
     else balEl.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${bals.map(b=>`
       <div style="background:var(--s2);border-radius:9px;padding:10px 12px">
-        <div style="font-size:var(--fs-sm);font-weight:700;color:var(--txt)">${b.item}</div>
-        <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-md);margin-top:4px;color:${b.bal>0?'var(--grn)':b.bal<0?'var(--red)':'var(--mut)'}">${b.bal} <span style="font-size:var(--fs-xs);font-weight:400;color:var(--mut)">${b.unit||''}</span></div>
-        <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:4px">In ${b.in} · Out ${b.out}${b.valueIn?` · PKR ${fmt(b.valueIn)}`:''}</div>
+        <div style="font-size:var(--fs-sm);font-weight:700;color:var(--txt)">${htmlEsc(b.item)}</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-md);margin-top:4px;color:${htmlEsc(b.bal>0?'var(--grn)':b.bal<0?'var(--red)':'var(--mut)')}">${htmlEsc(b.bal)} <span style="font-size:var(--fs-xs);font-weight:400;color:var(--mut)">${htmlEsc(b.unit||'')}</span></div>
+        <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:4px">In ${htmlEsc(b.in)} · Out ${htmlEsc(b.out)}${b.valueIn?` · PKR ${fmt(b.valueIn)}`:''}</div>
       </div>`).join('')}</div>`;
   }
   const rows=activeRows(D.stock||[]).filter(x=>x.projectId===pid).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.createdAt||'').localeCompare(a.createdAt||''));
@@ -9866,14 +10101,14 @@ function renderProjStockSheet(){
     return`<div style="background:var(--s2);border-radius:9px;padding:11px 13px;margin-bottom:8px">
       <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
         <div style="min-width:0">
-          <div style="font-size:var(--fs-sm);font-weight:700">${isIn?'📥':'📤'} ${r.item||'—'} · <span style="color:${isIn?'var(--grn)':'var(--red)'}">${isIn?'+':'-'}${r.qty||0} ${r.unit||''}</span></div>
-          <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">${r.date||'—'}${r.supplier?' · '+r.supplier:''}${r.useFor?' · '+r.useFor:''}${r.amount?` · PKR ${fmt(r.amount)}`:''}</div>
-          ${r.notes?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:3px">${r.notes}</div>`:''}
+          <div style="font-size:var(--fs-sm);font-weight:700">${htmlEsc(isIn?'📥':'📤')} ${htmlEsc(r.item||'—')} · <span style="color:${htmlEsc(isIn?'var(--grn)':'var(--red)')}">${htmlEsc(isIn?'+':'-')}${htmlEsc(r.qty||0)} ${htmlEsc(r.unit||'')}</span></div>
+          <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">${htmlEsc(r.date||'—')}${htmlEsc(r.supplier?' · '+r.supplier:'')}${htmlEsc(r.useFor?' · '+r.useFor:'')}${r.amount?` · PKR ${fmt(r.amount)}`:''}</div>
+          ${r.notes?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:3px">${htmlEsc(r.notes)}</div>`:''}
         </div>
         <div style="display:flex;gap:6px;flex-shrink:0">
-          <button class="ca blu" style="padding:5px 8px;font-size:var(--fs-xs)" onclick="eStock('${r.id}')">Edit</button>
-          <button class="ca arch" style="padding:5px 8px;font-size:var(--fs-xs)" onclick="archiveRec('stock','${r.id}')">📦</button>
-          <button class="ca red" style="padding:5px 8px;font-size:var(--fs-xs)" onclick="del('stock','${r.id}');renderProjStockSheet();renderProj()">Del</button>
+          <button class="ca blu" style="padding:5px 8px;font-size:var(--fs-xs)" onclick="eStock('${jsq(r.id)}')">Edit</button>
+          <button class="ca arch" style="padding:5px 8px;font-size:var(--fs-xs)" onclick="archiveRec('stock','${jsq(r.id)}')">📦</button>
+          <button class="ca red" style="padding:5px 8px;font-size:var(--fs-xs)" onclick="del('stock','${jsq(r.id)}');renderProjStockSheet();renderProj()">Del</button>
         </div>
       </div>
     </div>`;
@@ -10042,35 +10277,35 @@ function renderProj(){
     const locBits=[p.loc,p.plot].filter(Boolean).join(' · ');
     const header=`<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
       <div style="min-width:0;flex:1">
-        <div style="font-size:var(--fs-sm);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}</div>
-        ${locBits?`<div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${locBits}</div>`:''}
-        ${cli?`<div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">👤 ${cli.name}${cli.phone?' · '+cli.phone:''}</div>`:''}
-        <div style="margin-top:5px"><span class="b b-b">${p.phase||'—'}</span>${p.lumpSum?'<span class="b" style="background:rgba(77,148,212,.15);color:#4D94D4;margin-left:4px;font-size:9px">🧾 Owner Reimburses</span>':''}${agr?` <span class="b b-g" style="font-size:9px">✍️ ${agr.status}</span>`:''}${showStock?` <span class="b" style="background:rgba(201,123,58,.15);color:var(--ora);margin-left:4px;font-size:9px">📦 Stock</span>`:''}${chk.pending?` <span class="b" style="background:rgba(224,85,85,.15);color:var(--red);margin-left:4px;font-size:9px">⚠ ${chk.pending} change${chk.pending>1?'s':''}</span>`:''}</div>
+        <div style="font-size:var(--fs-sm);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${htmlEsc(p.name)}</div>
+        ${locBits?`<div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${htmlEsc(locBits)}</div>`:''}
+        ${cli?`<div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">👤 ${htmlEsc(cli.name)}${htmlEsc(cli.phone?' · '+cli.phone:'')}</div>`:''}
+        <div style="margin-top:5px"><span class="b b-b">${htmlEsc(p.phase||'—')}</span>${p.lumpSum?'<span class="b" style="background:rgba(77,148,212,.15);color:#4D94D4;margin-left:4px;font-size:9px">🧾 Owner Reimburses</span>':''}${agr?` <span class="b b-g" style="font-size:9px">✍️ ${htmlEsc(agr.status)}</span>`:''}${showStock?` <span class="b" style="background:rgba(201,123,58,.15);color:var(--ora);margin-left:4px;font-size:9px">📦 Stock</span>`:''}${chk.pending?` <span class="b" style="background:rgba(224,85,85,.15);color:var(--red);margin-left:4px;font-size:9px">⚠ ${htmlEsc(chk.pending)} change${htmlEsc(chk.pending>1?'s':'')}</span>`:''}</div>
       </div>
       <div style="text-align:right;flex-shrink:0">
         <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-md);color:var(--gold)">${fmt(p.value)}</div>
-        <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">${pct}% · ${p.start||'—'} → ${p.end||'—'}</div>
+        <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">${htmlEsc(pct)}% · ${htmlEsc(p.start||'—')} → ${htmlEsc(p.end||'—')}</div>
       </div>
     </div>`;
     const body=`<div class="card" style="margin:0">
       <div style="margin-bottom:10px">
-        <div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--mut);margin-bottom:4px"><span>Collection ${pct}%</span><span>PKR ${fmt(rec)} / ${fmt(p.value)}</span></div>
-        <div class="pbar-wrap"><div class="pbar" style="width:${pct}%"></div></div>
+        <div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--mut);margin-bottom:4px"><span>Collection ${htmlEsc(pct)}%</span><span>PKR ${fmt(rec)} / ${fmt(p.value)}</span></div>
+        <div class="pbar-wrap"><div class="pbar" style="width:${htmlEsc(pct)}%"></div></div>
       </div>
-      <div style="background:var(--s2);border-radius:9px;padding:10px 12px;margin-bottom:11px;cursor:pointer" onclick="openProjCheck('${p.id}')">
+      <div style="background:var(--s2);border-radius:9px;padding:10px 12px;margin-bottom:11px;cursor:pointer" onclick="openProjCheck('${jsq(p.id)}')">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
           <div style="font-size:var(--fs-xs);font-weight:700;color:var(--txt)">☑ Stage Checklist</div>
-          <div style="font-size:var(--fs-xs);color:var(--mut)">${chk.done}/${chk.total} · ${chk.pct}%</div>
+          <div style="font-size:var(--fs-xs);color:var(--mut)">${htmlEsc(chk.done)}/${htmlEsc(chk.total)} · ${htmlEsc(chk.pct)}%</div>
         </div>
-        <div class="pbar-wrap" style="height:4px"><div class="pbar" style="width:${chk.pct}%;height:4px;background:${chk.pct===100?'var(--grn)':'var(--gold)'}"></div></div>
-        ${chk.pending?`<div style="font-size:var(--fs-xs);color:var(--red);margin-top:6px;font-weight:600">⚠ ${chk.pending} owner change${chk.pending>1?'s':''} not told to sub-con</div>`:`<div style="font-size:var(--fs-xs);color:var(--mut);margin-top:6px">Tap to check layout / stage items &amp; owner changes</div>`}
+        <div class="pbar-wrap" style="height:4px"><div class="pbar" style="width:${htmlEsc(chk.pct)}%;height:4px;background:${htmlEsc(chk.pct===100?'var(--grn)':'var(--gold)')}"></div></div>
+        ${chk.pending?`<div style="font-size:var(--fs-xs);color:var(--red);margin-top:6px;font-weight:600">⚠ ${htmlEsc(chk.pending)} owner change${htmlEsc(chk.pending>1?'s':'')} not told to sub-con</div>`:`<div style="font-size:var(--fs-xs);color:var(--mut);margin-top:6px">Tap to check layout / stage items &amp; owner changes</div>`}
       </div>
-      ${showStock?`<div style="background:rgba(201,123,58,.08);border:1px solid rgba(201,123,58,.22);border-radius:9px;padding:10px 12px;margin-bottom:11px;cursor:pointer" onclick="openProjStock('${p.id}')">
+      ${showStock?`<div style="background:rgba(201,123,58,.08);border:1px solid rgba(201,123,58,.22);border-radius:9px;padding:10px 12px;margin-bottom:11px;cursor:pointer" onclick="openProjStock('${jsq(p.id)}')">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
           <div style="font-size:var(--fs-xs);font-weight:700;color:var(--ora)">📦 Material Stock</div>
-          <div style="font-size:var(--fs-xs);color:var(--mut)">${stkItems?stkItems+' item'+(stkItems>1?'s':''):'Empty'} · tap to manage</div>
+          <div style="font-size:var(--fs-xs);color:var(--mut)">${htmlEsc(stkItems?stkItems+' item'+(stkItems>1?'s':''):'Empty')} · tap to manage</div>
         </div>
-        ${stkItems?`<div style="font-size:var(--fs-xs);color:var(--mut)">${stkBal.slice(0,3).map(b=>b.item+': <b style="color:'+(b.bal>0?'var(--grn)':'var(--red)')+'">'+b.bal+' '+(b.unit||'')+'</b>').join(' · ')}${stkItems>3?' …':''}${stkLow?` · <span style="color:var(--red)">${stkLow} low/empty</span>`:''}</div>`:`<div style="font-size:var(--fs-xs);color:var(--mut)">Record cement, steel, sand… stock in &amp; out for this With Material project</div>`}
+        ${stkItems?`<div style="font-size:var(--fs-xs);color:var(--mut)">${stkBal.slice(0,3).map(b=>htmlEsc(b.item)+': <b style="color:'+(b.bal>0?'var(--grn)':'var(--red)')+'">'+htmlEsc(b.bal)+' '+htmlEsc(b.unit||'')+'</b>').join(' · ')}${htmlEsc(stkItems>3?' …':'')}${stkLow?` · <span style="color:var(--red)">${htmlEsc(stkLow)} low/empty</span>`:''}</div>`:`<div style="font-size:var(--fs-xs);color:var(--mut)">Record cement, steel, sand… stock in &amp; out for this With Material project</div>`}
       </div>`:''}
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:11px">
         <div style="background:var(--s2);border-radius:8px;padding:8px;text-align:center">
@@ -10082,45 +10317,45 @@ function renderProj(){
           <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Internal Paid</div>
         </div>
         <div style="background:var(--s2);border-radius:8px;padding:8px;text-align:center">
-          <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:${rec-displaySub>=0?'var(--grn)':'var(--red)'}">${fmt(rec-displaySub)}</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:${htmlEsc(rec-displaySub>=0?'var(--grn)':'var(--red)')}">${fmt(rec-displaySub)}</div>
           <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Net</div>
         </div>
       </div>
-      ${p.notes?`<div style="font-size:var(--fs-sm);color:var(--mut);margin-bottom:10px">${p.notes}</div>`:''}
+      ${p.notes?`<div style="font-size:var(--fs-sm);color:var(--mut);margin-bottom:10px">${htmlEsc(p.notes)}</div>`:''}
       ${p.isPartner?`<div style="background:rgba(232,184,75,.08);border:1px solid rgba(232,184,75,.2);border-radius:9px;padding:10px 13px;margin-bottom:10px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <div style="font-size:var(--fs-xs);color:var(--gold);font-weight:700">🤝 PARTNERSHIP — ${p.partnerName||'Partner'}</div>
-          <button class="ca gold" style="padding:5px 10px;font-size:var(--fs-xs)" onclick="pdfPartnerSummary('${p.id}')">⬇ PDF</button>
+          <div style="font-size:var(--fs-xs);color:var(--gold);font-weight:700">🤝 PARTNERSHIP — ${htmlEsc(p.partnerName||'Partner')}</div>
+          <button class="ca gold" style="padding:5px 10px;font-size:var(--fs-xs)" onclick="pdfPartnerSummary('${jsq(p.id)}')">⬇ PDF</button>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px">
           <div style="background:var(--bg);border-radius:7px;padding:8px;text-align:center">
             <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-md);color:var(--grn)">${fmt(Math.round((rec-displaySub)*(p.myShare||100)/100))}</div>
-            <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Your Net (${p.myShare||100}%)</div>
+            <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Your Net (${htmlEsc(p.myShare||100)}%)</div>
           </div>
           <div style="background:var(--bg);border-radius:7px;padding:8px;text-align:center">
             <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-md);color:var(--mut)">${fmt(Math.round((rec-displaySub)*(p.partnerShare||0)/100))}</div>
-            <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">${p.partnerName||'Partner'} (${p.partnerShare||0}%)</div>
+            <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">${htmlEsc(p.partnerName||'Partner')} (${htmlEsc(p.partnerShare||0)}%)</div>
           </div>
         </div>
       </div>`:''}
       <div class="card-acts">
-        <button class="ca" style="color:var(--gold);border-color:rgba(232,184,75,.35);background:rgba(232,184,75,.08)" onclick="openProjCheck('${p.id}')">☑ Checklist</button>
-        ${showStock?`<button class="ca" style="color:var(--ora);border-color:rgba(201,123,58,.4);background:rgba(201,123,58,.1)" onclick="openProjStock('${p.id}')">📦 Stock</button>`:''}
-        <button class="ca blu" onclick="eP('${p.id}')">✏️ Edit</button>
-        <button class="ca gold" onclick="pdfProjPayments('${p.id}')">⬇ Owner PDF</button>
-        <button class="ca ora" onclick="O('sh-pay-internal');sv('pi-proj-t','${esc(p.name)}');sv('pi-proj-id','${p.id}');e$('pi-proj-label').textContent='${esc(p.name)}'">+ Internal</button>
-        <button class="ca grn" onclick="O('sh-cpay');iCpay();sv('cp-proj-t','${esc(p.name)}');sv('cp-proj-id','${p.id}')">+ Received</button>
-        <button class="ca" style="color:#4D94D4;border-color:rgba(77,148,212,.3);background:rgba(77,148,212,.06)" onclick="pdfInternalSummary('${p.id}')">⬇ Internal</button>
-        <button class="ca arch" onclick="archiveRec('projects','${p.id}')">📦 Archive</button>
-        <button class="ca red" onclick="del('projects','${p.id}')">🗑 Delete</button>
+        <button class="ca" style="color:var(--gold);border-color:rgba(232,184,75,.35);background:rgba(232,184,75,.08)" onclick="openProjCheck('${jsq(p.id)}')">☑ Checklist</button>
+        ${showStock?`<button class="ca" style="color:var(--ora);border-color:rgba(201,123,58,.4);background:rgba(201,123,58,.1)" onclick="openProjStock('${jsq(p.id)}')">📦 Stock</button>`:''}
+        <button class="ca blu" onclick="eP('${jsq(p.id)}')">✏️ Edit</button>
+        <button class="ca gold" onclick="pdfProjPayments('${jsq(p.id)}')">⬇ Owner PDF</button>
+        <button class="ca ora" onclick="O('sh-pay-internal');sv('pi-proj-t','${esc(p.name)}');sv('pi-proj-id','${jsq(p.id)}');e$('pi-proj-label').textContent='${esc(p.name)}'">+ Internal</button>
+        <button class="ca grn" onclick="O('sh-cpay');iCpay();sv('cp-proj-t','${esc(p.name)}');sv('cp-proj-id','${jsq(p.id)}')">+ Received</button>
+        <button class="ca" style="color:#4D94D4;border-color:rgba(77,148,212,.3);background:rgba(77,148,212,.06)" onclick="pdfInternalSummary('${jsq(p.id)}')">⬇ Internal</button>
+        <button class="ca arch" onclick="archiveRec('projects','${jsq(p.id)}')">📦 Archive</button>
+        <button class="ca red" onclick="del('projects','${jsq(p.id)}')">🗑 Delete</button>
       </div>
       ${agr?`<div style="background:var(--s2);border-radius:9px;padding:12px;margin-top:10px">
-        <div style="font-size:var(--fs-xs);color:var(--gold);font-weight:700;text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px">✍️ Agreement: ${agr.num} — ${agr.status.toUpperCase()}${(agr.agrType==='material'||agr.agrType==='costpct')?' · 📦 Material Stock':''}</div>
+        <div style="font-size:var(--fs-xs);color:var(--gold);font-weight:700;text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px">✍️ Agreement: ${htmlEsc(agr.num)} — ${htmlEsc(agr.status.toUpperCase())}${htmlEsc((agr.agrType==='material'||agr.agrType==='costpct')?' · 📦 Material Stock':'')}</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;font-size:var(--fs-xs)">
-          ${agr.pay1?`<div style="background:var(--bg);border-radius:7px;padding:8px"><div style="color:var(--mut)">Advance</div><div style="font-weight:600;color:var(--txt);margin-top:2px">${agr.pay1}</div></div>`:''}
-          ${agr.pay2?`<div style="background:var(--bg);border-radius:7px;padding:8px"><div style="color:var(--mut)">At DPC/Slab</div><div style="font-weight:600;color:var(--txt);margin-top:2px">${agr.pay2}</div></div>`:''}
-          ${agr.pay3?`<div style="background:var(--bg);border-radius:7px;padding:8px"><div style="color:var(--mut)">At Roof</div><div style="font-weight:600;color:var(--txt);margin-top:2px">${agr.pay3}</div></div>`:''}
-          ${agr.pay4?`<div style="background:var(--bg);border-radius:7px;padding:8px"><div style="color:var(--mut)">On Completion</div><div style="font-weight:600;color:var(--txt);margin-top:2px">${agr.pay4}</div></div>`:''}
+          ${agr.pay1?`<div style="background:var(--bg);border-radius:7px;padding:8px"><div style="color:var(--mut)">Advance</div><div style="font-weight:600;color:var(--txt);margin-top:2px">${htmlEsc(agr.pay1)}</div></div>`:''}
+          ${agr.pay2?`<div style="background:var(--bg);border-radius:7px;padding:8px"><div style="color:var(--mut)">At DPC/Slab</div><div style="font-weight:600;color:var(--txt);margin-top:2px">${htmlEsc(agr.pay2)}</div></div>`:''}
+          ${agr.pay3?`<div style="background:var(--bg);border-radius:7px;padding:8px"><div style="color:var(--mut)">At Roof</div><div style="font-weight:600;color:var(--txt);margin-top:2px">${htmlEsc(agr.pay3)}</div></div>`:''}
+          ${agr.pay4?`<div style="background:var(--bg);border-radius:7px;padding:8px"><div style="color:var(--mut)">On Completion</div><div style="font-weight:600;color:var(--txt);margin-top:2px">${htmlEsc(agr.pay4)}</div></div>`:''}
         </div>
         <div style="display:flex;justify-content:space-between;margin-top:9px;padding-top:9px;border-top:1px solid var(--bor);font-size:var(--fs-sm)">
           <span style="color:var(--mut)">Contract Value</span>
@@ -10132,9 +10367,9 @@ function renderProj(){
         </div>
         <div style="display:flex;justify-content:space-between;margin-top:5px;font-size:var(--fs-sm)">
           <span style="color:var(--mut)">Balance Due</span>
-          <span style="font-family:'JetBrains Mono',monospace;color:${agr.value-rec>0?'var(--red)':'var(--grn)'}">${fmt(Math.max(0,agr.value-rec))}</span>
+          <span style="font-family:'JetBrains Mono',monospace;color:${htmlEsc(agr.value-rec>0?'var(--red)':'var(--grn)')}">${fmt(Math.max(0,agr.value-rec))}</span>
         </div>
-        <button class="ca gold" style="width:100%;margin-top:9px;padding:8px" onclick="eAgr('${agr.id}')">✏️ Edit Agreement</button>
+        <button class="ca gold" style="width:100%;margin-top:9px;padding:8px" onclick="eAgr('${jsq(agr.id)}')">✏️ Edit Agreement</button>
       </div>`:''}
     </div>`;
     return collapsibleSection(gid,header,body,open);
@@ -10206,20 +10441,20 @@ function renderLedger(){
     const gid='led-grp-'+proj.replace(/[^a-z0-9]/gi,'_');
     const open=!collapsedGroups[gid];
     const header=`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
-        <div style="font-size:var(--fs-sm);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">📁 ${proj} <span style="color:var(--mut);font-weight:400;font-size:var(--fs-xs)">· ${ptxns.length}</span></div>
+        <div style="font-size:var(--fs-sm);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">📁 ${htmlEsc(proj)} <span style="color:var(--mut);font-weight:400;font-size:var(--fs-xs)">· ${htmlEsc(ptxns.length)}</span></div>
         <div style="text-align:right;font-size:var(--fs-xs);font-family:'JetBrains Mono',monospace;flex-shrink:0"><span style="color:var(--grn)">+${fmt(pIn)}</span> <span style="color:var(--mut)">|</span> <span style="color:var(--red)">-${fmt(pOut)}</span></div>
       </div>`;
     const body=`<div style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);overflow:hidden">
-      ${ptxns.map(t=>`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:10px 14px;border-bottom:1px solid var(--bor);opacity:${t.pending?'.75':'1'}">
+      ${ptxns.map(t=>`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:10px 14px;border-bottom:1px solid var(--bor);opacity:${htmlEsc(t.pending?'.75':'1')}">
         <div>
-          <div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:2px">${t.date||'—'} · ${t.type}</div>
-          <div style="font-size:var(--fs-sm);font-weight:600">${t.desc}</div>
+          <div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:2px">${htmlEsc(t.date||'—')} · ${htmlEsc(t.type)}</div>
+          <div style="font-size:var(--fs-sm);font-weight:600">${htmlEsc(t.desc)}</div>
         </div>
-        <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-md);color:${t.dir==='in'?'var(--grn)':'var(--red)'};flex-shrink:0;margin-left:10px">${t.dir==='in'?'+':'-'}${fmt(t.amount)}</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-md);color:${htmlEsc(t.dir==='in'?'var(--grn)':'var(--red)')};flex-shrink:0;margin-left:10px">${htmlEsc(t.dir==='in'?'+':'-')}${fmt(t.amount)}</div>
       </div>`).join('')}
       <div style="padding:10px 14px;background:var(--s2);display:flex;justify-content:space-between;font-size:var(--fs-sm);font-weight:700">
         <span style="color:var(--mut)">Net</span>
-        <span style="font-family:'JetBrains Mono',monospace;color:${pIn-pOut>=0?'var(--grn)':'var(--red)'}">PKR ${fmt(pIn-pOut)}</span>
+        <span style="font-family:'JetBrains Mono',monospace;color:${htmlEsc(pIn-pOut>=0?'var(--grn)':'var(--red)')}">PKR ${fmt(pIn-pOut)}</span>
       </div>
     </div>`;
     return collapsibleSection(gid,header,body,open);
@@ -10541,6 +10776,7 @@ async function pdfReimbursement(pid,projName){
 
 // ════ BACKUP ════
 function exportBk(){
+  if(!requireAdmin('export a backup'))return;
   const blob=new Blob([JSON.stringify(D,null,2)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);
   a.download='buildpro-backup-'+today()+'.json';a.click();
@@ -10548,13 +10784,15 @@ function exportBk(){
 }
 
 async function importBk(){
+  if(!requireAdmin('import a backup'))return;
   const inp=document.createElement('input');inp.type='file';inp.accept='.json';
   inp.onchange=async e=>{
     const f=e.target.files[0];if(!f)return;
     const rd=new FileReader();
     rd.onload=async ev=>{
       try{
-        const p=JSON.parse(ev.target.result);
+        const p=plainClone(JSON.parse(ev.target.result));
+        if(!p||typeof p!=='object'||Array.isArray(p))throw new Error('Invalid backup');
         // Keep logo as-is — full logo now saves directly to Supabase
         // Import EVERY key into D
         const keys=['company','clients','projects','subcons','subpays','cpays','invoices','estimates','agreements','tasks','expenses','investors','banks','subconContracts','personals'];
@@ -10580,7 +10818,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-10-11-v89';
+const APP_VERSION='2026-10-21-v90';
 // Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
 // GitHub Pages is the live OTA source of truth while Wasmer Edge GitHub deploys are failing.
 const OTA_ORIGIN='https://abbashafiz.github.io/Buildpro-crm';
@@ -10711,6 +10949,7 @@ if('serviceWorker' in navigator){
   navigator.serviceWorker.addEventListener('controllerchange',reloadForNewSW);
   // Do NOT also reload on SW_ACTIVATED — that double-fired with controllerchange and caused loops.
   navigator.serviceWorker.addEventListener('message',ev=>{
+    if(typeof ServiceWorker!=='undefined'&&!(ev.source instanceof ServiceWorker))return;
     if(ev.data&&ev.data.type==='SW_ACTIVATED'&&ev.data.version&&ev.data.version!==APP_VERSION){
       reloadForNewSW();
     }
@@ -10753,7 +10992,7 @@ if('serviceWorker' in navigator){
       if(r.ok){
         const j=await r.json();
         if(j&&typeof j==='object'){
-          backendCfg={...defaultBackendCfg(),...j};
+          backendCfg=sanitizeStoredBackend(j);
         }
       }
     }catch(e){}
