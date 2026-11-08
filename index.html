@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-11-08-v91">
+<meta name="app-version" content="2026-11-08-v92">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -703,6 +703,23 @@ select option{background:var(--s2);}
       </div>
     </div>
 
+    <!-- DEHARI -->
+    <div class="pg" id="pg-dehari">
+      <div style="background:rgba(232,184,75,.07);border:1px solid rgba(232,184,75,.22);border-radius:10px;padding:10px 13px;margin-bottom:8px;font-size:var(--fs-xs);color:var(--mut)">Extra daily work. One day can have several people at different rates. Tap a rate to fill the amount. Contractor days count as internal cost. Owner days stay separate.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">
+        <div class="stat"><div class="stat-lbl">All dehari</div><div class="stat-val" id="dh-stat-all" style="font-size:22px;color:var(--gold)">0</div><div class="stat-unit">PKR</div></div>
+        <div class="stat"><div class="stat-lbl">Contractor</div><div class="stat-val" id="dh-stat-con" style="font-size:22px;color:var(--gold)">0</div><div class="stat-unit">PKR</div></div>
+        <div class="stat"><div class="stat-lbl">Owner</div><div class="stat-val" id="dh-stat-own" style="font-size:22px;color:#4D94D4">0</div><div class="stat-unit">PKR</div></div>
+      </div>
+      <div id="dh-role-sum" style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:8px"></div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:8px">
+        <button class="btn btn-grey btn-sm" style="padding:7px 14px;font-size:var(--fs-sm)" onclick="pdfDehari()">⬇ PDF</button>
+        <button class="btn btn-gold btn-sm" style="padding:7px 14px;font-size:var(--fs-sm)" onclick="openDehari(dhPageFilter==='all'?'':dhPageFilter)">+ Day</button>
+      </div>
+      <div class="ftabs" id="dh-proj-filters"></div>
+      <div id="list-dehari"></div>
+    </div>
+
     <!-- EXPENSES / COST -->
     <div class="pg" id="pg-exp">
       <!-- Main tab switcher: Contractor vs Owner (kept fully separate) -->
@@ -940,6 +957,10 @@ select option{background:var(--s2);}
       <span class="bi-dot" id="bd-tasks"></span>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><rect x="2" y="3" width="20" height="18" rx="2"/></svg>
       Tasks
+    </div>
+    <div class="bi" onclick="goPage('dehari',this,'Dehari')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+      Dehari
     </div>
     <div class="bi" onclick="goPage('exp',this,'Expenses & Budget')">
       <span class="bi-dot" id="bd-exp"></span>
@@ -1940,7 +1961,7 @@ select option{background:var(--s2);}
   <div class="sh-body">
     <input type="hidden" id="dh-eid">
     <input type="hidden" id="dh-proj-id">
-    <div style="font-size:var(--fs-sm);font-weight:700;margin-bottom:8px" id="dh-proj-name"></div>
+    <div class="fg"><label>Project</label><select id="dh-proj-sel" onchange="sv('dh-proj-id',this.value);var nm=e$('dh-proj-name');if(nm)nm.textContent=this.options[this.selectedIndex]?this.options[this.selectedIndex].text:'';renderDhList(this.value)"></select><div id="dh-proj-name" style="display:none"></div></div>
     <div class="f2">
       <div class="fg"><label>Date</label><input type="date" id="dh-date"></div>
       <div class="fg"><label>Days</label><input type="number" id="dh-days" min="1" step="1" value="1" oninput="dhPreview()"></div>
@@ -3318,8 +3339,8 @@ function goPage(p,el,title){
   if(p==='profile'){refreshProfileUI();fProfile(profileTab==='backend'?'backend':'company');}
   else renderPage(p);
 }
-function renderPage(p){if(p==='admin'){syncPrivilegedUI();return;}if(p==='dash')renderDash();else if(p==='proj')renderProj();else if(p==='inv')renderInv();else if(p==='est')renderEst();else if(p==='pay')renderPay();else if(p==='sub')renderSub();else if(p==='agr')renderAgr();else if(p==='cli')renderCli();else if(p==='archive')renderArchive();else if(p==='tasks'){if(typeof tasksTabMode!=='undefined'&&tasksTabMode==='jobs')renderWorkOrders();else renderTasks();}else if(p==='exp')renderExp();else if(p==='ledger')renderLedger();}
-function renderAll(){renderDash();renderProj();renderInv();renderEst();renderPay();renderSub();renderAgr();renderCli();renderTasks();renderWorkOrders();renderExp();renderLedger();renderArchive();updateDots();syncPrivilegedUI();}
+function renderPage(p){if(p==='admin'){syncPrivilegedUI();return;}if(p==='dash')renderDash();else if(p==='proj')renderProj();else if(p==='inv')renderInv();else if(p==='est')renderEst();else if(p==='pay')renderPay();else if(p==='sub')renderSub();else if(p==='agr')renderAgr();else if(p==='cli')renderCli();else if(p==='archive')renderArchive();else if(p==='tasks'){if(typeof tasksTabMode!=='undefined'&&tasksTabMode==='jobs')renderWorkOrders();else renderTasks();}else if(p==='exp')renderExp();else if(p==='dehari')renderDehari();else if(p==='ledger')renderLedger();}
+function renderAll(){renderDash();renderProj();renderInv();renderEst();renderPay();renderSub();renderAgr();renderCli();renderTasks();renderWorkOrders();renderExp();renderDehari();renderLedger();renderArchive();updateDots();syncPrivilegedUI();}
 
 // ════ ARCHIVE (soft-hide; not tombstones) ════
 const ARCHIVE_STORES=['projects','clients','agreements','subcons','expenses','invoices','estimates','tasks','workorders','personals','cpays','subpays','stock','dehari'];
@@ -3724,6 +3745,7 @@ function fabAction(){
     'cli':   ()=>{iCli();O('sh-cli');},
     'tasks': ()=>{if(typeof tasksTabMode!=='undefined'&&tasksTabMode==='jobs'){iWorkOrder();O('sh-workorder');}else{iTask();O('sh-task');}},
     'exp':   ()=>{iExp();O('sh-exp');},
+    'dehari':()=>{openDehari(dhPageFilter==='all'?'':dhPageFilter);},
     'profile':()=>O('sh-new'),
   };
   const action=actions[curPg];
@@ -10306,6 +10328,8 @@ const DH_ROLES=[
   {id:'Other',rates:[]}
 ];
 let dhLines=[];
+let dhBorne='contractor';
+let dhPageFilter='all';
 function dehariDays(r){const d=parseFloat(r&&r.days);return d>0?d:1;}
 function dehariLineAmt(l){return (Number(l.rate)||0)*Math.max(0,Number(l.count)||0);}
 function dehariAmt(r){
@@ -10330,11 +10354,31 @@ function setDhBorne(v){
   if(o){o.style.borderColor=dhBorne==='owner'?'#4D94D4':'var(--bor)';o.style.color=dhBorne==='owner'?'#4D94D4':'var(--mut)';}
   dhPreview();
 }
+function dhDaysNow(){return Math.max(1,parseFloat(e$('dh-days')&&e$('dh-days').value)||1);}
+function dhLineFormula(l){
+  const days=dhDaysNow();
+  const one=dehariLineAmt(l);
+  return (l.count||0)+' × '+fmt(l.rate||0)+' × '+days+'d = '+fmt(one*days);
+}
 function dhPreview(){
-  const days=Math.max(1,parseFloat(e$('dh-days')&&e$('dh-days').value)||1);
+  const days=dhDaysNow();
   const crew=dhLines.reduce((s,l)=>s+dehariLineAmt(l),0);
   const el=e$('dh-preview');
-  if(el)el.textContent='PKR '+fmt(crew*days)+(days>1?' · '+days+' days × '+fmt(crew):'')+' · '+(dhBorne==='owner'?'Owner':'Contractor');
+  if(el)el.textContent='Day total PKR '+fmt(crew*days)+' · '+days+' day'+(days>1?'s':'')+' · '+(dhBorne==='owner'?'Owner bears':'Contractor bears');
+  dhLines.forEach((l,i)=>{const tot=e$('dh-line-tot-'+i);if(tot)tot.textContent=dhLineFormula(l);});
+}
+function dhPickRate(i,n){
+  const row=dhLines[i];if(!row)return;
+  row.rate=Number(n)||0;
+  const inp=e$('dh-rate-'+i);
+  if(inp)inp.value=String(row.rate);
+  document.querySelectorAll('#dh-lines [data-dh="'+i+'"]').forEach(btn=>{
+    const on=Number(btn.getAttribute('data-rate'))===Number(row.rate);
+    btn.style.borderColor=on?'var(--gold)':'var(--bor)';
+    btn.style.color=on?'var(--gold)':'var(--mut)';
+    btn.style.background=on?'rgba(232,184,75,.18)':'var(--bg)';
+  });
+  dhPreview();
 }
 function addDhLine(line){
   const role=line&&line.role||'Mason';
@@ -10353,16 +10397,22 @@ function dhSet(i,k,v){
   }
   if(k==='label')row.label=v;
   else if(k==='count')row.count=Math.max(0,parseFloat(v)||0);
-  else row.rate=Math.max(0,parseFloat(v)||0);
-  const tot=e$('dh-line-tot-'+i);
-  if(tot)tot.textContent='= '+fmt(dehariLineAmt(row));
+  else{
+    row.rate=Math.max(0,parseFloat(v)||0);
+    document.querySelectorAll('#dh-lines [data-dh="'+i+'"]').forEach(btn=>{
+      const on=Number(btn.getAttribute('data-rate'))===Number(row.rate);
+      btn.style.borderColor=on?'var(--gold)':'var(--bor)';
+      btn.style.color=on?'var(--gold)':'var(--mut)';
+      btn.style.background=on?'rgba(232,184,75,.18)':'var(--bg)';
+    });
+  }
   dhPreview();
 }
 function renderDhLines(){
   const el=e$('dh-lines');if(!el)return;
   el.innerHTML=dhLines.map((l,i)=>{
     const role=DH_ROLES.find(r=>r.id===l.role)||DH_ROLES[2];
-    const chips=(role.rates||[]).map(n=>`<button type="button" class="ca" style="padding:4px 8px;font-size:11px${Number(l.rate)===n?';border-color:var(--gold);color:var(--gold)':''}" onclick="dhSet(${i},'rate',${n})">${n}</button>`).join('');
+    const chips=(role.rates||[]).map(n=>`<button type="button" data-dh="${i}" data-rate="${n}" style="flex:none;min-width:64px;min-height:36px;padding:6px 10px;font-size:13px;font-weight:700;border-radius:9px;border:1px solid ${Number(l.rate)===n?'var(--gold)':'var(--bor)'};color:${Number(l.rate)===n?'var(--gold)':'var(--mut)'};background:${Number(l.rate)===n?'rgba(232,184,75,.18)':'var(--bg)'};font-family:Inter,sans-serif" onclick="dhPickRate(${i},${n})">${n}</button>`).join('');
     return `<div style="background:var(--s2);border-radius:8px;padding:8px;margin-bottom:8px">
       <div style="display:flex;gap:6px;align-items:center">
         <select onchange="dhSet(${i},'role',this.value)" style="flex:1">
@@ -10376,9 +10426,9 @@ function renderDhLines(){
       ${l.role==='Other'?`<input style="margin-top:6px" placeholder="Role name" value="${htmlEsc(l.label||'')}" oninput="dhSet(${i},'label',this.value)">`:''}
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center">
         ${chips}
-        <input type="number" min="0" step="1" value="${htmlEsc(l.rate)}" style="width:96px" placeholder="Dehari rate" oninput="dhSet(${i},'rate',this.value)">
-        <span id="dh-line-tot-${i}" style="font-size:11px;color:var(--mut)">= ${fmt(dehariLineAmt(l))}</span>
+        <input id="dh-rate-${i}" type="number" min="0" step="1" value="${htmlEsc(l.rate)}" style="width:96px" placeholder="Any rate" oninput="dhSet(${i},'rate',this.value)">
       </div>
+      <div id="dh-line-tot-${i}" style="font-size:12px;color:var(--txt);font-weight:700;margin-top:6px">${htmlEsc(dhLineFormula(l))}</div>
     </div>`;
   }).join('')||'<div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:6px">Add a mason or mazdoor. Rate is per person per day. Count is how many people.</div>';
   dhPreview();
@@ -10415,13 +10465,22 @@ function resetDhForm(pid){
   addDhLine({role:'Mazdoor',rate:1500,count:1});
   renderDhList(pid);
 }
+function fillDhProjectSelect(pid){
+  const sel=e$('dh-proj-sel');if(!sel)return;
+  const rows=activeRows(D.projects);
+  sel.innerHTML=rows.map(p=>`<option value="${htmlEsc(p.id)}"${p.id===pid?' selected':''}>${htmlEsc(p.name||'Project')}</option>`).join('')||'<option value="">No projects yet</option>';
+  if(pid)sv('dh-proj-id',pid);
+  else if(rows[0])sv('dh-proj-id',rows[0].id);
+}
 function openDehari(pid){
-  const p=(D.projects||[]).find(x=>x.id===pid);
-  if(!p){toast('Project not found','err');return;}
-  sv('dh-proj-id',pid);
+  const rows=activeRows(D.projects);
+  const p=(D.projects||[]).find(x=>x.id===pid)||rows[0];
+  if(!p){toast('Add a project first','err');return;}
+  sv('dh-proj-id',p.id);
+  fillDhProjectSelect(p.id);
   const nm=e$('dh-proj-name');if(nm)nm.textContent=p.name||'Project';
   const t=e$('dh-title');if(t)t.textContent='Dehari — '+(p.name||'');
-  resetDhForm(pid);
+  resetDhForm(p.id);
   O('sh-dehari');
 }
 function editDehari(id){
@@ -10436,7 +10495,9 @@ function editDehari(id){
   if(!dhLines.length)addDhLine({role:'Mason',rate:2500,count:1});
   else renderDhLines();
   const p=(D.projects||[]).find(x=>x.id===r.projectId);
+  fillDhProjectSelect(r.projectId||'');
   const nm=e$('dh-proj-name');if(nm)nm.textContent=(p&&p.name)||r.projectName||'';
+  const t=e$('dh-title');if(t)t.textContent='Dehari — '+((p&&p.name)||r.projectName||'');
   O('sh-dehari');
 }
 function removeDehari(id){
@@ -10466,6 +10527,111 @@ function saveDehari(){
   toast(e$('dh-eid').value?'Dehari updated ✓':'Dehari saved ✓');
   resetDhForm(pid);
   renderAll();
+}
+function goDehari(pid){
+  dhPageFilter=pid||'all';
+  const bi=[...document.querySelectorAll('.bnav .bi')].find(el=>/goPage\('dehari'/.test(el.getAttribute('onclick')||''));
+  goPage('dehari',bi||null,'Dehari');
+}
+function dehariRoleRollup(rows){
+  const map={};
+  rows.forEach(r=>{
+    const days=dehariDays(r);
+    (r.lines||[]).forEach(l=>{
+      if(!(Number(l.count)>0)||!(Number(l.rate)>0))return;
+      const who=l.role==='Other'?(l.label||'Other'):(l.role||'Other');
+      if(!map[who])map[who]={peopleDays:0,amount:0};
+      map[who].peopleDays+=(Number(l.count)||0)*days;
+      map[who].amount+=dehariLineAmt(l)*days;
+    });
+  });
+  return Object.keys(map).map(k=>({role:k,...map[k]})).sort((a,b)=>b.amount-a.amount);
+}
+function renderDehari(){
+  const el=e$('list-dehari');if(!el)return;
+  const all=liveDehari();
+  const rows=dhPageFilter==='all'?all:all.filter(r=>r.projectId===dhPageFilter);
+  const set=(id,v)=>{const x=e$(id);if(x)x.textContent=fmt(v);};
+  set('dh-stat-all',rows.reduce((s,r)=>s+dehariAmt(r),0));
+  set('dh-stat-con',rows.filter(r=>(r.borneBy||'contractor')==='contractor').reduce((s,r)=>s+dehariAmt(r),0));
+  set('dh-stat-own',rows.filter(r=>(r.borneBy||'contractor')==='owner').reduce((s,r)=>s+dehariAmt(r),0));
+  const roll=dehariRoleRollup(rows);
+  const rs=e$('dh-role-sum');
+  if(rs)rs.textContent=roll.length?roll.map(x=>x.role+' '+x.peopleDays+' person-days · PKR '+fmt(x.amount)).join('   ·   '):'No dehari in this view yet.';
+  const filters=e$('dh-proj-filters');
+  if(filters){
+    const projects=activeRows(D.projects);
+    filters.innerHTML=`<div class="ftab${dhPageFilter==='all'?' on':''}" onclick="dhPageFilter='all';renderDehari()">All</div>`+
+      projects.map(p=>`<div class="ftab${dhPageFilter===p.id?' on':''}" onclick="dhPageFilter='${jsq(p.id)}';renderDehari()">${htmlEsc(p.name||'Project')}</div>`).join('');
+  }
+  if(!rows.length){el.innerHTML='<div class="empty"><div class="empty-i">⏱</div><div class="empty-t">No dehari days yet.<br>Tap + Day to add masons and mazdoors.</div></div>';return;}
+  const byProj=[];
+  rows.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')).forEach(r=>{
+    let g=byProj.find(x=>x.pid===r.projectId);
+    if(!g){g={pid:r.projectId,name:r.projectName||'Project',rows:[]};byProj.push(g);}
+    g.rows.push(r);
+  });
+  el.innerHTML=byProj.map(g=>{
+    const c=g.rows.filter(r=>(r.borneBy||'contractor')==='contractor').reduce((s,r)=>s+dehariAmt(r),0);
+    const o=g.rows.filter(r=>(r.borneBy||'contractor')==='owner').reduce((s,r)=>s+dehariAmt(r),0);
+    return `<div class="card">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">
+        <div>
+          <div class="card-nm">${htmlEsc(g.name)}</div>
+          <div class="card-sub">${g.rows.length} day entr${g.rows.length===1?'y':'ies'} · Contractor ${fmt(c)} · Owner ${fmt(o)}</div>
+        </div>
+        <button class="ca gold" style="flex:none;padding:6px 10px" onclick="openDehari('${jsq(g.pid)}')">+ Day</button>
+      </div>
+      <div style="margin-top:8px">${g.rows.map(r=>`<div style="display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-top:1px solid var(--bor)">
+        <div style="min-width:0">
+          <div style="font-size:var(--fs-sm);font-weight:700">${htmlEsc(r.date||'—')} · ${htmlEsc(dehariDays(r))} day${dehariDays(r)>1?'s':''} · ${htmlEsc(r.borneBy==='owner'?'Owner':'Contractor')}</div>
+          <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">${htmlEsc(r.work||'Extra work')}</div>
+          <div style="font-size:var(--fs-xs);color:var(--txt);margin-top:2px">${htmlEsc(dhCrewText(r)||'—')}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-family:'JetBrains Mono',monospace;color:var(--gold)">${fmt(dehariAmt(r))}</div>
+          <button class="ca blu" style="padding:3px 7px;font-size:10px;margin-top:4px" onclick="editDehari('${jsq(r.id)}')">Edit</button>
+          <button class="ca red" style="padding:3px 7px;font-size:10px;margin-top:4px" onclick="removeDehari('${jsq(r.id)}')">Del</button>
+        </div>
+      </div>`).join('')}</div>
+    </div>`;
+  }).join('');
+}
+async function pdfDehari(){
+  await prepareCompanyLogo();
+  const all=liveDehari();
+  const rows=(dhPageFilter==='all'?all:all.filter(r=>r.projectId===dhPageFilter)).slice().sort((a,b)=>(a.date||'').localeCompare(b.date||'')||(a.projectName||'').localeCompare(b.projectName||''));
+  if(!rows.length){toast('No dehari to print','info');return;}
+  const proj=dhPageFilter==='all'?null:(D.projects||[]).find(p=>p.id===dhPageFilter);
+  const doc=bPDF();
+  let y=drawHeader(doc,'DEHARI',proj?proj.name:'All projects',today(),'','');
+  const con=rows.filter(r=>(r.borneBy||'contractor')==='contractor').reduce((s,r)=>s+dehariAmt(r),0);
+  const own=rows.filter(r=>(r.borneBy||'contractor')==='owner').reduce((s,r)=>s+dehariAmt(r),0);
+  doc.setFillColor(248,246,242);doc.rect(14,y,182,16,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(30,30,30);
+  doc.text('Contractor: PKR '+fmt(con),16,y+6);
+  doc.text('Owner: PKR '+fmt(own),78,y+6);
+  doc.text('Total: PKR '+fmt(con+own),140,y+6);
+  const roll=dehariRoleRollup(rows);
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(90,90,90);
+  doc.text(roll.map(x=>x.role+' '+x.peopleDays+' person-days').join('   ·   ')||'',16,y+12);
+  y+=22;
+  doc.autoTable({
+    startY:y,
+    head:[['Date','Project','Days','Work','Bears','Crew','Amount']],
+    body:rows.map(r=>[r.date||'—',r.projectName||'—',String(dehariDays(r)),r.work||'Extra work',r.borneBy==='owner'?'Owner':'Contractor',dhCrewText(r)||'—',fmt(dehariAmt(r))]),
+    foot:[['','','','','','Total',fmt(con+own)]],
+    styles:{fontSize:8,cellPadding:2,textColor:[30,30,30]},
+    headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:7.5},
+    footStyles:{fillColor:[255,248,230],textColor:[30,30,30],fontStyle:'bold'},
+    columnStyles:{6:{halign:'right',fontStyle:'bold'}},
+    rowPageBreak:'avoid',
+    margin:{left:14,right:14,bottom:18}
+  });
+  drawBankFooter(doc);
+  const name=proj?(proj.name||'Project'):'All';
+  savePdf(doc,'Dehari-'+name.replace(/\s+/g,'-')+'.pdf');
+  toast('Dehari PDF ✓');
 }
 function renderProj(){
   const el=e$('list-proj');if(!el)return;
@@ -10577,7 +10743,7 @@ function renderProj(){
         </div>
       </div>`:''}
       <div class="card-acts">
-        <button class="ca" style="color:var(--gold);border-color:rgba(232,184,75,.35);background:rgba(232,184,75,.08)" onclick="openDehari('${jsq(p.id)}')">Dehari</button>
+        <button class="ca" style="color:var(--gold);border-color:rgba(232,184,75,.35);background:rgba(232,184,75,.08)" onclick="goDehari('${jsq(p.id)}')">Dehari</button>
         <button class="ca" style="color:var(--gold);border-color:rgba(232,184,75,.35);background:rgba(232,184,75,.08)" onclick="openProjCheck('${jsq(p.id)}')">☑ Checklist</button>
         ${showStock?`<button class="ca" style="color:var(--ora);border-color:rgba(201,123,58,.4);background:rgba(201,123,58,.1)" onclick="openProjStock('${jsq(p.id)}')">📦 Stock</button>`:''}
         <button class="ca blu" onclick="eP('${jsq(p.id)}')">✏️ Edit</button>
@@ -11060,7 +11226,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-11-08-v91';
+const APP_VERSION='2026-11-08-v92';
 // Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
 // GitHub Pages is the live OTA source of truth while Wasmer Edge GitHub deploys are failing.
 const OTA_ORIGIN='https://abbashafiz.github.io/Buildpro-crm';
