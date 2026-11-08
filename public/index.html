@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-10-21-v90">
+<meta name="app-version" content="2026-11-08-v91">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -723,6 +723,7 @@ select option{background:var(--s2);}
           <span>⏳ Still due on expenses (partial / unpaid — not in total)</span>
           <span style="font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--ora)" id="exp-int-pending">PKR 0</span>
         </div>
+        <div id="exp-dh-note" style="display:none;background:rgba(232,184,75,.08);border:1px solid rgba(232,184,75,.25);border-radius:10px;padding:8px 12px;margin-bottom:8px;font-size:var(--fs-xs);color:var(--txt)"></div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
           <div style="font-size:var(--fs-xs);color:var(--mut)"><span id="exp-int-count">0</span> entries</div>
           <button class="btn btn-gold btn-sm" style="padding:7px 14px;font-size:var(--fs-sm)" onclick="pdfExp()">⬇ Contractor PDF</button>
@@ -742,6 +743,7 @@ select option{background:var(--s2);}
           <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-md);font-weight:700;color:var(--red)" id="exp-own-reimburse">PKR 0</div>
         </div>
         <div id="exp-misc-recon" style="display:none;background:rgba(232,148,75,.1);border:1px solid rgba(232,148,75,.35);border-radius:10px;padding:10px 13px;margin-bottom:8px"></div>
+        <div id="exp-dh-own" style="display:none;background:rgba(77,148,212,.08);border:1px solid rgba(77,148,212,.25);border-radius:10px;padding:8px 12px;margin-bottom:8px;font-size:var(--fs-xs);color:var(--txt)"></div>
         <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:8px">
           <button class="btn btn-grey btn-sm" style="padding:7px 14px;font-size:var(--fs-sm);color:#4D94D4;border-color:rgba(77,148,212,.3)" onclick="pdfExpExternal()">⬇ Owner PDF</button>
         </div>
@@ -1931,6 +1933,37 @@ select option{background:var(--s2);}
   <div class="sh-ft"><button class="btn btn-grey" onclick="X('sh-workorder')">Cancel · منسوخ</button><button class="btn btn-gold" onclick="saveWorkOrder()">💾 Save Job · محفوظ</button></div>
 </div></div>
 
+<!-- DEHARI (daily-wage extra work) -->
+<div class="sh-ov" id="sh-dehari"><div class="sh" style="max-height:92vh">
+  <div class="sh-grip"></div>
+  <div class="sh-hd"><div class="sh-title" id="dh-title">Dehari</div><button class="sh-x" onclick="X('sh-dehari')">×</button></div>
+  <div class="sh-body">
+    <input type="hidden" id="dh-eid">
+    <input type="hidden" id="dh-proj-id">
+    <div style="font-size:var(--fs-sm);font-weight:700;margin-bottom:8px" id="dh-proj-name"></div>
+    <div class="f2">
+      <div class="fg"><label>Date</label><input type="date" id="dh-date"></div>
+      <div class="fg"><label>Days</label><input type="number" id="dh-days" min="1" step="1" value="1" oninput="dhPreview()"></div>
+    </div>
+    <div class="fg"><label>Extra / custom work</label><input id="dh-work" placeholder="e.g. extra plaster, boundary, lintel repair"></div>
+    <div class="fg"><label>Who bears this cost</label>
+      <div style="display:flex;gap:8px">
+        <button type="button" class="ca" id="dh-by-contractor" onclick="setDhBorne('contractor')">Contractor</button>
+        <button type="button" class="ca" id="dh-by-owner" onclick="setDhBorne('owner')">Owner</button>
+      </div>
+      <input type="hidden" id="dh-borne" value="contractor">
+    </div>
+    <div class="fg">
+      <label>Crew — mason, mazdoor, how many</label>
+      <div id="dh-lines"></div>
+      <button type="button" class="ca" style="margin-top:6px" onclick="addDhLine()">+ Add person type</button>
+    </div>
+    <div id="dh-preview" style="font-family:'JetBrains Mono',monospace;color:var(--gold);font-weight:700;margin:8px 0 12px">PKR 0</div>
+    <button class="btn btn-gold" style="width:100%" onclick="saveDehari()">💾 Save dehari day</button>
+    <div id="dh-list" style="margin-top:16px"></div>
+  </div>
+</div></div>
+
 <!-- EXPENSE SHEET -->
 <div class="sh-ov" id="sh-exp"><div class="sh">
   <div class="sh-grip"></div>
@@ -2802,7 +2835,7 @@ function goAdminBackend(){
   goPage('profile',bi||null,'Backend / Self-host');
   fProfile('backend');
 }
-const COLLECTIONS=['clients','projects','subcons','subpays','cpays','invoices','estimates','agreements','tasks','expenses','investors','banks','subconContracts','personals','workorders','stock'];
+const COLLECTIONS=['clients','projects','subcons','subpays','cpays','invoices','estimates','agreements','tasks','expenses','investors','banks','subconContracts','personals','workorders','stock','dehari'];
 
 // ════ DATA (per Google user — never share localStorage across accounts) ════
 const BP_DATA_PREFIX='bp5';
@@ -2815,7 +2848,7 @@ function emptyData(){
     invoices:[],estimates:[],agreements:[],
     tasks:[],expenses:[],
     investors:[],banks:[],subconContracts:[],
-    personals:[],workorders:[],stock:[],
+    personals:[],workorders:[],stock:[],dehari:[],
     _tomb:[]
   };
 }
@@ -3289,8 +3322,8 @@ function renderPage(p){if(p==='admin'){syncPrivilegedUI();return;}if(p==='dash')
 function renderAll(){renderDash();renderProj();renderInv();renderEst();renderPay();renderSub();renderAgr();renderCli();renderTasks();renderWorkOrders();renderExp();renderLedger();renderArchive();updateDots();syncPrivilegedUI();}
 
 // ════ ARCHIVE (soft-hide; not tombstones) ════
-const ARCHIVE_STORES=['projects','clients','agreements','subcons','expenses','invoices','estimates','tasks','workorders','personals','cpays','subpays','stock'];
-const ARCHIVE_LABELS={projects:'Projects',clients:'Clients',agreements:'Agreements',subcons:'Sub-Contractors',expenses:'Expenses',invoices:'Invoices',estimates:'BOQ / Estimates',tasks:'Tasks',workorders:'Worker Jobs',personals:'Personal Records',cpays:'Payments Received',subpays:'Sub-Con Payments',stock:'Material Stock'};
+const ARCHIVE_STORES=['projects','clients','agreements','subcons','expenses','invoices','estimates','tasks','workorders','personals','cpays','subpays','stock','dehari'];
+const ARCHIVE_LABELS={projects:'Projects',clients:'Clients',agreements:'Agreements',subcons:'Sub-Contractors',expenses:'Expenses',invoices:'Invoices',estimates:'BOQ / Estimates',tasks:'Tasks',workorders:'Worker Jobs',personals:'Personal Records',cpays:'Payments Received',subpays:'Sub-Con Payments',stock:'Material Stock',dehari:'Dehari'};
 function isArchived(r){return !!(r&&r.archived);}
 function activeRows(arr){return (arr||[]).filter(r=>!isArchived(r));}
 function liveCpays(){return activeRows(D.cpays||[]);}
@@ -3305,6 +3338,7 @@ function archiveLabel(store,r){
   if(store==='cpays')return r.clientName||'Payment received';
   if(store==='subpays')return r.subconName||'Sub-Con payment';
   if(store==='stock')return (r.type==='out'?'Out · ':'In · ')+(r.item||'Stock');
+  if(store==='dehari')return r.work||'Dehari day';
   return r.num||r.name||'—';
 }
 function archiveSubline(store,r){
@@ -3320,6 +3354,7 @@ function archiveSubline(store,r){
   if(store==='cpays')return[r.date,r.projectName,r.milestone||r.payType,r.amount!=null?'PKR '+fmt(r.amount):''].filter(Boolean).join(' · ');
   if(store==='subpays')return[r.date,r.phase,r.projectName,r.amount!=null?'PKR '+fmt(r.amount):''].filter(Boolean).join(' · ');
   if(store==='stock')return[r.date,r.projectName,r.qty!=null?String(r.qty)+(r.unit?' '+r.unit:''):'',r.supplier||r.useFor].filter(Boolean).join(' · ');
+  if(store==='dehari')return[r.date,r.projectName,(r.borneBy==='owner'?'Owner':'Contractor'),'PKR '+fmt(dehariAmt(r))].filter(Boolean).join(' · ');
   return r.archivedAt?('Archived '+r.archivedAt.slice(0,10)):'';
 }
 function archiveRec(store,id,opts){
@@ -5547,6 +5582,7 @@ function del(store,id,opts){
       tasks:(D.tasks||[]).filter(x=>x.projectId===pid).length,
       'worker jobs':(D.workorders||[]).filter(x=>x.projectId===pid).length,
       expenses:(D.expenses||[]).filter(x=>x.projectId===pid).length,
+      dehari:(D.dehari||[]).filter(x=>x.projectId===pid).length,
       'material stock':(D.stock||[]).filter(x=>x.projectId===pid).length,
       'payments received':liveCpays().filter(x=>x.projectId===pid).length,
       'sub-con payments':liveSubpays().filter(x=>x.projectId===pid).length,
@@ -5566,6 +5602,7 @@ function del(store,id,opts){
       ...(D.tasks||[]).filter(x=>x.projectId===pid).map(x=>x.id),
       ...(D.workorders||[]).filter(x=>x.projectId===pid).map(x=>x.id),
       ...(D.expenses||[]).filter(x=>x.projectId===pid).map(x=>x.id),
+      ...(D.dehari||[]).filter(x=>x.projectId===pid).map(x=>x.id),
       ...(D.stock||[]).filter(x=>x.projectId===pid).map(x=>x.id),
       ...D.cpays.filter(x=>x.projectId===pid).map(x=>x.id),
       ...D.subpays.filter(x=>x.projectId===pid).map(x=>x.id),
@@ -5576,6 +5613,7 @@ function del(store,id,opts){
     if(D.tasks)D.tasks=D.tasks.filter(x=>x.projectId!==pid);
     if(D.workorders)D.workorders=D.workorders.filter(x=>x.projectId!==pid);
     if(D.expenses)D.expenses=D.expenses.filter(x=>x.projectId!==pid);
+    if(D.dehari)D.dehari=D.dehari.filter(x=>x.projectId!==pid);
     if(D.stock)D.stock=D.stock.filter(x=>x.projectId!==pid);
     D.cpays=D.cpays.filter(x=>x.projectId!==pid);
     D.subpays=D.subpays.filter(x=>x.projectId!==pid);
@@ -5753,14 +5791,14 @@ function renderDash(){
   const tr=liveCpays().filter(p=>(p.payType||'contract')==='contract').reduce((s,p)=>s+p.amount,0);
   const ts=liveSubpays().reduce((s,p)=>s+spayPaidAmt(p),0);
   // Spent totals = paid portion of contractor expenses (partial payments count)
-  const te=activeRows(D.expenses||[]).filter(e=>(e.fundedBy||'contract')==='contract').reduce((s,e)=>s+expPaidAmt(e),0);
+  const te=activeRows(D.expenses||[]).filter(e=>(e.fundedBy||'contract')==='contract').reduce((s,e)=>s+expPaidAmt(e),0)+dehariSum(null,'contractor');
   const ti=activeRows(D.invoices).reduce((s,i)=>s+i.total,0);
   const liveProjects=activeRows(D.projects);
   // Net profit = your share of each project's P&L
   const pft=liveProjects.reduce((net,p)=>{
     const rec=liveCpays().filter(x=>x.projectId===p.id&&(x.payType||'contract')==='contract').reduce((s,x)=>s+x.amount,0);
     const sub=liveSubpays().filter(x=>x.projectId===p.id).reduce((s,x)=>s+spayPaidAmt(x),0);
-    const exp=activeRows(D.expenses||[]).filter(x=>x.projectId===p.id&&(x.fundedBy||'contract')==='contract').reduce((s,x)=>s+expPaidAmt(x),0);
+    const exp=activeRows(D.expenses||[]).filter(x=>x.projectId===p.id&&(x.fundedBy||'contract')==='contract').reduce((s,x)=>s+expPaidAmt(x),0)+dehariSum(p.id,'contractor');
     const internal=sub+exp;
     const isReimbursedD=p.lumpSum;
     const projNet=isReimbursedD?rec:rec-internal;
@@ -8521,7 +8559,9 @@ function renderExp(){
   const subTotalAll=allSubpays.reduce((s,p)=>s+spayPaidAmt(p),0);
   const expPaidAll=internalExps.reduce((s,e)=>s+expPaidAmt(e),0);
   const expPendingAll=internalExps.reduce((s,e)=>s+expDueAmt(e),0);
-  setV('exp-int-spent',expPaidAll+subTotalAll);
+  const dhConAll=dehariSum(null,'contractor');
+  const dhOwnAll=dehariSum(null,'owner');
+  setV('exp-int-spent',expPaidAll+subTotalAll+dhConAll);
   setV('exp-int-sub',subTotalAll);
   setV('exp-int-exp',expPaidAll);
   const ic=e$('exp-int-count');if(ic)ic.textContent=internalExps.length+allSubpays.length;
@@ -8534,6 +8574,16 @@ function renderExp(){
   // Update owner stats (misc cash only — not contract receipts). Spent = paid-out only.
   const totalCash=activeRows(D.projects).reduce((s,p)=>s+(p.cashInHand||0),0);
   const ownerSpent=cashExps.reduce((s,e)=>s+expPaidAmt(e),0);
+  const dhNote=e$('exp-dh-note');
+  if(dhNote){
+    if(dhConAll>0){dhNote.style.display='block';dhNote.textContent='Dehari borne by contractor (in Total Spent): PKR '+fmt(dhConAll);}
+    else dhNote.style.display='none';
+  }
+  const dhOwn=e$('exp-dh-own');
+  if(dhOwn){
+    if(dhOwnAll>0){dhOwn.style.display='block';dhOwn.textContent='Dehari borne by owner (not mixed into misc cash): PKR '+fmt(dhOwnAll);}
+    else dhOwn.style.display='none';
+  }
   setV('exp-own-hand',totalCash);
   setV('exp-own-spent',ownerSpent);
   const or=e$('exp-own-rem');
@@ -10249,6 +10299,174 @@ async function pdfProjStock(pid){
   toast('Stock PDF ✓');
 }
 
+// ════ DEHARI — extra daily-wage work on a project ════
+const DH_ROLES=[
+  {id:'Mason',rates:[2000,2500,2600]},
+  {id:'Mazdoor',rates:[1000,1500]},
+  {id:'Other',rates:[]}
+];
+let dhLines=[];
+function dehariDays(r){const d=parseFloat(r&&r.days);return d>0?d:1;}
+function dehariLineAmt(l){return (Number(l.rate)||0)*Math.max(0,Number(l.count)||0);}
+function dehariAmt(r){
+  if(!r)return 0;
+  return (r.lines||[]).reduce((s,l)=>s+dehariLineAmt(l),0)*dehariDays(r);
+}
+function liveDehari(){return activeRows(D.dehari||[]);}
+function dehariSum(pid,borne){
+  return liveDehari().filter(r=>(!pid||r.projectId===pid)&&((r.borneBy||'contractor')===(borne||'contractor'))).reduce((s,r)=>s+dehariAmt(r),0);
+}
+function dhCrewText(r){
+  return (r.lines||[]).filter(l=>dehariLineAmt(l)>0).map(l=>{
+    const who=l.role==='Other'?(l.label||'Other'):l.role;
+    return (l.count||0)+' '+who+' @ '+fmt(l.rate||0);
+  }).join(', ');
+}
+function setDhBorne(v){
+  dhBorne=v==='owner'?'owner':'contractor';
+  const h=e$('dh-borne');if(h)h.value=dhBorne;
+  const c=e$('dh-by-contractor'),o=e$('dh-by-owner');
+  if(c){c.style.borderColor=dhBorne==='contractor'?'var(--gold)':'var(--bor)';c.style.color=dhBorne==='contractor'?'var(--gold)':'var(--mut)';}
+  if(o){o.style.borderColor=dhBorne==='owner'?'#4D94D4':'var(--bor)';o.style.color=dhBorne==='owner'?'#4D94D4':'var(--mut)';}
+  dhPreview();
+}
+function dhPreview(){
+  const days=Math.max(1,parseFloat(e$('dh-days')&&e$('dh-days').value)||1);
+  const crew=dhLines.reduce((s,l)=>s+dehariLineAmt(l),0);
+  const el=e$('dh-preview');
+  if(el)el.textContent='PKR '+fmt(crew*days)+(days>1?' · '+days+' days × '+fmt(crew):'')+' · '+(dhBorne==='owner'?'Owner':'Contractor');
+}
+function addDhLine(line){
+  const role=line&&line.role||'Mason';
+  const preset=(DH_ROLES.find(r=>r.id===role)||DH_ROLES[0]).rates[0];
+  dhLines.push({role,label:line&&line.label||'',rate:line&&line.rate!=null?Number(line.rate):preset||0,count:line&&line.count!=null?Number(line.count):1});
+  renderDhLines();
+}
+function dhSet(i,k,v){
+  const row=dhLines[i];if(!row)return;
+  if(k==='role'){
+    row.role=v;
+    const preset=(DH_ROLES.find(r=>r.id===v)||{}).rates;
+    if(preset&&preset.length)row.rate=preset[0];
+    renderDhLines();
+    return;
+  }
+  if(k==='label')row.label=v;
+  else if(k==='count')row.count=Math.max(0,parseFloat(v)||0);
+  else row.rate=Math.max(0,parseFloat(v)||0);
+  const tot=e$('dh-line-tot-'+i);
+  if(tot)tot.textContent='= '+fmt(dehariLineAmt(row));
+  dhPreview();
+}
+function renderDhLines(){
+  const el=e$('dh-lines');if(!el)return;
+  el.innerHTML=dhLines.map((l,i)=>{
+    const role=DH_ROLES.find(r=>r.id===l.role)||DH_ROLES[2];
+    const chips=(role.rates||[]).map(n=>`<button type="button" class="ca" style="padding:4px 8px;font-size:11px${Number(l.rate)===n?';border-color:var(--gold);color:var(--gold)':''}" onclick="dhSet(${i},'rate',${n})">${n}</button>`).join('');
+    return `<div style="background:var(--s2);border-radius:8px;padding:8px;margin-bottom:8px">
+      <div style="display:flex;gap:6px;align-items:center">
+        <select onchange="dhSet(${i},'role',this.value)" style="flex:1">
+          <option value="Mason"${l.role==='Mason'?' selected':''}>Mason</option>
+          <option value="Mazdoor"${l.role==='Mazdoor'?' selected':''}>Mazdoor</option>
+          <option value="Other"${l.role==='Other'?' selected':''}>Other</option>
+        </select>
+        <input type="number" min="0" step="1" value="${htmlEsc(l.count)}" style="width:70px" title="How many" oninput="dhSet(${i},'count',this.value)">
+        <button type="button" class="ca red" onclick="dhLines.splice(${i},1);renderDhLines()">×</button>
+      </div>
+      ${l.role==='Other'?`<input style="margin-top:6px" placeholder="Role name" value="${htmlEsc(l.label||'')}" oninput="dhSet(${i},'label',this.value)">`:''}
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center">
+        ${chips}
+        <input type="number" min="0" step="1" value="${htmlEsc(l.rate)}" style="width:96px" placeholder="Dehari rate" oninput="dhSet(${i},'rate',this.value)">
+        <span id="dh-line-tot-${i}" style="font-size:11px;color:var(--mut)">= ${fmt(dehariLineAmt(l))}</span>
+      </div>
+    </div>`;
+  }).join('')||'<div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:6px">Add a mason or mazdoor. Rate is per person per day. Count is how many people.</div>';
+  dhPreview();
+}
+function renderDhList(pid){
+  const el=e$('dh-list');if(!el)return;
+  const rows=liveDehari().filter(r=>r.projectId===pid).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  if(!rows.length){el.innerHTML='<div style="font-size:var(--fs-xs);color:var(--mut)">No dehari days yet for this project.</div>';return;}
+  const c=dehariSum(pid,'contractor'),o=dehariSum(pid,'owner');
+  el.innerHTML=`<div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);margin-bottom:8px"><span style="color:var(--gold)">Contractor ${fmt(c)}</span><span style="color:#4D94D4">Owner ${fmt(o)}</span></div>`+
+    rows.map(r=>`<div style="background:var(--s2);border-radius:8px;padding:8px 10px;margin-bottom:6px">
+      <div style="display:flex;justify-content:space-between;gap:8px">
+        <div style="min-width:0">
+          <div style="font-size:var(--fs-sm);font-weight:700">${htmlEsc(r.date||'—')} · ${htmlEsc(dehariDays(r))} day${dehariDays(r)>1?'s':''}</div>
+          <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">${htmlEsc(r.work||'Extra work')} · ${htmlEsc(r.borneBy==='owner'?'Owner':'Contractor')}</div>
+          <div style="font-size:var(--fs-xs);color:var(--txt);margin-top:2px">${htmlEsc(dhCrewText(r)||'—')}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-family:'JetBrains Mono',monospace;color:var(--gold)">${fmt(dehariAmt(r))}</div>
+          <button class="ca blu" style="padding:3px 7px;font-size:10px;margin-top:4px" onclick="editDehari('${jsq(r.id)}')">Edit</button>
+          <button class="ca red" style="padding:3px 7px;font-size:10px;margin-top:4px" onclick="removeDehari('${jsq(r.id)}')">Del</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+function resetDhForm(pid){
+  sv('dh-eid','');
+  sv('dh-date',today());
+  sv('dh-days','1');
+  sv('dh-work','');
+  setDhBorne('contractor');
+  dhLines=[];
+  addDhLine({role:'Mason',rate:2500,count:1});
+  addDhLine({role:'Mazdoor',rate:1500,count:1});
+  renderDhList(pid);
+}
+function openDehari(pid){
+  const p=(D.projects||[]).find(x=>x.id===pid);
+  if(!p){toast('Project not found','err');return;}
+  sv('dh-proj-id',pid);
+  const nm=e$('dh-proj-name');if(nm)nm.textContent=p.name||'Project';
+  const t=e$('dh-title');if(t)t.textContent='Dehari — '+(p.name||'');
+  resetDhForm(pid);
+  O('sh-dehari');
+}
+function editDehari(id){
+  const r=(D.dehari||[]).find(x=>x.id===id);if(!r)return;
+  sv('dh-eid',r.id);
+  sv('dh-proj-id',r.projectId||'');
+  sv('dh-date',r.date||today());
+  sv('dh-days',String(dehariDays(r)));
+  sv('dh-work',r.work||'');
+  setDhBorne(r.borneBy==='owner'?'owner':'contractor');
+  dhLines=(r.lines||[]).map(l=>({role:l.role||'Other',label:l.label||'',rate:Number(l.rate)||0,count:Number(l.count)||0}));
+  if(!dhLines.length)addDhLine({role:'Mason',rate:2500,count:1});
+  else renderDhLines();
+  const p=(D.projects||[]).find(x=>x.id===r.projectId);
+  const nm=e$('dh-proj-name');if(nm)nm.textContent=(p&&p.name)||r.projectName||'';
+  O('sh-dehari');
+}
+function removeDehari(id){
+  del('dehari',id);
+  const pid=e$('dh-proj-id')&&e$('dh-proj-id').value;
+  if(pid)renderDhList(pid);
+}
+function saveDehari(){
+  const pid=e$('dh-proj-id').value;
+  const p=(D.projects||[]).find(x=>x.id===pid);
+  if(!p){toast('Pick a project','err');return;}
+  const lines=dhLines.map(l=>({role:l.role||'Other',label:(l.label||'').trim(),rate:Number(l.rate)||0,count:Number(l.count)||0})).filter(l=>l.rate>0&&l.count>0);
+  if(!lines.length){toast('Add at least one person with a rate and a count','err');return;}
+  const days=Math.max(1,parseFloat(e$('dh-days').value)||1);
+  const doc={
+    id:e$('dh-eid').value||uid(),
+    projectId:pid,
+    projectName:p.name||'',
+    date:e$('dh-date').value||today(),
+    days,
+    work:(e$('dh-work').value||'').trim(),
+    borneBy:dhBorne==='owner'?'owner':'contractor',
+    lines
+  };
+  if(!D.dehari)D.dehari=[];
+  ups('dehari',doc);
+  toast(e$('dh-eid').value?'Dehari updated ✓':'Dehari saved ✓');
+  resetDhForm(pid);
+  renderAll();
+}
 function renderProj(){
   const el=e$('list-proj');if(!el)return;
   let rows=projFilter==='all'?activeRows(D.projects):activeRows(D.projects).filter(r=>r.phase===projFilter);
@@ -10260,7 +10478,10 @@ function renderProj(){
     const subOnly=liveSubpays().filter(x=>x.projectId===p.id).reduce((s,x)=>s+x.amount,0);
     // Internal = sub-con payments + PAID expenses (material/supplier/other). Pending expenses don't count yet.
     const expPaid=(D.expenses||[]).filter(x=>x.projectId===p.id&&(x.fundedBy||'contract')==='contract').reduce((s,x)=>s+expPaidAmt(x),0);
-    const sub=subOnly+expPaid;
+    const dhCon=dehariSum(p.id,'contractor');
+    const dhOwn=dehariSum(p.id,'owner');
+    const dhRows=liveDehari().filter(x=>x.projectId===p.id);
+    const sub=subOnly+expPaid+dhCon;
     const agr=D.agreements.find(x=>x.projectId===p.id);
     const inv=D.invoices.filter(x=>x.projectId===p.id).reduce((s,x)=>s+x.total,0);
     // Lump sum: net = full received, don't deduct sub/expenses
@@ -10299,6 +10520,23 @@ function renderProj(){
         </div>
         <div class="pbar-wrap" style="height:4px"><div class="pbar" style="width:${htmlEsc(chk.pct)}%;height:4px;background:${htmlEsc(chk.pct===100?'var(--grn)':'var(--gold)')}"></div></div>
         ${chk.pending?`<div style="font-size:var(--fs-xs);color:var(--red);margin-top:6px;font-weight:600">⚠ ${htmlEsc(chk.pending)} owner change${htmlEsc(chk.pending>1?'s':'')} not told to sub-con</div>`:`<div style="font-size:var(--fs-xs);color:var(--mut);margin-top:6px">Tap to check layout / stage items &amp; owner changes</div>`}
+      </div>
+      <div style="background:rgba(232,184,75,.08);border:1px solid rgba(232,184,75,.22);border-radius:9px;padding:10px 12px;margin-bottom:11px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px">
+          <div style="font-size:var(--fs-xs);font-weight:700;color:var(--gold)">Dehari · extra daily work</div>
+          <button class="ca gold" style="padding:4px 8px;font-size:10px" onclick="openDehari('${jsq(p.id)}')">+ Day</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+          <div style="background:var(--bg);border-radius:7px;padding:7px;text-align:center">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--gold)">${fmt(dhCon)}</div>
+            <div style="font-size:10px;color:var(--mut);margin-top:2px">Contractor bears</div>
+          </div>
+          <div style="background:var(--bg);border-radius:7px;padding:7px;text-align:center">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:#4D94D4">${fmt(dhOwn)}</div>
+            <div style="font-size:10px;color:var(--mut);margin-top:2px">Owner bears</div>
+          </div>
+        </div>
+        <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:6px">${dhRows.length?htmlEsc(dhRows.length)+' day entr'+(dhRows.length===1?'y':'ies')+' · mason 2000–2600 · mazdoor 1000–1500, or your own rate':'No extra dehari yet. Add a day when masons or mazdoors do extra work.'}</div>
       </div>
       ${showStock?`<div style="background:rgba(201,123,58,.08);border:1px solid rgba(201,123,58,.22);border-radius:9px;padding:10px 12px;margin-bottom:11px;cursor:pointer" onclick="openProjStock('${jsq(p.id)}')">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
@@ -10339,6 +10577,7 @@ function renderProj(){
         </div>
       </div>`:''}
       <div class="card-acts">
+        <button class="ca" style="color:var(--gold);border-color:rgba(232,184,75,.35);background:rgba(232,184,75,.08)" onclick="openDehari('${jsq(p.id)}')">Dehari</button>
         <button class="ca" style="color:var(--gold);border-color:rgba(232,184,75,.35);background:rgba(232,184,75,.08)" onclick="openProjCheck('${jsq(p.id)}')">☑ Checklist</button>
         ${showStock?`<button class="ca" style="color:var(--ora);border-color:rgba(201,123,58,.4);background:rgba(201,123,58,.1)" onclick="openProjStock('${jsq(p.id)}')">📦 Stock</button>`:''}
         <button class="ca blu" onclick="eP('${jsq(p.id)}')">✏️ Edit</button>
@@ -10599,8 +10838,9 @@ async function pdfInternalSummary(pid){
   const cli=D.clients.find(x=>x.id===p.clientId);
   const spays=liveSubpays().filter(x=>x.projectId===pid).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
   const exps=(D.expenses||[]).filter(x=>x.projectId===pid).sort((a,b)=>(a.date||'').localeCompare(b.date||'')); // paidAmt-aware below
+  const dh=liveDehari().filter(x=>x.projectId===pid&&(x.borneBy||'contractor')==='contractor').sort((a,b)=>(a.date||'').localeCompare(b.date||''));
 
-  if(!spays.length&&!exps.length){toast('No internal payments for this project','info');return;}
+  if(!spays.length&&!exps.length&&!dh.length){toast('No internal payments for this project','info');return;}
 
   // Combine into one chronological list, grouped by "Paid To".
   // Payment totals only — person/trade breakdown stays on sub-con statement PDF.
@@ -10609,13 +10849,15 @@ async function pdfInternalSummary(pid){
   const pendingExps=contractExps.filter(x=>expHasDue(x));
   const combined=[
     ...spays.map(x=>({date:x.date,paidTo:x.subconName||'—',type:'Sub-Contractor',desc:(x.phase||'')+(x.desc?' · '+x.desc:''),method:x.method||'Cash',amount:x.amount,isPaid:true})),
-    ...paidExps.map(x=>({date:x.date,paidTo:x.paidTo||'—',type:(x.cat||'other').charAt(0).toUpperCase()+(x.cat||'other').slice(1),desc:x.desc,method:x.paid||'Cash',amount:x.amount,isPaid:true}))
+    ...paidExps.map(x=>({date:x.date,paidTo:x.paidTo||'—',type:(x.cat||'other').charAt(0).toUpperCase()+(x.cat||'other').slice(1),desc:x.desc,method:x.paid||'Cash',amount:x.amount,isPaid:true})),
+    ...dh.map(x=>({date:x.date,paidTo:'Dehari',type:'Dehari',desc:(x.work||'Extra work')+' · '+dhCrewText(x)+(dehariDays(x)>1?' · '+dehariDays(x)+' days':''),method:'Contractor',amount:dehariAmt(x),isPaid:true}))
   ].sort((a,b)=>(a.date||'').localeCompare(b.date||''));
 
   const totalSub=spays.reduce((s,x)=>s+x.amount,0);
   const totalExp=paidExps.reduce((s,x)=>s+x.amount,0);
+  const totalDh=dh.reduce((s,x)=>s+dehariAmt(x),0);
   const totalPending=pendingExps.reduce((s,x)=>s+x.amount,0);
-  const totalInternal=totalSub+totalExp;
+  const totalInternal=totalSub+totalExp+totalDh;
 
   let y=drawHeader(doc,'INTERNAL PAYMENTS SUMMARY',p.name,today(),'','');
 
@@ -10633,7 +10875,7 @@ async function pdfInternalSummary(pid){
   doc.setFillColor(248,246,242);doc.rect(14,y,182,18,'F');
   doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(30,30,30);
   doc.text('Sub-Contractors: PKR '+fmt(totalSub),16,y+7);
-  doc.text('Paid Expenses: PKR '+fmt(totalExp),95,y+7);
+  doc.text('Expenses + Dehari: PKR '+fmt(totalExp+totalDh),95,y+7);
   doc.setFontSize(10);doc.setTextColor(201,123,58);
   doc.text('Total Internal Paid: PKR '+fmt(totalInternal)+(totalPending?'   ·   Pending: PKR '+fmt(totalPending):''),16,y+14);
   y+=26;
@@ -10818,7 +11060,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-10-21-v90';
+const APP_VERSION='2026-11-08-v91';
 // Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
 // GitHub Pages is the live OTA source of truth while Wasmer Edge GitHub deploys are failing.
 const OTA_ORIGIN='https://abbashafiz.github.io/Buildpro-crm';
