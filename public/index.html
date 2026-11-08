@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-11-08-v92">
+<meta name="app-version" content="2026-11-08-v93">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -705,7 +705,7 @@ select option{background:var(--s2);}
 
     <!-- DEHARI -->
     <div class="pg" id="pg-dehari">
-      <div style="background:rgba(232,184,75,.07);border:1px solid rgba(232,184,75,.22);border-radius:10px;padding:10px 13px;margin-bottom:8px;font-size:var(--fs-xs);color:var(--mut)">Extra daily work. One day can have several people at different rates. Tap a rate to fill the amount. Contractor days count as internal cost. Owner days stay separate.</div>
+      <div style="background:rgba(232,184,75,.07);border:1px solid rgba(232,184,75,.22);border-radius:10px;padding:10px 13px;margin-bottom:8px;font-size:var(--fs-xs);color:var(--mut)">Extra daily work. One day can have several people at different rates. Tap a rate to fill the amount. Contractor days count as internal cost. Owner days stay separate. PDF is one file per project.</div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">
         <div class="stat"><div class="stat-lbl">All dehari</div><div class="stat-val" id="dh-stat-all" style="font-size:22px;color:var(--gold)">0</div><div class="stat-unit">PKR</div></div>
         <div class="stat"><div class="stat-lbl">Contractor</div><div class="stat-val" id="dh-stat-con" style="font-size:22px;color:var(--gold)">0</div><div class="stat-unit">PKR</div></div>
@@ -713,7 +713,7 @@ select option{background:var(--s2);}
       </div>
       <div id="dh-role-sum" style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:8px"></div>
       <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:8px">
-        <button class="btn btn-grey btn-sm" style="padding:7px 14px;font-size:var(--fs-sm)" onclick="pdfDehari()">⬇ PDF</button>
+        <button class="btn btn-grey btn-sm" id="dh-pdf-btn" style="padding:7px 14px;font-size:var(--fs-sm)" onclick="pdfDehari()">⬇ PDF each project</button>
         <button class="btn btn-gold btn-sm" style="padding:7px 14px;font-size:var(--fs-sm)" onclick="openDehari(dhPageFilter==='all'?'':dhPageFilter)">+ Day</button>
       </div>
       <div class="ftabs" id="dh-proj-filters"></div>
@@ -10427,8 +10427,8 @@ function renderDhLines(){
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center">
         ${chips}
         <input id="dh-rate-${i}" type="number" min="0" step="1" value="${htmlEsc(l.rate)}" style="width:96px" placeholder="Any rate" oninput="dhSet(${i},'rate',this.value)">
-        <span id="dh-line-tot-${i}" style="font-size:12px;color:var(--txt);font-weight:700">${htmlEsc(dhLineFormula(l))}</span>
       </div>
+      <div id="dh-line-tot-${i}" style="font-size:12px;color:var(--txt);font-weight:700;margin-top:6px">${htmlEsc(dhLineFormula(l))}</div>
     </div>`;
   }).join('')||'<div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:6px">Add a mason or mazdoor. Rate is per person per day. Count is how many people.</div>';
   dhPreview();
@@ -10564,6 +10564,8 @@ function renderDehari(){
     filters.innerHTML=`<div class="ftab${dhPageFilter==='all'?' on':''}" onclick="dhPageFilter='all';renderDehari()">All</div>`+
       projects.map(p=>`<div class="ftab${dhPageFilter===p.id?' on':''}" onclick="dhPageFilter='${jsq(p.id)}';renderDehari()">${htmlEsc(p.name||'Project')}</div>`).join('');
   }
+  const pdfBtn=e$('dh-pdf-btn');
+  if(pdfBtn)pdfBtn.textContent=dhPageFilter==='all'?'⬇ PDF each project':'⬇ PDF';
   if(!rows.length){el.innerHTML='<div class="empty"><div class="empty-i">⏱</div><div class="empty-t">No dehari days yet.<br>Tap + Day to add masons and mazdoors.</div></div>';return;}
   const byProj=[];
   rows.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')).forEach(r=>{
@@ -10580,7 +10582,10 @@ function renderDehari(){
           <div class="card-nm">${htmlEsc(g.name)}</div>
           <div class="card-sub">${g.rows.length} day entr${g.rows.length===1?'y':'ies'} · Contractor ${fmt(c)} · Owner ${fmt(o)}</div>
         </div>
-        <button class="ca gold" style="flex:none;padding:6px 10px" onclick="openDehari('${jsq(g.pid)}')">+ Day</button>
+        <div style="display:flex;gap:6px;flex:none">
+          <button class="ca" style="padding:6px 10px" onclick="pdfDehari('${jsq(g.pid)}')">PDF</button>
+          <button class="ca gold" style="padding:6px 10px" onclick="openDehari('${jsq(g.pid)}')">+ Day</button>
+        </div>
       </div>
       <div style="margin-top:8px">${g.rows.map(r=>`<div style="display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-top:1px solid var(--bor)">
         <div style="min-width:0">
@@ -10597,14 +10602,17 @@ function renderDehari(){
     </div>`;
   }).join('');
 }
-async function pdfDehari(){
-  await prepareCompanyLogo();
-  const all=liveDehari();
-  const rows=(dhPageFilter==='all'?all:all.filter(r=>r.projectId===dhPageFilter)).slice().sort((a,b)=>(a.date||'').localeCompare(b.date||'')||(a.projectName||'').localeCompare(b.projectName||''));
-  if(!rows.length){toast('No dehari to print','info');return;}
-  const proj=dhPageFilter==='all'?null:(D.projects||[]).find(p=>p.id===dhPageFilter);
+function dhPdfFile(name,id,used){
+  const base='Dehari-'+(String(name||'Project').replace(/[^\w\-]+/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,'')||'Project');
+  let file=base+'.pdf';
+  if(used[file])file=base+'-'+String(id||'').slice(-4)+'.pdf';
+  used[file]=1;
+  return file;
+}
+function dehariPdfDoc(proj,rows){
+  const name=(proj&&proj.name)||(rows[0]&&rows[0].projectName)||'Project';
   const doc=bPDF();
-  let y=drawHeader(doc,'DEHARI',proj?proj.name:'All projects',today(),'','');
+  let y=drawHeader(doc,'DEHARI',name,today(),'','');
   const con=rows.filter(r=>(r.borneBy||'contractor')==='contractor').reduce((s,r)=>s+dehariAmt(r),0);
   const own=rows.filter(r=>(r.borneBy||'contractor')==='owner').reduce((s,r)=>s+dehariAmt(r),0);
   doc.setFillColor(248,246,242);doc.rect(14,y,182,16,'F');
@@ -10614,24 +10622,48 @@ async function pdfDehari(){
   doc.text('Total: PKR '+fmt(con+own),140,y+6);
   const roll=dehariRoleRollup(rows);
   doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(90,90,90);
-  doc.text(roll.map(x=>x.role+' '+x.peopleDays+' person-days').join('   ·   ')||'',16,y+12);
+  doc.text((roll.map(x=>x.role+' '+x.peopleDays+' person-days').join('   ·   ')||name).slice(0,110),16,y+12);
   y+=22;
   doc.autoTable({
     startY:y,
-    head:[['Date','Project','Days','Work','Bears','Crew','Amount']],
-    body:rows.map(r=>[r.date||'—',r.projectName||'—',String(dehariDays(r)),r.work||'Extra work',r.borneBy==='owner'?'Owner':'Contractor',dhCrewText(r)||'—',fmt(dehariAmt(r))]),
-    foot:[['','','','','','Total',fmt(con+own)]],
+    head:[['Date','Days','Work','Bears','Crew','Amount']],
+    body:rows.map(r=>[r.date||'—',String(dehariDays(r)),r.work||'Extra work',r.borneBy==='owner'?'Owner':'Contractor',dhCrewText(r)||'—',fmt(dehariAmt(r))]),
+    foot:[['','','','','Total',fmt(con+own)]],
     styles:{fontSize:8,cellPadding:2,textColor:[30,30,30]},
     headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:7.5},
     footStyles:{fillColor:[255,248,230],textColor:[30,30,30],fontStyle:'bold'},
-    columnStyles:{6:{halign:'right',fontStyle:'bold'}},
+    columnStyles:{5:{halign:'right',fontStyle:'bold'}},
     rowPageBreak:'avoid',
     margin:{left:14,right:14,bottom:18}
   });
   drawBankFooter(doc);
-  const name=proj?(proj.name||'Project'):'All';
-  savePdf(doc,'Dehari-'+name.replace(/\s+/g,'-')+'.pdf');
-  toast('Dehari PDF ✓');
+  return doc;
+}
+async function pdfDehari(pid){
+  await prepareCompanyLogo();
+  const all=liveDehari();
+  const want=pid||dhPageFilter||'all';
+  let groups;
+  if(want!=='all'){
+    const rows=all.filter(r=>r.projectId===want).slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+    if(!rows.length){toast('No dehari to print','info');return;}
+    const proj=(D.projects||[]).find(p=>p.id===want)||{id:want,name:rows[0].projectName||'Project'};
+    groups=[{proj,rows}];
+  }else{
+    const ids=[];
+    all.forEach(r=>{if(r.projectId&&ids.indexOf(r.projectId)<0)ids.push(r.projectId);});
+    groups=ids.map(id=>{
+      const rows=all.filter(r=>r.projectId===id).slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+      const proj=(D.projects||[]).find(p=>p.id===id)||{id,name:(rows[0]&&rows[0].projectName)||'Project'};
+      return {proj,rows};
+    }).filter(g=>g.rows.length);
+    if(!groups.length){toast('No dehari to print','info');return;}
+  }
+  const used={};
+  const built=groups.map(g=>({doc:dehariPdfDoc(g.proj,g.rows),file:dhPdfFile(g.proj.name,g.proj.id,used)}));
+  if(isNative()){for(const b of built)await savePdf(b.doc,b.file);}
+  else built.forEach(b=>savePdf(b.doc,b.file));
+  toast(built.length===1?'Dehari PDF ✓':built.length+' project PDFs ✓');
 }
 function renderProj(){
   const el=e$('list-proj');if(!el)return;
@@ -10690,7 +10722,10 @@ function renderProj(){
       <div style="background:rgba(232,184,75,.08);border:1px solid rgba(232,184,75,.22);border-radius:9px;padding:10px 12px;margin-bottom:11px">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px">
           <div style="font-size:var(--fs-xs);font-weight:700;color:var(--gold)">Dehari · extra daily work</div>
-          <button class="ca gold" style="padding:4px 8px;font-size:10px" onclick="openDehari('${jsq(p.id)}')">+ Day</button>
+          <div style="display:flex;gap:4px">
+            ${dhRows.length?`<button class="ca" style="padding:4px 8px;font-size:10px" onclick="pdfDehari('${jsq(p.id)}')">PDF</button>`:''}
+            <button class="ca gold" style="padding:4px 8px;font-size:10px" onclick="openDehari('${jsq(p.id)}')">+ Day</button>
+          </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
           <div style="background:var(--bg);border-radius:7px;padding:7px;text-align:center">
@@ -11226,7 +11261,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-11-08-v92';
+const APP_VERSION='2026-11-08-v93';
 // Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
 // GitHub Pages is the live OTA source of truth while Wasmer Edge GitHub deploys are failing.
 const OTA_ORIGIN='https://abbashafiz.github.io/Buildpro-crm';
