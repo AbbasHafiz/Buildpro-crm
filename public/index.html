@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-11-10-v94">
+<meta name="app-version" content="2026-11-10-v95">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -648,7 +648,7 @@ select option{background:var(--s2);}
       <div class="ftabs" style="margin-bottom:10px">
         <div class="ftab on" onclick="fLed('all',this)">All</div>
         <div class="ftab" onclick="fLed('contract',this)">Contract</div>
-        <div class="ftab" onclick="fLed('cashinhand',this)">Misc Cash</div>
+        <div class="ftab" onclick="fLed('cashinhand',this)">Misc Amount</div>
         <div class="ftab" onclick="fLed('onbehalf',this)">On Behalf</div>
       </div>
       <div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:10px;padding:0 2px" id="led-filter-hint">All funding sides combined</div>
@@ -749,11 +749,11 @@ select option{background:var(--s2);}
 
       <!-- Owner stats — misc advance + on-behalf only; never mixes contract receipts -->
       <div id="exp-stats-owner" style="display:none">
-        <div style="background:rgba(77,148,212,.07);border:1px solid rgba(77,148,212,.22);border-radius:10px;padding:10px 13px;margin-bottom:8px;font-size:var(--fs-xs);color:var(--mut)">Owner side only: misc cash the owner gave for expenses, plus what you spent on their behalf. Contract payments received (e.g. project instalments) are <b style="color:var(--txt)">not</b> included here.</div>
+        <div style="background:rgba(77,148,212,.07);border:1px solid rgba(77,148,212,.22);border-radius:10px;padding:10px 13px;margin-bottom:8px;font-size:var(--fs-xs);color:var(--mut)">Owner side only: the misc amount the owner gave for general expenses, plus what you spent on their behalf. When the owner pays you back, that on-behalf line becomes a paid general expense. Contract payments are <b style="color:var(--txt)">not</b> included here.</div>
         <div class="stats2" style="margin-bottom:8px">
-          <div class="stat"><div class="stat-lbl">Misc Cash Given</div><div class="stat-val" id="exp-own-hand">0</div><div class="stat-unit">PKR</div></div>
-          <div class="stat"><div class="stat-lbl">Misc Spent</div><div class="stat-val" id="exp-own-spent">0</div><div class="stat-unit">PKR</div></div>
-          <div class="stat"><div class="stat-lbl">Misc Left</div><div class="stat-val" id="exp-own-rem">0</div><div class="stat-unit">PKR</div></div>
+          <div class="stat"><div class="stat-lbl">Misc Amount</div><div class="stat-val" id="exp-own-hand">0</div><div class="stat-unit">PKR</div></div>
+          <div class="stat"><div class="stat-lbl">General Expenses</div><div class="stat-val" id="exp-own-spent">0</div><div class="stat-unit">PKR</div></div>
+          <div class="stat"><div class="stat-lbl">Amount Left</div><div class="stat-val" id="exp-own-rem">0</div><div class="stat-unit">PKR</div></div>
         </div>
         <div style="background:rgba(224,85,85,.07);border:1px solid rgba(224,85,85,.25);border-radius:10px;padding:10px 13px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
           <div><div style="font-size:var(--fs-sm);font-weight:600;color:var(--txt)">🤝 On Behalf (Owner Owes You)</div><div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">You paid from your pocket for the owner — not from contract collection</div></div>
@@ -1257,7 +1257,7 @@ select option{background:var(--s2);}
     <div class="fg"><label>Payment Type</label>
       <select id="cp-pay-type" onchange="toggleMiscAdvance()">
         <option value="contract">💰 Contract Payment — counts toward contract value</option>
-        <option value="misc">🪣 Misc Advance — owner gave for expenses (goes to Cash in Hand)</option>
+        <option value="misc">🪣 Misc Amount — owner gave for general expenses (not a contract payment)</option>
       </select>
     </div>
     <div class="fg"><label>Note</label><input id="cp-note" placeholder="Optional note"></div>
@@ -2045,7 +2045,7 @@ select option{background:var(--s2);}
     <div class="fg"><label>Funded From</label>
       <select id="ex-funded" onchange="toggleExpFunded()">
         <option value="contract">💼 Contractor Side — your own cost, deducts from Net profit</option>
-        <option value="cashinhand">🪣 Owner Side (Cash in Hand) — spent from owner's advance</option>
+        <option value="cashinhand">🪣 General Expenses — spent from the misc amount</option>
         <option value="onbehalf">🤝 Paid on Behalf of Owner — reimbursable, owner owes you back</option>
       </select>
     </div>
@@ -2069,7 +2069,7 @@ select option{background:var(--s2);}
       <select id="ex-rstatus">
         <option value="unpaid">🔴 Unpaid — owner has not paid you back</option>
         <option value="pending">🟡 Pending — reimbursement requested / awaiting</option>
-        <option value="paid">✅ Paid — owner has reimbursed you</option>
+        <option value="paid">✅ Paid — owner paid you back (moves to general expenses)</option>
       </select>
     </div>
   </div>
@@ -7147,7 +7147,7 @@ function drawOwnerExpTotals(doc,y,cashSpent,behalfSpent){
   doc.setFillColor(248,246,242);doc.rect(14,y,182,boxH,'F');
   doc.setFillColor(232,184,75);doc.rect(14,y,4,boxH,'F');
   doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.setTextColor(90,85,80);
-  doc.text('Misc Cash Spent',22,y+10);
+  doc.text('General Expenses',22,y+10);
   doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(30,30,30);
   doc.text('PKR '+fmt(cashSpent),190,y+10,{align:'right'});
   doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.setTextColor(90,85,80);
@@ -8463,10 +8463,13 @@ function saveExp(){
   if(!desc&&matItem)desc=matItem;
   const doc={id:eid||uid(),desc,paidTo:e$('ex-paid-to')?.value||'',projectId:e$('ex-proj-id').value,projectName:e$('ex-proj-t').value,cat,matItem,date:e$('ex-date').value||today(),amount,paidAmt,paid:e$('ex-paid').value,fundedBy:funded,notes:e$('ex-notes').value,isPaid:amount>0?paidAmt+0.005>=amount:paidAmt>0};
   if(funded==='onbehalf'){doc.rstatus=e$('ex-rstatus')?.value||'unpaid';}
+  const settled=doc.fundedBy==='onbehalf'&&doc.rstatus==='paid';
+  if(settled)settleOnBehalf(doc);
   if(!doc.desc||!doc.amount){toast(cat==='material'?'Enter material name (or description) and bill amount':'Enter description and bill amount','err');return;}
   if(cat==='material'&&!matItem){toast('Pick or type a material (Sand, Crush, Bricks…)','err');return;}
   if(!D.expenses)D.expenses=[];
   ups('expenses',doc);X('sh-exp');renderExp();updateDots();renderDash();renderLedger();
+  if(settled){toast('Owner paid you back — now a paid general expense');return;}
   const st=expPayStatus(doc);
   toast(eid?'Expense updated ✓':(st==='partial'?`Expense saved · paid ${fmt(doc.paidAmt)} / due ${fmt(expDueAmt(doc))}`:'Expense saved ✓'));
 }
@@ -8482,7 +8485,7 @@ function updateCashInHand(projectId,value,date,time){
   proj.updatedAt=new Date().toISOString();
   sched();
   renderExp();
-  toast('Cash in hand updated ✓');
+  toast('Misc amount updated ✓');
 }
 function saveCashInHandFromUI(projectId){
   const amtEl=document.querySelector('input.cih-amt[data-pid="'+projectId+'"]');
@@ -8537,7 +8540,7 @@ function updateMiscReconBanner(){
   box.style.display='block';
   box.innerHTML=`<div style="font-size:var(--fs-sm);font-weight:700;color:var(--ora);margin-bottom:6px">⚠ Misc cash reconciliation</div>
     <div style="font-size:var(--fs-xs);color:var(--mut);line-height:1.5">${issues.join('<br>')}</div>
-    <div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:6px">Fix by updating Cash in Hand on the project, or checking misc advance payments.</div>`;
+    <div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:6px">Fix by updating the misc amount on the project, or checking misc amount payments.</div>`;
 }
 // Cycle an expense's funding side: Contractor -> Owner's Cash in Hand -> Paid on Behalf -> Contractor.
 // Lets you reclassify existing expenses so the Owner's Cash tab and "Spent" reflect owner-funded spending.
@@ -8551,21 +8554,46 @@ function cycleFunded(id){
   r.isPaid=expPaidAmt(r)+0.005>=(r.amount||0);
   r.updatedAt=new Date().toISOString();
   sched();renderExp();renderDash();renderLedger();
-  const lbl={contract:'Contractor Side',cashinhand:"Owner's Cash in Hand",onbehalf:'Paid on Behalf (reimbursable)'};
+  const lbl={contract:'Contractor Side',cashinhand:'General Expenses',onbehalf:'Paid on Behalf (reimbursable)'};
   toast('Moved to '+lbl[next],'info');
 }
 
-// Cycle reimbursement status for on-behalf expenses: unpaid -> pending -> paid -> unpaid
-// (Separate from supplier paidAmt / partial payment.)
+// Owner paid this on-behalf bill back: it leaves On Behalf and is a paid general expense.
+function settleOnBehalf(r){
+  if(!r)return false;
+  r.fundedBy='cashinhand';
+  r.paidAmt=r.amount||0;
+  r.isPaid=(r.amount||0)>0;
+  r.rstatus='';
+  r.reimbursed=true;
+  r.updatedAt=new Date().toISOString();
+  return true;
+}
+function settleReimbursedOnBehalf(){
+  let n=0;
+  (D.expenses||[]).forEach(r=>{
+    if(r&&r.fundedBy==='onbehalf'&&rst(r)==='paid'){settleOnBehalf(r);n++;}
+  });
+  if(n)sched();
+  return n;
+}
+// Cycle reimbursement: unpaid -> pending -> owner paid back (becomes a general expense).
 function cycleReimburse(id){
   const r=(D.expenses||[]).find(x=>x.id===id);if(!r)return;
-  const order=['unpaid','pending','paid'];
-  const next=order[(order.indexOf(rst(r))+1)%order.length];
-  r.rstatus=next;r.updatedAt=new Date().toISOString();sched();renderExp();renderLedger();renderDash();
-  toast(next==='paid'?'Owner reimbursed ✅':next==='pending'?'Reimbursement pending 🟡':'Marked unpaid 🔴','info');
+  const cur=rst(r);
+  if(cur==='pending'||cur==='paid'){
+    settleOnBehalf(r);
+    sched();renderExp();renderLedger();renderDash();
+    toast('Owner paid you back — now a paid general expense','ok');
+    return;
+  }
+  r.rstatus='pending';r.updatedAt=new Date().toISOString();
+  sched();renderExp();renderLedger();renderDash();
+  toast('Reimbursement pending 🟡','info');
 }
 
 function renderExp(){
+  settleReimbursedOnBehalf();
   const el=e$('list-exp');if(!el)return;
   const allExps=activeRows(D.expenses||[]);
   const allSubpays=liveSubpays();
@@ -8603,7 +8631,7 @@ function renderExp(){
   }
   const dhOwn=e$('exp-dh-own');
   if(dhOwn){
-    if(dhOwnAll>0){dhOwn.style.display='block';dhOwn.textContent='Dehari borne by owner (not mixed into misc cash): PKR '+fmt(dhOwnAll);}
+    if(dhOwnAll>0){dhOwn.style.display='block';dhOwn.textContent='Dehari borne by owner (not mixed into the misc amount): PKR '+fmt(dhOwnAll);}
     else dhOwn.style.display='none';
   }
   setV('exp-own-hand',totalCash);
@@ -8688,7 +8716,7 @@ function renderExp(){
       </div>
     </div>`;
     const cashBlock=isOwnerMode&&proj?`<div style="padding:12px 14px;border-bottom:1px solid var(--bor)">
-          <label style="font-size:var(--fs-xs);color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px">💵 Misc Cash in Hand (owner advance for expenses — not contract payment)</label>
+          <label style="font-size:var(--fs-xs);color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px">💵 Misc Amount (owner advance for general expenses — not a contract payment)</label>
           <div style="display:grid;grid-template-columns:1.2fr 1fr 0.85fr;gap:7px;margin-bottom:7px">
             <div>
               <div style="font-size:9px;color:var(--mut2);margin-bottom:3px">Amount (PKR)</div>
@@ -8707,7 +8735,7 @@ function renderExp(){
             </div>
           </div>
           <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center">
-            <button type="button" class="btn btn-gold btn-sm" style="padding:7px 12px;font-size:var(--fs-xs);flex:none" onclick="saveCashInHandFromUI('${jsq(pid)}')">💾 Save Cash</button>
+            <button type="button" class="btn btn-gold btn-sm" style="padding:7px 12px;font-size:var(--fs-xs);flex:none" onclick="saveCashInHandFromUI('${jsq(pid)}')">💾 Save Amount</button>
             <button type="button" class="btn btn-grey btn-sm" style="padding:7px 12px;font-size:var(--fs-xs);flex:none;color:#4D94D4;border-color:rgba(77,148,212,.3)" onclick="openMiscAdvanceForProject('${jsq(pid)}')">+ Record Advance</button>
             ${proj.cashInHandDate||proj.cashInHandTime?`<span style="font-size:var(--fs-xs);color:var(--mut)">Last received: <b style="color:var(--txt)">${fmtDT(proj.cashInHandDate,proj.cashInHandTime?fmtTime12(proj.cashInHandTime):'')} </b></span>`:''}
           </div>
@@ -8732,11 +8760,11 @@ function renderExp(){
           ${cashInHand>0?`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-top:10px">
           <div style="background:var(--s2);border-radius:8px;padding:8px;text-align:center">
             <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--gold)">${fmt(cashInHand)}</div>
-            <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Misc Given</div>
+            <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Misc Amount</div>
           </div>
           <div style="background:var(--s2);border-radius:8px;padding:8px;text-align:center">
             <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:var(--red)">${fmt(projSpent)}</div>
-            <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Misc Spent</div>
+            <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">General Expenses</div>
           </div>
           <div style="background:var(--s2);border-radius:8px;padding:8px;text-align:center">
             <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-sm);color:${htmlEsc(balance>=0?'var(--grn)':'var(--red)')}">${fmt(Math.abs(balance))}</div>
@@ -8767,12 +8795,12 @@ function renderExp(){
               ${r.notes?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">${htmlEsc(r.notes)}</div>`:''}
               <div style="display:flex;gap:5px;margin-top:6px;flex-wrap:wrap">
                 <button style="font-size:9px;padding:3px 7px;border-radius:6px;border:1px solid ${htmlEsc((r.fundedBy||'contract')==='contract'?'var(--gold)':'var(--bor)')};background:${htmlEsc((r.fundedBy||'contract')==='contract'?'rgba(232,184,75,.15)':'transparent')};color:${htmlEsc((r.fundedBy||'contract')==='contract'?'var(--gold)':'var(--mut)')};cursor:pointer;font-family:Inter,sans-serif" onclick="setExpFunding('${jsq(r.id)}','contract')">Contractor</button>
-                <button style="font-size:9px;padding:3px 7px;border-radius:6px;border:1px solid ${htmlEsc(r.fundedBy==='cashinhand'?'#4D94D4':'var(--bor)')};background:${htmlEsc(r.fundedBy==='cashinhand'?'rgba(77,148,212,.15)':'transparent')};color:${htmlEsc(r.fundedBy==='cashinhand'?'#4D94D4':'var(--mut)')};cursor:pointer;font-family:Inter,sans-serif" onclick="setExpFunding('${jsq(r.id)}','cashinhand')">Owner Cash</button>
+                <button style="font-size:9px;padding:3px 7px;border-radius:6px;border:1px solid ${htmlEsc(r.fundedBy==='cashinhand'?'#4D94D4':'var(--bor)')};background:${htmlEsc(r.fundedBy==='cashinhand'?'rgba(77,148,212,.15)':'transparent')};color:${htmlEsc(r.fundedBy==='cashinhand'?'#4D94D4':'var(--mut)')};cursor:pointer;font-family:Inter,sans-serif" onclick="setExpFunding('${jsq(r.id)}','cashinhand')">General Exp</button>
                 <button style="font-size:9px;padding:3px 7px;border-radius:6px;border:1px solid ${htmlEsc(r.fundedBy==='onbehalf'?'var(--red)':'var(--bor)')};background:${htmlEsc(r.fundedBy==='onbehalf'?'rgba(224,85,85,.12)':'transparent')};color:${htmlEsc(r.fundedBy==='onbehalf'?'var(--red)':'var(--mut)')};cursor:pointer;font-family:Inter,sans-serif" onclick="setExpFunding('${jsq(r.id)}','onbehalf')">On Behalf</button>
               </div>
               <div class="row-acts">
                 <button style="color:${htmlEsc(expIsFullyPaid(r)?'var(--mut)':'var(--grn)')};font-weight:600" onclick="markExpPaid('${jsq(r.id)}')">${htmlEsc(expIsFullyPaid(r)?'↩ Unpaid':(expHasDue(r)?'💰 Pay':'✅ Paid'))}</button>
-                <button style="color:#4D94D4" onclick="cycleFunded('${jsq(r.id)}')" title="Change funding side">⇄ ${htmlEsc(({contract:'Owner Cash',cashinhand:'On Behalf',onbehalf:'Internal'})[r.fundedBy||'contract'])}</button>
+                <button style="color:#4D94D4" onclick="cycleFunded('${jsq(r.id)}')" title="Change funding side">⇄ ${htmlEsc(({contract:'General Exp',cashinhand:'On Behalf',onbehalf:'Internal'})[r.fundedBy||'contract'])}</button>
                 <button style="color:var(--blu)" onclick="eExp('${jsq(r.id)}')">Edit</button>
                 <button style="color:var(--mut)" onclick="archiveRec('expenses','${jsq(r.id)}')">Archive</button>
                 <button style="color:var(--red)" onclick="del('expenses','${jsq(r.id)}')">Del</button>
@@ -8837,13 +8865,13 @@ function renderExp(){
             <label onclick="event.stopPropagation()" style="display:flex;align-items:center;cursor:pointer">
               <input type="checkbox" ${htmlEsc(allOwnSel?'checked':'')} onchange="toggleSelectExpGroup([${ownIds.map(id=>`'${jsq(id)}'`).join(',')}],this.checked)" style="width:16px;height:16px;accent-color:#4D94D4;cursor:pointer">
             </label>
-            <span>🪣 Owner Misc Cash — spent from owner's advance</span>
+            <span>🪣 General Expenses — spent from the misc amount</span>
           </div>`;
           html+=ownerRows.map(renderRow).join('');
         }
         if(behalfRowsF.length){
           const rBadge={unpaid:'<span style="color:var(--red);font-size:var(--fs-xs)">🔴 Unpaid</span>',pending:'<span style="color:var(--gold);font-size:var(--fs-xs)">🟡 Pending</span>',paid:'<span style="color:var(--grn);font-size:var(--fs-xs)">✅ Paid</span>'};
-          const rNext={unpaid:'🟡 Pending',pending:'✅ Paid',paid:'🔴 Unpaid'};
+          const rNext={unpaid:'🟡 Pending',pending:'✅ Owner paid',paid:'✅ Owner paid'};
           const renderRowB=r=>{const st=rst(r);return`<div style="padding:11px 14px;border-bottom:1px solid var(--bor);${htmlEsc(selectedExpIds[r.id]?'background:rgba(232,184,75,.07)':'')}">
           <div style="display:flex;align-items:flex-start;gap:10px">
             <label style="display:flex;align-items:flex-start;padding-top:2px;flex-shrink:0;cursor:pointer" onclick="event.stopPropagation()">
@@ -8861,7 +8889,7 @@ function renderExp(){
               ${r.notes?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">${htmlEsc(r.notes)}</div>`:''}
               <div style="display:flex;gap:5px;margin-top:6px;flex-wrap:wrap">
                 <button style="font-size:9px;padding:3px 7px;border-radius:6px;border:1px solid var(--bor);background:transparent;color:var(--mut);cursor:pointer;font-family:Inter,sans-serif" onclick="setExpFunding('${jsq(r.id)}','contract')">Contractor</button>
-                <button style="font-size:9px;padding:3px 7px;border-radius:6px;border:1px solid var(--bor);background:transparent;color:var(--mut);cursor:pointer;font-family:Inter,sans-serif" onclick="setExpFunding('${jsq(r.id)}','cashinhand')">Owner Cash</button>
+                <button style="font-size:9px;padding:3px 7px;border-radius:6px;border:1px solid var(--bor);background:transparent;color:var(--mut);cursor:pointer;font-family:Inter,sans-serif" onclick="setExpFunding('${jsq(r.id)}','cashinhand')">General Exp</button>
                 <button style="font-size:9px;padding:3px 7px;border-radius:6px;border:1px solid var(--red);background:rgba(224,85,85,.12);color:var(--red);cursor:pointer;font-family:Inter,sans-serif" onclick="setExpFunding('${jsq(r.id)}','onbehalf')">On Behalf</button>
               </div>
               <div class="row-acts">
@@ -8891,8 +8919,8 @@ function renderExp(){
         ${!isOwnerMode&&expPaidDisplay>0?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--mut);margin-bottom:3px"><span>Paid Expenses</span><span style="font-family:'JetBrains Mono',monospace;color:var(--red)">PKR ${fmt(expPaidDisplay)}</span></div>`:''}
         ${!isOwnerMode?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-sm);font-weight:600;border-top:1px solid var(--bor);padding-top:6px;margin-top:3px"><span style="color:var(--mut)">Total Contractor Spent</span><span style="font-family:'JetBrains Mono',monospace;color:var(--red)">PKR ${fmt(totalDisplay)}</span></div>`:''}
         ${!isOwnerMode&&expPendingDisplay>0?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--ora);margin-top:5px"><span>⏳ Pending (not in total)</span><span style="font-family:'JetBrains Mono',monospace;font-weight:700">PKR ${fmt(expPendingDisplay)}</span></div>`:''}
-        ${isOwnerMode&&projSpent>0?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--mut);margin-bottom:3px"><span>Owner Misc Cash Spent (paid)</span><span style="font-family:'JetBrains Mono',monospace;color:var(--red)">PKR ${fmt(projSpent)}</span></div>`:''}
-        ${isOwnerMode&&cashPending>0?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--ora);margin-bottom:3px"><span>⏳ Misc pending (not in spent)</span><span style="font-family:'JetBrains Mono',monospace;font-weight:700">PKR ${fmt(cashPending)}</span></div>`:''}
+        ${isOwnerMode&&projSpent>0?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--mut);margin-bottom:3px"><span>General Expenses (paid)</span><span style="font-family:'JetBrains Mono',monospace;color:var(--red)">PKR ${fmt(projSpent)}</span></div>`:''}
+        ${isOwnerMode&&cashPending>0?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--ora);margin-bottom:3px"><span>⏳ General expenses pending (not in spent)</span><span style="font-family:'JetBrains Mono',monospace;font-weight:700">PKR ${fmt(cashPending)}</span></div>`:''}
         ${isOwnerMode&&behalfSpent>0?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--mut);margin-bottom:3px"><span>On Behalf (Reimbursable)</span><span style="font-family:'JetBrains Mono',monospace;color:var(--red)">PKR ${fmt(behalfSpent)}</span></div>`:''}
         ${isOwnerMode&&behalfOwed>0?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--red);margin-bottom:3px"><span>↳ Owner still owes you</span><span style="font-family:'JetBrains Mono',monospace;color:var(--red);font-weight:700">PKR ${fmt(behalfOwed)}</span></div>`:''}
         ${isOwnerMode?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-sm);font-weight:600;border-top:1px solid var(--bor);padding-top:6px;margin-top:3px"><span style="color:var(--mut)">Owner-Side Total</span><span style="font-family:'JetBrains Mono',monospace;color:var(--red)">PKR ${fmt(totalDisplay)}</span></div>`:''}
@@ -8912,7 +8940,7 @@ function setExpFunding(id,funded){
   r.isPaid=expPaidAmt(r)+0.005>=(r.amount||0);
   r.updatedAt=new Date().toISOString();
   sched();renderExp();renderLedger();renderDash();
-  toast(funded==='contract'?'Moved to Contractor Expenses':funded==='cashinhand'?'Moved to Owner Misc Cash':'Moved to On Behalf of Owner');
+  toast(funded==='contract'?'Moved to Contractor Expenses':funded==='cashinhand'?'Moved to General Expenses':'Moved to On Behalf of Owner');
 }
 
 // ════ PERSONAL RECORDS (sub-con lent me / I took & spent) ════
@@ -9274,10 +9302,11 @@ async function pdfExp(){
 // Owner PDF — ONLY misc cash-in-hand spend + on-behalf.
 // Never includes contractor expenses or project contract payments received.
 async function pdfExpExternal(){
+  settleReimbursedOnBehalf();
   await prepareCompanyLogo();
   const doc=bPDF();const pw=210;
   let y=drawHeader(doc,'OWNER EXPENSE REPORT','ALL','Date: '+today(),'','');
-  const fundLabel=r=>r.fundedBy==='onbehalf'?'On Behalf':'Misc Cash';
+  const fundLabel=r=>r.fundedBy==='onbehalf'?'On Behalf':'General Expenses';
   const statLabel=r=>r.fundedBy==='onbehalf'?rst(r).toUpperCase():({paid:'PAID',partial:'PARTIAL',unpaid:'UNPAID'}[expPayStatus(r)]||'UNPAID');
   const allExps=(D.expenses||[]).filter(r=>r.fundedBy==='cashinhand'||r.fundedBy==='onbehalf');
   if(!allExps.length){toast('No owner-side expenses found','info');return;}
@@ -9290,13 +9319,13 @@ async function pdfExpExternal(){
   const totalMiscGiven=D.projects.reduce((s,p)=>s+(p.cashInHand||0),0);
   doc.setFillColor(248,246,242);doc.rect(14,y,182,22,'F');
   doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(30,30,30);
-  doc.text('Misc Cash Given by Owner: PKR '+fmt(totalMiscGiven),16,y+7);
-  doc.text('Misc Cash Spent (paid): PKR '+fmt(cashSpent),110,y+7);
+  doc.text('Misc Amount: PKR '+fmt(totalMiscGiven),16,y+7);
+  doc.text('General Expenses (paid): PKR '+fmt(cashSpent),110,y+7);
   doc.text('On Behalf Spent: PKR '+fmt(behalfSpent),16,y+15);
   doc.text('Owner Still Owes: PKR '+fmt(behalfOwed),110,y+15);
   y+=28;
   doc.setFont('helvetica','italic');doc.setFontSize(7.5);doc.setTextColor(130,125,118);
-  doc.text('Misc spent = paid only. Pending misc'+ (cashPending?' PKR '+fmt(cashPending):'') +' not deducted from cash left. No contractor / contract receipts.',14,y);
+  doc.text('General expenses = paid only. Pending'+(cashPending?' PKR '+fmt(cashPending):'')+' not deducted from the amount left. No contractor / contract receipts.',14,y);
   y+=8;
   const projIds=[...new Set(allExps.map(r=>r.projectId||'__none__'))];
   projIds.forEach(pid=>{
@@ -9312,7 +9341,7 @@ async function pdfExpExternal(){
     doc.setFillColor(242,240,235);doc.rect(14,y-3,182,9,'F');
     doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(30,30,30);
     doc.text(projName,16,y+3);
-    doc.text('Misc: '+fmt(cashInHand)+' given / '+fmt(pCashSpent)+' spent  |  On behalf: '+fmt(pBehalfSpent),196,y+3,{align:'right'});
+    doc.text('Misc amount '+fmt(cashInHand)+' / general exp '+fmt(pCashSpent)+'  |  On behalf '+fmt(pBehalfSpent),196,y+3,{align:'right'});
     y+=12;
     doc.autoTable({
       startY:y,
@@ -9384,6 +9413,7 @@ async function pdfExpProjectContractor(pid,projName){
 
 // Per-project owner expense PDF — misc cash + on behalf only (no contractor spend, no contract receipts)
 async function pdfExpProjectOwner(pid,projName){
+  settleReimbursedOnBehalf();
   await prepareCompanyLogo();
   const doc=bPDF();const pw=210;
   const allExps=(D.expenses||[]).filter(r=>(r.projectId||'__none__')===pid&&(r.fundedBy==='cashinhand'||r.fundedBy==='onbehalf'))
@@ -9399,7 +9429,7 @@ async function pdfExpProjectOwner(pid,projName){
   const behalfSpent=behalfExps.reduce((s,r)=>s+r.amount,0);
   const behalfOwed=behalfExps.filter(r=>rst(r)!=='paid').reduce((s,r)=>s+r.amount,0);
   const miscLeft=cashInHand-cashSpent;
-  const fundLabel=r=>r.fundedBy==='onbehalf'?'On Behalf':'Misc Cash';
+  const fundLabel=r=>r.fundedBy==='onbehalf'?'On Behalf':'General Expenses';
   const statLabel=r=>r.fundedBy==='onbehalf'?rst(r).toUpperCase():({paid:'PAID',partial:'PARTIAL',unpaid:'UNPAID'}[expPayStatus(r)]||'UNPAID');
 
   let y=drawHeader(doc,'OWNER EXPENSE REPORT',projName,today(),'','');
@@ -9409,15 +9439,15 @@ async function pdfExpProjectOwner(pid,projName){
   if(proj?.loc)doc.text('Location: '+proj.loc+(proj.plot?' · '+proj.plot:''),14,y+6);
   if(cli)doc.text('Client: '+cli.name+(cli.phone?' · '+cli.phone:''),14,y+12);
   doc.setFont('helvetica','italic');doc.setFontSize(8);doc.setTextColor(150,145,138);
-  doc.text('Misc spent = paid only'+(cashPending?' · pending PKR '+fmt(cashPending)+' not deducted':'')+'. No contractor / contract receipts.',14,y+18);
+  doc.text('General expenses = paid only'+(cashPending?' · pending PKR '+fmt(cashPending)+' not deducted':'')+'. No contractor / contract receipts.',14,y+18);
   y+=26;
 
   // 4 summary tiles — no contract receipts
   doc.setFillColor(248,246,242);doc.rect(14,y,182,28,'F');
   const tiles=[
-    [cashInHand,'Misc Cash Given',[201,123,58]],
-    [cashSpent,'Misc Cash Spent',[200,50,50]],
-    [miscLeft,'Misc Remaining',miscLeft>0?[50,150,50]:miscLeft<0?[200,50,50]:[130,125,118]],
+    [cashInHand,'Misc Amount',[201,123,58]],
+    [cashSpent,'General Expenses',[200,50,50]],
+    [miscLeft,'Amount Left',miscLeft>0?[50,150,50]:miscLeft<0?[200,50,50]:[130,125,118]],
     [behalfSpent,'On Behalf Spent',[200,50,50]]
   ];
   tiles.forEach(([v,label,col],i)=>{
@@ -9482,7 +9512,7 @@ async function pdfExpSelected(){
   doc.setTextColor(201,123,58);
   doc.text('Due  PKR '+fmt(dueTotal),190,y+9,{align:'right'});
   y+=20;
-  const fundLabel=r=>({contract:'Contractor',cashinhand:'Owner Misc',onbehalf:'On Behalf'}[r.fundedBy||'contract']||'Contractor');
+  const fundLabel=r=>({contract:'Contractor',cashinhand:'General Expenses',onbehalf:'On Behalf'}[r.fundedBy||'contract']||'Contractor');
   const body=rows.map(r=>{
     const mat=r.matItem||resolveExpMatItem(r)||'';
     const desc=(mat&&normExpDesc(r.desc)!==normExpDesc(mat)?(mat+' — '+r.desc): (r.desc||mat||'—'))+(r.paidTo?'\nTo: '+r.paidTo:'')+(r.notes?'\n'+r.notes:'');
@@ -9679,6 +9709,7 @@ async function pdfSpayConfirm(id){
 }
 
 async function pdfProjPayments(pid){
+  settleReimbursedOnBehalf();
   await prepareCompanyLogo();
   const proj=D.projects.find(x=>x.id===pid);if(!proj)return;
   const c=co();const doc=bPDF();const pw=210;
@@ -9745,8 +9776,8 @@ async function pdfProjPayments(pid){
   doc.text('2. OWNER MISC EXPENSES (separate from contract)',14,y);y+=5;
   doc.setFillColor(252,248,240);doc.rect(14,y,182,22,'F');
   doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(30,30,30);
-  doc.text('Misc Cash Given: PKR '+fmt(cashInHand)+(proj.cashInHandDate?'  ('+fmtDT(proj.cashInHandDate,proj.cashInHandTime?fmtTime12(proj.cashInHandTime):'')+')':''),16,y+7);
-  doc.text('Misc Cash Spent: PKR '+fmt(cashSpent),110,y+7);
+  doc.text('Misc Amount: PKR '+fmt(cashInHand)+(proj.cashInHandDate?'  ('+fmtDT(proj.cashInHandDate,proj.cashInHandTime?fmtTime12(proj.cashInHandTime):'')+')':''),16,y+7);
+  doc.text('General Expenses: PKR '+fmt(cashSpent),110,y+7);
   doc.text('On Behalf Spent: PKR '+fmt(behalfSpent),16,y+15);
   doc.text('Owner Still Owes: PKR '+fmt(behalfOwed),110,y+15);
   y+=28;
@@ -9771,7 +9802,7 @@ async function pdfProjPayments(pid){
 
   if(ownerExps.length){
     if(y>230){doc.addPage();y=20;}
-    const fundLabel=r=>r.fundedBy==='onbehalf'?'On Behalf':'Misc Cash';
+    const fundLabel=r=>r.fundedBy==='onbehalf'?'On Behalf':'General Expenses';
     const statLabel=r=>r.fundedBy==='onbehalf'?rst(r).toUpperCase():({paid:'PAID',partial:'PARTIAL',unpaid:'UNPAID'}[expPayStatus(r)]||'UNPAID');
     doc.autoTable({
       startY:y,
@@ -10822,7 +10853,7 @@ function fLed(f,el){ledFilter=f;document.querySelectorAll('#pg-ledger .ftab').fo
 function renderLedger(){
   const el=e$('list-ledger');if(!el)return;
   const side=ledFilter||'all';
-  const hints={all:'All funding sides combined',contract:'Contract receipts + sub-con + contract-funded expenses only',cashinhand:'Misc cash advances from owner + misc cash expenses only',onbehalf:'On-behalf spending (you paid, owner owes) — no contract mix'};
+  const hints={all:'All funding sides combined',contract:'Contract receipts + sub-con + contract-funded expenses only',cashinhand:'Misc amount from the owner + general expenses only',onbehalf:'On-behalf spending (you paid, owner owes) — no contract mix'};
   const hintEl=e$('led-filter-hint');if(hintEl)hintEl.textContent=hints[side]||hints.all;
 
   // Income: contract vs misc advances kept separate by filter
@@ -10861,7 +10892,7 @@ function renderLedger(){
   setV('led-in',totalIn,'var(--grn)');setV('led-out',totalOut,'var(--red)');
   setV('led-net',Math.abs(net),net>=0?'var(--grn)':'var(--red)');setV('led-sub',subTotal,'var(--red)');
 
-  const fundTag=fb=>fb==='cashinhand'?'Misc Cash':fb==='onbehalf'?'On Behalf':'Contract';
+  const fundTag=fb=>fb==='cashinhand'?'General Expenses':fb==='onbehalf'?'On Behalf':'Contract';
   const txns=[
     ...income.map(p=>({date:fmtDT(p.date,p.time?fmtTime12(p.time):'')||p.date,type:p.payType==='misc'?'Misc Advance':'Receipt',desc:p.clientName+' — '+(p.milestone||p.projectName||''),amount:p.amount,dir:'in',project:p.projectName,side:p.payType==='misc'?'cashinhand':'contract'})),
     ...spays.map(p=>({date:p.date,type:'Sub-Con Payment',desc:p.subconName+' — '+p.phase,amount:p.amount,dir:'out',project:p.projectName,side:'contract'})),
@@ -11125,6 +11156,7 @@ async function pdfInternalSummary(pid){
 
 // ════ REIMBURSEMENT REQUEST PDF ════
 async function pdfReimbursement(pid,projName){
+  settleReimbursedOnBehalf();
   await prepareCompanyLogo();
   const p=D.projects.find(x=>x.id===pid);if(!p)return;
   const c=co();const doc=bPDF();const pw=210;
@@ -11142,7 +11174,7 @@ async function pdfReimbursement(pid,projName){
   const totalAll=cashSpent+behalfTotal;
   const advanceBalance=cashInHand-cashSpent;
   const reimburseDue=behalfOwed+Math.max(0,cashSpent-cashInHand);
-  const fundLabel=r=>r.fundedBy==='onbehalf'?'On Behalf':'Cash in Hand';
+  const fundLabel=r=>r.fundedBy==='onbehalf'?'On Behalf':'General Expenses';
   const statLabel=r=>r.fundedBy==='onbehalf'?rst(r).toUpperCase():({paid:'PAID',partial:'PARTIAL',unpaid:'UNPAID'}[expPayStatus(r)]||'UNPAID');
 
   let y=drawHeader(doc,'EXPENSE REIMBURSEMENT REQUEST',p.name,today(),'','');
@@ -11161,8 +11193,8 @@ async function pdfReimbursement(pid,projName){
   // Owner-side summary
   doc.setFillColor(252,248,240);doc.rect(14,y,182,28,'F');
   doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(30,30,30);
-  doc.text('Cash Advanced by Owner: PKR '+fmt(cashInHand),16,y+8);
-  doc.text('Cash-in-Hand Spent: PKR '+fmt(cashSpent),16,y+16);
+  doc.text('Misc Amount: PKR '+fmt(cashInHand),16,y+8);
+  doc.text('General Expenses: PKR '+fmt(cashSpent),16,y+16);
   doc.text('Paid on Behalf (Reimbursable): PKR '+fmt(behalfTotal),16,y+24);
   doc.setTextColor(advanceBalance>=0?50:200,advanceBalance>=0?150:50,50);
   doc.text('Advance Balance: PKR '+fmt(advanceBalance),pw-16,y+8,{align:'right'});
@@ -11189,7 +11221,7 @@ async function pdfReimbursement(pid,projName){
     margin:{left:14,right:14,bottom:18}
   });
   y=drawPdfTotalsBox(doc,doc.lastAutoTable.finalY+6,[
-    {label:'Cash-in-Hand Spent',value:'PKR '+fmt(cashSpent)},
+    {label:'General Expenses',value:'PKR '+fmt(cashSpent)},
     {label:'Reimbursable (Owed)',value:'PKR '+fmt(behalfOwed)},
     {label:'TOTAL',value:'PKR '+fmt(totalAll)}
   ]);
@@ -11261,7 +11293,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-11-10-v94';
+const APP_VERSION='2026-11-10-v95';
 // Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
 // GitHub Pages is the live OTA source of truth while Wasmer Edge GitHub deploys are failing.
 const OTA_ORIGIN='https://abbashafiz.github.io/Buildpro-crm';
