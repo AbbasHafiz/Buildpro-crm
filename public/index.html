@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-11-08-v93">
+<meta name="app-version" content="2026-11-10-v94">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -8851,7 +8851,7 @@ function renderExp(){
             </label>
             <div style="flex:1;min-width:0">
               <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
-                <div style="font-size:var(--fs-sm);font-weight:600;min-width:0;flex:1">${htmlEsc(catIcon[r.cat]||'📦')} ${htmlEsc(r.desc)} ${htmlEsc(rBadge[st])}</div>
+                <div style="font-size:var(--fs-sm);font-weight:600;min-width:0;flex:1">${htmlEsc(catIcon[r.cat]||'📦')} ${htmlEsc(r.desc)} ${rBadge[st]||''}</div>
                 <div style="text-align:right;flex-shrink:0">
                   <div style="font-family:'JetBrains Mono',monospace;color:var(--red);font-size:var(--fs-md)">${fmt(r.amount)}</div>
                 </div>
@@ -11261,7 +11261,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-11-08-v93';
+const APP_VERSION='2026-11-10-v94';
 // Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
 // GitHub Pages is the live OTA source of truth while Wasmer Edge GitHub deploys are failing.
 const OTA_ORIGIN='https://abbashafiz.github.io/Buildpro-crm';
