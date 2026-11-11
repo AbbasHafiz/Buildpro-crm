@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-11-11-v96">
+<meta name="app-version" content="2026-11-11-v97">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -732,7 +732,7 @@ select option{background:var(--s2);}
 
       <!-- Contractor stats — expenses + sub-con payments in one place -->
       <div id="exp-stats-builder">
-        <div style="background:rgba(232,184,75,.07);border:1px solid rgba(232,184,75,.22);border-radius:10px;padding:10px 13px;margin-bottom:8px;font-size:var(--fs-xs);color:var(--mut)">Full contractor-side spending in one place: your contract-funded expenses <b style="color:var(--txt)">plus</b> payments to sub-contractors. Not shown on Owner PDF.</div>
+        <div style="background:rgba(232,184,75,.07);border:1px solid rgba(232,184,75,.22);border-radius:10px;padding:10px 13px;margin-bottom:8px;font-size:var(--fs-xs);color:var(--mut)">Full contractor-side spending in one place: contract-funded expenses, payments to sub-contractors, <b style="color:var(--txt)">and dehari the contractor bears</b>. Owner-borne dehari is not included. Not shown on Owner PDF.</div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">
           <div class="stat"><div class="stat-lbl">Total Spent</div><div class="stat-val" id="exp-int-spent" style="font-size:24px">0</div><div class="stat-unit">PKR paid</div></div>
           <div class="stat"><div class="stat-lbl">Sub-Con Paid</div><div class="stat-val" id="exp-int-sub" style="font-size:24px;color:var(--red)">0</div><div class="stat-unit">PKR</div></div>
@@ -8646,7 +8646,7 @@ function renderExp(){
   setV('exp-int-spent',expPaidAll+subTotalAll+dhConAll);
   setV('exp-int-sub',subTotalAll);
   setV('exp-int-exp',expPaidAll);
-  const ic=e$('exp-int-count');if(ic)ic.textContent=internalExps.length+allSubpays.length;
+  const ic=e$('exp-int-count');if(ic)ic.textContent=internalExps.length+allSubpays.length+liveDehari().filter(r=>(r.borneBy||'contractor')==='contractor').length;
   const pendRow=e$('exp-int-pending-row');const pendEl=e$('exp-int-pending');
   if(pendRow&&pendEl){
     if(expPendingAll>0){pendRow.style.display='flex';pendEl.textContent='PKR '+fmt(expPendingAll);}
@@ -8686,25 +8686,30 @@ function renderExp(){
       :expFilter==='unpaid'?allSubpays.filter(spayHasDue)
       :allSubpays)
     :[];
+  // Contractor-borne dehari is spent. Owner-borne dehari is not, and never appears on this list.
+  const showDehari=!isOwnerMode&&(expFilter==='all'||expFilter==='paid'||expFilter==='labour');
+  const dhForList=showDehari?liveDehari().filter(r=>(r.borneBy||'contractor')==='contractor'):[];
   let rows=expsFiltered;
   const catIcon={material:'🧱',labour:'👷',equipment:'🔧',transport:'🚚',utility:'💡',other:'📦'};
-  if(!rows.length&&!subpaysFiltered.length){
+  if(!rows.length&&!subpaysFiltered.length&&!dhForList.length){
     el.innerHTML=(isOwnerMode
       ?'<div class="empty"><div class="empty-i">💰</div><div class="empty-t">No owner spending yet.<br>Tap + to add an expense.</div></div>'
-      :'<div class="empty"><div class="empty-i">💰</div><div class="empty-t">No contractor spending yet.<br>Tap + to add an expense, or record a sub-con payment.</div></div>')
+      :'<div class="empty"><div class="empty-i">💰</div><div class="empty-t">No contractor spending yet.<br>Tap + to add an expense, a sub-con payment, or contractor dehari.</div></div>')
       +(!isOwnerMode?personalSectionHtml():'');
     updateExpSelectBar();
     return;
   }
   const projIds=[...new Set([
     ...rows.map(r=>r.projectId||'__none__'),
-    ...subpaysFiltered.map(p=>p.projectId||'__none__')
+    ...subpaysFiltered.map(p=>p.projectId||'__none__'),
+    ...dhForList.map(r=>r.projectId||'__none__')
   ])];
-  // Newest activity first (expenses + subpays by date)
+  // Newest activity first (expenses + subpays + contractor dehari by date)
   const expRecency=pid=>{
     let m='';
     rows.filter(r=>(r.projectId||'__none__')===pid).forEach(r=>{if((r.date||'')>m)m=r.date||'';});
     subpaysFiltered.filter(p=>(p.projectId||'__none__')===pid).forEach(p=>{if((p.date||'')>m)m=p.date||'';});
+    dhForList.filter(r=>(r.projectId||'__none__')===pid).forEach(r=>{if((r.date||'')>m)m=r.date||'';});
     return m;
   };
   projIds.sort((a,b)=>{
@@ -8713,7 +8718,7 @@ function renderExp(){
   });
   el.innerHTML=projIds.map(pid=>{
     const proj=D.projects.find(x=>x.id===pid);
-    const projName=proj?proj.name:(rows.find(r=>(r.projectId||'__none__')===pid)?.projectName||subpaysFiltered.find(p=>(p.projectId||'__none__')===pid)?.projectName||'No Project');
+    const projName=proj?proj.name:(rows.find(r=>(r.projectId||'__none__')===pid)?.projectName||subpaysFiltered.find(p=>(p.projectId||'__none__')===pid)?.projectName||dhForList.find(r=>(r.projectId||'__none__')===pid)?.projectName||'No Project');
     const cashInHand=proj?.cashInHand||0;
     // Newest date first within each project group
     const byDateDesc=(a,b)=>(b.date||'').localeCompare(a.date||'')||(b.createdAt||'').localeCompare(a.createdAt||'');
@@ -8728,12 +8733,14 @@ function renderExp(){
     const behalfSpent=behalfRows.reduce((s,r)=>s+r.amount,0);
     const behalfOwed=behalfRows.filter(r=>rst(r)!=='paid').reduce((s,r)=>s+r.amount,0);
     const subSpent=projSubpays.reduce((s,p)=>s+spayPaidAmt(p),0);
+    const dhRowsCon=dhForList.filter(r=>(r.projectId||'__none__')===pid).slice().sort(byDateDesc);
+    const dhConPid=dhRowsCon.reduce((s,r)=>s+dehariAmt(r),0);
     const expPaidDisplay=projRows.reduce((s,r)=>s+(r.fundedBy==='onbehalf'?(r.amount||0):expPaidAmt(r)),0);
     const expPendingDisplay=projRows.filter(r=>r.fundedBy!=='onbehalf').reduce((s,r)=>s+expDueAmt(r),0);
-    const totalDisplay=isOwnerMode?expPaidDisplay:(expPaidDisplay+subSpent);
+    const totalDisplay=isOwnerMode?expPaidDisplay:(expPaidDisplay+subSpent+dhConPid);
     const balance=cashInHand-projSpent;
     const pct=cashInHand>0?Math.min(100,Math.round(projSpent/cashInHand*100)):0;
-    const entryCount=projRows.length+projSubpays.length;
+    const entryCount=projRows.length+projSubpays.length+dhRowsCon.length;
     const gid='exp-grp-'+(isOwnerMode?'own-':'con-')+pid;
     const open=!collapsedGroups[gid];
     const pdfBtns=isOwnerMode
@@ -8944,11 +8951,34 @@ function renderExp(){
           </div>`;
           html+=behalfRowsF.map(renderRowB).join('');
         }
+        if(!isOwnerMode&&dhRowsCon.length){
+          const dhBody=dhRowsCon.map(r=>`<div style="padding:11px 14px;border-bottom:1px solid var(--bor)">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+              <div style="min-width:0;flex:1">
+                <div style="font-size:var(--fs-sm);font-weight:600">⏱ ${htmlEsc(r.work||'Extra work')}</div>
+                <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">${htmlEsc(r.date||'—')} · ${htmlEsc(dehariDays(r))} day${dehariDays(r)===1?'':'s'} · Contractor bears</div>
+                ${dhCrewText(r)?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">${htmlEsc(dhCrewText(r))}</div>`:''}
+              </div>
+              <div style="font-family:'JetBrains Mono',monospace;color:var(--red);font-size:var(--fs-md);flex-shrink:0">${fmt(dehariAmt(r))}</div>
+            </div>
+            <div class="row-acts">
+              <button style="color:var(--blu)" onclick="editDehari('${jsq(r.id)}')">Edit</button>
+            </div>
+          </div>`).join('');
+          html+=`<div style="padding:8px 10px 0">${collapsibleSection('exp-dh-'+pid,
+            `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%">
+              <span style="font-size:var(--fs-xs);font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.4px">⏱ Contractor Dehari · ${htmlEsc(dhRowsCon.length)}</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-xs);color:var(--red);flex-shrink:0">${fmt(dhConPid)}</span>
+            </div>`,
+            `<div style="border:1px solid var(--bor);border-radius:8px;overflow:hidden">${dhBody}</div>`,
+            true)}</div>`;
+        }
         return html;
       })();
     const footer=`<div style="padding:10px 14px;background:var(--s2)">
         ${!isOwnerMode&&subSpent>0?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--mut);margin-bottom:3px"><span>Sub-Con Paid</span><span style="font-family:'JetBrains Mono',monospace;color:var(--red)">PKR ${fmt(subSpent)}</span></div>`:''}
         ${!isOwnerMode&&expPaidDisplay>0?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--mut);margin-bottom:3px"><span>Paid Expenses</span><span style="font-family:'JetBrains Mono',monospace;color:var(--red)">PKR ${fmt(expPaidDisplay)}</span></div>`:''}
+        ${!isOwnerMode&&dhConPid>0?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--mut);margin-bottom:3px"><span>Dehari (contractor)</span><span style="font-family:'JetBrains Mono',monospace;color:var(--red)">PKR ${fmt(dhConPid)}</span></div>`:''}
         ${!isOwnerMode?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-sm);font-weight:600;border-top:1px solid var(--bor);padding-top:6px;margin-top:3px"><span style="color:var(--mut)">Total Contractor Spent</span><span style="font-family:'JetBrains Mono',monospace;color:var(--red)">PKR ${fmt(totalDisplay)}</span></div>`:''}
         ${!isOwnerMode&&expPendingDisplay>0?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--ora);margin-top:5px"><span>⏳ Pending (not in total)</span><span style="font-family:'JetBrains Mono',monospace;font-weight:700">PKR ${fmt(expPendingDisplay)}</span></div>`:''}
         ${isOwnerMode&&projSpent>0?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--mut);margin-bottom:3px"><span>General Expenses (paid)</span><span style="font-family:'JetBrains Mono',monospace;color:var(--red)">PKR ${fmt(projSpent)}</span></div>`:''}
@@ -9272,56 +9302,85 @@ function pdfDrawExpPaidPending(doc,y,exps,opts){
   return y;
 }
 
-// Contractor PDF — contract-funded expenses + sub-con payments (full spending)
+function pdfDrawDehariTable(doc,y,rows){
+  if(!rows||!rows.length)return y;
+  const total=rows.reduce((s,r)=>s+dehariAmt(r),0);
+  if(y>230){doc.addPage();y=20;}
+  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(130,125,118);
+  doc.text('CONTRACTOR DEHARI (in spent)',14,y);y+=5;
+  doc.autoTable({
+    startY:y,
+    head:[['Date','Work','Days','Crew','Amount']],
+    body:rows.slice().sort((a,b)=>(a.date||'').localeCompare(b.date||'')).map(r=>[r.date||'—',r.work||'Extra work',String(dehariDays(r)),dhCrewText(r)||'—',fmt(dehariAmt(r))]),
+    foot:[['','','','Dehari total','PKR '+fmt(total)]],
+    styles:{fontSize:8,cellPadding:2.2,textColor:[30,30,30]},
+    headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:7.5},
+    footStyles:pdfFootStyles('gold'),
+    columnStyles:{2:{halign:'right',cellWidth:14},4:{halign:'right',cellWidth:28}},
+    rowPageBreak:'avoid',showFoot:'lastPage',margin:{left:14,right:14,bottom:18}
+  });
+  return doc.lastAutoTable.finalY+10;
+}
+
+// Contractor PDF — contract-funded expenses + sub-con payments + contractor-borne dehari
 async function pdfExp(){
   await prepareCompanyLogo();
   const doc=bPDF();const pw=210;
   let y=drawHeader(doc,'CONTRACTOR SPENDING REPORT','ALL','Date: '+today(),'','');
   const exps=(D.expenses||[]).filter(e=>(e.fundedBy||'contract')==='contract');
   const spays=liveSubpays();
-  if(!exps.length&&!spays.length){toast('No contractor spending to export','info');return;}
+  const dhAll=liveDehari().filter(r=>(r.borneBy||'contractor')==='contractor');
+  if(!exps.length&&!spays.length&&!dhAll.length){toast('No contractor spending to export','info');return;}
   const paidExps=exps.filter(e=>expPaidAmt(e)>0);
   const pendingExps=exps.filter(e=>expHasDue(e));
   const expPaid=exps.reduce((s,e)=>s+expPaidAmt(e),0);
   const expPending=exps.reduce((s,e)=>s+expDueAmt(e),0);
   const subTotal=spays.reduce((s,p)=>s+p.amount,0);
-  const totalSpent=expPaid+subTotal;
+  const dhTotal=dhAll.reduce((s,r)=>s+dehariAmt(r),0);
+  const totalSpent=expPaid+subTotal+dhTotal;
   doc.setFillColor(40,38,34);doc.rect(14,y,182,16,'F');
   doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(255,255,255);
   doc.text('TOTAL SPENT (PAID):  PKR '+fmt(totalSpent),pw/2,y+10.5,{align:'center'});
   y+=20;
-  doc.setFillColor(248,246,242);doc.rect(14,y,182,16,'F');
-  doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(30,30,30);
-  doc.text('Sub-Con  PKR '+fmt(subTotal),30,y+10);
-  doc.text('Paid Exp  PKR '+fmt(expPaid),105,y+10);
+  doc.setFillColor(248,246,242);doc.rect(14,y,182,22,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(30,30,30);
+  doc.text('Sub-Con  PKR '+fmt(subTotal),18,y+8);
+  doc.text('Paid Exp  PKR '+fmt(expPaid),78,y+8);
+  doc.text('Dehari  PKR '+fmt(dhTotal),140,y+8);
   doc.setTextColor(201,123,58);
-  doc.text('Pending  PKR '+fmt(expPending),170,y+10,{align:'right'});
-  y+=22;
+  doc.text('Pending  PKR '+fmt(expPending),18,y+16);
+  y+=28;
   doc.setFont('helvetica','italic');doc.setFontSize(7.5);doc.setTextColor(130,125,118);
-  doc.text('Totals include paid expenses + sub-con only. Pending supplier payments are listed separately.',14,y);
+  doc.text('Totals include paid expenses, sub-con, and dehari the contractor bears. Owner-borne dehari is excluded.',14,y);
   y+=8;
   const projIds=[...new Set([
     ...exps.map(r=>r.projectId||'__none__'),
-    ...spays.map(r=>r.projectId||'__none__')
+    ...spays.map(r=>r.projectId||'__none__'),
+    ...dhAll.map(r=>r.projectId||'__none__')
   ])];
   projIds.forEach(pid=>{
     const proj=D.projects.find(x=>x.id===pid);
-    const projName=proj?proj.name:(exps.find(r=>(r.projectId||'__none__')===pid)?.projectName||spays.find(r=>(r.projectId||'__none__')===pid)?.projectName||'No Project');
+    const projName=proj?proj.name:(exps.find(r=>(r.projectId||'__none__')===pid)?.projectName||spays.find(r=>(r.projectId||'__none__')===pid)?.projectName||dhAll.find(r=>(r.projectId||'__none__')===pid)?.projectName||'No Project');
     const projExps=exps.filter(r=>(r.projectId||'__none__')===pid);
     const projSpays=spays.filter(r=>(r.projectId||'__none__')===pid).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+    const projDh=dhAll.filter(r=>(r.projectId||'__none__')===pid);
     const pExpPaid=projExps.reduce((s,r)=>s+expPaidAmt(r),0);
     const pSub=projSpays.reduce((s,r)=>s+r.amount,0);
+    const pDh=projDh.reduce((s,r)=>s+dehariAmt(r),0);
     if(y>240){doc.addPage();y=20;}
     doc.setFillColor(242,240,235);doc.rect(14,y-3,182,9,'F');
     doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(30,30,30);
     doc.text(projName,16,y+3);
-    doc.text('Paid total: PKR '+fmt(pExpPaid+pSub),196,y+3,{align:'right'});
+    doc.text('Paid total: PKR '+fmt(pExpPaid+pSub+pDh),196,y+3,{align:'right'});
     y+=12;
     if(projSpays.length){
       y=pdfDrawSpayTable(doc,y,projSpays,{title:'Sub-Contractor Payments',small:true,gap:8});
     }
     if(projExps.length){
       y=pdfDrawExpPaidPending(doc,y,projExps,{titleSize:8,pad:2.5,paidTitle:'Paid Expenses',pendTitle:'Pending Expenses (not in total)'});
+    }
+    if(projDh.length){
+      y=pdfDrawDehariTable(doc,y,projDh);
     }
   });
   if(y>250){doc.addPage();y=20;}
@@ -9393,7 +9452,7 @@ async function pdfExpExternal(){
   toast('Owner expenses PDF ✓');
 }
 
-// Per-project contractor spending PDF (expenses + sub-con payments)
+// Per-project contractor spending PDF (expenses + sub-con + contractor-borne dehari)
 async function pdfExpProjectContractor(pid,projName){
   await prepareCompanyLogo();
   const doc=bPDF();const pw=210;
@@ -9401,7 +9460,9 @@ async function pdfExpProjectContractor(pid,projName){
     .sort((a,b)=>(a.date||'').localeCompare(b.date||''));
   const allSpays=liveSubpays().filter(r=>(r.projectId||'__none__')===pid)
     .sort((a,b)=>(a.date||'').localeCompare(b.date||''));
-  if(!allExps.length&&!allSpays.length){toast('No contractor spending for this project','info');return;}
+  const allDh=liveDehari().filter(r=>(r.projectId||'__none__')===pid&&(r.borneBy||'contractor')==='contractor')
+    .sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  if(!allExps.length&&!allSpays.length&&!allDh.length){toast('No contractor spending for this project','info');return;}
   const proj=D.projects.find(x=>x.id===pid);
   const cli=proj?D.clients.find(x=>x.id===proj.clientId):null;
   const paidExps=allExps.filter(r=>expPaidAmt(r)>0);
@@ -9409,7 +9470,8 @@ async function pdfExpProjectContractor(pid,projName){
   const expPaid=allExps.reduce((s,r)=>s+expPaidAmt(r),0);
   const pendingAmt=allExps.reduce((s,r)=>s+expDueAmt(r),0);
   const subTotal=allSpays.reduce((s,r)=>s+r.amount,0);
-  const totalSpent=expPaid+subTotal;
+  const dhTotal=allDh.reduce((s,r)=>s+dehariAmt(r),0);
+  const totalSpent=expPaid+subTotal+dhTotal;
   let y=drawHeader(doc,'CONTRACTOR SPENDING REPORT',projName,today(),'','');
   doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(30,30,30);
   doc.text(projName,14,y);
@@ -9417,24 +9479,28 @@ async function pdfExpProjectContractor(pid,projName){
   if(proj?.loc)doc.text('Location: '+proj.loc+(proj.plot?' · '+proj.plot:''),14,y+6);
   if(cli)doc.text('Client: '+cli.name+(cli.phone?' · '+cli.phone:''),14,y+12);
   doc.setFont('helvetica','italic');doc.setFontSize(8);doc.setTextColor(150,145,138);
-  doc.text('Paid totals only. Pending supplier payments listed separately — not in spent total.',14,y+18);
+  doc.text('Paid totals include contractor-borne dehari. Owner-borne dehari is not included.',14,y+18);
   y+=26;
   doc.setFillColor(40,38,34);doc.rect(14,y,182,14,'F');
   doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(255,255,255);
   doc.text('TOTAL SPENT (PAID):  PKR '+fmt(totalSpent),pw/2,y+9.5,{align:'center'});
   y+=18;
   doc.setFillColor(248,246,242);doc.rect(14,y,182,14,'F');
-  doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(30,30,30);
-  doc.text('Sub-Con  PKR '+fmt(subTotal),30,y+9);
-  doc.text('Paid Exp  PKR '+fmt(expPaid),105,y+9);
+  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(30,30,30);
+  doc.text('Sub-Con  PKR '+fmt(subTotal),18,y+9);
+  doc.text('Paid Exp  PKR '+fmt(expPaid),78,y+9);
+  doc.text('Dehari  PKR '+fmt(dhTotal),132,y+9);
   doc.setTextColor(201,123,58);
-  doc.text('Pending  PKR '+fmt(pendingAmt),190,y+9,{align:'right'});
+  doc.text('Pending  PKR '+fmt(pendingAmt),194,y+9,{align:'right'});
   y+=20;
   if(allSpays.length){
     y=pdfDrawSpayTable(doc,y,allSpays,{title:'SUB-CONTRACTOR PAYMENTS',footPrefix:true});
   }
   if(allExps.length){
     y=pdfDrawExpPaidPending(doc,y,allExps,{withMethod:true});
+  }
+  if(allDh.length){
+    y=pdfDrawDehariTable(doc,y,allDh);
   }
   if(y>250){doc.addPage();y=20;}
   drawPdfGrandTotal(doc,y,'TOTAL CONTRACTOR SPENT (PAID)','PKR '+fmt(totalSpent),{tone:'gold',h:18});
@@ -11048,8 +11114,10 @@ function renderLedger(){
         return expHasDue(e);
       }):[];
 
+  const dhOut=(side==='all'||side==='contract')
+    ?liveDehari().filter(r=>(r.borneBy||'contractor')==='contractor'):[];
   const totalIn=income.reduce((s,p)=>s+p.amount,0);
-  const totalOut=spays.reduce((s,p)=>s+p.amount,0)+paidExps.reduce((s,e)=>s+(e.fundedBy==='onbehalf'?(e.amount||0):expPaidAmt(e)),0);
+  const totalOut=spays.reduce((s,p)=>s+p.amount,0)+paidExps.reduce((s,e)=>s+(e.fundedBy==='onbehalf'?(e.amount||0):expPaidAmt(e)),0)+dhOut.reduce((s,r)=>s+dehariAmt(r),0);
   const net=totalIn-totalOut;
   const subTotal=spays.reduce((s,p)=>s+p.amount,0);
   const setV=(id,v,color)=>{const x=e$(id);if(x){x.textContent=fmt(v);if(color)x.style.color=color;}};
@@ -11061,6 +11129,7 @@ function renderLedger(){
     ...income.map(p=>({date:fmtDT(p.date,p.time?fmtTime12(p.time):'')||p.date,type:p.payType==='misc'?'Misc Advance':'Receipt',desc:p.clientName+' — '+(p.milestone||p.projectName||''),amount:p.amount,dir:'in',project:p.projectName,side:p.payType==='misc'?'cashinhand':'contract'})),
     ...spays.map(p=>({date:p.date,type:'Sub-Con Payment',desc:p.subconName+' — '+p.phase,amount:p.amount,dir:'out',project:p.projectName,side:'contract'})),
     ...paidExps.map(p=>({date:p.date,type:'Expense · '+fundTag(p.fundedBy||'contract')+(expPayStatus(p)==='partial'?' (partial)':''),desc:p.desc+' ('+(p.cat||'other')+')'+(p.paidTo?' · '+p.paidTo:''),amount:p.fundedBy==='onbehalf'?(p.amount||0):expPaidAmt(p),dir:'out',project:p.projectName,side:p.fundedBy||'contract'})),
+    ...dhOut.map(r=>({date:r.date,type:'Dehari · Contractor',desc:(r.work||'Extra work')+(dhCrewText(r)?' · '+dhCrewText(r):''),amount:dehariAmt(r),dir:'out',project:r.projectName,side:'contract'})),
     ...pendingDue.map(p=>({date:p.date,type:'Expense due',desc:p.desc+(p.paidTo?' · '+p.paidTo:'')+' · bill '+fmt(p.amount),amount:expDueAmt(p),dir:'out',project:p.projectName,side:p.fundedBy||'contract',pending:true})),
     ...pendingBehalf.map(p=>({date:p.date,type:'On Behalf (unpaid)',desc:p.desc+(p.paidTo?' · '+p.paidTo:''),amount:p.amount,dir:'out',project:p.projectName,side:'onbehalf',pending:true})),
   ].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
@@ -11107,9 +11176,11 @@ async function pdfPartnerSummary(pid){
   const cpays=liveCpays().filter(x=>x.projectId===pid&&(x.payType||'contract')==='contract').sort((a,b)=>(a.date||'').localeCompare(b.date||''));
   const spays=liveSubpays().filter(x=>x.projectId===pid).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
   const exps=(D.expenses||[]).filter(x=>x.projectId===pid&&(x.fundedBy||'contract')==='contract'&&expPaidAmt(x)>0);
+  const dh=liveDehari().filter(x=>x.projectId===pid&&(x.borneBy||'contractor')==='contractor');
   const totalRec=cpays.reduce((s,x)=>s+x.amount,0);
   const totalSub=spays.reduce((s,x)=>s+x.amount,0);
-  const totalExp=exps.reduce((s,x)=>s+expPaidAmt(x),0);
+  const totalDh=dh.reduce((s,x)=>s+dehariAmt(x),0);
+  const totalExp=exps.reduce((s,x)=>s+expPaidAmt(x),0)+totalDh;
   const netProfit=totalRec-totalSub-totalExp;
   const myAmt=Math.round(netProfit*(p.myShare||100)/100);
   const partnerAmt=Math.round(netProfit*(p.partnerShare||0)/100);
@@ -11196,15 +11267,18 @@ async function pdfPartnerSummary(pid){
     y=pdfDrawSpayTable(doc,y,spays,{title:'SUB-CONTRACTOR PAYMENTS',footPrefix:true});
   }
 
-  // Expenses
-  if(exps.length){
+  // Expenses (contractor-borne dehari counts as project spending; owner-borne does not)
+  if(exps.length||dh.length){
     if(y>210){doc.addPage();y=20;}
     doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(130,125,118);
     doc.text('PROJECT EXPENSES',14,y);y+=6;
     doc.autoTable({
       startY:y,
       head:[['Date','Description','Category','Status','Paid / Bill']],
-      body:exps.map(x=>[x.date||'—',x.desc+(expPayStatus(x)==='partial'?' (partial)':''),x.cat||'—',({paid:'PAID',partial:'PARTIAL',unpaid:'UNPAID'}[expPayStatus(x)]||'—'),fmt(expPaidAmt(x))+' / '+fmt(x.amount)]),
+      body:[
+        ...exps.map(x=>[x.date||'—',x.desc+(expPayStatus(x)==='partial'?' (partial)':''),x.cat||'—',({paid:'PAID',partial:'PARTIAL',unpaid:'UNPAID'}[expPayStatus(x)]||'—'),fmt(expPaidAmt(x))+' / '+fmt(x.amount)]),
+        ...dh.map(x=>[x.date||'—',(x.work||'Dehari')+(dhCrewText(x)?' · '+dhCrewText(x):''),'Dehari','PAID',fmt(dehariAmt(x))+' / '+fmt(dehariAmt(x))])
+      ],
       foot:[['','','','Total paid','PKR '+fmt(totalExp)]],
       styles:{fontSize:8.5,cellPadding:2.5,textColor:[30,30,30]},
       headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
@@ -11457,7 +11531,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-11-11-v96';
+const APP_VERSION='2026-11-11-v97';
 // Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
 // GitHub Pages is the live OTA source of truth while Wasmer Edge GitHub deploys are failing.
 const OTA_ORIGIN='https://abbashafiz.github.io/Buildpro-crm';
