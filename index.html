@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-11-11-v96">
+<meta name="app-version" content="2026-11-11-v98">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -705,7 +705,7 @@ select option{background:var(--s2);}
 
     <!-- DEHARI -->
     <div class="pg" id="pg-dehari">
-      <div style="background:rgba(232,184,75,.07);border:1px solid rgba(232,184,75,.22);border-radius:10px;padding:10px 13px;margin-bottom:8px;font-size:var(--fs-xs);color:var(--mut)">Name each mistri and mazdoor. If they took an advance, record it. Each person's total is their dehari minus that advance. PDF is one file per project.</div>
+      <div style="background:rgba(232,184,75,.07);border:1px solid rgba(232,184,75,.22);border-radius:10px;padding:10px 13px;margin-bottom:8px;font-size:var(--fs-xs);color:var(--mut)">Name each mistri and mazdoor, and enter days on that person. Someone who takes off has fewer days. A row is count × rate × those days. An advance is subtracted from that person's total. PDF is one file per project.</div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">
         <div class="stat"><div class="stat-lbl">All dehari</div><div class="stat-val" id="dh-stat-all" style="font-size:22px;color:var(--gold)">0</div><div class="stat-unit">PKR</div></div>
         <div class="stat"><div class="stat-lbl">Contractor</div><div class="stat-val" id="dh-stat-con" style="font-size:22px;color:var(--gold)">0</div><div class="stat-unit">PKR</div></div>
@@ -732,7 +732,7 @@ select option{background:var(--s2);}
 
       <!-- Contractor stats — expenses + sub-con payments in one place -->
       <div id="exp-stats-builder">
-        <div style="background:rgba(232,184,75,.07);border:1px solid rgba(232,184,75,.22);border-radius:10px;padding:10px 13px;margin-bottom:8px;font-size:var(--fs-xs);color:var(--mut)">Full contractor-side spending in one place: your contract-funded expenses <b style="color:var(--txt)">plus</b> payments to sub-contractors. Not shown on Owner PDF.</div>
+        <div style="background:rgba(232,184,75,.07);border:1px solid rgba(232,184,75,.22);border-radius:10px;padding:10px 13px;margin-bottom:8px;font-size:var(--fs-xs);color:var(--mut)">Full contractor-side spending in one place: contract-funded expenses, payments to sub-contractors, <b style="color:var(--txt)">and dehari the contractor bears</b>. Owner-borne dehari is not included. Not shown on Owner PDF.</div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">
           <div class="stat"><div class="stat-lbl">Total Spent</div><div class="stat-val" id="exp-int-spent" style="font-size:24px">0</div><div class="stat-unit">PKR paid</div></div>
           <div class="stat"><div class="stat-lbl">Sub-Con Paid</div><div class="stat-val" id="exp-int-sub" style="font-size:24px;color:var(--red)">0</div><div class="stat-unit">PKR</div></div>
@@ -1964,10 +1964,7 @@ select option{background:var(--s2);}
     <input type="hidden" id="dh-eid">
     <input type="hidden" id="dh-proj-id">
     <div class="fg"><label>Project</label><select id="dh-proj-sel" onchange="sv('dh-proj-id',this.value);var nm=e$('dh-proj-name');if(nm)nm.textContent=this.options[this.selectedIndex]?this.options[this.selectedIndex].text:'';renderDhList(this.value)"></select><div id="dh-proj-name" style="display:none"></div></div>
-    <div class="f2">
-      <div class="fg"><label>Date</label><input type="date" id="dh-date"></div>
-      <div class="fg"><label>Days</label><input type="number" id="dh-days" min="1" step="1" value="1" oninput="dhPreview()"></div>
-    </div>
+    <div class="fg"><label>Date</label><input type="date" id="dh-date"></div>
     <div class="fg"><label>Extra / custom work</label><input id="dh-work" placeholder="e.g. extra plaster, boundary, lintel repair"></div>
     <div class="fg"><label>Who bears this cost</label>
       <div style="display:flex;gap:8px">
@@ -1977,7 +1974,7 @@ select option{background:var(--s2);}
       <input type="hidden" id="dh-borne" value="contractor">
     </div>
     <div class="fg">
-      <label>Crew — mistri or mazdoor name, rate, how many</label>
+      <label>Crew — each person's name, count, and days</label>
       <datalist id="dh-name-list"></datalist>
       <div id="dh-lines"></div>
       <button type="button" class="ca" style="margin-top:6px" onclick="addDhLine()">+ Add person</button>
@@ -8646,7 +8643,7 @@ function renderExp(){
   setV('exp-int-spent',expPaidAll+subTotalAll+dhConAll);
   setV('exp-int-sub',subTotalAll);
   setV('exp-int-exp',expPaidAll);
-  const ic=e$('exp-int-count');if(ic)ic.textContent=internalExps.length+allSubpays.length;
+  const ic=e$('exp-int-count');if(ic)ic.textContent=internalExps.length+allSubpays.length+liveDehari().filter(r=>(r.borneBy||'contractor')==='contractor').length;
   const pendRow=e$('exp-int-pending-row');const pendEl=e$('exp-int-pending');
   if(pendRow&&pendEl){
     if(expPendingAll>0){pendRow.style.display='flex';pendEl.textContent='PKR '+fmt(expPendingAll);}
@@ -8686,25 +8683,30 @@ function renderExp(){
       :expFilter==='unpaid'?allSubpays.filter(spayHasDue)
       :allSubpays)
     :[];
+  // Contractor-borne dehari is spent. Owner-borne dehari is not, and never appears on this list.
+  const showDehari=!isOwnerMode&&(expFilter==='all'||expFilter==='paid'||expFilter==='labour');
+  const dhForList=showDehari?liveDehari().filter(r=>(r.borneBy||'contractor')==='contractor'):[];
   let rows=expsFiltered;
   const catIcon={material:'🧱',labour:'👷',equipment:'🔧',transport:'🚚',utility:'💡',other:'📦'};
-  if(!rows.length&&!subpaysFiltered.length){
+  if(!rows.length&&!subpaysFiltered.length&&!dhForList.length){
     el.innerHTML=(isOwnerMode
       ?'<div class="empty"><div class="empty-i">💰</div><div class="empty-t">No owner spending yet.<br>Tap + to add an expense.</div></div>'
-      :'<div class="empty"><div class="empty-i">💰</div><div class="empty-t">No contractor spending yet.<br>Tap + to add an expense, or record a sub-con payment.</div></div>')
+      :'<div class="empty"><div class="empty-i">💰</div><div class="empty-t">No contractor spending yet.<br>Tap + to add an expense, a sub-con payment, or contractor dehari.</div></div>')
       +(!isOwnerMode?personalSectionHtml():'');
     updateExpSelectBar();
     return;
   }
   const projIds=[...new Set([
     ...rows.map(r=>r.projectId||'__none__'),
-    ...subpaysFiltered.map(p=>p.projectId||'__none__')
+    ...subpaysFiltered.map(p=>p.projectId||'__none__'),
+    ...dhForList.map(r=>r.projectId||'__none__')
   ])];
-  // Newest activity first (expenses + subpays by date)
+  // Newest activity first (expenses + subpays + contractor dehari by date)
   const expRecency=pid=>{
     let m='';
     rows.filter(r=>(r.projectId||'__none__')===pid).forEach(r=>{if((r.date||'')>m)m=r.date||'';});
     subpaysFiltered.filter(p=>(p.projectId||'__none__')===pid).forEach(p=>{if((p.date||'')>m)m=p.date||'';});
+    dhForList.filter(r=>(r.projectId||'__none__')===pid).forEach(r=>{if((r.date||'')>m)m=r.date||'';});
     return m;
   };
   projIds.sort((a,b)=>{
@@ -8713,7 +8715,7 @@ function renderExp(){
   });
   el.innerHTML=projIds.map(pid=>{
     const proj=D.projects.find(x=>x.id===pid);
-    const projName=proj?proj.name:(rows.find(r=>(r.projectId||'__none__')===pid)?.projectName||subpaysFiltered.find(p=>(p.projectId||'__none__')===pid)?.projectName||'No Project');
+    const projName=proj?proj.name:(rows.find(r=>(r.projectId||'__none__')===pid)?.projectName||subpaysFiltered.find(p=>(p.projectId||'__none__')===pid)?.projectName||dhForList.find(r=>(r.projectId||'__none__')===pid)?.projectName||'No Project');
     const cashInHand=proj?.cashInHand||0;
     // Newest date first within each project group
     const byDateDesc=(a,b)=>(b.date||'').localeCompare(a.date||'')||(b.createdAt||'').localeCompare(a.createdAt||'');
@@ -8728,12 +8730,14 @@ function renderExp(){
     const behalfSpent=behalfRows.reduce((s,r)=>s+r.amount,0);
     const behalfOwed=behalfRows.filter(r=>rst(r)!=='paid').reduce((s,r)=>s+r.amount,0);
     const subSpent=projSubpays.reduce((s,p)=>s+spayPaidAmt(p),0);
+    const dhRowsCon=dhForList.filter(r=>(r.projectId||'__none__')===pid).slice().sort(byDateDesc);
+    const dhConPid=dhRowsCon.reduce((s,r)=>s+dehariAmt(r),0);
     const expPaidDisplay=projRows.reduce((s,r)=>s+(r.fundedBy==='onbehalf'?(r.amount||0):expPaidAmt(r)),0);
     const expPendingDisplay=projRows.filter(r=>r.fundedBy!=='onbehalf').reduce((s,r)=>s+expDueAmt(r),0);
-    const totalDisplay=isOwnerMode?expPaidDisplay:(expPaidDisplay+subSpent);
+    const totalDisplay=isOwnerMode?expPaidDisplay:(expPaidDisplay+subSpent+dhConPid);
     const balance=cashInHand-projSpent;
     const pct=cashInHand>0?Math.min(100,Math.round(projSpent/cashInHand*100)):0;
-    const entryCount=projRows.length+projSubpays.length;
+    const entryCount=projRows.length+projSubpays.length+dhRowsCon.length;
     const gid='exp-grp-'+(isOwnerMode?'own-':'con-')+pid;
     const open=!collapsedGroups[gid];
     const pdfBtns=isOwnerMode
@@ -8944,11 +8948,34 @@ function renderExp(){
           </div>`;
           html+=behalfRowsF.map(renderRowB).join('');
         }
+        if(!isOwnerMode&&dhRowsCon.length){
+          const dhBody=dhRowsCon.map(r=>`<div style="padding:11px 14px;border-bottom:1px solid var(--bor)">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+              <div style="min-width:0;flex:1">
+                <div style="font-size:var(--fs-sm);font-weight:600">⏱ ${htmlEsc(r.work||'Extra work')}</div>
+                <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:3px">${htmlEsc(r.date||'—')} · ${htmlEsc(dehariDaysLabel(r))} · Contractor bears</div>
+                ${dhCrewText(r)?`<div style="font-size:var(--fs-xs);color:var(--mut2);margin-top:2px">${htmlEsc(dhCrewText(r))}</div>`:''}
+              </div>
+              <div style="font-family:'JetBrains Mono',monospace;color:var(--red);font-size:var(--fs-md);flex-shrink:0">${fmt(dehariAmt(r))}</div>
+            </div>
+            <div class="row-acts">
+              <button style="color:var(--blu)" onclick="editDehari('${jsq(r.id)}')">Edit</button>
+            </div>
+          </div>`).join('');
+          html+=`<div style="padding:8px 10px 0">${collapsibleSection('exp-dh-'+pid,
+            `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%">
+              <span style="font-size:var(--fs-xs);font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.4px">⏱ Contractor Dehari · ${htmlEsc(dhRowsCon.length)}</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-xs);color:var(--red);flex-shrink:0">${fmt(dhConPid)}</span>
+            </div>`,
+            `<div style="border:1px solid var(--bor);border-radius:8px;overflow:hidden">${dhBody}</div>`,
+            true)}</div>`;
+        }
         return html;
       })();
     const footer=`<div style="padding:10px 14px;background:var(--s2)">
         ${!isOwnerMode&&subSpent>0?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--mut);margin-bottom:3px"><span>Sub-Con Paid</span><span style="font-family:'JetBrains Mono',monospace;color:var(--red)">PKR ${fmt(subSpent)}</span></div>`:''}
         ${!isOwnerMode&&expPaidDisplay>0?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--mut);margin-bottom:3px"><span>Paid Expenses</span><span style="font-family:'JetBrains Mono',monospace;color:var(--red)">PKR ${fmt(expPaidDisplay)}</span></div>`:''}
+        ${!isOwnerMode&&dhConPid>0?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--mut);margin-bottom:3px"><span>Dehari (contractor)</span><span style="font-family:'JetBrains Mono',monospace;color:var(--red)">PKR ${fmt(dhConPid)}</span></div>`:''}
         ${!isOwnerMode?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-sm);font-weight:600;border-top:1px solid var(--bor);padding-top:6px;margin-top:3px"><span style="color:var(--mut)">Total Contractor Spent</span><span style="font-family:'JetBrains Mono',monospace;color:var(--red)">PKR ${fmt(totalDisplay)}</span></div>`:''}
         ${!isOwnerMode&&expPendingDisplay>0?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--ora);margin-top:5px"><span>⏳ Pending (not in total)</span><span style="font-family:'JetBrains Mono',monospace;font-weight:700">PKR ${fmt(expPendingDisplay)}</span></div>`:''}
         ${isOwnerMode&&projSpent>0?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--mut);margin-bottom:3px"><span>General Expenses (paid)</span><span style="font-family:'JetBrains Mono',monospace;color:var(--red)">PKR ${fmt(projSpent)}</span></div>`:''}
@@ -9272,56 +9299,85 @@ function pdfDrawExpPaidPending(doc,y,exps,opts){
   return y;
 }
 
-// Contractor PDF — contract-funded expenses + sub-con payments (full spending)
+function pdfDrawDehariTable(doc,y,rows){
+  if(!rows||!rows.length)return y;
+  const total=rows.reduce((s,r)=>s+dehariAmt(r),0);
+  if(y>230){doc.addPage();y=20;}
+  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(130,125,118);
+  doc.text('CONTRACTOR DEHARI (in spent)',14,y);y+=5;
+  doc.autoTable({
+    startY:y,
+    head:[['Date','Work','Days','Crew','Amount']],
+    body:rows.slice().sort((a,b)=>(a.date||'').localeCompare(b.date||'')).map(r=>[r.date||'—',r.work||'Extra work',dehariSharedDays(r)?String(dehariSharedDays(r)):'—',dhCrewText(r)||'—',fmt(dehariAmt(r))]),
+    foot:[['','','','Dehari total','PKR '+fmt(total)]],
+    styles:{fontSize:8,cellPadding:2.2,textColor:[30,30,30]},
+    headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:7.5},
+    footStyles:pdfFootStyles('gold'),
+    columnStyles:{2:{halign:'right',cellWidth:14},4:{halign:'right',cellWidth:28}},
+    rowPageBreak:'avoid',showFoot:'lastPage',margin:{left:14,right:14,bottom:18}
+  });
+  return doc.lastAutoTable.finalY+10;
+}
+
+// Contractor PDF — contract-funded expenses + sub-con payments + contractor-borne dehari
 async function pdfExp(){
   await prepareCompanyLogo();
   const doc=bPDF();const pw=210;
   let y=drawHeader(doc,'CONTRACTOR SPENDING REPORT','ALL','Date: '+today(),'','');
   const exps=(D.expenses||[]).filter(e=>(e.fundedBy||'contract')==='contract');
   const spays=liveSubpays();
-  if(!exps.length&&!spays.length){toast('No contractor spending to export','info');return;}
+  const dhAll=liveDehari().filter(r=>(r.borneBy||'contractor')==='contractor');
+  if(!exps.length&&!spays.length&&!dhAll.length){toast('No contractor spending to export','info');return;}
   const paidExps=exps.filter(e=>expPaidAmt(e)>0);
   const pendingExps=exps.filter(e=>expHasDue(e));
   const expPaid=exps.reduce((s,e)=>s+expPaidAmt(e),0);
   const expPending=exps.reduce((s,e)=>s+expDueAmt(e),0);
   const subTotal=spays.reduce((s,p)=>s+p.amount,0);
-  const totalSpent=expPaid+subTotal;
+  const dhTotal=dhAll.reduce((s,r)=>s+dehariAmt(r),0);
+  const totalSpent=expPaid+subTotal+dhTotal;
   doc.setFillColor(40,38,34);doc.rect(14,y,182,16,'F');
   doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(255,255,255);
   doc.text('TOTAL SPENT (PAID):  PKR '+fmt(totalSpent),pw/2,y+10.5,{align:'center'});
   y+=20;
-  doc.setFillColor(248,246,242);doc.rect(14,y,182,16,'F');
-  doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(30,30,30);
-  doc.text('Sub-Con  PKR '+fmt(subTotal),30,y+10);
-  doc.text('Paid Exp  PKR '+fmt(expPaid),105,y+10);
+  doc.setFillColor(248,246,242);doc.rect(14,y,182,22,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(30,30,30);
+  doc.text('Sub-Con  PKR '+fmt(subTotal),18,y+8);
+  doc.text('Paid Exp  PKR '+fmt(expPaid),78,y+8);
+  doc.text('Dehari  PKR '+fmt(dhTotal),140,y+8);
   doc.setTextColor(201,123,58);
-  doc.text('Pending  PKR '+fmt(expPending),170,y+10,{align:'right'});
-  y+=22;
+  doc.text('Pending  PKR '+fmt(expPending),18,y+16);
+  y+=28;
   doc.setFont('helvetica','italic');doc.setFontSize(7.5);doc.setTextColor(130,125,118);
-  doc.text('Totals include paid expenses + sub-con only. Pending supplier payments are listed separately.',14,y);
+  doc.text('Totals include paid expenses, sub-con, and dehari the contractor bears. Owner-borne dehari is excluded.',14,y);
   y+=8;
   const projIds=[...new Set([
     ...exps.map(r=>r.projectId||'__none__'),
-    ...spays.map(r=>r.projectId||'__none__')
+    ...spays.map(r=>r.projectId||'__none__'),
+    ...dhAll.map(r=>r.projectId||'__none__')
   ])];
   projIds.forEach(pid=>{
     const proj=D.projects.find(x=>x.id===pid);
-    const projName=proj?proj.name:(exps.find(r=>(r.projectId||'__none__')===pid)?.projectName||spays.find(r=>(r.projectId||'__none__')===pid)?.projectName||'No Project');
+    const projName=proj?proj.name:(exps.find(r=>(r.projectId||'__none__')===pid)?.projectName||spays.find(r=>(r.projectId||'__none__')===pid)?.projectName||dhAll.find(r=>(r.projectId||'__none__')===pid)?.projectName||'No Project');
     const projExps=exps.filter(r=>(r.projectId||'__none__')===pid);
     const projSpays=spays.filter(r=>(r.projectId||'__none__')===pid).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+    const projDh=dhAll.filter(r=>(r.projectId||'__none__')===pid);
     const pExpPaid=projExps.reduce((s,r)=>s+expPaidAmt(r),0);
     const pSub=projSpays.reduce((s,r)=>s+r.amount,0);
+    const pDh=projDh.reduce((s,r)=>s+dehariAmt(r),0);
     if(y>240){doc.addPage();y=20;}
     doc.setFillColor(242,240,235);doc.rect(14,y-3,182,9,'F');
     doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(30,30,30);
     doc.text(projName,16,y+3);
-    doc.text('Paid total: PKR '+fmt(pExpPaid+pSub),196,y+3,{align:'right'});
+    doc.text('Paid total: PKR '+fmt(pExpPaid+pSub+pDh),196,y+3,{align:'right'});
     y+=12;
     if(projSpays.length){
       y=pdfDrawSpayTable(doc,y,projSpays,{title:'Sub-Contractor Payments',small:true,gap:8});
     }
     if(projExps.length){
       y=pdfDrawExpPaidPending(doc,y,projExps,{titleSize:8,pad:2.5,paidTitle:'Paid Expenses',pendTitle:'Pending Expenses (not in total)'});
+    }
+    if(projDh.length){
+      y=pdfDrawDehariTable(doc,y,projDh);
     }
   });
   if(y>250){doc.addPage();y=20;}
@@ -9393,7 +9449,7 @@ async function pdfExpExternal(){
   toast('Owner expenses PDF ✓');
 }
 
-// Per-project contractor spending PDF (expenses + sub-con payments)
+// Per-project contractor spending PDF (expenses + sub-con + contractor-borne dehari)
 async function pdfExpProjectContractor(pid,projName){
   await prepareCompanyLogo();
   const doc=bPDF();const pw=210;
@@ -9401,7 +9457,9 @@ async function pdfExpProjectContractor(pid,projName){
     .sort((a,b)=>(a.date||'').localeCompare(b.date||''));
   const allSpays=liveSubpays().filter(r=>(r.projectId||'__none__')===pid)
     .sort((a,b)=>(a.date||'').localeCompare(b.date||''));
-  if(!allExps.length&&!allSpays.length){toast('No contractor spending for this project','info');return;}
+  const allDh=liveDehari().filter(r=>(r.projectId||'__none__')===pid&&(r.borneBy||'contractor')==='contractor')
+    .sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  if(!allExps.length&&!allSpays.length&&!allDh.length){toast('No contractor spending for this project','info');return;}
   const proj=D.projects.find(x=>x.id===pid);
   const cli=proj?D.clients.find(x=>x.id===proj.clientId):null;
   const paidExps=allExps.filter(r=>expPaidAmt(r)>0);
@@ -9409,7 +9467,8 @@ async function pdfExpProjectContractor(pid,projName){
   const expPaid=allExps.reduce((s,r)=>s+expPaidAmt(r),0);
   const pendingAmt=allExps.reduce((s,r)=>s+expDueAmt(r),0);
   const subTotal=allSpays.reduce((s,r)=>s+r.amount,0);
-  const totalSpent=expPaid+subTotal;
+  const dhTotal=allDh.reduce((s,r)=>s+dehariAmt(r),0);
+  const totalSpent=expPaid+subTotal+dhTotal;
   let y=drawHeader(doc,'CONTRACTOR SPENDING REPORT',projName,today(),'','');
   doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(30,30,30);
   doc.text(projName,14,y);
@@ -9417,24 +9476,28 @@ async function pdfExpProjectContractor(pid,projName){
   if(proj?.loc)doc.text('Location: '+proj.loc+(proj.plot?' · '+proj.plot:''),14,y+6);
   if(cli)doc.text('Client: '+cli.name+(cli.phone?' · '+cli.phone:''),14,y+12);
   doc.setFont('helvetica','italic');doc.setFontSize(8);doc.setTextColor(150,145,138);
-  doc.text('Paid totals only. Pending supplier payments listed separately — not in spent total.',14,y+18);
+  doc.text('Paid totals include contractor-borne dehari. Owner-borne dehari is not included.',14,y+18);
   y+=26;
   doc.setFillColor(40,38,34);doc.rect(14,y,182,14,'F');
   doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(255,255,255);
   doc.text('TOTAL SPENT (PAID):  PKR '+fmt(totalSpent),pw/2,y+9.5,{align:'center'});
   y+=18;
   doc.setFillColor(248,246,242);doc.rect(14,y,182,14,'F');
-  doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(30,30,30);
-  doc.text('Sub-Con  PKR '+fmt(subTotal),30,y+9);
-  doc.text('Paid Exp  PKR '+fmt(expPaid),105,y+9);
+  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(30,30,30);
+  doc.text('Sub-Con  PKR '+fmt(subTotal),18,y+9);
+  doc.text('Paid Exp  PKR '+fmt(expPaid),78,y+9);
+  doc.text('Dehari  PKR '+fmt(dhTotal),132,y+9);
   doc.setTextColor(201,123,58);
-  doc.text('Pending  PKR '+fmt(pendingAmt),190,y+9,{align:'right'});
+  doc.text('Pending  PKR '+fmt(pendingAmt),194,y+9,{align:'right'});
   y+=20;
   if(allSpays.length){
     y=pdfDrawSpayTable(doc,y,allSpays,{title:'SUB-CONTRACTOR PAYMENTS',footPrefix:true});
   }
   if(allExps.length){
     y=pdfDrawExpPaidPending(doc,y,allExps,{withMethod:true});
+  }
+  if(allDh.length){
+    y=pdfDrawDehariTable(doc,y,allDh);
   }
   if(y>250){doc.addPage();y=20;}
   drawPdfGrandTotal(doc,y,'TOTAL CONTRACTOR SPENT (PAID)','PKR '+fmt(totalSpent),{tone:'gold',h:18});
@@ -10394,10 +10457,30 @@ let dhLines=[];
 let dhBorne='contractor';
 let dhPageFilter='all';
 function dehariDays(r){const d=parseFloat(r&&r.days);return d>0?d:1;}
+function dehariLineDays(l,r){
+  const own=parseFloat(l&&l.days);
+  if(own>0)return own;
+  if(r&&parseFloat(r.days)>0)return parseFloat(r.days);
+  return 1;
+}
 function dehariLineAmt(l){return (Number(l.rate)||0)*Math.max(0,Number(l.count)||0);}
+function dehariLinePay(l,r){return dehariLineAmt(l)*dehariLineDays(l,r);}
+function dehariSharedDays(r){
+  const lines=(r&&r.lines||[]).filter(l=>Number(l.rate)>0&&Number(l.count)>0);
+  const use=lines.length?lines:(r&&r.lines)||[];
+  if(!use.length)return dehariDays(r);
+  const ds=use.map(l=>dehariLineDays(l,r));
+  const min=Math.min.apply(null,ds),max=Math.max.apply(null,ds);
+  return min===max?min:0;
+}
+function dehariDaysLabel(r){
+  const n=dehariSharedDays(r);
+  if(!n)return 'days vary';
+  return n+' day'+(n>1?'s':'');
+}
 function dehariAmt(r){
   if(!r)return 0;
-  return (r.lines||[]).reduce((s,l)=>s+dehariLineAmt(l),0)*dehariDays(r);
+  return (r.lines||[]).reduce((s,l)=>s+dehariLinePay(l,r),0);
 }
 function liveDehari(){return activeRows(D.dehari||[]);}
 function dehariSum(pid,borne){
@@ -10414,7 +10497,7 @@ function dhCrewText(r){
   return (r.lines||[]).filter(l=>dehariLineAmt(l)>0).map(l=>{
     const who=l.role==='Other'?(l.label||'Other'):dhRoleLabel(l.role);
     const name=(l.name||'').trim();
-    return (l.count||0)+' '+who+(name?' '+name:'')+' @ '+fmt(l.rate||0);
+    return (l.count||0)+' '+who+(name?' '+name:'')+' @ '+fmt(l.rate||0)+' × '+dehariLineDays(l,r)+'d';
   }).join(', ');
 }
 function dehariAdvances(pid){
@@ -10430,12 +10513,11 @@ function dehariPeople(rows,advs){
     return map[key];
   }
   (rows||[]).forEach(r=>{
-    const days=dehariDays(r);
     (r.lines||[]).forEach(l=>{
       const name=(l.name||'').trim();
       if(!name||!(Number(l.rate)>0))return;
       const s=slot(r.projectId,l.role,name,r.projectName);
-      s.earned+=dehariLineAmt(l)*days;
+      s.earned+=dehariLinePay(l,r);
     });
   });
   (advs||[]).forEach(a=>{
@@ -10461,17 +10543,15 @@ function setDhBorne(v){
   if(o){o.style.borderColor=dhBorne==='owner'?'#4D94D4':'var(--bor)';o.style.color=dhBorne==='owner'?'#4D94D4':'var(--mut)';}
   dhPreview();
 }
-function dhDaysNow(){return Math.max(1,parseFloat(e$('dh-days')&&e$('dh-days').value)||1);}
+function dhLineDaysNow(l){const d=parseFloat(l&&l.days);return d>0?d:0;}
 function dhLineFormula(l){
-  const days=dhDaysNow();
-  const one=dehariLineAmt(l);
-  return (l.count||0)+' × '+fmt(l.rate||0)+' × '+days+'d = '+fmt(one*days);
+  const days=dhLineDaysNow(l);
+  return (l.count||0)+' × '+fmt(l.rate||0)+' × '+days+'d = '+fmt(dehariLineAmt(l)*days);
 }
 function dhPreview(){
-  const days=dhDaysNow();
-  const crew=dhLines.reduce((s,l)=>s+dehariLineAmt(l),0);
+  const total=dhLines.reduce((s,l)=>s+dehariLineAmt(l)*dhLineDaysNow(l),0);
   const el=e$('dh-preview');
-  if(el)el.textContent='Day total PKR '+fmt(crew*days)+' · '+days+' day'+(days>1?'s':'')+' · '+(dhBorne==='owner'?'Owner bears':'Contractor bears');
+  if(el)el.textContent='Total PKR '+fmt(total)+' · '+(dhBorne==='owner'?'Owner bears':'Contractor bears');
   dhLines.forEach((l,i)=>{const tot=e$('dh-line-tot-'+i);if(tot)tot.textContent=dhLineFormula(l);});
 }
 function dhPickRate(i,n){
@@ -10490,7 +10570,9 @@ function dhPickRate(i,n){
 function addDhLine(line){
   const role=dhStoreRole(line&&line.role||'Mason');
   const preset=(DH_ROLES.find(r=>r.id===role)||DH_ROLES[0]).rates[0];
-  dhLines.push({role,name:line&&line.name||'',label:line&&line.label||'',rate:line&&line.rate!=null?Number(line.rate):preset||0,count:line&&line.count!=null?Number(line.count):1});
+  const prev=dhLines[dhLines.length-1];
+  const days=line&&line.days!=null?Math.max(1,Number(line.days)||1):(prev&&Number(prev.days)>0?Number(prev.days):1);
+  dhLines.push({role,name:line&&line.name||'',label:line&&line.label||'',rate:line&&line.rate!=null?Number(line.rate):preset||0,count:line&&line.count!=null?Number(line.count):1,days});
   renderDhLines();
 }
 function dhSet(i,k,v){
@@ -10505,6 +10587,7 @@ function dhSet(i,k,v){
   if(k==='label')row.label=v;
   else if(k==='name')row.name=v;
   else if(k==='count')row.count=Math.max(0,parseFloat(v)||0);
+  else if(k==='days')row.days=Math.max(0,parseFloat(v)||0);
   else{
     row.rate=Math.max(0,parseFloat(v)||0);
     document.querySelectorAll('#dh-lines [data-dh="'+i+'"]').forEach(btn=>{
@@ -10524,14 +10607,24 @@ function renderDhLines(){
     const role=DH_ROLES.find(r=>r.id===l.role)||DH_ROLES[2];
     const chips=(role.rates||[]).map(n=>`<button type="button" data-dh="${i}" data-rate="${n}" style="flex:none;min-width:64px;min-height:36px;padding:6px 10px;font-size:13px;font-weight:700;border-radius:9px;border:1px solid ${Number(l.rate)===n?'var(--gold)':'var(--bor)'};color:${Number(l.rate)===n?'var(--gold)':'var(--mut)'};background:${Number(l.rate)===n?'rgba(232,184,75,.18)':'var(--bg)'};font-family:Inter,sans-serif" onclick="dhPickRate(${i},${n})">${n}</button>`).join('');
     return `<div style="background:var(--s2);border-radius:8px;padding:8px;margin-bottom:8px">
-      <div style="display:flex;gap:6px;align-items:center">
-        <select onchange="dhSet(${i},'role',this.value)" style="flex:1">
-          <option value="Mason"${l.role==='Mason'?' selected':''}>Mistri</option>
-          <option value="Mazdoor"${l.role==='Mazdoor'?' selected':''}>Mazdoor</option>
-          <option value="Other"${l.role==='Other'?' selected':''}>Other</option>
-        </select>
-        <input type="number" min="0" step="1" value="${htmlEsc(l.count)}" style="width:70px" title="How many" oninput="dhSet(${i},'count',this.value)">
-        <button type="button" class="ca red" onclick="dhLines.splice(${i},1);renderDhLines()">×</button>
+      <div style="display:flex;gap:6px;align-items:flex-end">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:9px;color:var(--mut);margin-bottom:3px">Who</div>
+          <select onchange="dhSet(${i},'role',this.value)" style="width:100%">
+            <option value="Mason"${l.role==='Mason'?' selected':''}>Mistri</option>
+            <option value="Mazdoor"${l.role==='Mazdoor'?' selected':''}>Mazdoor</option>
+            <option value="Other"${l.role==='Other'?' selected':''}>Other</option>
+          </select>
+        </div>
+        <div style="width:64px;flex:none">
+          <div style="font-size:9px;color:var(--mut);margin-bottom:3px">Count</div>
+          <input type="number" min="0" step="1" value="${htmlEsc(l.count)}" style="width:100%" title="How many" oninput="dhSet(${i},'count',this.value)">
+        </div>
+        <div style="width:64px;flex:none">
+          <div style="font-size:9px;color:var(--mut);margin-bottom:3px">Days</div>
+          <input type="number" min="1" step="1" value="${htmlEsc(l.days!=null&&l.days!==''?l.days:1)}" style="width:100%" title="Days this person worked" oninput="dhSet(${i},'days',this.value)">
+        </div>
+        <button type="button" class="ca red" style="margin-bottom:2px" onclick="dhLines.splice(${i},1);renderDhLines()">×</button>
       </div>
       <input style="margin-top:6px" placeholder="${htmlEsc(dhRoleLabel(l.role))} name" value="${htmlEsc(l.name||'')}" list="dh-name-list" oninput="dhSet(${i},'name',this.value)">
       ${l.role==='Other'?`<input style="margin-top:6px" placeholder="Role name" value="${htmlEsc(l.label||'')}" oninput="dhSet(${i},'label',this.value)">`:''}
@@ -10541,7 +10634,7 @@ function renderDhLines(){
       </div>
       <div id="dh-line-tot-${i}" style="font-size:12px;color:var(--txt);font-weight:700;margin-top:6px">${htmlEsc(dhLineFormula(l))}</div>
     </div>`;
-  }).join('')||'<div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:6px">Add a mason or mazdoor. Rate is per person per day. Count is how many people.</div>';
+  }).join('')||'<div style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:6px">Add a mistri or mazdoor. Each row is count × rate × that person\'s days.</div>';
   dhPreview();
 }
 function renderDhList(pid){
@@ -10553,7 +10646,7 @@ function renderDhList(pid){
     rows.map(r=>`<div style="background:var(--s2);border-radius:8px;padding:8px 10px;margin-bottom:6px">
       <div style="display:flex;justify-content:space-between;gap:8px">
         <div style="min-width:0">
-          <div style="font-size:var(--fs-sm);font-weight:700">${htmlEsc(r.date||'—')} · ${htmlEsc(dehariDays(r))} day${dehariDays(r)>1?'s':''}</div>
+          <div style="font-size:var(--fs-sm);font-weight:700">${htmlEsc(r.date||'—')} · ${htmlEsc(dehariDaysLabel(r))}</div>
           <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">${htmlEsc(r.work||'Extra work')} · ${htmlEsc(r.borneBy==='owner'?'Owner':'Contractor')}</div>
           <div style="font-size:var(--fs-xs);color:var(--txt);margin-top:2px">${htmlEsc(dhCrewText(r)||'—')}</div>
         </div>
@@ -10568,7 +10661,6 @@ function renderDhList(pid){
 function resetDhForm(pid){
   sv('dh-eid','');
   sv('dh-date',today());
-  sv('dh-days','1');
   sv('dh-work','');
   setDhBorne('contractor');
   dhLines=[];
@@ -10599,10 +10691,9 @@ function editDehari(id){
   sv('dh-eid',r.id);
   sv('dh-proj-id',r.projectId||'');
   sv('dh-date',r.date||today());
-  sv('dh-days',String(dehariDays(r)));
   sv('dh-work',r.work||'');
   setDhBorne(r.borneBy==='owner'?'owner':'contractor');
-  dhLines=(r.lines||[]).map(l=>({role:dhStoreRole(l.role||'Other'),name:l.name||'',label:l.label||'',rate:Number(l.rate)||0,count:Number(l.count)||0}));
+  dhLines=(r.lines||[]).map(l=>({role:dhStoreRole(l.role||'Other'),name:l.name||'',label:l.label||'',rate:Number(l.rate)||0,count:Number(l.count)||0,days:dehariLineDays(l,r)}));
   if(!dhLines.length)addDhLine({role:'Mason',rate:2500,count:1});
   else renderDhLines();
   const p=(D.projects||[]).find(x=>x.id===r.projectId);
@@ -10620,15 +10711,14 @@ function saveDehari(){
   const pid=e$('dh-proj-id').value;
   const p=(D.projects||[]).find(x=>x.id===pid);
   if(!p){toast('Pick a project','err');return;}
-  const lines=dhLines.map(l=>({role:dhStoreRole(l.role||'Other'),name:(l.name||'').trim(),label:(l.label||'').trim(),rate:Number(l.rate)||0,count:Number(l.count)||0})).filter(l=>l.rate>0&&l.count>0);
+  const lines=dhLines.map(l=>({role:dhStoreRole(l.role||'Other'),name:(l.name||'').trim(),label:(l.label||'').trim(),rate:Number(l.rate)||0,count:Number(l.count)||0,days:Math.max(1,parseFloat(l.days)||1)})).filter(l=>l.rate>0&&l.count>0);
   if(!lines.length){toast('Add at least one person with a rate and a count','err');return;}
-  const days=Math.max(1,parseFloat(e$('dh-days').value)||1);
   const doc={
     id:e$('dh-eid').value||uid(),
     projectId:pid,
     projectName:p.name||'',
     date:e$('dh-date').value||today(),
-    days,
+    days:null,
     work:(e$('dh-work').value||'').trim(),
     borneBy:dhBorne==='owner'?'owner':'contractor',
     lines
@@ -10685,13 +10775,12 @@ function goDehari(pid){
 function dehariRoleRollup(rows){
   const map={};
   rows.forEach(r=>{
-    const days=dehariDays(r);
     (r.lines||[]).forEach(l=>{
       if(!(Number(l.count)>0)||!(Number(l.rate)>0))return;
       const who=l.role==='Other'?(l.label||'Other'):dhRoleLabel(l.role);
       if(!map[who])map[who]={peopleDays:0,amount:0};
-      map[who].peopleDays+=(Number(l.count)||0)*days;
-      map[who].amount+=dehariLineAmt(l)*days;
+      map[who].peopleDays+=(Number(l.count)||0)*dehariLineDays(l,r);
+      map[who].amount+=dehariLinePay(l,r);
     });
   });
   return Object.keys(map).map(k=>({role:k,...map[k]})).sort((a,b)=>b.amount-a.amount);
@@ -10765,7 +10854,7 @@ function renderDehari(){
       </div>
       <div style="margin-top:8px">${g.rows.map(r=>`<div style="display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-top:1px solid var(--bor)">
         <div style="min-width:0">
-          <div style="font-size:var(--fs-sm);font-weight:700">${htmlEsc(r.date||'—')} · ${htmlEsc(dehariDays(r))} day${dehariDays(r)>1?'s':''} · ${htmlEsc(r.borneBy==='owner'?'Owner':'Contractor')}</div>
+          <div style="font-size:var(--fs-sm);font-weight:700">${htmlEsc(r.date||'—')} · ${htmlEsc(dehariDaysLabel(r))} · ${htmlEsc(r.borneBy==='owner'?'Owner':'Contractor')}</div>
           <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">${htmlEsc(r.work||'Extra work')}</div>
           <div style="font-size:var(--fs-xs);color:var(--txt);margin-top:2px">${htmlEsc(dhCrewText(r)||'—')}</div>
         </div>
@@ -10803,7 +10892,7 @@ function dehariPdfDoc(proj,rows){
   doc.autoTable({
     startY:y,
     head:[['Date','Days','Work','Bears','Crew','Amount']],
-    body:rows.map(r=>[r.date||'—',String(dehariDays(r)),r.work||'Extra work',r.borneBy==='owner'?'Owner':'Contractor',dhCrewText(r)||'—',fmt(dehariAmt(r))]),
+    body:rows.map(r=>[r.date||'—',dehariSharedDays(r)?String(dehariSharedDays(r)):'—',r.work||'Extra work',r.borneBy==='owner'?'Owner':'Contractor',dhCrewText(r)||'—',fmt(dehariAmt(r))]),
     foot:[['','','','','Total',fmt(con+own)]],
     styles:{fontSize:8,cellPadding:2,textColor:[30,30,30]},
     headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:7.5},
@@ -11048,8 +11137,10 @@ function renderLedger(){
         return expHasDue(e);
       }):[];
 
+  const dhOut=(side==='all'||side==='contract')
+    ?liveDehari().filter(r=>(r.borneBy||'contractor')==='contractor'):[];
   const totalIn=income.reduce((s,p)=>s+p.amount,0);
-  const totalOut=spays.reduce((s,p)=>s+p.amount,0)+paidExps.reduce((s,e)=>s+(e.fundedBy==='onbehalf'?(e.amount||0):expPaidAmt(e)),0);
+  const totalOut=spays.reduce((s,p)=>s+p.amount,0)+paidExps.reduce((s,e)=>s+(e.fundedBy==='onbehalf'?(e.amount||0):expPaidAmt(e)),0)+dhOut.reduce((s,r)=>s+dehariAmt(r),0);
   const net=totalIn-totalOut;
   const subTotal=spays.reduce((s,p)=>s+p.amount,0);
   const setV=(id,v,color)=>{const x=e$(id);if(x){x.textContent=fmt(v);if(color)x.style.color=color;}};
@@ -11061,6 +11152,7 @@ function renderLedger(){
     ...income.map(p=>({date:fmtDT(p.date,p.time?fmtTime12(p.time):'')||p.date,type:p.payType==='misc'?'Misc Advance':'Receipt',desc:p.clientName+' — '+(p.milestone||p.projectName||''),amount:p.amount,dir:'in',project:p.projectName,side:p.payType==='misc'?'cashinhand':'contract'})),
     ...spays.map(p=>({date:p.date,type:'Sub-Con Payment',desc:p.subconName+' — '+p.phase,amount:p.amount,dir:'out',project:p.projectName,side:'contract'})),
     ...paidExps.map(p=>({date:p.date,type:'Expense · '+fundTag(p.fundedBy||'contract')+(expPayStatus(p)==='partial'?' (partial)':''),desc:p.desc+' ('+(p.cat||'other')+')'+(p.paidTo?' · '+p.paidTo:''),amount:p.fundedBy==='onbehalf'?(p.amount||0):expPaidAmt(p),dir:'out',project:p.projectName,side:p.fundedBy||'contract'})),
+    ...dhOut.map(r=>({date:r.date,type:'Dehari · Contractor',desc:(r.work||'Extra work')+(dhCrewText(r)?' · '+dhCrewText(r):''),amount:dehariAmt(r),dir:'out',project:r.projectName,side:'contract'})),
     ...pendingDue.map(p=>({date:p.date,type:'Expense due',desc:p.desc+(p.paidTo?' · '+p.paidTo:'')+' · bill '+fmt(p.amount),amount:expDueAmt(p),dir:'out',project:p.projectName,side:p.fundedBy||'contract',pending:true})),
     ...pendingBehalf.map(p=>({date:p.date,type:'On Behalf (unpaid)',desc:p.desc+(p.paidTo?' · '+p.paidTo:''),amount:p.amount,dir:'out',project:p.projectName,side:'onbehalf',pending:true})),
   ].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
@@ -11107,9 +11199,11 @@ async function pdfPartnerSummary(pid){
   const cpays=liveCpays().filter(x=>x.projectId===pid&&(x.payType||'contract')==='contract').sort((a,b)=>(a.date||'').localeCompare(b.date||''));
   const spays=liveSubpays().filter(x=>x.projectId===pid).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
   const exps=(D.expenses||[]).filter(x=>x.projectId===pid&&(x.fundedBy||'contract')==='contract'&&expPaidAmt(x)>0);
+  const dh=liveDehari().filter(x=>x.projectId===pid&&(x.borneBy||'contractor')==='contractor');
   const totalRec=cpays.reduce((s,x)=>s+x.amount,0);
   const totalSub=spays.reduce((s,x)=>s+x.amount,0);
-  const totalExp=exps.reduce((s,x)=>s+expPaidAmt(x),0);
+  const totalDh=dh.reduce((s,x)=>s+dehariAmt(x),0);
+  const totalExp=exps.reduce((s,x)=>s+expPaidAmt(x),0)+totalDh;
   const netProfit=totalRec-totalSub-totalExp;
   const myAmt=Math.round(netProfit*(p.myShare||100)/100);
   const partnerAmt=Math.round(netProfit*(p.partnerShare||0)/100);
@@ -11196,15 +11290,18 @@ async function pdfPartnerSummary(pid){
     y=pdfDrawSpayTable(doc,y,spays,{title:'SUB-CONTRACTOR PAYMENTS',footPrefix:true});
   }
 
-  // Expenses
-  if(exps.length){
+  // Expenses (contractor-borne dehari counts as project spending; owner-borne does not)
+  if(exps.length||dh.length){
     if(y>210){doc.addPage();y=20;}
     doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(130,125,118);
     doc.text('PROJECT EXPENSES',14,y);y+=6;
     doc.autoTable({
       startY:y,
       head:[['Date','Description','Category','Status','Paid / Bill']],
-      body:exps.map(x=>[x.date||'—',x.desc+(expPayStatus(x)==='partial'?' (partial)':''),x.cat||'—',({paid:'PAID',partial:'PARTIAL',unpaid:'UNPAID'}[expPayStatus(x)]||'—'),fmt(expPaidAmt(x))+' / '+fmt(x.amount)]),
+      body:[
+        ...exps.map(x=>[x.date||'—',x.desc+(expPayStatus(x)==='partial'?' (partial)':''),x.cat||'—',({paid:'PAID',partial:'PARTIAL',unpaid:'UNPAID'}[expPayStatus(x)]||'—'),fmt(expPaidAmt(x))+' / '+fmt(x.amount)]),
+        ...dh.map(x=>[x.date||'—',(x.work||'Dehari')+(dhCrewText(x)?' · '+dhCrewText(x):''),'Dehari','PAID',fmt(dehariAmt(x))+' / '+fmt(dehariAmt(x))])
+      ],
       foot:[['','','','Total paid','PKR '+fmt(totalExp)]],
       styles:{fontSize:8.5,cellPadding:2.5,textColor:[30,30,30]},
       headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
@@ -11246,7 +11343,7 @@ async function pdfInternalSummary(pid){
   const combined=[
     ...spays.map(x=>({date:x.date,paidTo:x.subconName||'—',type:'Sub-Contractor',desc:(x.phase||'')+(x.desc?' · '+x.desc:''),method:x.method||'Cash',amount:x.amount,isPaid:true})),
     ...paidExps.map(x=>({date:x.date,paidTo:x.paidTo||'—',type:(x.cat||'other').charAt(0).toUpperCase()+(x.cat||'other').slice(1),desc:x.desc,method:x.paid||'Cash',amount:x.amount,isPaid:true})),
-    ...dh.map(x=>({date:x.date,paidTo:'Dehari',type:'Dehari',desc:(x.work||'Extra work')+' · '+dhCrewText(x)+(dehariDays(x)>1?' · '+dehariDays(x)+' days':''),method:'Contractor',amount:dehariAmt(x),isPaid:true}))
+    ...dh.map(x=>({date:x.date,paidTo:'Dehari',type:'Dehari',desc:(x.work||'Extra work')+' · '+dhCrewText(x),method:'Contractor',amount:dehariAmt(x),isPaid:true}))
   ].sort((a,b)=>(a.date||'').localeCompare(b.date||''));
 
   const totalSub=spays.reduce((s,x)=>s+x.amount,0);
@@ -11457,7 +11554,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-11-11-v96';
+const APP_VERSION='2026-11-11-v98';
 // Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
 // GitHub Pages is the live OTA source of truth while Wasmer Edge GitHub deploys are failing.
 const OTA_ORIGIN='https://abbashafiz.github.io/Buildpro-crm';
