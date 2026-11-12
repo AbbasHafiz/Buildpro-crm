@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-11-11-v98">
+<meta name="app-version" content="2026-11-12-v99">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -1237,6 +1237,7 @@ select option{background:var(--s2);}
     <div class="fg"><label>Project</label>
       <div class="ds-wrap"><input class="ds-inp" id="cp-proj-t" placeholder="Select project" readonly onclick="oDs('ds-cp-proj')"><div class="ds-list" id="ds-cp-proj"></div><input type="hidden" id="cp-proj-id"></div>
     </div>
+    <div style="font-size:var(--fs-xs);color:var(--mut);margin:-6px 0 12px">This payment stays on this project and that project's client. A different client cannot be saved with it.</div>
     <div class="fg"><label>Invoice Reference</label>
       <div class="ds-wrap"><input class="ds-inp" id="cp-inv-t" placeholder="Link to invoice (optional)" readonly onclick="oDs('ds-cp-inv')"><div class="ds-list" id="ds-cp-inv"></div><input type="hidden" id="cp-inv-id"></div>
     </div>
@@ -3373,6 +3374,129 @@ function isArchived(r){return !!(r&&r.archived);}
 function activeRows(arr){return (arr||[]).filter(r=>!isArchived(r));}
 function liveCpays(){return activeRows(D.cpays||[]);}
 function liveSubpays(){return activeRows(D.subpays||[]);}
+function projectById(id){
+  if(!id)return null;
+  return (D.projects||[]).find(p=>p.id===id)||null;
+}
+function clientById(id){
+  if(!id)return null;
+  return (D.clients||[]).find(c=>c.id===id)||null;
+}
+function namesMatch(a,b){
+  return String(a||'').trim().toLowerCase()===String(b||'').trim().toLowerCase();
+}
+function projectDisplayName(id, fallback){
+  const proj=projectById(id);
+  if(proj)return proj.name||'';
+  return fallback||'';
+}
+// A received payment belongs to one project only when it points at that project
+// and does not name a different client. A blank client is filled from the project on save.
+function cpayOnProject(pay, proj){
+  if(!pay||!proj||pay.projectId!==proj.id||!proj.clientId)return false;
+  if(pay.clientId&&pay.clientId!==proj.clientId)return false;
+  if(!pay.clientId){
+    const named=String(pay.clientName||'').trim();
+    if(named){
+      const cli=clientById(proj.clientId);
+      const projName=cli&&cli.name?String(cli.name).trim():'';
+      if(projName&&!namesMatch(named, projName))return false;
+    }
+  }
+  return true;
+}
+function cpayAttributed(pay){
+  return cpayOnProject(pay, projectById(pay&&pay.projectId));
+}
+function cpaysForProject(projectId, payType){
+  const proj=projectById(projectId);
+  if(!proj)return [];
+  return liveCpays().filter(p=>{
+    if(!cpayOnProject(p, proj))return false;
+    if(payType==='contract'&&(p.payType||'contract')!=='contract')return false;
+    if(payType==='misc'&&p.payType!=='misc')return false;
+    return true;
+  });
+}
+function sumCpays(projectId, payType){
+  return cpaysForProject(projectId, payType).reduce((s,x)=>s+(Number(x.amount)||0),0);
+}
+function cpayResolved(pay){
+  const proj=projectById(pay&&pay.projectId);
+  const ok=cpayOnProject(pay, proj);
+  const cli=ok?clientById(proj.clientId):null;
+  return {
+    ok,
+    proj:ok?proj:null,
+    cli,
+    clientId:ok?proj.clientId:'',
+    clientName:ok?(cli&&cli.name?cli.name:''):'',
+    projectId:ok?proj.id:'',
+    projectName:ok?(proj.name||''):''
+  };
+}
+function cpayBindError(doc){
+  const proj=projectById(doc&&doc.projectId);
+  if(!proj)return 'Select the project this payment belongs to';
+  if(!proj.clientId)return 'Set a client on this project before recording a payment';
+  const cli=clientById(proj.clientId);
+  const projClientName=(cli&&cli.name?String(cli.name):'').trim();
+  if(doc.clientId&&doc.clientId!==proj.clientId){
+    return 'This project belongs to '+(projClientName||'its client')+'. The payment client must be that same client.';
+  }
+  const named=String(doc.clientName||'').trim();
+  if(!doc.clientId&&named&&projClientName&&!namesMatch(named, projClientName)){
+    return 'This payment is named for '+named+', but the project belongs to '+projClientName+'.';
+  }
+  if(doc.invoiceId){
+    const inv=(D.invoices||[]).find(x=>x.id===doc.invoiceId);
+    if(inv&&((inv.projectId&&inv.projectId!==proj.id)||(inv.clientId&&inv.clientId!==proj.clientId))){
+      return 'That invoice is for a different project or client';
+    }
+  }
+  return '';
+}
+function applyCpayProject(doc){
+  const proj=projectById(doc.projectId);
+  const cli=proj&&clientById(proj.clientId);
+  doc.projectId=proj.id;
+  doc.projectName=proj.name||'';
+  doc.clientId=proj.clientId;
+  doc.clientName=(cli&&cli.name)||'';
+  if(doc.invoiceId&&!(D.invoices||[]).find(x=>x.id===doc.invoiceId)){
+    doc.invoiceId='';
+    doc.invoiceRef='';
+  }
+}
+function cpayForInvoice(pay, inv){
+  if(!pay||!inv||pay.invoiceId!==inv.id)return false;
+  if((pay.payType||'contract')!=='contract')return false;
+  const proj=projectById(pay.projectId);
+  if(!cpayOnProject(pay, proj))return false;
+  if(inv.projectId&&inv.projectId!==proj.id)return false;
+  if(inv.clientId&&inv.clientId!==proj.clientId)return false;
+  return true;
+}
+// Import may correct a blank client onto the project's client. A client that
+// disagrees with the project is left unchanged and kept out of totals.
+function alignImportedPayments(){
+  let aligned=0, held=0;
+  (D.cpays||[]).forEach(pay=>{
+    if(!pay||typeof pay!=='object')return;
+    if(cpayBindError(pay)){held++;return;}
+    const before=(pay.clientId||'')+'|'+(pay.clientName||'')+'|'+(pay.projectName||'');
+    applyCpayProject(pay);
+    const after=(pay.clientId||'')+'|'+(pay.clientName||'')+'|'+(pay.projectName||'');
+    if(before!==after)aligned++;
+  });
+  (D.subpays||[]).forEach(pay=>{
+    if(!pay||typeof pay!=='object')return;
+    const proj=projectById(pay.projectId);
+    if(!proj)return;
+    if((pay.projectName||'')!==(proj.name||'')){pay.projectName=proj.name||'';aligned++;}
+  });
+  return {aligned, held};
+}
 function archiveLabel(store,r){
   if(!r)return'—';
   if(store==='projects'||store==='clients'||store==='subcons')return r.name||'—';
@@ -3380,7 +3504,7 @@ function archiveLabel(store,r){
   if(store==='tasks')return r.title||'Task';
   if(store==='workorders')return r.title||r.num||'Worker job';
   if(store==='personals')return r.type==='subloan'?(r.subconName||'Sub-Con loan'):(r.spentOn||'Personal draw');
-  if(store==='cpays')return r.clientName||'Payment received';
+  if(store==='cpays'){const got=cpayResolved(r);return got.ok?(got.clientName||'Payment received'):'Unmatched payment';}
   if(store==='subpays')return r.subconName||'Sub-Con payment';
   if(store==='stock')return (r.type==='out'?'Out · ':'In · ')+(r.item||'Stock');
   if(store==='dehari')return r.work||'Dehari day';
@@ -3397,8 +3521,8 @@ function archiveSubline(store,r){
   if(store==='tasks')return[r.status,r.projectName,r.due||r.start].filter(Boolean).join(' · ');
   if(store==='workorders')return[r.workerName||r.subconName,r.projectName,r.date,r.status].filter(Boolean).join(' · ');
   if(store==='personals')return[r.date,r.projectName,r.amount!=null?'PKR '+fmt(r.amount):''].filter(Boolean).join(' · ');
-  if(store==='cpays')return[r.date,r.projectName,r.milestone||r.payType,r.amount!=null?'PKR '+fmt(r.amount):''].filter(Boolean).join(' · ');
-  if(store==='subpays')return[r.date,r.phase,r.projectName,r.amount!=null?'PKR '+fmt(r.amount):''].filter(Boolean).join(' · ');
+  if(store==='cpays'){const got=cpayResolved(r);if(!got.ok)return['Not counted',r.date,'client '+(r.clientName||'—'),'project '+(projectDisplayName(r.projectId,r.projectName)||'—')].filter(Boolean).join(' · ');return[r.date,got.projectName,r.milestone||r.payType,r.amount!=null?'PKR '+fmt(r.amount):''].filter(Boolean).join(' · ');}
+  if(store==='subpays')return[r.date,r.phase,projectDisplayName(r.projectId,r.projectName),r.amount!=null?'PKR '+fmt(r.amount):''].filter(Boolean).join(' · ');
   if(store==='stock')return[r.date,r.projectName,r.qty!=null?String(r.qty)+(r.unit?' '+r.unit:''):'',r.supplier||r.useFor].filter(Boolean).join(' · ');
   if(store==='dehari')return[r.date,r.projectName,(r.borneBy==='owner'?'Owner':'Contractor'),'PKR '+fmt(dehariAmt(r))].filter(Boolean).join(' · ');
   if(store==='dehariAdv')return[r.date,r.projectName,dhRoleLabel(r.role),r.note].filter(Boolean).join(' · ');
@@ -3538,6 +3662,22 @@ function oDs(dsId){
   if(cfg.materialOnly&&cfg.t==='projects'){
     arr=arr.filter(p=>projectHasMaterial(p.id)||projectHasStock(p.id));
   }
+  if(dsId==='ds-cp-proj'){
+    const cid=e$('cp-cli-id')?.value||'';
+    if(cid)arr=arr.filter(p=>p.clientId===cid);
+  }
+  if(dsId==='ds-cp-inv'){
+    const pid=e$('cp-proj-id')?.value||'';
+    const cid=e$('cp-cli-id')?.value||'';
+    arr=arr.filter(inv=>{
+      const proj=projectById(inv.projectId);
+      if(!proj||!proj.clientId)return false;
+      if(inv.clientId&&inv.clientId!==proj.clientId)return false;
+      if(pid&&inv.projectId!==pid)return false;
+      if(!pid&&cid&&proj.clientId!==cid)return false;
+      return true;
+    });
+  }
   let html='';
   if(!arr.length){html='<div class="ds-empty">'+(cfg.materialOnly?'No With Material / Cost-to-Cost projects yet':'Nothing added yet')+'</div>';}
   else html=arr.map(item=>{
@@ -3552,6 +3692,7 @@ function oDs(dsId){
       ${sub?`<div class="ds-sub">${htmlEsc(sub)}</div>`:''}
     </div>`;
   }).join('');
+  if(dsId==='ds-cp-inv')html=`<div class="ds-item" onclick="selDs('${jsq(dsId)}','','')"><div class="ds-nm">No invoice</div></div>`+html;
   if(cfg.t==='clients')html+=`<div class="ds-add" onclick="X(curSh());O('sh-cli');iCli()">+ Add New Client</div>`;
   if(cfg.t==='projects'&&!cfg.materialOnly)html+=`<div class="ds-add" onclick="X(curSh());O('sh-proj');iP()">+ Add New Project</div>`;
   if(cfg.materialOnly)html+=`<div class="ds-empty" style="padding-top:8px;font-size:var(--fs-xs)">Tip: set agreement type to With Material or Cost to Cost %</div>`;
@@ -3561,6 +3702,7 @@ function selDs(dsId,val,label){
   e$(dsId).classList.remove('on');const cfg=DS[dsId];if(!cfg)return;sv(cfg.tx,label);sv(cfg.id,val);
   if(dsId==='ds-sp-sub')refreshSpLoanRow();
   if(dsId==='ds-sp-sub'||dsId==='ds-sp-proj')syncSpayContractField();
+  if(dsId==='ds-cp-proj'||dsId==='ds-cp-cli'||dsId==='ds-cp-inv')syncCpayPick(dsId);
   if(dsId==='ds-wo-sub'){
     const sc=D.subcons.find(x=>x.id===val);
     if(sc){
@@ -3735,6 +3877,71 @@ function refreshSpLoanRow(){
   if(cb)cb.checked=false;
 }
 function iCpay(){sv('cpay-eid','');e$('cpay-eb').classList.remove('on');e$('cpay-sh-t').textContent='Payment Received';['cp-cli-t','cp-cli-id','cp-proj-t','cp-proj-id','cp-inv-t','cp-inv-id','cp-note','cp-custom-stage'].forEach(id=>sv(id,''));sv('cp-amt','');sv('cp-date',today());sv('cp-time',nowTime());sv('cp-pay-type','contract');}
+function syncCpayPick(dsId){
+  if(dsId==='ds-cp-proj'){
+    const proj=projectById(e$('cp-proj-id')?.value);
+    if(!proj)return;
+    const cli=clientById(proj.clientId);
+    sv('cp-cli-id', proj.clientId||'');
+    sv('cp-cli-t', cli?cli.name:'');
+    const inv=(D.invoices||[]).find(x=>x.id===(e$('cp-inv-id')?.value||''));
+    if(inv&&(inv.projectId!==proj.id||(inv.clientId&&inv.clientId!==proj.clientId))){
+      sv('cp-inv-id','');sv('cp-inv-t','');
+    }
+    return;
+  }
+  if(dsId==='ds-cp-cli'){
+    const cid=e$('cp-cli-id')?.value||'';
+    const proj=projectById(e$('cp-proj-id')?.value);
+    if(proj&&cid&&proj.clientId!==cid){
+      sv('cp-proj-id','');sv('cp-proj-t','');
+      sv('cp-inv-id','');sv('cp-inv-t','');
+    }
+    return;
+  }
+  if(dsId==='ds-cp-inv'){
+    const inv=(D.invoices||[]).find(x=>x.id===(e$('cp-inv-id')?.value||''));
+    if(!inv)return;
+    const proj=projectById(inv.projectId);
+    if(!proj||!proj.clientId||(inv.clientId&&inv.clientId!==proj.clientId)){
+      sv('cp-inv-id','');sv('cp-inv-t','');
+      toast('That invoice does not match its project client','err');
+      return;
+    }
+    const cli=clientById(proj.clientId);
+    sv('cp-proj-id', proj.id);sv('cp-proj-t', proj.name||'');
+    sv('cp-cli-id', proj.clientId);sv('cp-cli-t', cli?cli.name:'');
+  }
+}
+function openCpayForProject(projectId, opts){
+  const proj=projectById(projectId);
+  iCpay();
+  if(proj){
+    const cli=clientById(proj.clientId);
+    sv('cp-proj-t', proj.name||'');
+    sv('cp-proj-id', proj.id);
+    sv('cp-cli-id', proj.clientId||'');
+    sv('cp-cli-t', cli?cli.name:'');
+  }
+  if(opts&&opts.payType)sv('cp-pay-type', opts.payType);
+  O('sh-cpay');
+}
+function openCpayForInvoice(invId){
+  const inv=(D.invoices||[]).find(x=>x.id===invId);
+  iCpay();
+  if(!inv){O('sh-cpay');return;}
+  const proj=projectById(inv.projectId);
+  if(!proj||!proj.clientId||(inv.clientId&&inv.clientId!==proj.clientId)){
+    toast('This invoice does not match its project client','err');
+    O('sh-cpay');
+    return;
+  }
+  const cli=clientById(proj.clientId);
+  sv('cp-proj-t', proj.name||'');sv('cp-proj-id', proj.id);
+  sv('cp-cli-t', cli?cli.name:'');sv('cp-cli-id', proj.clientId);
+  sv('cp-inv-t', inv.num||'');sv('cp-inv-id', inv.id);
+  O('sh-cpay');
+}
 function iInv(type){
   sv('inv-eid','');e$('inv-eb').classList.remove('on');e$('inv-sh-t').textContent='New Invoice';
   const num=nxt('INV',D.invoices);sv('i-num',num);sv('i-date',today());sv('i-due',dF(14));
@@ -5239,7 +5446,7 @@ function ups(store,doc){doc.updatedAt=new Date().toISOString();const eid=doc.id&
 function recalcInvoiceStatus(invId){
   if(!invId)return;
   const inv=D.invoices.find(x=>x.id===invId);if(!inv)return;
-  const paid=liveCpays().filter(x=>x.invoiceId===invId&&(x.payType||'contract')==='contract').reduce((s,x)=>s+x.amount,0);
+  const paid=liveCpays().filter(x=>cpayForInvoice(x,inv)).reduce((s,x)=>s+(Number(x.amount)||0),0);
   if(inv.total>0&&paid>=inv.total)inv.status='paid';
   else if(inv.status==='paid')inv.status='pending';
 }
@@ -5274,6 +5481,11 @@ function saveSpay(){
     breakdown
   };
   if(!doc.subconId||!doc.amount){toast('Select contractor and enter amount','err');return;}
+  if(doc.projectId){
+    const proj=projectById(doc.projectId);
+    if(!proj){toast('Select a project that is still on file','err');return;}
+    doc.projectName=proj.name||'';
+  }
   if(breakdown.length){
     const bt=breakdown.reduce((s,b)=>s+b.amount,0);
     if(bt>doc.amount+0.01){toast('Breakdown (PKR '+fmt(bt)+') cannot exceed payment amount','err');return;}
@@ -5426,6 +5638,9 @@ function saveCpay(){
   const eid=e$('cpay-eid').value;const invId=e$('cp-inv-id').value;
   const doc={id:eid||uid(),clientId:e$('cp-cli-id').value,clientName:e$('cp-cli-t').value,projectId:e$('cp-proj-id').value,projectName:e$('cp-proj-t').value,date:e$('cp-date').value||today(),time:e$('cp-time')?.value||'',amount:parseFloat(e$('cp-amt').value)||0,invoiceId:invId,invoiceRef:e$('cp-inv-t').value,milestone:e$('cp-custom-stage')?.value||e$('cp-milestone').value,method:e$('cp-method').value,note:e$('cp-note').value,payType:e$('cp-pay-type')?.value||'contract'};
   if(!doc.amount){toast('Enter amount','err');return;}
+  const bindErr=cpayBindError(doc);
+  if(bindErr){toast(bindErr,'err');return;}
+  applyCpayProject(doc);
   const old=eid?D.cpays.find(x=>x.id===eid):null;
   // Cash in Hand (misc advances): reverse the previous contribution, then apply the new one.
   // Delta-safe so editing/moving/changing a misc payment doesn't double-count.
@@ -5839,7 +6054,7 @@ function fPay(f,el){fPayF=f;document.querySelectorAll('#pg-pay .ftab').forEach(t
 // ════ RENDER DASHBOARD ════
 function renderDash(){
   // Received = contract payments only (misc owner advances are tracked separately, not contract collection)
-  const tr=liveCpays().filter(p=>(p.payType||'contract')==='contract').reduce((s,p)=>s+p.amount,0);
+  const tr=liveCpays().filter(p=>(p.payType||'contract')==='contract'&&cpayAttributed(p)).reduce((s,p)=>s+(Number(p.amount)||0),0);
   const ts=liveSubpays().reduce((s,p)=>s+spayPaidAmt(p),0);
   // Spent totals = paid portion of contractor expenses (partial payments count)
   const te=activeRows(D.expenses||[]).filter(e=>(e.fundedBy||'contract')==='contract').reduce((s,e)=>s+expPaidAmt(e),0)+dehariSum(null,'contractor');
@@ -5847,7 +6062,7 @@ function renderDash(){
   const liveProjects=activeRows(D.projects);
   // Net profit = your share of each project's P&L
   const pft=liveProjects.reduce((net,p)=>{
-    const rec=liveCpays().filter(x=>x.projectId===p.id&&(x.payType||'contract')==='contract').reduce((s,x)=>s+x.amount,0);
+    const rec=sumCpays(p.id,'contract');
     const sub=liveSubpays().filter(x=>x.projectId===p.id).reduce((s,x)=>s+spayPaidAmt(x),0);
     const exp=activeRows(D.expenses||[]).filter(x=>x.projectId===p.id&&(x.fundedBy||'contract')==='contract').reduce((s,x)=>s+expPaidAmt(x),0)+dehariSum(p.id,'contractor');
     const internal=sub+exp;
@@ -5859,7 +6074,7 @@ function renderDash(){
 
   // Total receivable = sum of (contract value - received) for all active projects
   const totalReceivable=liveProjects.reduce((s,p)=>{
-    const rec=liveCpays().filter(x=>x.projectId===p.id&&(x.payType||'contract')==='contract').reduce((a,x)=>a+x.amount,0);
+    const rec=sumCpays(p.id,'contract');
     return s+Math.max(0,(p.value||0)-rec);
   },0);
 
@@ -5904,10 +6119,10 @@ function renderDash(){
   const od=e$('d-outstanding');
   const ot=e$('d-outstanding-total');
   const outstanding=liveProjects.filter(p=>{
-    const rec=liveCpays().filter(x=>x.projectId===p.id&&(x.payType||'contract')==='contract').reduce((s,x)=>s+x.amount,0);
+    const rec=sumCpays(p.id,'contract');
     return (p.value||0)-rec > 0;
   }).map(p=>{
-    const rec=liveCpays().filter(x=>x.projectId===p.id&&(x.payType||'contract')==='contract').reduce((s,x)=>s+x.amount,0);
+    const rec=sumCpays(p.id,'contract');
     const bal=p.value-rec;
     const pct=p.value>0?Math.round(rec/p.value*100):0;
     const cli=D.clients.find(x=>x.id===p.clientId);
@@ -5939,7 +6154,7 @@ function renderDash(){
 
   // Recent activity
   const acts=[
-    ...liveCpays().map(x=>({type:'💳 Received',name:x.clientName,sub:x.projectName||'',amt:x.amount,date:x.date,clr:'var(--grn)'})),
+    ...liveCpays().map(x=>{const got=cpayResolved(x);return {type:'💳 Received',name:got.ok?(got.clientName||'—'):'Unmatched payment',sub:got.ok?(got.projectName||''):'Project and client do not match',amt:x.amount,date:x.date,clr:'var(--grn)'};}),
     ...liveSubpays().map(x=>({type:'💸 Paid Out',name:x.subconName,sub:(x.phase||'')+(x.projectName?' · '+x.projectName:'')+(spayHasDue(x)?' · due':'') ,amt:spayPaidAmt(x),date:x.date,clr:'var(--red)'})),
     ...(D.expenses||[]).filter(e=>!isArchived(e)&&expHasDue(e)).slice(0,5).map(x=>({type:'📦 Expense',name:x.desc,sub:(x.projectName||'')+(expPayStatus(x)==='partial'?' · partial':''),amt:expDueAmt(x),date:x.date,clr:'var(--mut)'})),
   ].sort((a,b)=>(b.date||'').localeCompare(a.date||'')).slice(0,8);
@@ -5993,7 +6208,7 @@ function renderInv(){
     <div class="card-acts">
       <button class="ca blu" onclick="eInv('${jsq(r.id)}')">✏️ Edit</button>
       <button class="ca gold" onclick="pdfInv('${jsq(r.id)}')">⬇ PDF</button>
-      <button class="ca grn" onclick="O('sh-cpay');iCpay();sv('cp-inv-t','${esc(r.num)}');sv('cp-inv-id','${jsq(r.id)}');sv('cp-cli-t','${esc(r.clientName)}');sv('cp-cli-id','${jsq(r.clientId||'')}')">💳 Pay</button>
+      <button class="ca grn" onclick="openCpayForInvoice('${jsq(r.id)}')">💳 Pay</button>
       <button class="ca" style="color:#25D366;border-color:rgba(37,211,102,.25);background:rgba(37,211,102,.06);flex:none;padding:8px 10px" onclick="waInv('${jsq(r.id)}')">📤</button>
       <button class="ca arch" onclick="archiveRec('invoices','${jsq(r.id)}')">📦 Archive</button>
       <button class="ca red" onclick="del('invoices','${jsq(r.id)}')">🗑</button>
@@ -6068,7 +6283,7 @@ function renderPay(){
   if(pps&&activeRows(D.projects).length){
     pps.innerHTML='<div style="font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:.8px;font-weight:700;margin-bottom:8px">Project Payment Summary</div>'+
     activeRows(D.projects).map(p=>{
-      const rec=liveCpays().filter(x=>x.projectId===p.id&&(x.payType||'contract')==='contract').reduce((s,x)=>s+x.amount,0);
+      const rec=sumCpays(p.id,'contract');
       const sub=liveSubpays().filter(x=>x.projectId===p.id).reduce((s,x)=>s+spayPaidAmt(x),0);
       const cli=D.clients.find(x=>x.id===p.clientId);
       return`<div style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);padding:12px 14px;margin-bottom:8px">
@@ -6106,23 +6321,34 @@ function renderPay(){
   else if(fPayF==='in')rows=liveCpays().map(p=>({...p,dir:'in'}));
   else rows=liveSubpays().map(p=>({...p,dir:'out'}));
   if(!rows.length){el.innerHTML='<div class="empty"><div class="empty-i">💳</div><div class="empty-t">No payments yet</div></div>';updateListSelBar();return;}
-  // Resolve which client each payment belongs to (sub-con payments resolve via their project's client)
+  // Received payments use the project's client. A client that disagrees with the project
+  // stays in its own group and is not counted under either party.
   const clientOf=p=>{
-    if(p.dir==='in')return{id:p.clientId||'__none__',name:p.clientName||'No Client'};
-    const proj=D.projects.find(x=>x.id===p.projectId);
-    const cli=proj?D.clients.find(x=>x.id===proj.clientId):null;
+    if(p.dir==='in'){
+      const got=cpayResolved(p);
+      if(got.ok)return{id:got.clientId||'__none__',name:got.clientName||'No Client'};
+      return{id:'__mismatch__',name:'Project and client do not match'};
+    }
+    const proj=projectById(p.projectId);
+    const cli=proj?clientById(proj.clientId):null;
     return{id:cli?cli.id:((proj&&proj.clientId)||'__none__'),name:cli?cli.name:'No Client'};
   };
   const renderPayCard=p=>{
     const isIn=p.dir==='in';
+    const got=isIn?cpayResolved(p):null;
+    const spProjName=!isIn?projectDisplayName(p.projectId,p.projectName):'';
+    const payName=isIn?(got.ok?(got.clientName||'—'):'Unmatched payment'):(p.subconName||'—');
+    const paySub=isIn
+      ?(got.ok?(p.milestone||p.invoiceRef||got.projectName||'—'):('Not counted · '+(p.clientName||'no client')+' · '+(projectDisplayName(p.projectId,p.projectName)||'no project')))
+      :(p.phase+' · '+(spProjName||'—'));
     const bd=(!isIn&&p.breakdown&&p.breakdown.length)?p.breakdown:[];
     return`<div class="pay-card">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
         ${selBox('pay',p.id,isIn?'cpays':'subpays')}
         <div style="flex:1;min-width:0">
           <div class="pay-type" style="color:${htmlEsc(isIn?'var(--grn)':'var(--red)')}">${htmlEsc(isIn?'💳 Received from Client':'💸 Paid to Sub-Con')}</div>
-          <div class="pay-nm">${htmlEsc(isIn?(p.clientName||'—'):(p.subconName||'—'))}</div>
-          <div class="pay-sub">${htmlEsc(isIn?(p.milestone||p.invoiceRef||p.projectName||'—'):(p.phase+' · '+(p.projectName||'—')))}</div>
+          <div class="pay-nm">${htmlEsc(payName)}</div>
+          <div class="pay-sub">${htmlEsc(paySub)}</div>
           ${bd.length?`<div style="margin-top:7px;display:flex;flex-wrap:wrap;gap:5px">${bd.map(b=>`<span style="font-size:9px;padding:3px 7px;border-radius:6px;background:var(--s2);border:1px solid var(--bor);color:var(--mut)">${htmlEsc(b.trade||'Other')}${htmlEsc(b.name?' · '+b.name:'')} · <b style="color:var(--txt)">${fmt(b.amount)}</b></span>`).join('')}</div>`:''}
         </div>
         <div class="pay-amt" style="color:${htmlEsc(isIn?'var(--grn)':'var(--red)')}">${htmlEsc(isIn?'+':'-')}${fmt(p.amount)}</div>
@@ -6146,7 +6372,7 @@ function renderPay(){
   Object.values(groups).forEach(g=>g.rows.sort((a,b)=>keyOf(b).localeCompare(keyOf(a))));
   const recency=g=>g.rows.reduce((m,r)=>{const k=keyOf(r);return k>m?k:m;},'');
   const order=Object.keys(groups).sort((a,b)=>{
-    if(a==='__none__')return 1;if(b==='__none__')return -1;
+    if(a==='__none__'||a==='__mismatch__')return 1;if(b==='__none__'||b==='__mismatch__')return -1;
     return recency(groups[b]).localeCompare(recency(groups[a]));
   });
   el.innerHTML=order.map(cid=>{
@@ -6582,7 +6808,7 @@ function spayWorkSlices(p){
     phase,
     desc,
     contractor:(p.subconName||'').trim(),
-    project:(p.projectName||'').trim()
+    project:projectDisplayName(p.projectId, p.projectName).trim()
   };
   const finish=(texts,person,amt)=>{
     const c=workSpendPick.apply(null,texts);
@@ -7842,6 +8068,8 @@ _${c.name||'BuildPro'} — Construction Management_`;
 
 function waCpay(id){
   const r=D.cpays.find(x=>x.id===id);if(!r)return;
+  const got=cpayResolved(r);
+  if(!got.ok){toast('This payment is not tied to its project client. Edit it before sharing.','err');return;}
   const c=D.company||{};
   const msg=
 `✅ *PAYMENT RECEIVED CONFIRMATION*
@@ -7849,8 +8077,8 @@ function waCpay(id){
 🏢 *${c.name||'BuildPro'}*
 ${c.phone?'📞 '+c.phone:''}
 
-👤 *Client:* ${r.clientName}
-📋 *Project:* ${r.projectName||'—'}
+👤 *Client:* ${got.clientName}
+📋 *Project:* ${got.projectName||'—'}
 🔖 *Reference:* ${r.invoiceRef||r.id}
 📅 *Date:* ${r.date}
 💳 *Method:* ${r.method||'Cash'}
@@ -7876,7 +8104,7 @@ function waSpay(id){
 ${c.phone?'📞 '+c.phone:''}
 
 👷 *Paid to:* ${r.subconName||'—'}
-📋 *Project:* ${r.projectName||'—'}
+📋 *Project:* ${projectDisplayName(r.projectId, r.projectName)||'—'}
 🏗 *Phase:* ${r.phase||'—'}
 📅 *Date:* ${r.date||'—'}
 💳 *Method:* ${r.method||'Cash'}
@@ -7893,7 +8121,7 @@ function waOwnerStatement(pid){
   const proj=D.projects.find(x=>x.id===pid);if(!proj)return;
   const c=D.company||{};
   const cli=D.clients.find(x=>x.id===proj.clientId);
-  const contractPays=liveCpays().filter(x=>x.projectId===pid&&(x.payType||'contract')==='contract');
+  const contractPays=cpaysForProject(pid,'contract');
   const totalContract=contractPays.reduce((s,p)=>s+p.amount,0);
   const remaining=Math.max(0,(proj.value||0)-totalContract);
   const cashInHand=proj.cashInHand||0;
@@ -8555,7 +8783,7 @@ function updateMiscReconBanner(){
   const box=e$('exp-misc-recon');if(!box)return;
   const issues=[];
   D.projects.forEach(p=>{
-    const miscSum=liveCpays().filter(x=>x.projectId===p.id&&x.payType==='misc').reduce((s,x)=>s+x.amount,0);
+    const miscSum=sumCpays(p.id,'misc');
     const hand=p.cashInHand||0;
     const spent=(D.expenses||[]).filter(e=>e.projectId===p.id&&e.fundedBy==='cashinhand').reduce((s,e)=>s+expPaidAmt(e),0);
     if(miscSum>0&&Math.abs(hand-miscSum)>0.5){
@@ -8776,7 +9004,7 @@ function renderExp(){
             ${proj.cashInHandDate||proj.cashInHandTime?`<span style="font-size:var(--fs-xs);color:var(--mut)">Last received: <b style="color:var(--txt)">${fmtDT(proj.cashInHandDate,proj.cashInHandTime?fmtTime12(proj.cashInHandTime):'')} </b></span>`:''}
           </div>
           ${(()=>{
-            const miscAdv=liveCpays().filter(x=>x.projectId===pid&&x.payType==='misc')
+            const miscAdv=cpaysForProject(pid,'misc')
               .slice().sort((a,b)=>((b.date||'')+(b.time||'')).localeCompare((a.date||'')+(a.time||'')));
             if(!miscAdv.length)return '';
             return`<div style="margin-top:9px;background:var(--s2);border-radius:8px;padding:8px 10px">
@@ -9644,6 +9872,8 @@ function pdfExpProject(pid,projName){
 async function pdfCpayConfirm(id){
   await prepareCompanyLogo();
   const r=D.cpays.find(x=>x.id===id);if(!r)return;
+  const got=cpayResolved(r);
+  if(!got.ok){toast('This payment is not tied to its project client. Edit it before printing.','err');return;}
   const c=co();const doc=bPDF();const pw=210;
   let y=drawHeader(doc,'PAYMENT RECEIPT',r.invoiceRef||r.id,r.date,'','');
   // Green confirmation band
@@ -9655,9 +9885,9 @@ async function pdfCpayConfirm(id){
   doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(130,125,118);
   doc.text('RECEIVED FROM',14,y);doc.text('RECEIVED BY',pw/2+4,y);
   doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(30,30,30);
-  doc.text(r.clientName||'—',14,y+7);doc.text(c.name||'BuildPro',pw/2+4,y+7);
+  doc.text(got.clientName||'—',14,y+7);doc.text(c.name||'BuildPro',pw/2+4,y+7);
   doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(100,100,100);
-  const cli=D.clients.find(x=>x.id===r.clientId);
+  const cli=got.cli;
   if(cli?.phone)doc.text(cli.phone,14,y+13);
   if(c.phone)doc.text(c.phone,pw/2+4,y+13);
   y+=22;
@@ -9667,7 +9897,7 @@ async function pdfCpayConfirm(id){
   doc.text('Project:',16,y+9);doc.text('Invoice Ref:',16,y+17);
   doc.text('Payment Method:',16,y+25);doc.text('Milestone:',16,y+33);doc.text('Received:',16,y+41);
   doc.setFont('helvetica','bold');doc.setTextColor(30,30,30);
-  doc.text(r.projectName||'—',70,y+9);doc.text(r.invoiceRef||'—',70,y+17);
+  doc.text(got.projectName||'—',70,y+9);doc.text(r.invoiceRef||'—',70,y+17);
   doc.text(r.method||'Cash',70,y+25);doc.text(r.milestone||'—',70,y+33);doc.text(fmtDT(r.date,r.time?fmtTime12(r.time):'')||'—',70,y+41);
   // Big amount
   doc.setFillColor(232,184,75);doc.rect(pw-80,y,66,44,'F');
@@ -9678,7 +9908,7 @@ async function pdfCpayConfirm(id){
   y+=52;
   if(r.note){doc.setFont('helvetica','italic');doc.setFontSize(9);doc.setTextColor(120,120,120);doc.text('Note: '+r.note,14,y);y+=10;}
   // Payment history for this project
-  const history=liveCpays().filter(x=>x.projectId===r.projectId).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  const history=cpaysForProject(r.projectId).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
   if(history.length>1){
     y+=4;
     const totalPaid=history.reduce((s,x)=>s+x.amount,0);
@@ -9698,7 +9928,7 @@ async function pdfCpayConfirm(id){
     y=doc.lastAutoTable.finalY+8;
   }
   drawBankFooter(doc);
-  savePdf(doc,'PaymentReceipt-'+r.clientName+'-'+r.date+'.pdf');
+  savePdf(doc,'PaymentReceipt-'+(got.clientName||'client')+'-'+r.date+'.pdf');
   toast('Payment receipt PDF ✓');
 }
 
@@ -9729,7 +9959,7 @@ async function pdfSpayConfirm(id){
   doc.text('Project:',16,y+9);doc.text('Phase / Work:',16,y+17);
   doc.text('Payment Method:',16,y+25);doc.text('Work Description:',16,y+33);doc.text('Date:',16,y+41);
   doc.setFont('helvetica','bold');doc.setTextColor(30,30,30);
-  doc.text(r.projectName||'—',70,y+9);doc.text(r.phase||'—',70,y+17);
+  doc.text(projectDisplayName(r.projectId, r.projectName)||'—',70,y+9);doc.text(r.phase||'—',70,y+17);
   doc.text(r.method||'Cash',70,y+25);
   const desc=doc.splitTextToSize(r.desc||'—',pw-84);
   doc.text(desc[0]||'—',70,y+33);doc.text(r.date||'—',70,y+41);
@@ -9809,7 +10039,7 @@ async function pdfProjPayments(pid){
   const proj=D.projects.find(x=>x.id===pid);if(!proj)return;
   const c=co();const doc=bPDF();const pw=210;
   // Keep contract instalments and misc expense advances fully separate
-  const allPays=liveCpays().filter(x=>x.projectId===pid).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  const allPays=cpaysForProject(pid).slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''));
   const contractPays=allPays.filter(p=>(p.payType||'contract')==='contract');
   const miscPays=allPays.filter(p=>p.payType==='misc');
   const cli=D.clients.find(x=>x.id===proj.clientId);
@@ -10956,7 +11186,7 @@ function renderProj(){
   el.innerHTML=rows.map(p=>{
     const cli=D.clients.find(x=>x.id===p.clientId);
     // Only count contract payments toward received (not misc advances)
-    const rec=liveCpays().filter(x=>x.projectId===p.id&&(x.payType||'contract')==='contract').reduce((s,x)=>s+x.amount,0);
+    const rec=sumCpays(p.id,'contract');
     const subOnly=liveSubpays().filter(x=>x.projectId===p.id).reduce((s,x)=>s+x.amount,0);
     // Internal = sub-con payments + PAID expenses (material/supplier/other). Pending expenses don't count yet.
     const expPaid=(D.expenses||[]).filter(x=>x.projectId===p.id&&(x.fundedBy||'contract')==='contract').reduce((s,x)=>s+expPaidAmt(x),0);
@@ -11068,7 +11298,7 @@ function renderProj(){
         <button class="ca blu" onclick="eP('${jsq(p.id)}')">✏️ Edit</button>
         <button class="ca gold" onclick="pdfProjPayments('${jsq(p.id)}')">⬇ Owner PDF</button>
         <button class="ca ora" onclick="O('sh-pay-internal');sv('pi-proj-t','${esc(p.name)}');sv('pi-proj-id','${jsq(p.id)}');e$('pi-proj-label').textContent='${esc(p.name)}'">+ Internal</button>
-        <button class="ca grn" onclick="O('sh-cpay');iCpay();sv('cp-proj-t','${esc(p.name)}');sv('cp-proj-id','${jsq(p.id)}')">+ Received</button>
+        <button class="ca grn" onclick="openCpayForProject('${jsq(p.id)}')">+ Received</button>
         <button class="ca" style="color:#4D94D4;border-color:rgba(77,148,212,.3);background:rgba(77,148,212,.06)" onclick="pdfInternalSummary('${jsq(p.id)}')">⬇ Internal</button>
         <button class="ca arch" onclick="archiveRec('projects','${jsq(p.id)}')">📦 Archive</button>
         <button class="ca red" onclick="del('projects','${jsq(p.id)}')">🗑 Delete</button>
@@ -11148,27 +11378,38 @@ function renderLedger(){
   setV('led-net',Math.abs(net),net>=0?'var(--grn)':'var(--red)');setV('led-sub',subTotal,'var(--red)');
 
   const fundTag=fb=>fb==='cashinhand'?'General Expenses':fb==='onbehalf'?'On Behalf':'Contract';
+  const bucketFor=(projectId,fallbackName)=>{
+    const proj=projectById(projectId);
+    if(proj)return {key:proj.id,name:proj.name||'Project'};
+    return {key:projectId?('id:'+projectId):'__general__',name:fallbackName||'General'};
+  };
   const txns=[
-    ...income.map(p=>({date:fmtDT(p.date,p.time?fmtTime12(p.time):'')||p.date,type:p.payType==='misc'?'Misc Advance':'Receipt',desc:p.clientName+' — '+(p.milestone||p.projectName||''),amount:p.amount,dir:'in',project:p.projectName,side:p.payType==='misc'?'cashinhand':'contract'})),
-    ...spays.map(p=>({date:p.date,type:'Sub-Con Payment',desc:p.subconName+' — '+p.phase,amount:p.amount,dir:'out',project:p.projectName,side:'contract'})),
-    ...paidExps.map(p=>({date:p.date,type:'Expense · '+fundTag(p.fundedBy||'contract')+(expPayStatus(p)==='partial'?' (partial)':''),desc:p.desc+' ('+(p.cat||'other')+')'+(p.paidTo?' · '+p.paidTo:''),amount:p.fundedBy==='onbehalf'?(p.amount||0):expPaidAmt(p),dir:'out',project:p.projectName,side:p.fundedBy||'contract'})),
-    ...dhOut.map(r=>({date:r.date,type:'Dehari · Contractor',desc:(r.work||'Extra work')+(dhCrewText(r)?' · '+dhCrewText(r):''),amount:dehariAmt(r),dir:'out',project:r.projectName,side:'contract'})),
-    ...pendingDue.map(p=>({date:p.date,type:'Expense due',desc:p.desc+(p.paidTo?' · '+p.paidTo:'')+' · bill '+fmt(p.amount),amount:expDueAmt(p),dir:'out',project:p.projectName,side:p.fundedBy||'contract',pending:true})),
-    ...pendingBehalf.map(p=>({date:p.date,type:'On Behalf (unpaid)',desc:p.desc+(p.paidTo?' · '+p.paidTo:''),amount:p.amount,dir:'out',project:p.projectName,side:'onbehalf',pending:true})),
+    ...income.map(p=>{
+      const got=cpayResolved(p);
+      const bucket=got.ok?{key:got.projectId,name:got.projectName||'Project'}:{key:'__cpay_mismatch__',name:'Unmatched payments'};
+      const desc=got.ok?((got.clientName||'—')+' — '+(p.milestone||got.projectName||'')):('Not counted · '+(p.clientName||'no client')+' · '+(projectDisplayName(p.projectId,p.projectName)||'no project'));
+      return {date:fmtDT(p.date,p.time?fmtTime12(p.time):'')||p.date,type:p.payType==='misc'?'Misc Advance':'Receipt',desc,amount:p.amount,dir:'in',project:bucket.name,projectKey:bucket.key,side:p.payType==='misc'?'cashinhand':'contract'};
+    }),
+    ...spays.map(p=>{const bucket=bucketFor(p.projectId,p.projectName);return {date:p.date,type:'Sub-Con Payment',desc:p.subconName+' — '+p.phase,amount:p.amount,dir:'out',project:bucket.name,projectKey:bucket.key,side:'contract'};}),
+    ...paidExps.map(p=>{const bucket=bucketFor(p.projectId,p.projectName);return {date:p.date,type:'Expense · '+fundTag(p.fundedBy||'contract')+(expPayStatus(p)==='partial'?' (partial)':''),desc:p.desc+' ('+(p.cat||'other')+')'+(p.paidTo?' · '+p.paidTo:''),amount:p.fundedBy==='onbehalf'?(p.amount||0):expPaidAmt(p),dir:'out',project:bucket.name,projectKey:bucket.key,side:p.fundedBy||'contract'};}),
+    ...dhOut.map(r=>{const bucket=bucketFor(r.projectId,r.projectName);return {date:r.date,type:'Dehari · Contractor',desc:(r.work||'Extra work')+(dhCrewText(r)?' · '+dhCrewText(r):''),amount:dehariAmt(r),dir:'out',project:bucket.name,projectKey:bucket.key,side:'contract'};}),
+    ...pendingDue.map(p=>{const bucket=bucketFor(p.projectId,p.projectName);return {date:p.date,type:'Expense due',desc:p.desc+(p.paidTo?' · '+p.paidTo:'')+' · bill '+fmt(p.amount),amount:expDueAmt(p),dir:'out',project:bucket.name,projectKey:bucket.key,side:p.fundedBy||'contract',pending:true};}),
+    ...pendingBehalf.map(p=>{const bucket=bucketFor(p.projectId,p.projectName);return {date:p.date,type:'On Behalf (unpaid)',desc:p.desc+(p.paidTo?' · '+p.paidTo:''),amount:p.amount,dir:'out',project:bucket.name,projectKey:bucket.key,side:'onbehalf',pending:true};}),
   ].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
 
   if(!txns.length){el.innerHTML='<div class="empty"><div class="empty-i">📒</div><div class="empty-t">No transactions for this side yet</div></div>';return;}
-  const projects=[...new Set(txns.map(t=>t.project||'General'))];
+  const projects=[];
+  txns.forEach(t=>{if(!projects.some(g=>g.key===t.projectKey))projects.push({key:t.projectKey,name:t.project||'General'});});
   // Groups appear in newest-txn-first order (txns already sorted); keep rows newest→oldest within.
   el.innerHTML=projects.map(proj=>{
-    const ptxns=txns.filter(t=>(t.project||'General')===proj)
+    const ptxns=txns.filter(t=>t.projectKey===proj.key)
       .slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
     const pIn=ptxns.filter(t=>t.dir==='in').reduce((s,t)=>s+t.amount,0);
     const pOut=ptxns.filter(t=>t.dir==='out'&&!t.pending).reduce((s,t)=>s+t.amount,0);
-    const gid='led-grp-'+proj.replace(/[^a-z0-9]/gi,'_');
+    const gid='led-grp-'+String(proj.key).replace(/[^a-z0-9]/gi,'_');
     const open=!collapsedGroups[gid];
     const header=`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
-        <div style="font-size:var(--fs-sm);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">📁 ${htmlEsc(proj)} <span style="color:var(--mut);font-weight:400;font-size:var(--fs-xs)">· ${htmlEsc(ptxns.length)}</span></div>
+        <div style="font-size:var(--fs-sm);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">📁 ${htmlEsc(proj.name)} <span style="color:var(--mut);font-weight:400;font-size:var(--fs-xs)">· ${htmlEsc(ptxns.length)}</span></div>
         <div style="text-align:right;font-size:var(--fs-xs);font-family:'JetBrains Mono',monospace;flex-shrink:0"><span style="color:var(--grn)">+${fmt(pIn)}</span> <span style="color:var(--mut)">|</span> <span style="color:var(--red)">-${fmt(pOut)}</span></div>
       </div>`;
     const body=`<div style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);overflow:hidden">
@@ -11196,7 +11437,7 @@ async function pdfPartnerSummary(pid){
   const c=co();const doc=bPDF();const pw=210;
   const cli=D.clients.find(x=>x.id===p.clientId);
   // Match on-screen P&L: contract receipts, sub-con payouts, and PAID contractor-side expenses
-  const cpays=liveCpays().filter(x=>x.projectId===pid&&(x.payType||'contract')==='contract').sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  const cpays=cpaysForProject(pid,'contract').slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''));
   const spays=liveSubpays().filter(x=>x.projectId===pid).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
   const exps=(D.expenses||[]).filter(x=>x.projectId===pid&&(x.fundedBy||'contract')==='contract'&&expPaidAmt(x)>0);
   const dh=liveDehari().filter(x=>x.projectId===pid&&(x.borneBy||'contractor')==='contractor');
@@ -11535,6 +11776,7 @@ async function importBk(){
         keys.forEach(k=>{if(p[k]!==undefined)D[k]=p[k];});
         // Ensure arrays
         keys.filter(k=>k!=='company').forEach(k=>{if(!Array.isArray(D[k]))D[k]=[];});
+        const align=alignImportedPayments();
         // Save to this user's local cache immediately
         writeLocalData(curUid);
         // Write to Supabase immediately (not debounced)
@@ -11544,7 +11786,7 @@ async function importBk(){
         renderAll();
         refreshProfileUI();
         const counts=keys.filter(k=>Array.isArray(D[k])).map(k=>k+':'+D[k].length).join(' ');
-        toast('Imported ✓ — '+counts,'ok');
+        toast('Imported ✓ — '+counts+(align.held?' · '+align.held+' payment'+(align.held===1?'':'s')+' not matched to their project client':''),'ok');
       }catch(err){toast('Import error: '+err.message,'err');console.error(err);}
     };
     rd.readAsText(f);
@@ -11554,7 +11796,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-11-11-v98';
+const APP_VERSION='2026-11-12-v99';
 // Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
 // GitHub Pages is the live OTA source of truth while Wasmer Edge GitHub deploys are failing.
 const OTA_ORIGIN='https://abbashafiz.github.io/Buildpro-crm';
