@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-11-12-v99">
+<meta name="app-version" content="2026-11-12-v100">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -1237,7 +1237,7 @@ select option{background:var(--s2);}
     <div class="fg"><label>Project</label>
       <div class="ds-wrap"><input class="ds-inp" id="cp-proj-t" placeholder="Select project" readonly onclick="oDs('ds-cp-proj')"><div class="ds-list" id="ds-cp-proj"></div><input type="hidden" id="cp-proj-id"></div>
     </div>
-    <div style="font-size:var(--fs-xs);color:var(--mut);margin:-6px 0 12px">This payment stays on this project and that project's client. A different client cannot be saved with it.</div>
+    <div style="font-size:var(--fs-xs);color:var(--mut);margin:-6px 0 12px">After a project is chosen, the client list is only that project's client. Choose a client first to see only that client's projects.</div>
     <div class="fg"><label>Invoice Reference</label>
       <div class="ds-wrap"><input class="ds-inp" id="cp-inv-t" placeholder="Link to invoice (optional)" readonly onclick="oDs('ds-cp-inv')"><div class="ds-list" id="ds-cp-inv"></div><input type="hidden" id="cp-inv-id"></div>
     </div>
@@ -3666,6 +3666,13 @@ function oDs(dsId){
     const cid=e$('cp-cli-id')?.value||'';
     if(cid)arr=arr.filter(p=>p.clientId===cid);
   }
+  if(dsId==='ds-cp-cli'){
+    const proj=projectById(e$('cp-proj-id')?.value||'');
+    if(proj){
+      const cli=clientById(proj.clientId);
+      arr=cli?[cli]:[];
+    }
+  }
   if(dsId==='ds-cp-inv'){
     const pid=e$('cp-proj-id')?.value||'';
     const cid=e$('cp-cli-id')?.value||'';
@@ -3679,7 +3686,12 @@ function oDs(dsId){
     });
   }
   let html='';
-  if(!arr.length){html='<div class="ds-empty">'+(cfg.materialOnly?'No With Material / Cost-to-Cost projects yet':'Nothing added yet')+'</div>';}
+  if(!arr.length){
+    let empty=cfg.materialOnly?'No With Material / Cost-to-Cost projects yet':'Nothing added yet';
+    if(dsId==='ds-cp-cli'&&e$('cp-proj-id')?.value)empty='This project has no client yet';
+    else if(dsId==='ds-cp-proj'&&e$('cp-cli-id')?.value)empty='No projects for this client yet';
+    html='<div class="ds-empty">'+empty+'</div>';
+  }
   else html=arr.map(item=>{
     let ref='',sub='';
     if(cfg.t==='clients'){ref='Client';sub=item.phone||item.city||'';}
@@ -3693,7 +3705,7 @@ function oDs(dsId){
     </div>`;
   }).join('');
   if(dsId==='ds-cp-inv')html=`<div class="ds-item" onclick="selDs('${jsq(dsId)}','','')"><div class="ds-nm">No invoice</div></div>`+html;
-  if(cfg.t==='clients')html+=`<div class="ds-add" onclick="X(curSh());O('sh-cli');iCli()">+ Add New Client</div>`;
+  if(cfg.t==='clients'&&!(dsId==='ds-cp-cli'&&e$('cp-proj-id')?.value))html+=`<div class="ds-add" onclick="X(curSh());O('sh-cli');iCli()">+ Add New Client</div>`;
   if(cfg.t==='projects'&&!cfg.materialOnly)html+=`<div class="ds-add" onclick="X(curSh());O('sh-proj');iP()">+ Add New Project</div>`;
   if(cfg.materialOnly)html+=`<div class="ds-empty" style="padding-top:8px;font-size:var(--fs-xs)">Tip: set agreement type to With Material or Cost to Cost %</div>`;
   el.innerHTML=html;el.classList.add('on');
@@ -11796,7 +11808,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-11-12-v99';
+const APP_VERSION='2026-11-12-v100';
 // Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
 // GitHub Pages is the live OTA source of truth while Wasmer Edge GitHub deploys are failing.
 const OTA_ORIGIN='https://abbashafiz.github.io/Buildpro-crm';
