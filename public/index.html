@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-11-12-v100">
+<meta name="app-version" content="2026-11-21-v101">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -1259,10 +1259,12 @@ select option{background:var(--s2);}
     </div>
     <div class="fg"><label>Payment Type</label>
       <select id="cp-pay-type" onchange="toggleMiscAdvance()">
-        <option value="contract">💰 Contract Payment — counts toward contract value</option>
-        <option value="misc">🪣 Misc Amount — owner gave for general expenses (not a contract payment)</option>
+        <option value="contract">💰 Contract Payment — counts toward the contract</option>
+        <option value="material">🧱 Purchase Material — owner cash only, not a contract payment</option>
+        <option value="misc">🪣 Other — owner cash only, not a contract payment</option>
       </select>
     </div>
+    <div id="cp-pay-hint" style="font-size:var(--fs-xs);color:var(--mut);margin:-6px 0 12px"></div>
     <div class="fg"><label>Note</label><input id="cp-note" placeholder="Optional note"></div>
   </div>
   <div class="sh-ft"><button class="btn btn-grey" onclick="X('sh-cpay')">Cancel</button><button class="btn btn-gold" onclick="saveCpay()">💳 Save Payment</button></div>
@@ -3408,13 +3410,40 @@ function cpayOnProject(pay, proj){
 function cpayAttributed(pay){
   return cpayOnProject(pay, projectById(pay&&pay.projectId));
 }
+// Contract receipts count toward the contract and the owner statement.
+// Purchase material and every other type stay in owner cash only.
+function cpayIsContract(pay){
+  return (pay&&pay.payType||'contract')==='contract';
+}
+function cpayIsOwnerCash(pay){
+  return !!pay&&!cpayIsContract(pay);
+}
+function cpayTypeLabel(pay){
+  const t=pay&&pay.payType||'contract';
+  if(t==='material')return 'Purchase material';
+  if(t==='misc')return 'Other';
+  if(t==='contract')return 'Contract';
+  return 'Owner cash';
+}
+function adjustOwnerCash(projectId, delta, date, time){
+  const proj=projectById(projectId);
+  if(!proj||!delta)return;
+  proj.cashInHand=Math.max(0,(proj.cashInHand||0)+delta);
+  if(delta>0){
+    proj.cashInHandDate=date||today();
+    proj.cashInHandTime=time||'';
+  }
+  proj.updatedAt=new Date().toISOString();
+}
 function cpaysForProject(projectId, payType){
   const proj=projectById(projectId);
   if(!proj)return [];
   return liveCpays().filter(p=>{
     if(!cpayOnProject(p, proj))return false;
-    if(payType==='contract'&&(p.payType||'contract')!=='contract')return false;
+    if(payType==='contract'&&!cpayIsContract(p))return false;
     if(payType==='misc'&&p.payType!=='misc')return false;
+    if(payType==='material'&&p.payType!=='material')return false;
+    if(payType==='ownercash'&&!cpayIsOwnerCash(p))return false;
     return true;
   });
 }
@@ -3470,7 +3499,7 @@ function applyCpayProject(doc){
 }
 function cpayForInvoice(pay, inv){
   if(!pay||!inv||pay.invoiceId!==inv.id)return false;
-  if((pay.payType||'contract')!=='contract')return false;
+  if(!cpayIsContract(pay))return false;
   const proj=projectById(pay.projectId);
   if(!cpayOnProject(pay, proj))return false;
   if(inv.projectId&&inv.projectId!==proj.id)return false;
@@ -3818,8 +3847,12 @@ const totLI=items=>items.reduce((s,i)=>s+i.a,0);
 
 // ════ INIT FORMS ════
 function toggleMiscAdvance(){
-  const t=e$('cp-pay-type')?.value;
-  // No UI change needed — just info for user
+  const t=e$('cp-pay-type')?.value||'contract';
+  const h=e$('cp-pay-hint');
+  if(!h)return;
+  if(t==='contract')h.textContent='Counts toward the contract. Shown as received on the owner statement.';
+  else if(t==='material')h.textContent='Purchase material goes to owner cash only. It is not shown as received on the owner statement.';
+  else h.textContent='This receipt goes to owner cash only. It is not shown as received on the owner statement.';
 }
 
 function payInternalGo(type){
@@ -3888,7 +3921,7 @@ function refreshSpLoanRow(){
   if(hint)hint.textContent='Outstanding personal loan balance: PKR '+fmt(bal)+(open.length>1?' across '+open.length+' loans':'')+' — tick to record repayment against it';
   if(cb)cb.checked=false;
 }
-function iCpay(){sv('cpay-eid','');e$('cpay-eb').classList.remove('on');e$('cpay-sh-t').textContent='Payment Received';['cp-cli-t','cp-cli-id','cp-proj-t','cp-proj-id','cp-inv-t','cp-inv-id','cp-note','cp-custom-stage'].forEach(id=>sv(id,''));sv('cp-amt','');sv('cp-date',today());sv('cp-time',nowTime());sv('cp-pay-type','contract');}
+function iCpay(){sv('cpay-eid','');e$('cpay-eb').classList.remove('on');e$('cpay-sh-t').textContent='Payment Received';['cp-cli-t','cp-cli-id','cp-proj-t','cp-proj-id','cp-inv-t','cp-inv-id','cp-note','cp-custom-stage'].forEach(id=>sv(id,''));sv('cp-amt','');sv('cp-date',today());sv('cp-time',nowTime());sv('cp-pay-type','contract');toggleMiscAdvance();}
 function syncCpayPick(dsId){
   if(dsId==='ds-cp-proj'){
     const proj=projectById(e$('cp-proj-id')?.value);
@@ -3936,6 +3969,7 @@ function openCpayForProject(projectId, opts){
     sv('cp-cli-t', cli?cli.name:'');
   }
   if(opts&&opts.payType)sv('cp-pay-type', opts.payType);
+  toggleMiscAdvance();
   O('sh-cpay');
 }
 function openCpayForInvoice(invId){
@@ -3952,6 +3986,8 @@ function openCpayForInvoice(invId){
   sv('cp-proj-t', proj.name||'');sv('cp-proj-id', proj.id);
   sv('cp-cli-t', cli?cli.name:'');sv('cp-cli-id', proj.clientId);
   sv('cp-inv-t', inv.num||'');sv('cp-inv-id', inv.id);
+  if(inv.invType==='material')sv('cp-pay-type','material');
+  toggleMiscAdvance();
   O('sh-cpay');
 }
 function iInv(type){
@@ -5391,7 +5427,7 @@ function eP(id){const r=D.projects.find(x=>x.id===id);if(!r)return;sv('proj-eid'
 function eCli(id){const r=D.clients.find(x=>x.id===id);if(!r)return;sv('cli-eid',id);e$('cli-eb').classList.add('on');e$('cli-sh-t').textContent='Edit Client';sv('c-name',r.name);sv('c-ph',r.phone);sv('c-cnic',r.cnic);sv('c-city',r.city);sv('c-email',r.email);sv('c-addr',r.addr);O('sh-cli');}
 function eSub(id){const r=D.subcons.find(x=>x.id===id);if(!r)return;sv('sub-eid',id);e$('sub-eb').classList.add('on');e$('sub-sh-t').textContent='Edit Contractor';sv('s-name',r.name);sv('s-trade',r.trade);sv('s-ph',r.phone);sv('s-contract',r.contract);sv('s-ptype',r.ptype);sv('s-notes',r.notes);sv('s-cnic',r.cnic||'');const p=D.projects.find(x=>x.id===r.projectId);sv('s-proj-t',p?p.name:'');sv('s-proj-id',r.projectId||'');O('sh-sub');}
 function eSpay(id){const r=D.subpays.find(x=>x.id===id);if(!r)return;sv('spay-eid',id);e$('spay-eb').classList.add('on');e$('spay-sh-t').textContent='Edit Payment';const sc=D.subcons.find(x=>x.id===r.subconId);sv('sp-sub-t',sc?sc.name:r.subconName||'');sv('sp-sub-id',r.subconId||'');const p=D.projects.find(x=>x.id===r.projectId);sv('sp-proj-t',p?p.name:r.projectName||'');sv('sp-proj-id',r.projectId||'');sv('sp-date',r.date);sv('sp-amt',r.amount);sv('sp-proj-contract',spayContractFieldValue(r.subconId,r.projectId,r.projContract));resetSpayContractTouched();fillSelectOrCustom('sp-phase','sp-custom-stage',r.phase,'','Other');sv('sp-method',r.method);sv('sp-desc',r.desc);sv('sp-paid-amt',String(spayPaidAmt(r)));clearSpBd();renderSpBdChips();(r.breakdown||[]).forEach(b=>addSpBd(b));if(!(r.breakdown||[]).length)cSpBd();refreshSpLoanRow();syncSpayPayHint();O('sh-spay');}
-function eCpay(id){const r=D.cpays.find(x=>x.id===id);if(!r)return;sv('cpay-eid',id);e$('cpay-eb').classList.add('on');e$('cpay-sh-t').textContent='Edit Payment';const c=D.clients.find(x=>x.id===r.clientId);sv('cp-cli-t',c?c.name:'');sv('cp-cli-id',r.clientId||'');const p=D.projects.find(x=>x.id===r.projectId);sv('cp-proj-t',p?p.name:'');sv('cp-proj-id',r.projectId||'');sv('cp-date',r.date);sv('cp-time',r.time||'');sv('cp-amt',r.amount);sv('cp-pay-type',r.payType||'contract');const inv=D.invoices.find(x=>x.id===r.invoiceId);sv('cp-inv-t',inv?inv.num:'');sv('cp-inv-id',r.invoiceId||'');sv('cp-method',r.method);sv('cp-note',r.note);fillSelectOrCustom('cp-milestone','cp-custom-stage',r.milestone||'','','Other');O('sh-cpay');}
+function eCpay(id){const r=D.cpays.find(x=>x.id===id);if(!r)return;sv('cpay-eid',id);e$('cpay-eb').classList.add('on');e$('cpay-sh-t').textContent='Edit Payment';const c=D.clients.find(x=>x.id===r.clientId);sv('cp-cli-t',c?c.name:'');sv('cp-cli-id',r.clientId||'');const p=D.projects.find(x=>x.id===r.projectId);sv('cp-proj-t',p?p.name:'');sv('cp-proj-id',r.projectId||'');sv('cp-date',r.date);sv('cp-time',r.time||'');sv('cp-amt',r.amount);sv('cp-pay-type',r.payType||'contract');const inv=D.invoices.find(x=>x.id===r.invoiceId);sv('cp-inv-t',inv?inv.num:'');sv('cp-inv-id',r.invoiceId||'');sv('cp-method',r.method);sv('cp-note',r.note);fillSelectOrCustom('cp-milestone','cp-custom-stage',r.milestone||'','','Other');toggleMiscAdvance();O('sh-cpay');}
 function eInv(id){
   const r=D.invoices.find(x=>x.id===id);if(!r)return;
   sv('inv-eid',id);e$('inv-eb').classList.add('on');e$('inv-sh-t').textContent='Edit Invoice';
@@ -5654,18 +5690,10 @@ function saveCpay(){
   if(bindErr){toast(bindErr,'err');return;}
   applyCpayProject(doc);
   const old=eid?D.cpays.find(x=>x.id===eid):null;
-  // Cash in Hand (misc advances): reverse the previous contribution, then apply the new one.
-  // Delta-safe so editing/moving/changing a misc payment doesn't double-count.
-  if(old&&old.payType==='misc'&&old.projectId){const op=D.projects.find(x=>x.id===old.projectId);if(op){op.cashInHand=Math.max(0,(op.cashInHand||0)-(old.amount||0));op.updatedAt=new Date().toISOString();}}
-  if(doc.payType==='misc'&&doc.projectId){
-    const np=D.projects.find(x=>x.id===doc.projectId);
-    if(np){
-      np.cashInHand=(np.cashInHand||0)+doc.amount;
-      np.cashInHandDate=doc.date||today();
-      np.cashInHandTime=doc.time||'';
-      np.updatedAt=new Date().toISOString();
-    }
-  }
+  // Owner cash (material, misc, and any other non-contract receipt): reverse the previous
+  // contribution, then apply the new one. Contract receipts never change owner cash.
+  if(old&&cpayIsOwnerCash(old))adjustOwnerCash(old.projectId,-(old.amount||0));
+  if(cpayIsOwnerCash(doc))adjustOwnerCash(doc.projectId,doc.amount,doc.date,doc.time);
   ups('cpays',doc);
   // Recompute invoice paid status (contract payments only). Also refresh any invoice this payment moved away from.
   recalcInvoiceStatus(doc.invoiceId);
@@ -5957,7 +5985,7 @@ function del(store,id,opts){
     const rec=D.cpays.find(x=>x.id===id);
     recordTomb([id]);
     D.cpays=D.cpays.filter(x=>x.id!==id);
-    if(rec&&rec.payType==='misc'&&rec.projectId){const op=D.projects.find(x=>x.id===rec.projectId);if(op){op.cashInHand=Math.max(0,(op.cashInHand||0)-(rec.amount||0));op.updatedAt=new Date().toISOString();}}
+    if(rec&&cpayIsOwnerCash(rec))adjustOwnerCash(rec.projectId,-(rec.amount||0));
     if(rec&&rec.invoiceId)recalcInvoiceStatus(rec.invoiceId);
     finish('Deleted');
     return;
@@ -6366,7 +6394,7 @@ function renderPay(){
         <div class="pay-amt" style="color:${htmlEsc(isIn?'var(--grn)':'var(--red)')}">${htmlEsc(isIn?'+':'-')}${fmt(p.amount)}</div>
       </div>
       <div class="pay-bot">
-        <span class="pay-meta">${fmtDT(p.date,p.time?fmtTime12(p.time):'')} · ${htmlEsc(p.method||'Cash')}${htmlEsc(isIn&&p.payType==='misc'?' · Misc advance':'')}${htmlEsc(bd.length?' · '+bd.length+' further':'')}</span>
+        <span class="pay-meta">${fmtDT(p.date,p.time?fmtTime12(p.time):'')} · ${htmlEsc(p.method||'Cash')}${htmlEsc(isIn&&cpayIsOwnerCash(p)?' · '+cpayTypeLabel(p)+' · owner cash':'')}${htmlEsc(bd.length?' · '+bd.length+' further':'')}</span>
         <div style="display:flex;gap:7px">
           <button class="ca gold" style="padding:5px 10px;font-size:var(--fs-xs);flex:none" onclick="${isIn?`pdfCpayConfirm('${jsq(p.id)}')`:`pdfSpayConfirm('${jsq(p.id)}')`}">⬇ PDF</button>
           <button class="ca" style="padding:5px 10px;font-size:var(--fs-xs);flex:none;color:#25D366;border-color:rgba(37,211,102,.25);background:rgba(37,211,102,.06)" onclick="${isIn?`waCpay('${jsq(p.id)}')`:`waSpay('${jsq(p.id)}')`}">📤</button>
@@ -8769,6 +8797,7 @@ function openMiscAdvanceForProject(projectId){
   sv('cp-pay-type','misc');
   const cli=D.clients.find(x=>x.id===p.clientId);
   if(cli){sv('cp-cli-t',cli.name);sv('cp-cli-id',cli.id);}
+  toggleMiscAdvance();
   O('sh-cpay');
 }
 
@@ -8795,11 +8824,11 @@ function updateMiscReconBanner(){
   const box=e$('exp-misc-recon');if(!box)return;
   const issues=[];
   D.projects.forEach(p=>{
-    const miscSum=sumCpays(p.id,'misc');
+    const miscSum=sumCpays(p.id,'ownercash');
     const hand=p.cashInHand||0;
     const spent=(D.expenses||[]).filter(e=>e.projectId===p.id&&e.fundedBy==='cashinhand').reduce((s,e)=>s+expPaidAmt(e),0);
     if(miscSum>0&&Math.abs(hand-miscSum)>0.5){
-      issues.push(`<b>${htmlEsc(p.name)}</b>: Misc advances recorded PKR ${fmt(miscSum)} but cash-in-hand is PKR ${fmt(hand)}`);
+      issues.push(`<b>${htmlEsc(p.name)}</b>: Owner cash receipts PKR ${fmt(miscSum)} but cash-in-hand is PKR ${fmt(hand)}`);
     }
     if(spent>hand+0.5){
       issues.push(`<b>${htmlEsc(p.name)}</b>: Misc spent PKR ${fmt(spent)} exceeds cash given PKR ${fmt(hand)} (over by ${fmt(spent-hand)})`);
@@ -9016,15 +9045,15 @@ function renderExp(){
             ${proj.cashInHandDate||proj.cashInHandTime?`<span style="font-size:var(--fs-xs);color:var(--mut)">Last received: <b style="color:var(--txt)">${fmtDT(proj.cashInHandDate,proj.cashInHandTime?fmtTime12(proj.cashInHandTime):'')} </b></span>`:''}
           </div>
           ${(()=>{
-            const miscAdv=cpaysForProject(pid,'misc')
+            const miscAdv=cpaysForProject(pid,'ownercash')
               .slice().sort((a,b)=>((b.date||'')+(b.time||'')).localeCompare((a.date||'')+(a.time||'')));
             if(!miscAdv.length)return '';
             return`<div style="margin-top:9px;background:var(--s2);border-radius:8px;padding:8px 10px">
-              <div style="font-size:9px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Advances received</div>
+              <div style="font-size:9px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Owner cash received — not on the owner statement</div>
               ${miscAdv.map(p=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--bor);gap:8px">
                 <div style="font-size:var(--fs-xs);color:var(--mut);min-width:0">
                   <span style="color:var(--txt);font-weight:600">${fmtDT(p.date,p.time?fmtTime12(p.time):'')}</span>
-                  ${p.method?` · ${htmlEsc(p.method)}`:''}${p.note?` · ${htmlEsc(p.note)}`:''}
+                  · ${htmlEsc(cpayTypeLabel(p))}${p.method?` · ${htmlEsc(p.method)}`:''}${p.note?` · ${htmlEsc(p.note)}`:''}
                 </div>
                 <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
                   <span style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-xs);color:var(--gold);font-weight:700">${fmt(p.amount)}</span>
@@ -9753,7 +9782,8 @@ async function pdfExpProjectOwner(pid,projName){
   const doc=bPDF();const pw=210;
   const allExps=(D.expenses||[]).filter(r=>(r.projectId||'__none__')===pid&&(r.fundedBy==='cashinhand'||r.fundedBy==='onbehalf'))
     .sort((a,b)=>(a.date||'').localeCompare(b.date||''));
-  if(!allExps.length){toast('No owner-side expenses for this project','info');return;}
+  const cashPays=cpaysForProject(pid,'ownercash').slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  if(!allExps.length&&!cashPays.length){toast('No owner cash for this project','info');return;}
   const proj=D.projects.find(x=>x.id===pid);
   const cli=proj?D.clients.find(x=>x.id===proj.clientId):null;
   const cashInHand=proj?.cashInHand||0;
@@ -9774,13 +9804,13 @@ async function pdfExpProjectOwner(pid,projName){
   if(proj?.loc)doc.text('Location: '+proj.loc+(proj.plot?' · '+proj.plot:''),14,y+6);
   if(cli)doc.text('Client: '+cli.name+(cli.phone?' · '+cli.phone:''),14,y+12);
   doc.setFont('helvetica','italic');doc.setFontSize(8);doc.setTextColor(150,145,138);
-  doc.text('General expenses = paid only'+(cashPending?' · pending PKR '+fmt(cashPending)+' not deducted':'')+'. No contractor / contract receipts.',14,y+18);
+  doc.text('Owner cash only. Contract receipts stay on the owner statement.'+(cashPending?' Pending PKR '+fmt(cashPending)+' is not deducted.':''),14,y+18);
   y+=26;
 
   // 4 summary tiles — no contract receipts
   doc.setFillColor(248,246,242);doc.rect(14,y,182,28,'F');
   const tiles=[
-    [cashInHand,'Misc Amount',[201,123,58]],
+    [cashInHand,'Owner Cash',[201,123,58]],
     [cashSpent,'General Expenses',[200,50,50]],
     [miscLeft,'Amount Left',miscLeft>0?[50,150,50]:miscLeft<0?[200,50,50]:[130,125,118]],
     [behalfSpent,'On Behalf Spent',[200,50,50]]
@@ -9800,6 +9830,25 @@ async function pdfExpProjectOwner(pid,projName){
     y+=14;
   }
 
+  if(cashPays.length){
+    const cashTotal=cashPays.reduce((s,p)=>s+(Number(p.amount)||0),0);
+    doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(130,125,118);
+    doc.text('OWNER CASH RECEIVED (not on the owner statement)',14,y);y+=4;
+    doc.autoTable({
+      startY:y,
+      head:[['Date / Time','Type','Reference','Method','Amount (PKR)']],
+      body:cashPays.map(p=>[fmtDT(p.date,p.time?fmtTime12(p.time):'')||'—',cpayTypeLabel(p),p.milestone||p.note||'—',p.method||'Cash',fmt(p.amount)]),
+      foot:[['','','','Total Owner Cash','PKR '+fmt(cashTotal)]],
+      styles:{fontSize:8.5,cellPadding:2.5,textColor:[30,30,30]},
+      headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
+      footStyles:pdfFootStyles('gold'),
+      columnStyles:{4:{halign:'right'}},
+      rowPageBreak:'avoid',showFoot:'lastPage',
+      margin:{left:14,right:14,bottom:18}
+    });
+    y=doc.lastAutoTable.finalY+8;
+  }
+  if(allExps.length){
   doc.autoTable({
     startY:y,
     head:[['Date','Description','Funded','Category','Status','Bill','Paid','Due']],
@@ -9812,6 +9861,7 @@ async function pdfExpProjectOwner(pid,projName){
     margin:{left:14,right:14,bottom:18}
   });
   drawOwnerExpTotals(doc,doc.lastAutoTable.finalY+6,cashSpent,behalfSpent);
+  }
   drawBankFooter(doc);
   savePdf(doc,'OwnerExpenses-'+projName.replace(/\s+/g,'-')+'-'+today()+'.pdf');
   toast('Owner expense PDF ✓');
@@ -9920,7 +9970,7 @@ async function pdfCpayConfirm(id){
   y+=52;
   if(r.note){doc.setFont('helvetica','italic');doc.setFontSize(9);doc.setTextColor(120,120,120);doc.text('Note: '+r.note,14,y);y+=10;}
   // Payment history for this project
-  const history=cpaysForProject(r.projectId).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  const history=cpaysForProject(r.projectId,cpayIsContract(r)?'contract':'ownercash').sort((a,b)=>(a.date||'').localeCompare(b.date||''));
   if(history.length>1){
     y+=4;
     const totalPaid=history.reduce((s,x)=>s+x.amount,0);
@@ -9929,7 +9979,7 @@ async function pdfCpayConfirm(id){
       startY:y,
       head:[['Date / Time','Milestone','Method','Amount (PKR)']],
       body:history.map(p=>[fmtDT(p.date,p.time?fmtTime12(p.time):'')||'—',p.milestone||'—',p.method||'Cash',fmt(p.amount)]),
-      foot:[['','','Total Received',fmt(totalPaid)]],
+      foot:[['','',cpayIsContract(r)?'Total Contract Received':'Total Owner Cash',fmt(totalPaid)]],
       styles:{fontSize:9,cellPadding:3,textColor:[30,30,30]},
       headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
       footStyles:pdfFootStyles('green'),
@@ -10050,13 +10100,10 @@ async function pdfProjPayments(pid){
   await prepareCompanyLogo();
   const proj=D.projects.find(x=>x.id===pid);if(!proj)return;
   const c=co();const doc=bPDF();const pw=210;
-  // Keep contract instalments and misc expense advances fully separate
-  const allPays=cpaysForProject(pid).slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''));
-  const contractPays=allPays.filter(p=>(p.payType||'contract')==='contract');
-  const miscPays=allPays.filter(p=>p.payType==='misc');
+  // Received lines are contract scope only. Material and other receipts stay in owner cash.
+  const contractPays=cpaysForProject(pid,'contract').slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''));
   const cli=D.clients.find(x=>x.id===proj.clientId);
   const totalContract=contractPays.reduce((s,p)=>s+p.amount,0);
-  const totalMisc=miscPays.reduce((s,p)=>s+p.amount,0);
   const remaining=Math.max(0,(proj.value||0)-totalContract);
   // Owner-side expenses for this project (not contractor spend)
   const ownerExps=(D.expenses||[]).filter(x=>x.projectId===pid&&(x.fundedBy==='cashinhand'||x.fundedBy==='onbehalf'));
@@ -10076,12 +10123,12 @@ async function pdfProjPayments(pid){
   // Summary: contract vs misc kept apart
   doc.setFillColor(248,246,242);doc.rect(14,y,182,28,'F');
   doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(130,125,118);
-  doc.text('CONTRACT PAYMENTS',16,y+7);doc.text('MISC EXPENSE ADVANCES',110,y+7);
+  doc.text('CONTRACT RECEIVED',16,y+7);doc.text('OWNER CASH',110,y+7);
   doc.setFontSize(11);doc.setTextColor(50,150,50);doc.text('PKR '+fmt(totalContract),16,y+15);
-  doc.setTextColor(77,148,212);doc.text('PKR '+fmt(totalMisc||cashInHand),110,y+15);
+  doc.setTextColor(77,148,212);doc.text('PKR '+fmt(cashInHand),110,y+15);
   doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(130,125,118);
   doc.text('Against contract value PKR '+fmt(proj.value||0)+' · Due PKR '+fmt(remaining),16,y+22);
-  doc.text('For owner expenses only — not contract collection',110,y+22);
+  doc.text('Balance only — material receipts are not listed here',110,y+22);
   y+=34;
 
   // Section 1: Contract payments
@@ -10110,7 +10157,7 @@ async function pdfProjPayments(pid){
   // Section 2: Misc advances + owner-side spending
   if(y>220){doc.addPage();y=20;}
   doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(130,125,118);
-  doc.text('2. OWNER MISC EXPENSES (separate from contract)',14,y);y+=5;
+  doc.text('2. OWNER CASH SPENDING (receipts are not listed as received)',14,y);y+=5;
   doc.setFillColor(252,248,240);doc.rect(14,y,182,22,'F');
   doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(30,30,30);
   doc.text('Misc Amount: PKR '+fmt(cashInHand)+(proj.cashInHandDate?'  ('+fmtDT(proj.cashInHandDate,proj.cashInHandTime?fmtTime12(proj.cashInHandTime):'')+')':''),16,y+7);
@@ -10118,24 +10165,6 @@ async function pdfProjPayments(pid){
   doc.text('On Behalf Spent: PKR '+fmt(behalfSpent),16,y+15);
   doc.text('Owner Still Owes: PKR '+fmt(behalfOwed),110,y+15);
   y+=28;
-
-  if(miscPays.length){
-    doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(130,125,118);
-    doc.text('Misc advances recorded as payments',14,y);y+=4;
-    doc.autoTable({
-      startY:y,
-      head:[['Date / Time','Reference','Method','Amount (PKR)']],
-      body:miscPays.map(p=>[fmtDT(p.date,p.time?fmtTime12(p.time):'')||'—',p.milestone||p.note||'Misc advance',p.method||'Cash',fmt(p.amount)]),
-      foot:[['','','Total Misc','PKR '+fmt(totalMisc)]],
-      styles:{fontSize:8.5,cellPadding:2.5,textColor:[30,30,30]},
-      headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:8},
-      footStyles:pdfFootStyles('gold'),
-      columnStyles:{3:{halign:'right'}},
-      rowPageBreak:'avoid',showFoot:'lastPage',
-    margin:{left:14,right:14,bottom:18}
-    });
-    y=doc.lastAutoTable.finalY+8;
-  }
 
   if(ownerExps.length){
     if(y>230){doc.addPage();y=20;}
@@ -10153,14 +10182,14 @@ async function pdfProjPayments(pid){
       margin:{left:14,right:14,bottom:18}
     });
     y=drawOwnerExpTotals(doc,doc.lastAutoTable.finalY+6,cashSpent,behalfSpent);
-  }else if(!miscPays.length){
+  }else{
     doc.setFont('helvetica','italic');doc.setFontSize(9);doc.setTextColor(150,145,138);
-    doc.text('No owner misc / on-behalf expenses recorded.',14,y);y+=12;
+    doc.text('No owner cash spending recorded.',14,y);y+=12;
   }
 
   doc.setFont('helvetica','italic');doc.setFontSize(7.5);doc.setTextColor(130,125,118);
   if(y>270){doc.addPage();y=20;}
-  doc.text('Note: Contractor expenses from contract funds are NOT included. Contract receipts and owner misc spending are treated separately.',14,y);
+  doc.text('Note: Only contract payments are listed as received. Purchase material and other non-contract receipts stay in owner cash.',14,y);
 
   drawBankFooter(doc);
   savePdf(doc,'OwnerStatement-'+proj.name.replace(/\s+/g,'-')+'-'+today()+'.pdf');
@@ -11354,8 +11383,8 @@ function renderLedger(){
   // Income: contract vs misc advances kept separate by filter
   const cpaysAll=liveCpays();
   const income=side==='all'?cpaysAll
-    :side==='contract'?cpaysAll.filter(p=>(p.payType||'contract')==='contract')
-    :side==='cashinhand'?cpaysAll.filter(p=>p.payType==='misc')
+    :side==='contract'?cpaysAll.filter(cpayIsContract)
+    :side==='cashinhand'?cpaysAll.filter(cpayIsOwnerCash)
     :[]; // onbehalf has no income stream
 
   // Outflows
@@ -11400,7 +11429,7 @@ function renderLedger(){
       const got=cpayResolved(p);
       const bucket=got.ok?{key:got.projectId,name:got.projectName||'Project'}:{key:'__cpay_mismatch__',name:'Unmatched payments'};
       const desc=got.ok?((got.clientName||'—')+' — '+(p.milestone||got.projectName||'')):('Not counted · '+(p.clientName||'no client')+' · '+(projectDisplayName(p.projectId,p.projectName)||'no project'));
-      return {date:fmtDT(p.date,p.time?fmtTime12(p.time):'')||p.date,type:p.payType==='misc'?'Misc Advance':'Receipt',desc,amount:p.amount,dir:'in',project:bucket.name,projectKey:bucket.key,side:p.payType==='misc'?'cashinhand':'contract'};
+      return {date:fmtDT(p.date,p.time?fmtTime12(p.time):'')||p.date,type:cpayIsOwnerCash(p)?cpayTypeLabel(p):'Receipt',desc,amount:p.amount,dir:'in',project:bucket.name,projectKey:bucket.key,side:cpayIsOwnerCash(p)?'cashinhand':'contract'};
     }),
     ...spays.map(p=>{const bucket=bucketFor(p.projectId,p.projectName);return {date:p.date,type:'Sub-Con Payment',desc:p.subconName+' — '+p.phase,amount:p.amount,dir:'out',project:bucket.name,projectKey:bucket.key,side:'contract'};}),
     ...paidExps.map(p=>{const bucket=bucketFor(p.projectId,p.projectName);return {date:p.date,type:'Expense · '+fundTag(p.fundedBy||'contract')+(expPayStatus(p)==='partial'?' (partial)':''),desc:p.desc+' ('+(p.cat||'other')+')'+(p.paidTo?' · '+p.paidTo:''),amount:p.fundedBy==='onbehalf'?(p.amount||0):expPaidAmt(p),dir:'out',project:bucket.name,projectKey:bucket.key,side:p.fundedBy||'contract'};}),
@@ -11808,7 +11837,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-11-12-v100';
+const APP_VERSION='2026-11-21-v101';
 // Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
 // GitHub Pages is the live OTA source of truth while Wasmer Edge GitHub deploys are failing.
 const OTA_ORIGIN='https://abbashafiz.github.io/Buildpro-crm';
