@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-11-21-v102">
+<meta name="app-version" content="2026-11-22-v103">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -751,14 +751,14 @@ select option{background:var(--s2);}
 
       <!-- Owner stats — misc advance + on-behalf only; never mixes contract receipts -->
       <div id="exp-stats-owner" style="display:none">
-        <div style="background:rgba(77,148,212,.07);border:1px solid rgba(77,148,212,.22);border-radius:10px;padding:10px 13px;margin-bottom:8px;font-size:var(--fs-xs);color:var(--mut)">Owner side only: the misc amount the owner gave for general expenses, plus what you spent on their behalf. When the owner pays you back, that on-behalf line becomes a paid general expense. Contract payments are <b style="color:var(--txt)">not</b> included here.</div>
+        <div style="background:rgba(77,148,212,.07);border:1px solid rgba(77,148,212,.22);border-radius:10px;padding:10px 13px;margin-bottom:8px;font-size:var(--fs-xs);color:var(--mut)">Owner side only: the misc amount the owner gave for general expenses, plus what you spent on their behalf. Reimbursement due is the general-expense shortfall plus on-behalf money you already paid out. A reimbursement receipt is not owner cash and is not a contract payment.</div>
         <div class="stats2" style="margin-bottom:8px">
           <div class="stat"><div class="stat-lbl">Misc Amount</div><div class="stat-val" id="exp-own-hand">0</div><div class="stat-unit">PKR</div></div>
           <div class="stat"><div class="stat-lbl">General Expenses</div><div class="stat-val" id="exp-own-spent">0</div><div class="stat-unit">PKR</div></div>
           <div class="stat"><div class="stat-lbl">Amount Left</div><div class="stat-val" id="exp-own-rem">0</div><div class="stat-unit">PKR</div></div>
         </div>
         <div style="background:rgba(224,85,85,.07);border:1px solid rgba(224,85,85,.25);border-radius:10px;padding:10px 13px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
-          <div><div style="font-size:var(--fs-sm);font-weight:600;color:var(--txt)">🤝 On Behalf (Owner Owes You)</div><div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">You paid from your pocket for the owner — not from contract collection</div></div>
+          <div><div style="font-size:var(--fs-sm);font-weight:600;color:var(--txt)">🤝 Reimbursement still due</div><div style="font-size:var(--fs-xs);color:var(--mut);margin-top:2px">Shortfall on general expenses, plus on-behalf you already paid. Unpaid supplier bills are not included.</div></div>
           <div style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-md);font-weight:700;color:var(--red)" id="exp-own-reimburse">PKR 0</div>
         </div>
         <div id="exp-misc-recon" style="display:none;background:rgba(232,148,75,.1);border:1px solid rgba(232,148,75,.35);border-radius:10px;padding:10px 13px;margin-bottom:8px"></div>
@@ -1268,6 +1268,30 @@ select option{background:var(--s2);}
     <div class="fg"><label>Note</label><input id="cp-note" placeholder="Optional note"></div>
   </div>
   <div class="sh-ft"><button class="btn btn-grey" onclick="X('sh-cpay')">Cancel</button><button class="btn btn-gold" onclick="saveCpay()">💳 Save Payment</button></div>
+</div></div>
+
+<!-- REIMBURSEMENT RECEIVED — confirmation receipt, not owner cash and not a contract payment -->
+<div class="sh-ov" id="sh-reimb"><div class="sh">
+  <div class="sh-grip"></div>
+  <div class="sh-hd"><div class="sh-title" id="rb-sh-t">Reimbursement received</div><button class="sh-x" onclick="X('sh-reimb')">×</button></div>
+  <div class="sh-body">
+    <div class="edit-badge" id="rb-eb">✏️ Editing reimbursement receipt</div>
+    <input type="hidden" id="rb-eid">
+    <input type="hidden" id="rb-pid">
+    <div id="rb-hint" style="font-size:var(--fs-xs);color:var(--mut);margin-bottom:12px;line-height:1.45"></div>
+    <div class="f2">
+      <div class="fg"><label>Amount received (PKR)</label><input type="number" id="rb-amt" placeholder="0"></div>
+      <div class="fg"><label>Method</label>
+        <select id="rb-method"><option>Cash</option><option>Bank Transfer</option><option>JazzCash</option><option>EasyPaisa</option><option>Cheque</option></select>
+      </div>
+    </div>
+    <div class="f2">
+      <div class="fg"><label>Date received</label><input type="date" id="rb-date"></div>
+      <div class="fg"><label>Time received</label><input type="time" id="rb-time"></div>
+    </div>
+    <div class="fg"><label>Note</label><input id="rb-note" placeholder="Optional — transfer ref, who handed the cash…"></div>
+  </div>
+  <div class="sh-ft"><button class="btn btn-grey" onclick="X('sh-reimb')">Cancel</button><button class="btn btn-gold" onclick="saveReimburse()">✓ Save &amp; receipt</button></div>
 </div></div>
 
 <!-- INVOICE SHEET — Advanced construction types -->
@@ -2883,7 +2907,7 @@ function goAdminBackend(){
   goPage('profile',bi||null,'Backend / Self-host');
   fProfile('backend');
 }
-const COLLECTIONS=['clients','projects','subcons','subpays','cpays','invoices','estimates','agreements','tasks','expenses','investors','banks','subconContracts','personals','workorders','stock','dehari','dehariAdv'];
+const COLLECTIONS=['clients','projects','subcons','subpays','cpays','invoices','estimates','agreements','tasks','expenses','investors','banks','subconContracts','personals','workorders','stock','dehari','dehariAdv','reimbursements'];
 
 // ════ DATA (per Google user — never share localStorage across accounts) ════
 const BP_DATA_PREFIX='bp5';
@@ -2896,7 +2920,7 @@ function emptyData(){
     invoices:[],estimates:[],agreements:[],
     tasks:[],expenses:[],
     investors:[],banks:[],subconContracts:[],
-    personals:[],workorders:[],stock:[],dehari:[],dehariAdv:[],
+    personals:[],workorders:[],stock:[],dehari:[],dehariAdv:[],reimbursements:[],
     _tomb:[]
   };
 }
@@ -5890,7 +5914,8 @@ function del(store,id,opts){
       'material stock':(D.stock||[]).filter(x=>x.projectId===pid).length,
       'payments received':liveCpays().filter(x=>x.projectId===pid).length,
       'sub-con payments':liveSubpays().filter(x=>x.projectId===pid).length,
-      'sub-con contracts':(D.subconContracts||[]).filter(x=>x.projectId===pid).length
+      'sub-con contracts':(D.subconContracts||[]).filter(x=>x.projectId===pid).length,
+      'reimbursement receipts':(D.reimbursements||[]).filter(x=>x.projectId===pid).length
     };
     const total=Object.values(counts).reduce((a,b)=>a+b,0);
     let msg='Delete this project?';
@@ -5911,7 +5936,8 @@ function del(store,id,opts){
       ...(D.stock||[]).filter(x=>x.projectId===pid).map(x=>x.id),
       ...D.cpays.filter(x=>x.projectId===pid).map(x=>x.id),
       ...D.subpays.filter(x=>x.projectId===pid).map(x=>x.id),
-      ...(D.subconContracts||[]).filter(x=>x.projectId===pid).map(x=>x.id)]);
+      ...(D.subconContracts||[]).filter(x=>x.projectId===pid).map(x=>x.id),
+      ...(D.reimbursements||[]).filter(x=>x.projectId===pid).map(x=>x.id)]);
     D.invoices=D.invoices.filter(x=>x.projectId!==pid);
     D.estimates=D.estimates.filter(x=>x.projectId!==pid);
     D.agreements=D.agreements.filter(x=>x.projectId!==pid);
@@ -5924,6 +5950,7 @@ function del(store,id,opts){
     D.cpays=D.cpays.filter(x=>x.projectId!==pid);
     D.subpays=D.subpays.filter(x=>x.projectId!==pid);
     if(D.subconContracts)D.subconContracts=D.subconContracts.filter(x=>x.projectId!==pid);
+    if(D.reimbursements)D.reimbursements=D.reimbursements.filter(x=>x.projectId!==pid);
     D.projects=D.projects.filter(x=>x.id!==pid);
     finish(total>0?'Project + '+total+' linked records deleted':'Project deleted');
     return;
@@ -8937,7 +8964,7 @@ function renderExp(){
   const or=e$('exp-own-rem');
   const ownRem=totalCash-ownerSpent;
   if(or){or.textContent=fmt(ownRem);or.style.color=ownRem<0?'var(--red)':ownRem>0?'var(--grn)':'var(--mut)';}
-  const reimburseOwed=behalfExps.filter(e=>rst(e)!=='paid').reduce((s,e)=>s+e.amount,0);
+  const reimburseOwed=activeRows(D.projects).reduce((s,p)=>s+Math.max(0,reimbursePosition(p.id).balance),0);
   const rb=e$('exp-own-reimburse');if(rb)rb.textContent='PKR '+fmt(reimburseOwed);
   updateMiscReconBanner();
 
@@ -9005,17 +9032,19 @@ function renderExp(){
     const expPendingDisplay=projRows.filter(r=>r.fundedBy!=='onbehalf').reduce((s,r)=>s+expDueAmt(r),0);
     const totalDisplay=isOwnerMode?expPaidDisplay:(expPaidDisplay+subSpent+dhConPid);
     const balance=cashInHand-projSpent;
+    const pos=reimbursePosition(pid);
     const pct=cashInHand>0?Math.min(100,Math.round(projSpent/cashInHand*100)):0;
     const entryCount=projRows.length+projSubpays.length+dhRowsCon.length;
     const gid='exp-grp-'+(isOwnerMode?'own-':'con-')+pid;
     const open=!collapsedGroups[gid];
     const pdfBtns=isOwnerMode
       ?`<button class="ca" style="flex:none;padding:5px 9px;font-size:var(--fs-xs);color:#4D94D4;border-color:rgba(77,148,212,.3);background:rgba(77,148,212,.06)" onclick="event.stopPropagation();pdfExpProjectOwner('${jsq(pid)}','${esc(projName)}')">⬇ Owner</button>
-         <button class="ca" style="flex:none;padding:5px 9px;font-size:var(--fs-xs);color:#4D94D4;border-color:rgba(77,148,212,.3);background:rgba(77,148,212,.06)" onclick="event.stopPropagation();pdfReimbursement('${jsq(pid)}','${esc(projName)}')">⬇ Reimb</button>`
+         <button class="ca" style="flex:none;padding:5px 9px;font-size:var(--fs-xs);color:#4D94D4;border-color:rgba(77,148,212,.3);background:rgba(77,148,212,.06)" onclick="event.stopPropagation();pdfReimbursement('${jsq(pid)}','${esc(projName)}')">⬇ Reimb</button>
+         <button class="ca" style="flex:none;padding:5px 9px;font-size:var(--fs-xs);color:var(--grn);border-color:rgba(82,181,106,.35);background:rgba(82,181,106,.08)" onclick="event.stopPropagation();openReimburseReceipt('${jsq(pid)}')">✓ Received</button>`
       :`<button class="ca gold" style="flex:none;padding:5px 9px;font-size:var(--fs-xs)" onclick="event.stopPropagation();pdfExpProjectContractor('${jsq(pid)}','${esc(projName)}')">⬇ PDF</button>`;
     const header=`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
       <div style="font-size:var(--fs-sm);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">📁 ${htmlEsc(projName)} <span style="color:var(--mut);font-weight:400;font-size:var(--fs-xs)">· ${htmlEsc(entryCount)}</span></div>
-      <div style="display:flex;align-items:center;gap:7px;flex-shrink:0">
+      <div style="display:flex;align-items:center;gap:7px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end">
         <span style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-xs);color:var(--red)">-${fmt(totalDisplay)}</span>
         ${pdfBtns}
       </div>
@@ -9077,6 +9106,7 @@ function renderExp(){
           </div>
         </div>
         <div class="pbar-wrap" style="margin-top:8px"><div class="pbar" style="width:${htmlEsc(pct)}%;background:${htmlEsc(pct>90?'var(--red)':pct>70?'var(--gold)':'var(--grn)')}"></div></div>`:''}
+          ${reimburseReceiptListHtml(pid)}
         </div>`:'';
     const rowsHtml=(()=>{
         const internalRows=projRows.filter(r=>(r.fundedBy||'contract')==='contract');
@@ -9249,9 +9279,12 @@ function renderExp(){
         ${!isOwnerMode&&expPendingDisplay>0?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--ora);margin-top:5px"><span>⏳ Pending (not in total)</span><span style="font-family:'JetBrains Mono',monospace;font-weight:700">PKR ${fmt(expPendingDisplay)}</span></div>`:''}
         ${isOwnerMode&&projSpent>0?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--mut);margin-bottom:3px"><span>General Expenses (paid)</span><span style="font-family:'JetBrains Mono',monospace;color:var(--red)">PKR ${fmt(projSpent)}</span></div>`:''}
         ${isOwnerMode&&cashPending>0?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--ora);margin-bottom:3px"><span>⏳ General expenses pending (not in spent)</span><span style="font-family:'JetBrains Mono',monospace;font-weight:700">PKR ${fmt(cashPending)}</span></div>`:''}
-        ${isOwnerMode&&behalfSpent>0?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--mut);margin-bottom:3px"><span>On Behalf (Reimbursable)</span><span style="font-family:'JetBrains Mono',monospace;color:var(--red)">PKR ${fmt(behalfSpent)}</span></div>`:''}
-        ${isOwnerMode&&behalfOwed>0?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--red);margin-bottom:3px"><span>↳ Owner still owes you</span><span style="font-family:'JetBrains Mono',monospace;color:var(--red);font-weight:700">PKR ${fmt(behalfOwed)}</span></div>`:''}
-        ${isOwnerMode?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-sm);font-weight:600;border-top:1px solid var(--bor);padding-top:6px;margin-top:3px"><span style="color:var(--mut)">Owner-Side Total</span><span style="font-family:'JetBrains Mono',monospace;color:var(--red)">PKR ${fmt(totalDisplay)}</span></div>`:''}
+        ${isOwnerMode&&pos.shortfall>0?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--mut);margin-bottom:3px"><span>Shortfall over owner cash</span><span style="font-family:'JetBrains Mono',monospace;color:var(--red)">PKR ${fmt(pos.shortfall)}</span></div>`:''}
+        ${isOwnerMode&&pos.advanceLeft>0?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--mut);margin-bottom:3px"><span>Advance left</span><span style="font-family:'JetBrains Mono',monospace;color:var(--grn)">PKR ${fmt(pos.advanceLeft)}</span></div>`:''}
+        ${isOwnerMode&&pos.behalfPaidOut>0?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--mut);margin-bottom:3px"><span>On behalf paid out</span><span style="font-family:'JetBrains Mono',monospace;color:var(--red)">PKR ${fmt(pos.behalfPaidOut)}</span></div>`:''}
+        ${isOwnerMode&&pos.behalfUnpaid>0?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--ora);margin-bottom:3px"><span>On behalf not paid out (not in due)</span><span style="font-family:'JetBrains Mono',monospace;font-weight:700">PKR ${fmt(pos.behalfUnpaid)}</span></div>`:''}
+        ${isOwnerMode&&pos.received>0?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--mut);margin-bottom:3px"><span>Reimbursement received</span><span style="font-family:'JetBrains Mono',monospace;color:var(--grn)">PKR ${fmt(pos.received)}</span></div>`:''}
+        ${isOwnerMode?`<div style="display:flex;justify-content:space-between;font-size:var(--fs-sm);font-weight:600;border-top:1px solid var(--bor);padding-top:6px;margin-top:3px"><span style="color:var(--mut)">Reimbursement still due</span><span style="font-family:'JetBrains Mono',monospace;color:${pos.balance>0.5?'var(--red)':'var(--grn)'}">PKR ${fmt(Math.max(0,pos.balance))}</span></div>`:''}
       </div>`;
     const body=`<div style="background:var(--s1);border:1px solid var(--bor);border-radius:var(--r);overflow:hidden">
       ${cashBlock}${rowsHtml}${footer}
@@ -11797,32 +11830,126 @@ async function pdfInternalSummary(pid){
   toast('Internal payments PDF ✓');
 }
 
-// ════ REIMBURSEMENT REQUEST PDF ════
+// ════ REIMBURSEMENT ════
+// Due = shortfall (general expenses already paid minus owner cash)
+//     + on-behalf money already paid to the supplier and not yet received back.
+// Supplier bills not paid out are excluded. A receipt does not change owner cash
+// or contract receipts.
+function reimburseReceipts(pid){
+  return activeRows(D.reimbursements||[]).filter(r=>r&&r.projectId===pid);
+}
+function reimbursePosition(pid){
+  const proj=projectById(pid);
+  const exps=activeRows(D.expenses||[]).filter(x=>x.projectId===pid&&(x.fundedBy==='cashinhand'||x.fundedBy==='onbehalf'))
+    .sort((a,b)=>(a.date||'').localeCompare(b.date||'')||(a.createdAt||'').localeCompare(b.createdAt||''));
+  const cashExps=exps.filter(r=>r.fundedBy==='cashinhand');
+  const behalfExps=exps.filter(r=>r.fundedBy==='onbehalf'&&rst(r)!=='paid');
+  const cashInHand=proj?(Number(proj.cashInHand)||0):0;
+  const cashSpent=cashExps.reduce((s,r)=>s+expPaidAmt(r),0);
+  const cashPending=cashExps.reduce((s,r)=>s+expDueAmt(r),0);
+  const behalfPaidOut=behalfExps.reduce((s,r)=>s+expPaidAmt(r),0);
+  const behalfUnpaid=behalfExps.reduce((s,r)=>s+expDueAmt(r),0);
+  const ownerBills=exps.reduce((s,r)=>s+(Number(r.amount)||0),0);
+  const shortfall=Math.max(0,cashSpent-cashInHand);
+  const advanceLeft=Math.max(0,cashInHand-cashSpent);
+  const grossDue=shortfall+behalfPaidOut;
+  const received=reimburseReceipts(pid).reduce((s,r)=>s+(Number(r.amount)||0),0);
+  return {proj,exps,cashInHand,cashSpent,cashPending,behalfPaidOut,behalfUnpaid,ownerBills,shortfall,advanceLeft,grossDue,received,balance:grossDue-received};
+}
+function reimburseLineStatus(r){
+  if(r&&r.fundedBy==='onbehalf'){
+    const pay=expPayStatus(r);
+    if(pay==='unpaid')return 'BILL DUE';
+    if(pay==='partial')return 'PART PAID';
+    return 'OWED';
+  }
+  return {paid:'PAID',partial:'PARTIAL',unpaid:'UNPAID'}[expPayStatus(r)]||'UNPAID';
+}
+function reimburseStatusColor(raw){
+  if(raw==='PAID')return [50,150,50];
+  if(raw==='OWED'||raw==='PARTIAL'||raw==='PART PAID')return [201,123,58];
+  return [200,50,50];
+}
+function reimburseFootRows(pos){
+  const rows=[
+    {label:'Owner cash (misc)',value:'PKR '+fmt(pos.cashInHand)},
+    {label:'General expenses paid',value:'PKR '+fmt(pos.cashSpent)},
+    {label:pos.shortfall>0?'Shortfall you covered':'Advance left',value:'PKR '+fmt(pos.shortfall>0?pos.shortfall:pos.advanceLeft)},
+    {label:'On behalf paid out',value:'PKR '+fmt(pos.behalfPaidOut)}
+  ];
+  if(pos.behalfUnpaid>0)rows.push({label:'Not paid out (excluded)',value:'PKR '+fmt(pos.behalfUnpaid)});
+  rows.push({label:'Reimbursement due',value:'PKR '+fmt(pos.grossDue)});
+  if(pos.received>0){
+    rows.push({label:'Already received',value:'PKR '+fmt(pos.received)});
+    rows.push({label:'STILL DUE',value:'PKR '+fmt(Math.max(0,pos.balance))});
+  }
+  return rows;
+}
+function reimburseReceiptListHtml(pid){
+  const rows=reimburseReceipts(pid).slice().sort((a,b)=>((b.date||'')+(b.time||'')).localeCompare((a.date||'')+(a.time||'')));
+  if(!rows.length)return '';
+  return `<div style="margin-top:9px;background:var(--s2);border-radius:8px;padding:8px 10px">
+    <div style="font-size:9px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Reimbursement received — confirmation only, not owner cash</div>
+    ${rows.map(p=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--bor);gap:8px">
+      <div style="font-size:var(--fs-xs);color:var(--mut);min-width:0">
+        <span style="color:var(--txt);font-weight:600">${htmlEsc(fmtDT(p.date,p.time?fmtTime12(p.time):''))}</span>
+        · ${htmlEsc(p.method||'Cash')}${p.note?` · ${htmlEsc(p.note)}`:''}
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:var(--fs-xs);color:var(--grn);font-weight:700">${htmlEsc(fmt(p.amount))}</span>
+        <button type="button" style="background:none;border:none;color:#4D94D4;cursor:pointer;font-size:11px;padding:2px" onclick="pdfReimburseConfirm('${jsq(p.id)}')">⬇</button>
+        <button type="button" style="background:none;border:none;color:var(--mut);cursor:pointer;font-size:11px;padding:2px" onclick="openReimburseReceipt('${jsq(pid)}','${jsq(p.id)}')">✏️</button>
+        <button type="button" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:11px;padding:2px" onclick="del('reimbursements','${jsq(p.id)}')">✕</button>
+      </div>
+    </div>`).join('')}
+  </div>`;
+}
+function openReimburseReceipt(pid,id){
+  const proj=projectById(pid);if(!proj){toast('Project not found','err');return;}
+  const pos=reimbursePosition(pid);
+  const existing=id?(D.reimbursements||[]).find(x=>x.id===id):null;
+  sv('rb-eid',existing?existing.id:'');
+  sv('rb-pid',proj.id);
+  const title=e$('rb-sh-t');if(title)title.textContent=existing?'Edit reimbursement receipt':'Reimbursement received';
+  const eb=e$('rb-eb');if(eb)eb.classList.toggle('on',!!existing);
+  const due=Math.max(0,Math.round(pos.balance));
+  sv('rb-amt',existing?String(existing.amount):(due?String(due):''));
+  sv('rb-date',existing?(existing.date||today()):today());
+  sv('rb-time',existing?(existing.time||''):'');
+  sv('rb-method',existing?(existing.method||'Cash'):'Cash');
+  sv('rb-note',existing?(existing.note||''):'');
+  const hint=e$('rb-hint');
+  if(hint)hint.textContent=proj.name+' · still due PKR '+fmt(due)+(pos.received?' · already received PKR '+fmt(pos.received):'')+'. Saving prints a confirmation receipt. This is not a contract payment and is not added to owner cash.';
+  O('sh-reimb');
+}
+async function saveReimburse(){
+  const eid=e$('rb-eid').value;
+  const proj=projectById(e$('rb-pid').value);
+  if(!proj){toast('Project not found','err');return;}
+  const amount=parseFloat(e$('rb-amt').value)||0;
+  if(!(amount>0)){toast('Enter the amount received','err');return;}
+  const cli=clientById(proj.clientId);
+  const doc={id:eid||uid(),projectId:proj.id,projectName:proj.name||'',clientId:proj.clientId||'',clientName:(cli&&cli.name)||'',amount,date:e$('rb-date').value||today(),time:e$('rb-time').value||'',method:e$('rb-method').value||'Cash',note:(e$('rb-note').value||'').trim()};
+  if(!D.reimbursements)D.reimbursements=[];
+  ups('reimbursements',doc);
+  X('sh-reimb');
+  renderExp();renderDash();
+  toast(eid?'Reimbursement receipt updated ✓':'Reimbursement received ✓');
+  await pdfReimburseConfirm(doc.id);
+}
+
 async function pdfReimbursement(pid,projName){
   settleReimbursedOnBehalf();
   await prepareCompanyLogo();
   const p=D.projects.find(x=>x.id===pid);if(!p)return;
   const c=co();const doc=bPDF();const pw=210;
   const cli=D.clients.find(x=>x.id===p.clientId);
-  // Owner-side expenses: cash-in-hand (from advance) + paid-on-behalf (reimbursable)
-  const exps=(D.expenses||[]).filter(x=>x.projectId===pid&&(x.fundedBy==='cashinhand'||x.fundedBy==='onbehalf'))
-    .sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  const pos=reimbursePosition(pid);
+  const exps=pos.exps;
   if(!exps.length){toast('No owner-side expenses to reimburse','info');return;}
-  const cashInHand=p.cashInHand||0;
-  const cashExps=exps.filter(r=>r.fundedBy==='cashinhand');
-  const behalfExps=exps.filter(r=>r.fundedBy==='onbehalf');
-  const cashSpent=cashExps.reduce((s,r)=>s+expPaidAmt(r),0);
-  const behalfTotal=behalfExps.reduce((s,r)=>s+r.amount,0);
-  const behalfOwed=behalfExps.filter(r=>rst(r)!=='paid').reduce((s,r)=>s+r.amount,0);
-  const totalAll=cashSpent+behalfTotal;
-  const advanceBalance=cashInHand-cashSpent;
-  const reimburseDue=behalfOwed+Math.max(0,cashSpent-cashInHand);
   const fundLabel=r=>r.fundedBy==='onbehalf'?'On Behalf':'General Expenses';
-  const statLabel=r=>r.fundedBy==='onbehalf'?rst(r).toUpperCase():({paid:'PAID',partial:'PARTIAL',unpaid:'UNPAID'}[expPayStatus(r)]||'UNPAID');
-
   let y=drawHeader(doc,'EXPENSE REIMBURSEMENT REQUEST',p.name,today(),'','');
 
-  // To/From
   doc.setFillColor(248,246,242);doc.rect(14,y,182,20,'F');
   doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(130,125,118);
   doc.text('TO (OWNER / CLIENT)',16,y+6);doc.text('FROM (CONTRACTOR)',pw/2+4,y+6);
@@ -11832,64 +11959,147 @@ async function pdfReimbursement(pid,projName){
   if(cli?.phone)doc.text(cli.phone,16,y+20);
   if(c.phone)doc.text(c.phone,pw/2+4,y+20);
   y+=28;
+  doc.setFont('helvetica','italic');doc.setFontSize(8);doc.setTextColor(110,105,98);
+  const note=doc.splitTextToSize('Reimbursement due = shortfall (general expenses paid minus owner cash) + on-behalf money already paid out. Supplier bills you have not paid are excluded. This does not change contract receipts or owner cash.',182);
+  doc.text(note,14,y);
+  y+=note.length*3.6+2;
+  if(pos.ownerBills>0){
+    doc.text('Owner-side bills PKR '+fmt(pos.ownerBills)+' are the spend listed below, not the amount due.',14,y);
+    y+=5;
+  }
+  if(pos.cashPending>0){
+    doc.text('General expenses still unpaid to suppliers: PKR '+fmt(pos.cashPending)+' (not in the shortfall).',14,y);
+    y+=5;
+  }
+  y+=3;
+  y=drawPdfTotalsBox(doc,y,reimburseFootRows(pos));
 
-  // Owner-side summary
-  doc.setFillColor(252,248,240);doc.rect(14,y,182,28,'F');
-  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(30,30,30);
-  doc.text('Misc Amount: PKR '+fmt(cashInHand),16,y+8);
-  doc.text('General Expenses: PKR '+fmt(cashSpent),16,y+16);
-  doc.text('Paid on Behalf (Reimbursable): PKR '+fmt(behalfTotal),16,y+24);
-  doc.setTextColor(advanceBalance>=0?50:200,advanceBalance>=0?150:50,50);
-  doc.text('Advance Balance: PKR '+fmt(advanceBalance),pw-16,y+8,{align:'right'});
-  doc.setTextColor(30,30,30);
-  doc.text('Total Owner-Side: PKR '+fmt(totalAll),pw-16,y+16,{align:'right'});
-  y+=36;
-
-  // Expense table
   doc.autoTable({
     startY:y,
     head:[['Date','Description','Funded','Category','Status','Bill','Paid','Due']],
     body:exps.map(r=>[r.date||'—',r.desc+(r.paidTo?'\nPaid to: '+r.paidTo:''),
       fundLabel(r),
       (r.cat||'other').charAt(0).toUpperCase()+(r.cat||'other').slice(1),
-      statLabel(r),fmt(r.amount),fmt(expPaidAmt(r)),fmt(expDueAmt(r))]),
+      reimburseLineStatus(r),fmt(r.amount),fmt(expPaidAmt(r)),fmt(expDueAmt(r))]),
     styles:{fontSize:8,cellPadding:2.2,textColor:[30,30,30]},
     headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:7.5},
-    columnStyles:{4:{cellWidth:20},5:{halign:'right',cellWidth:18},6:{halign:'right',cellWidth:18},7:{halign:'right',cellWidth:18}},
+    columnStyles:{4:{cellWidth:22},5:{halign:'right',cellWidth:18},6:{halign:'right',cellWidth:18},7:{halign:'right',cellWidth:18}},
     didParseCell:data=>{
       if(data.section==='body'&&data.column.index===4)
-        data.cell.styles.textColor=(data.cell.raw==='PAID')?[50,150,50]:(data.cell.raw==='PARTIAL')?[201,123,58]:[200,50,50];
+        data.cell.styles.textColor=reimburseStatusColor(data.cell.raw);
     },
     rowPageBreak:'avoid',
     margin:{left:14,right:14,bottom:18}
   });
-  y=drawPdfTotalsBox(doc,doc.lastAutoTable.finalY+6,[
-    {label:'General Expenses',value:'PKR '+fmt(cashSpent)},
-    {label:'Reimbursable (Owed)',value:'PKR '+fmt(behalfOwed)},
-    {label:'TOTAL',value:'PKR '+fmt(totalAll)}
-  ]);
-
-  // Final reimbursement request box
+  y=doc.lastAutoTable.finalY+6;
+  const receipts=reimburseReceipts(pid).slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  if(receipts.length){
+    if(y>230){doc.addPage();y=20;}
+    doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(130,125,118);
+    doc.text('REIMBURSEMENT ALREADY RECEIVED',14,y);y+=4;
+    doc.autoTable({
+      startY:y,
+      head:[['Date / Time','Method','Note','Amount (PKR)']],
+      body:receipts.map(r=>[fmtDT(r.date,r.time?fmtTime12(r.time):'')||'—',r.method||'Cash',r.note||'—',fmt(r.amount)]),
+      foot:[['','','Received','PKR '+fmt(pos.received)]],
+      styles:{fontSize:8,cellPadding:2.2,textColor:[30,30,30]},
+      headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:7.5},
+      footStyles:pdfFootStyles('green'),
+      columnStyles:{3:{halign:'right'}},
+      rowPageBreak:'avoid',showFoot:'lastPage',
+      margin:{left:14,right:14,bottom:18}
+    });
+    y=doc.lastAutoTable.finalY+6;
+  }
   if(y>240){doc.addPage();y=20;}
-  if(reimburseDue>0){
-    y=drawPdfGrandTotal(doc,y,'TOTAL REIMBURSEMENT DUE','PKR '+fmt(reimburseDue),{tone:'red',h:18});
+  const still=Math.max(0,pos.balance);
+  if(still>0.5){
+    y=drawPdfGrandTotal(doc,y,'TOTAL REIMBURSEMENT DUE','PKR '+fmt(still),{tone:'red',h:18});
+  }else if(pos.grossDue>0.5||pos.received>0.5){
+    const over=pos.balance<-0.5?(' · over PKR '+fmt(Math.abs(pos.balance))):'';
+    y=drawPdfGrandTotal(doc,y,'REIMBURSEMENT RECEIVED'+over,'',{tone:'green',h:18,fontSize:11});
+  }else if(pos.behalfUnpaid>0){
+    y=drawPdfGrandTotal(doc,y,'NOTHING TO REIMBURSE YET','Unpaid bills excluded',{tone:'gold',h:18,fontSize:11});
   }else{
-    const msg=advanceBalance>0?'All settled · Advance left PKR '+fmt(advanceBalance):'All owner-side expenses settled';
+    const msg=pos.advanceLeft>0?('Advance left PKR '+fmt(pos.advanceLeft)):'All owner-side expenses settled';
     y=drawPdfGrandTotal(doc,y,msg,'',{tone:'green',h:18,fontSize:11});
   }
-
-  // Bank details for payment
-  if(c.bank&&reimburseDue>0){
-    if(y>240){doc.addPage();y=20;}
+  if(c.bank&&still>0.5){
+    if(y>268){doc.addPage();y=20;}
     doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(100,100,100);
     doc.text('For reimbursement, please transfer to:',14,y);
     doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(30,30,30);
     doc.text(c.bank+(c.acc?' · A/C: '+c.acc:'')+(c.iban?' · IBAN: '+c.iban:''),14,y+6);
   }
-
   drawBankFooter(doc);
   savePdf(doc,'Reimbursement-'+p.name.replace(/\s+/g,'-')+'-'+today()+'.pdf');
   toast('Reimbursement request PDF ✓');
+}
+
+async function pdfReimburseConfirm(id){
+  await prepareCompanyLogo();
+  const r=(D.reimbursements||[]).find(x=>x.id===id);if(!r)return;
+  const proj=projectById(r.projectId);
+  const pos=reimbursePosition(r.projectId);
+  const c=co();const doc=bPDF();const pw=210;
+  const cli=proj?clientById(proj.clientId):null;
+  const fromName=(cli&&cli.name)||r.clientName||'Owner';
+  const projName=(proj&&proj.name)||r.projectName||'Project';
+  let y=drawHeader(doc,'REIMBURSEMENT RECEIPT',projName,r.date||today(),'','');
+  doc.setFillColor(82,181,106);doc.rect(14,y,182,12,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(255,255,255);
+  doc.text('REIMBURSEMENT RECEIVED CONFIRMATION',pw/2,y+8,{align:'center'});
+  y+=18;
+  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(130,125,118);
+  doc.text('RECEIVED FROM',14,y);doc.text('RECEIVED BY',pw/2+4,y);
+  doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(30,30,30);
+  doc.text(fromName,14,y+7);doc.text(c.name||'BuildPro',pw/2+4,y+7);
+  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(100,100,100);
+  if(cli?.phone)doc.text(cli.phone,14,y+13);
+  if(c.phone)doc.text(c.phone,pw/2+4,y+13);
+  y+=22;
+  doc.setFillColor(248,246,242);doc.rect(14,y,182,36,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(100,100,100);
+  doc.text('Project:',16,y+8);doc.text('Received:',16,y+16);
+  doc.text('Method:',16,y+24);doc.text('Note:',16,y+32);
+  doc.setFont('helvetica','bold');doc.setTextColor(30,30,30);
+  doc.text(projName,52,y+8);
+  doc.text(fmtDT(r.date,r.time?fmtTime12(r.time):'')||'—',52,y+16);
+  doc.text(r.method||'Cash',52,y+24);
+  const noteLine=doc.splitTextToSize(r.note||'—',70);
+  doc.text(noteLine[0]||'—',52,y+32);
+  doc.setFillColor(82,181,106);doc.rect(pw-78,y,64,36,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(255,255,255);
+  doc.text('AMOUNT RECEIVED',pw-46,y+9,{align:'center'});
+  doc.setFontSize(16);doc.text('PKR',pw-46,y+20,{align:'center'});
+  doc.setFontSize(13);doc.text(fmt(r.amount),pw-46,y+29,{align:'center'});
+  y+=44;
+  doc.setFont('helvetica','italic');doc.setFontSize(8);doc.setTextColor(110,105,98);
+  const apply=doc.splitTextToSize('Applied against the shortfall on general expenses and on-behalf amounts already paid out. Not a contract payment. Not added to owner cash. The owner statement is unchanged.',182);
+  doc.text(apply,14,y);
+  y+=apply.length*3.6+4;
+  const rows=[
+    {label:'Owner cash (misc)',value:'PKR '+fmt(pos.cashInHand)},
+    {label:'General expenses paid',value:'PKR '+fmt(pos.cashSpent)},
+    {label:pos.shortfall>0?'Shortfall you covered':'Advance left',value:'PKR '+fmt(pos.shortfall>0?pos.shortfall:pos.advanceLeft)},
+    {label:'On behalf paid out',value:'PKR '+fmt(pos.behalfPaidOut)}
+  ];
+  if(pos.behalfUnpaid>0)rows.push({label:'Not paid out (excluded)',value:'PKR '+fmt(pos.behalfUnpaid)});
+  rows.push({label:'This receipt',value:'PKR '+fmt(r.amount)});
+  if(Math.abs((pos.received||0)-(Number(r.amount)||0))>0.5)rows.push({label:'Received in total',value:'PKR '+fmt(pos.received)});
+  rows.push({label:'STILL DUE',value:'PKR '+fmt(Math.max(0,pos.balance))});
+  y=drawPdfTotalsBox(doc,y,rows);
+  const still=Math.max(0,pos.balance);
+  if(y+28<=272){
+    if(still>0.5)y=drawPdfGrandTotal(doc,y,'STILL DUE AFTER THIS RECEIPT','PKR '+fmt(still),{tone:'red',h:18});
+    else{
+      const over=pos.balance<-0.5?(' · over PKR '+fmt(Math.abs(pos.balance))):'';
+      y=drawPdfGrandTotal(doc,y,'REIMBURSEMENT SETTLED'+over,'',{tone:'green',h:18,fontSize:11});
+    }
+  }
+  drawBankFooter(doc);
+  savePdf(doc,'ReimbursementReceipt-'+projName.replace(/\s+/g,'-')+'-'+(r.date||today())+'.pdf');
+  toast('Reimbursement receipt PDF ✓');
 }
 
 // ════ BACKUP ════
@@ -11913,7 +12123,7 @@ async function importBk(){
         if(!p||typeof p!=='object'||Array.isArray(p))throw new Error('Invalid backup');
         // Keep logo as-is — full logo now saves directly to Supabase
         // Import EVERY key into D
-        const keys=['company','clients','projects','subcons','subpays','cpays','invoices','estimates','agreements','tasks','expenses','investors','banks','subconContracts','personals'];
+        const keys=['company','clients','projects','subcons','subpays','cpays','invoices','estimates','agreements','tasks','expenses','investors','banks','subconContracts','personals','reimbursements'];
         keys.forEach(k=>{if(p[k]!==undefined)D[k]=p[k];});
         // Ensure arrays
         keys.filter(k=>k!=='company').forEach(k=>{if(!Array.isArray(D[k]))D[k]=[];});
@@ -11937,7 +12147,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-11-21-v102';
+const APP_VERSION='2026-11-22-v103';
 // Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
 // GitHub Pages is the live OTA source of truth while Wasmer Edge GitHub deploys are failing.
 const OTA_ORIGIN='https://abbashafiz.github.io/Buildpro-crm';
