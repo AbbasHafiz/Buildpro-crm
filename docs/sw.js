@@ -1,11 +1,34 @@
 // Bump APP_VERSION on every release so browsers detect a new service worker.
-const APP_VERSION = '2026-11-23-v105';
+const APP_VERSION = '2026-11-23-v106';
 const CACHE = 'buildpro-' + APP_VERSION;
 const CORE = ['/manifest.json', '/icon-192.png', '/icon-512.png'];
 
 self.addEventListener('message', e => {
   if (e.origin && self.location && e.origin !== self.location.origin) return;
   if (e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting();
+  if (e.data && e.data.type === 'TASK_REMIND' && e.data.title) {
+    const data = e.data;
+    e.waitUntil(self.registration.showNotification(data.title, {
+      body: data.body || '',
+      tag: data.tag || 'bp-task',
+      icon: 'icon-192.png',
+      badge: 'icon-192.png',
+      data: { taskId: data.taskId || '' }
+    }));
+  }
+});
+
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const taskId = e.notification.data && e.notification.data.taskId;
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
+    const client = clients.find(c => /index\.html/.test(c.url)) || clients[0];
+    if (client) {
+      client.postMessage({ type: 'OPEN_TASK', taskId: taskId || '' });
+      return client.focus();
+    }
+    if (self.clients.openWindow) return self.clients.openWindow('./index.html');
+  }));
 });
 
 self.addEventListener('install', e => {
