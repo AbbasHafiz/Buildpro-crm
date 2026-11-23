@@ -11859,6 +11859,105 @@ function reimburseFootRows(pos){
   }
   return rows;
 }
+async function pdfReimbursement(pid,projName){
+  settleReimbursedOnBehalf();
+  await prepareCompanyLogo();
+  const p=D.projects.find(x=>x.id===pid);if(!p)return;
+  const c=co();const doc=bPDF();const pw=210;
+  const cli=D.clients.find(x=>x.id===p.clientId);
+  const pos=reimbursePosition(pid);
+  const exps=pos.exps;
+  if(!exps.length){toast('No owner-side expenses to reimburse','info');return;}
+  const fundLabel=r=>r.fundedBy==='onbehalf'?'On Behalf':'General Expenses';
+  let y=drawHeader(doc,'EXPENSE REIMBURSEMENT REQUEST',p.name,today(),'','');
+
+  doc.setFillColor(248,246,242);doc.rect(14,y,182,20,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(130,125,118);
+  doc.text('TO (OWNER / CLIENT)',16,y+6);doc.text('FROM (CONTRACTOR)',pw/2+4,y+6);
+  doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(30,30,30);
+  doc.text(cli?cli.name:'Owner',16,y+14);doc.text(c.name||'Contractor',pw/2+4,y+14);
+  doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(100,100,100);
+  if(cli?.phone)doc.text(cli.phone,16,y+20);
+  if(c.phone)doc.text(c.phone,pw/2+4,y+20);
+  y+=28;
+  doc.setFont('helvetica','italic');doc.setFontSize(8);doc.setTextColor(110,105,98);
+  const note=doc.splitTextToSize('Reimbursement due = shortfall (general expenses paid minus owner cash) + on-behalf money already paid out. Supplier bills you have not paid are excluded. This does not change contract receipts or owner cash.',182);
+  doc.text(note,14,y);
+  y+=note.length*3.6+2;
+  if(pos.ownerBills>0){
+    doc.text('Owner-side bills PKR '+fmt(pos.ownerBills)+' are the spend listed below, not the amount due.',14,y);
+    y+=5;
+  }
+  if(pos.cashPending>0){
+    doc.text('General expenses still unpaid to suppliers: PKR '+fmt(pos.cashPending)+' (not in the shortfall).',14,y);
+    y+=5;
+  }
+  y+=3;
+  y=drawPdfTotalsBox(doc,y,reimburseFootRows(pos));
+
+  doc.autoTable({
+    startY:y,
+    head:[['Date','Description','Funded','Category','Status','Bill','Paid','Due']],
+    body:exps.map(r=>[r.date||'—',r.desc+(r.paidTo?'\nPaid to: '+r.paidTo:''),
+      fundLabel(r),
+      (r.cat||'other').charAt(0).toUpperCase()+(r.cat||'other').slice(1),
+      reimburseLineStatus(r),fmt(r.amount),fmt(expPaidAmt(r)),fmt(expDueAmt(r))]),
+    styles:{fontSize:8,cellPadding:2.2,textColor:[30,30,30]},
+    headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:7.5},
+    columnStyles:{4:{cellWidth:22},5:{halign:'right',cellWidth:18},6:{halign:'right',cellWidth:18},7:{halign:'right',cellWidth:18}},
+    didParseCell:data=>{
+      if(data.section==='body'&&data.column.index===4)
+        data.cell.styles.textColor=reimburseStatusColor(data.cell.raw);
+    },
+    rowPageBreak:'avoid',
+    margin:{left:14,right:14,bottom:18}
+  });
+  y=doc.lastAutoTable.finalY+6;
+  const receipts=reimburseReceipts(pid).slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  if(receipts.length){
+    if(y>230){doc.addPage();y=20;}
+    doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(130,125,118);
+    doc.text('REIMBURSEMENT ALREADY RECEIVED',14,y);y+=4;
+    doc.autoTable({
+      startY:y,
+      head:[['Date / Time','Method','Note','Amount (PKR)']],
+      body:receipts.map(r=>[fmtDT(r.date,r.time?fmtTime12(r.time):'')||'—',r.method||'Cash',r.note||'—',fmt(r.amount)]),
+      foot:[['','','Received','PKR '+fmt(pos.received)]],
+      styles:{fontSize:8,cellPadding:2.2,textColor:[30,30,30]},
+      headStyles:{fillColor:[245,243,239],textColor:[130,125,118],fontStyle:'bold',fontSize:7.5},
+      footStyles:pdfFootStyles('green'),
+      columnStyles:{3:{halign:'right'}},
+      rowPageBreak:'avoid',showFoot:'lastPage',
+      margin:{left:14,right:14,bottom:18}
+    });
+    y=doc.lastAutoTable.finalY+6;
+  }
+  if(y>240){doc.addPage();y=20;}
+  const still=Math.max(0,pos.balance);
+  if(still>0.5){
+    y=drawPdfGrandTotal(doc,y,'TOTAL REIMBURSEMENT DUE','PKR '+fmt(still),{tone:'red',h:18});
+  }else if(pos.grossDue>0.5||pos.received>0.5){
+    const over=pos.balance<-0.5?(' · over PKR '+fmt(Math.abs(pos.balance))):'';
+    y=drawPdfGrandTotal(doc,y,'REIMBURSEMENT RECEIVED'+over,'',{tone:'green',h:18,fontSize:11});
+  }else if(pos.behalfUnpaid>0){
+    y=drawPdfGrandTotal(doc,y,'NOTHING TO REIMBURSE YET','Unpaid bills excluded',{tone:'gold',h:18,fontSize:11});
+  }else{
+    const msg=pos.advanceLeft>0?('Advance left PKR '+fmt(pos.advanceLeft)):'All owner-side expenses settled';
+    y=drawPdfGrandTotal(doc,y,msg,'',{tone:'green',h:18,fontSize:11});
+  }
+  if(c.bank&&still>0.5){
+    if(y>268){doc.addPage();y=20;}
+    doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(100,100,100);
+    doc.text('For reimbursement, please transfer to:',14,y);
+    doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(30,30,30);
+    doc.text(c.bank+(c.acc?' · A/C: '+c.acc:'')+(c.iban?' · IBAN: '+c.iban:''),14,y+6);
+  }
+  drawBankFooter(doc);
+  savePdf(doc,'Reimbursement-'+p.name.replace(/\s+/g,'-')+'-'+today()+'.pdf');
+  toast('Reimbursement request PDF ✓');
+}
+
+
 // ════ BACKUP ════
 function exportBk(){
   if(!requireAdmin('export a backup'))return;
