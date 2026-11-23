@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-11-23-v108">
+<meta name="app-version" content="2026-11-23-v109">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -1827,7 +1827,7 @@ select option{background:var(--s2);}
       <button class="btn btn-gold" type="button" style="flex:1" onclick="driveBackup()">Back up now</button>
       <button class="btn btn-grey" type="button" style="flex:1" id="drive-connect" onclick="connectDrive()">Connect Google Drive</button>
     </div>
-    <div style="font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:.7px;font-weight:700;margin-bottom:6px">Choose a backup to restore</div>
+    <div style="font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:.7px;font-weight:700;margin-bottom:6px">Current Drive backup</div>
     <div id="drive-list" style="margin-bottom:12px"></div>
     <div class="be-help">
       Backups use the Google account you already sign in with. The app only requests scope <strong>https://www.googleapis.com/auth/drive.file</strong> (files this app creates). Supabase sync stays as it is. Turn this on once, in the Google Cloud project that already holds the OAuth client used by Supabase:
@@ -1835,7 +1835,7 @@ select option{background:var(--s2);}
         <li>APIs &amp; Services → Library → enable <strong>Google Drive API</strong>.</li>
         <li>OAuth consent screen → Data Access → add scope <strong>https://www.googleapis.com/auth/drive.file</strong>.</li>
       </ol>
-      Do not create a new client secret. The Client ID and secret stay in Supabase → Authentication → Providers → Google. After the scope is allowed, connect here once. Backups then run after changes and about every 15 minutes. Google access lasts about an hour; reconnect here when it expires.
+      Do not create a new client secret. The Client ID and secret stay in Supabase → Authentication → Providers → Google. After the scope is allowed, connect here once. One backup runs each day and replaces the BuildPro CRM file already on Drive. Google access lasts about an hour; reconnect here when it expires.
     </div>
   </div>
 </div></div>
@@ -3374,7 +3374,6 @@ function sched(){
   setSync('pending');
   clearTimeout(stmr);
   stmr=setTimeout(writeSupabase,2000);
-  queueDriveBackup();
 }
 
 async function syncNow(){
@@ -3400,7 +3399,7 @@ function launchApp(){
     window.__bpHooks=true;
     setInterval(()=>writeSupabase(),5*60*1000);         // periodic push
     setInterval(()=>pullRemote(),30*1000);              // periodic pull (freshness across devices)
-    setInterval(()=>driveBackup({auto:true}),15*60*1000); // Drive copy while the app stays open
+    setInterval(()=>driveBackup({auto:true}),60*60*1000); // At most one Drive backup per local day
     document.addEventListener('visibilitychange',()=>{if(!document.hidden){pullRemote();driveBackup({auto:true});}}); // pull when tab refocused
     // Auto-sync the moment the connection returns: push pending offline changes, then pull latest.
     window.addEventListener('online',async()=>{
@@ -12351,8 +12350,8 @@ async function importBk(){
 // (files this app creates). No OAuth client secret lives in this app.
 const DRIVE_SCOPE='https://www.googleapis.com/auth/drive.file';
 const DRIVE_FOLDER='BuildPro CRM';
+const DRIVE_FILE='buildpro-backup.json';
 let drivePending=null;
-let driveTimer=null;
 let driveBusy=false;
 let driveToldReconnect=false;
 let driveFiles=[];
@@ -12529,42 +12528,81 @@ async function driveFolderId(){
   try{if(key)localStorage.setItem(key,id);}catch(e){}
   return id;
 }
+function driveToday(){
+  if(typeof window.__bpDriveToday==='string'&&window.__bpDriveToday)return window.__bpDriveToday;
+  const d=new Date();
+  const p=n=>String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
+}
+function driveDoneToday(){
+  try{return localStorage.getItem(driveKey('day'))===driveToday();}catch(e){return false;}
+}
+function driveMarkDay(){
+  try{const key=driveKey('day');if(key)localStorage.setItem(key,driveToday());}catch(e){}
+}
+function driveFileId(){
+  try{return localStorage.getItem(driveKey('file'))||'';}catch(e){return '';}
+}
+function rememberDriveFile(id){
+  try{const key=driveKey('file');if(key&&id)localStorage.setItem(key,id);}catch(e){}
+}
+async function driveListBackups(){
+  const folder=await driveFolderId();
+  const q="'"+String(folder).replace(/'/g,"\\'")+"' in parents and trashed=false and mimeType='application/json' and (name='"+DRIVE_FILE+"' or name contains 'buildpro-backup-')";
+  const listed=await driveJson('https://www.googleapis.com/drive/v3/files?spaces=drive&orderBy='+encodeURIComponent('modifiedTime desc')+'&pageSize=50&fields='+encodeURIComponent('files(id,name,createdTime,modifiedTime,size)')+'&q='+encodeURIComponent(q));
+  return ((listed&&listed.files)||[]).map(f=>({id:f.id,name:f.name,createdTime:f.modifiedTime||f.createdTime,size:f.size}));
+}
+async function driveDropOthers(keepId,listed){
+  const files=listed||await driveListBackups();
+  for(let i=0;i<files.length;i++){
+    if(!files[i]||files[i].id===keepId)continue;
+    try{await driveJson('https://www.googleapis.com/drive/v3/files/'+encodeURIComponent(files[i].id),{method:'DELETE'});}catch(e){}
+  }
+}
 async function driveUploadBackup(obj){
   const folder=await driveFolderId();
-  const stamp=new Date().toISOString().replace(/[:.]/g,'-').replace('T','-').slice(0,19);
-  const name='buildpro-backup-'+stamp+'.json';
+  const listed=await driveListBackups();
+  const exact=(listed||[]).find(f=>f&&f.name===DRIVE_FILE);
+  let id=driveFileId()||(exact&&exact.id)||(listed[0]&&listed[0].id)||'';
+  if(id){
+    try{
+      const updated=await driveJson('https://www.googleapis.com/upload/drive/v3/files/'+encodeURIComponent(id)+'?uploadType=media&fields=id,name,modifiedTime',{
+        method:'PATCH',
+        headers:{'Content-Type':'application/json; charset=UTF-8'},
+        body:JSON.stringify(obj)
+      });
+      try{
+        await driveJson('https://www.googleapis.com/drive/v3/files/'+encodeURIComponent(id)+'?fields=id,name',{
+          method:'PATCH',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({name:DRIVE_FILE})
+        });
+      }catch(e){}
+      rememberDriveFile(id);
+      await driveDropOthers(id,listed);
+      return {id:id,name:DRIVE_FILE,createdTime:(updated&&(updated.modifiedTime||updated.createdTime))||obj.exportedAt};
+    }catch(err){
+      if(!(err&&err.status===404))throw err;
+      id='';
+    }
+  }
   const boundary='bpbound'+Math.random().toString(36).slice(2);
-  const meta={name:name,mimeType:'application/json',parents:[folder]};
+  const meta={name:DRIVE_FILE,mimeType:'application/json',parents:[folder]};
   const body='--'+boundary+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+JSON.stringify(meta)+'\r\n--'+boundary+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+JSON.stringify(obj)+'\r\n--'+boundary+'--';
   const created=await driveJson('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,createdTime',{
     method:'POST',
     headers:{'Content-Type':'multipart/related; boundary='+boundary},
     body:body
   });
-  return {id:created&&created.id,name:(created&&created.name)||name,createdTime:(created&&created.createdTime)||obj.exportedAt};
-}
-async function driveListBackups(){
-  const folder=await driveFolderId();
-  const q="'"+String(folder).replace(/'/g,"\\'")+"' in parents and trashed=false and name contains 'buildpro-backup-' and mimeType='application/json'";
-  const listed=await driveJson('https://www.googleapis.com/drive/v3/files?spaces=drive&orderBy='+encodeURIComponent('createdTime desc')+'&pageSize=50&fields='+encodeURIComponent('files(id,name,createdTime,size)')+'&q='+encodeURIComponent(q));
-  return (listed&&listed.files)||[];
-}
-async function drivePrune(files){
-  const extra=(files||[]).slice(20);
-  for(let i=0;i<extra.length;i++){
-    try{await driveJson('https://www.googleapis.com/drive/v3/files/'+encodeURIComponent(extra[i].id),{method:'DELETE'});}catch(e){}
-  }
+  id=created&&created.id;
+  if(!id)throw new Error('Drive did not return a file');
+  rememberDriveFile(id);
+  await driveDropOthers(id,listed);
+  return {id:id,name:DRIVE_FILE,createdTime:(created&&created.createdTime)||obj.exportedAt};
 }
 async function driveDownload(id){
   const text=await driveJson('https://www.googleapis.com/drive/v3/files/'+encodeURIComponent(id)+'?alt=media',{raw:true});
   return JSON.parse(text);
-}
-function queueDriveBackup(){
-  if(window.__bpDriveHold)return;
-  if(!driveToken())return;
-  clearTimeout(driveTimer);
-  const wait=typeof window.__bpDriveDelay==='number'?window.__bpDriveDelay:30000;
-  driveTimer=setTimeout(()=>{driveBackup({auto:true});},wait);
 }
 async function driveBackup(opts){
   opts=opts||{};
@@ -12578,10 +12616,13 @@ async function driveBackup(opts){
     if(!opts.auto)toast('Connect Google Drive once. After that, backups run on their own.','info');
     return {ok:false,reason:'no-token'};
   }
+  if(opts.auto&&driveDoneToday())return {ok:true,skipped:true,reason:'today'};
   const digest=driveDigest(JSON.stringify(backupBody()));
   const hashKey=driveKey('hash');
   if(opts.auto&&hashKey){
-    try{if(localStorage.getItem(hashKey)===digest)return {ok:true,skipped:true};}catch(e){}
+    try{
+      if(localStorage.getItem(hashKey)===digest){driveMarkDay();return {ok:true,skipped:true,reason:'unchanged'};}
+    }catch(e){}
   }
   driveBusy=true;
   try{
@@ -12589,10 +12630,10 @@ async function driveBackup(opts){
     const saved=await driveUploadBackup(file);
     try{
       if(hashKey)localStorage.setItem(hashKey,digest);
+      driveMarkDay();
       const statusKey=driveKey('status');
       if(statusKey)localStorage.setItem(statusKey,JSON.stringify({at:file.exportedAt,name:saved.name,id:saved.id}));
     }catch(e){}
-    try{await drivePrune(await driveListBackups());}catch(e){}
     if(!opts.auto)toast('Backed up to Google Drive ✓','ok');
     paintDriveSheet();
     const sheet=e$('sh-drive');
@@ -12642,10 +12683,10 @@ function paintDriveSheet(){
   if(backendCfg&&backendCfg.mode==='local'){
     el.textContent='Local only mode has no Google account. Switch to BuildPro hosted or your Supabase project, sign in with Google, then connect Drive. File export still works from the menu.';
   }else if(!token){
-    el.textContent='Not connected. Connect once with the Google account you already use to sign in. Backups then run after changes and about every 15 minutes, until Google access expires (about an hour).';
+    el.textContent='Not connected. Connect once with the Google account you already use to sign in. One backup then replaces the Drive file each day, until Google access expires (about an hour).';
   }else{
     const when=st&&st.at?st.at.replace('T',' ').slice(0,16):'';
-    el.textContent='Connected'+(email?' as '+email:'')+'. '+(when?('Last backup '+when+'. '):'No backup yet. ')+'Supabase sync is unchanged.';
+    el.textContent='Connected'+(email?' as '+email:'')+'. '+(when?('Last backup '+when+'. '):'No backup yet. ')+'The same Drive file is replaced once a day. Supabase sync is unchanged.';
   }
   const btn=e$('drive-connect');
   if(btn)btn.textContent=token?'Reconnect Google Drive':'Connect Google Drive';
@@ -12655,7 +12696,7 @@ function paintDriveList(files){
   const box=e$('drive-list');
   if(!box)return;
   if(!driveFiles.length){
-    box.innerHTML='<div style="color:var(--mut);font-size:var(--fs-sm)">No Drive backups yet.</div>';
+    box.innerHTML='<div style="color:var(--mut);font-size:var(--fs-sm)">No Drive backup yet.</div>';
     return;
   }
   box.innerHTML=driveFiles.map((f,i)=>{
@@ -12724,7 +12765,7 @@ function crmSnapshot(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-11-23-v108';
+const APP_VERSION='2026-11-23-v109';
 // Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
 // GitHub Pages is the live OTA source of truth while Wasmer Edge GitHub deploys are failing.
 const OTA_ORIGIN='https://abbashafiz.github.io/Buildpro-crm';
