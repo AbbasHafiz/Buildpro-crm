@@ -4,17 +4,18 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#0a0908">
-<meta http-equiv="Content-Security-Policy" content="base-uri 'self'; object-src 'none'; frame-src 'none'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https: wss:; worker-src 'self'">
+<meta http-equiv="Content-Security-Policy" content="base-uri 'self'; object-src 'none'; frame-src 'none'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https: wss:; worker-src 'self' blob: https://cdnjs.cloudflare.com">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-11-23-v104">
+<meta name="app-version" content="2026-11-23-v105">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
@@ -257,6 +258,13 @@ body{color:var(--txt);font-family:'Inter',sans-serif;overscroll-behavior:none;fo
 .sh-x{background:none;border:none;color:var(--mut);font-size:26px;cursor:pointer;line-height:1;padding:0 4px;}
 .sh-body{padding:18px 20px;}
 .sh-ft{padding:14px 20px;border-top:1px solid var(--bor);display:flex;gap:10px;position:sticky;bottom:0;background:var(--s1);}
+#pdf-preview{z-index:260;}
+#pdf-preview .sh{display:flex;flex-direction:column;overflow:hidden;height:min(94vh,920px);padding-bottom:0;}
+#pdf-preview .sh-hd,#pdf-preview .sh-ft{position:static;flex:none;}
+#pdf-preview-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;padding-right:8px;}
+#pdf-preview-pages{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;padding:14px 14px 8px;background:#141311;}
+#pdf-preview-pages canvas{display:block;width:100%;height:auto;background:#fff;border-radius:6px;margin:0 auto 6px;box-shadow:0 8px 24px rgba(0,0,0,.35);}
+.pdf-page-cap{font-size:11px;color:#9a948b;text-align:center;margin:0 0 14px;letter-spacing:.4px;}
 
 /* FORM */
 .f2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
@@ -2322,6 +2330,12 @@ select option{background:var(--s2);}
   <div class="sh-ft"><button class="btn btn-grey" onclick="X('sh-stock')">Cancel</button><button class="btn btn-gold" onclick="saveStock()">💾 Save</button></div>
 </div></div>
 
+<div class="sh-ov" id="pdf-preview"><div class="sh">
+  <div class="sh-hd"><div class="sh-title" id="pdf-preview-title">PDF</div><button class="sh-x" type="button" onclick="closePdfPreview()">×</button></div>
+  <div id="pdf-preview-pages"></div>
+  <div class="sh-ft"><button class="btn btn-grey" type="button" onclick="sharePdfPreview()">Share</button><button class="btn btn-gold" type="button" onclick="savePdfPreview()">Save</button></div>
+</div></div>
+
 <div class="toast" id="toast"><div class="td" id="tdot"></div><span id="tmsg">Saved</span></div>
 
 <script>
@@ -2789,19 +2803,122 @@ function continueOffline(){
 
 function isNative(){return !!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform());}
 function capPlugin(name){return window.Capacitor&&window.Capacitor.Plugins?window.Capacitor.Plugins[name]:null;}
-// Save a jsPDF document. On the web, triggers a normal download. In the native app,
-// jsPDF's download trick doesn't work in a WebView, so we write the file and open the share sheet.
-async function savePdf(doc,filename){
-  if(!isNative()){doc.save(filename);return;}
+// Every PDF opens in the app first. Share and Save happen from that preview.
+let pdfPreviewQueue=[];
+let pdfPreviewCurrent=null;
+let pdfPreviewToken=0;
+function savePdf(doc,filename){
+  let bytes;
+  try{bytes=new Uint8Array(doc.output('arraybuffer'));}
+  catch(e){toast('PDF error: '+(e.message||e),'err');return Promise.resolve();}
+  return new Promise(resolve=>{
+    pdfPreviewQueue.push({doc,filename,bytes,resolve});
+    openNextPdfPreview();
+  });
+}
+function openNextPdfPreview(){
+  if(pdfPreviewCurrent)return;
+  const next=pdfPreviewQueue.shift();
+  if(!next)return;
+  pdfPreviewCurrent=next;
+  const token=++pdfPreviewToken;
+  next.token=token;
+  const title=e$('pdf-preview-title');
+  if(title)title.textContent=next.filename||'PDF';
+  const pages=e$('pdf-preview-pages');
+  if(pages)pages.innerHTML='<div class="pdf-page-cap" style="padding:28px 8px">Preparing pages…</div>';
+  O('pdf-preview');
+  renderPdfPreview(next,token);
+}
+async function renderPdfPreview(item,token){
+  const pages=e$('pdf-preview-pages');
   try{
-    const Filesystem=capPlugin('Filesystem'),Share=capPlugin('Share');
-    const dataUri=doc.output('datauristring');
-    const base64=dataUri.substring(dataUri.indexOf(',')+1);
-    if(!Filesystem){const Browser=capPlugin('Browser');if(Browser)await Browser.open({url:dataUri});return;}
-    const res=await Filesystem.writeFile({path:filename,data:base64,directory:'CACHE'});
-    if(Share&&res&&res.uri){await Share.share({title:filename,url:res.uri});}
-    else{toast('Saved to app storage: '+filename,'ok');}
+    if(!window.pdfjsLib||!pdfjsLib.getDocument)throw new Error('preview unavailable');
+    pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    const pdf=await pdfjsLib.getDocument({data:item.bytes.slice(0)}).promise;
+    if(token!==pdfPreviewToken){try{pdf.destroy();}catch(e){}return;}
+    if(pages)pages.innerHTML='';
+    const title=e$('pdf-preview-title');
+    if(title)title.textContent=(item.filename||'PDF')+' · '+pdf.numPages+(pdf.numPages===1?' page':' pages');
+    for(let i=1;i<=pdf.numPages;i++){
+      if(token!==pdfPreviewToken){try{pdf.destroy();}catch(e){}return;}
+      const page=await pdf.getPage(i);
+      const base=page.getViewport({scale:1});
+      const width=Math.max(280,(pages&&pages.clientWidth)||360)-4;
+      const viewport=page.getViewport({scale:Math.min(2.2,width/base.width)});
+      const canvas=document.createElement('canvas');
+      canvas.width=Math.floor(viewport.width);
+      canvas.height=Math.floor(viewport.height);
+      await page.render({canvasContext:canvas.getContext('2d',{alpha:false}),viewport}).promise;
+      if(token!==pdfPreviewToken){try{pdf.destroy();}catch(e){}return;}
+      if(!pages)continue;
+      pages.appendChild(canvas);
+      const cap=document.createElement('div');
+      cap.className='pdf-page-cap';
+      cap.textContent='Page '+i+' of '+pdf.numPages;
+      pages.appendChild(cap);
+    }
+    try{pdf.destroy();}catch(e){}
+  }catch(err){
+    if(token!==pdfPreviewToken)return;
+    if(pages)pages.innerHTML='<div class="pdf-page-cap" style="padding:28px 8px">Could not draw this PDF here. You can still share or save it.</div>';
+  }
+}
+function closePdfPreview(){
+  pdfPreviewToken++;
+  const ov=e$('pdf-preview');
+  if(ov)ov.classList.remove('on');
+  const cur=pdfPreviewCurrent;
+  pdfPreviewCurrent=null;
+  if(cur&&cur.resolve){const done=cur.resolve;cur.resolve=null;done();}
+  openNextPdfPreview();
+}
+function pdfBase64(doc){
+  const dataUri=doc.output('datauristring');
+  return dataUri.substring(dataUri.indexOf(',')+1);
+}
+async function nativeStorePdf(doc,filename){
+  const Filesystem=capPlugin('Filesystem');
+  const base64=pdfBase64(doc);
+  if(!Filesystem){
+    const Browser=capPlugin('Browser');
+    if(Browser)await Browser.open({url:doc.output('datauristring')});
+    return null;
+  }
+  const res=await Filesystem.writeFile({path:filename,data:base64,directory:'CACHE'});
+  return res&&res.uri?res.uri:'';
+}
+async function savePdfPreview(){
+  const cur=pdfPreviewCurrent;
+  if(!cur)return;
+  try{
+    if(!isNative()){cur.doc.save(cur.filename);toast('PDF saved ✓');return;}
+    const uri=await nativeStorePdf(cur.doc,cur.filename);
+    toast(uri?('Saved to app storage: '+cur.filename):'PDF saved ✓','ok');
   }catch(e){toast('PDF error: '+(e.message||e),'err');}
+}
+async function sharePdfPreview(){
+  const cur=pdfPreviewCurrent;
+  if(!cur)return;
+  try{
+    if(!isNative()){
+      const file=new File([cur.bytes],cur.filename,{type:'application/pdf'});
+      if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
+        await navigator.share({files:[file],title:cur.filename});
+        return;
+      }
+      cur.doc.save(cur.filename);
+      toast('Sharing is not available here, so the PDF was saved');
+      return;
+    }
+    const uri=await nativeStorePdf(cur.doc,cur.filename);
+    const Share=capPlugin('Share');
+    if(Share&&uri)await Share.share({title:cur.filename,url:uri});
+    else toast(uri?('Saved to app storage: '+cur.filename):'PDF saved ✓','ok');
+  }catch(e){
+    if(e&&(e.name==='AbortError'||e.message==='Share canceled'))return;
+    toast('PDF error: '+(e.message||e),'err');
+  }
 }
 // Multi-device sync state
 let baseUpdatedAt=null,applyingRemote=false,rtChannel=null,curUid=null,sessionUser=null;
@@ -3655,7 +3772,11 @@ function toast(msg,type='ok'){const e=e$('toast');e$('tmsg').textContent=msg;e$(
 // ════ SHEETS ════
 function O(id){document.querySelectorAll('.ds-list').forEach(d=>d.classList.remove('on'));e$(id).classList.add('on');cMenu();}
 function X(id){e$(id).classList.remove('on');}
-document.querySelectorAll('.sh-ov').forEach(el=>el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('on');}));
+document.querySelectorAll('.sh-ov').forEach(el=>el.addEventListener('click',e=>{
+  if(e.target!==el)return;
+  if(el.id==='pdf-preview'){closePdfPreview();return;}
+  el.classList.remove('on');
+}));
 function toggleMenu(){e$('umenu').classList.toggle('on');}
 function cMenu(){e$('umenu').classList.remove('on');}
 document.addEventListener('click',e=>{if(!e.target.closest('#umenu')&&!e.target.closest('.ava'))cMenu();if(!e.target.closest('.ds-wrap'))document.querySelectorAll('.ds-list').forEach(d=>d.classList.remove('on'));});
@@ -12003,7 +12124,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-11-23-v104';
+const APP_VERSION='2026-11-23-v105';
 // Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
 // GitHub Pages is the live OTA source of truth while Wasmer Edge GitHub deploys are failing.
 const OTA_ORIGIN='https://abbashafiz.github.io/Buildpro-crm';
