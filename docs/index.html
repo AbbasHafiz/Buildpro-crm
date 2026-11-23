@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-11-23-v106">
+<meta name="app-version" content="2026-11-23-v107">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -458,6 +458,7 @@ select option{background:var(--s2);}
     <div class="um-i" onclick="navTo('admin','Admin');cMenu()">🔐 Admin</div>
     <div class="um-i" onclick="exportBk()">⬇ Export Backup</div>
     <div class="um-i" onclick="importBk()">⬆ Import Backup</div>
+    <div class="um-i" onclick="openDrive()">☁ Google Drive</div>
     <div class="um-i" onclick="openBackendSettings();cMenu()">⚙ Backend / Self-host</div>
     <div class="um-i" id="um-update" onclick="clearCacheUpdate()">🔄 Check for Updates<span id="um-update-badge" style="display:none;margin-left:6px;font-size:9px;background:var(--gold);color:#1a1916;border-radius:6px;padding:1px 6px;font-weight:700">NEW</span></div>
     <div class="um-i red" onclick="signOut()">Sign Out</div>
@@ -938,6 +939,7 @@ select option{background:var(--s2);}
             <button class="btn btn-grey" type="button" onclick="goAdminBackend()">Backend / self-host</button>
             <button class="btn btn-grey" type="button" onclick="exportBk()">Export backup</button>
             <button class="btn btn-grey" type="button" onclick="importBk()">Import backup</button>
+            <button class="btn btn-grey" type="button" onclick="openDrive()">Google Drive backup</button>
           </div>
         </div>
         <div class="be-help">Cloud rows are read and written only for the signed-in user. Self-host projects still need the Row Level Security policy in SELFHOST.md — a browser check cannot replace that. OAuth redirects stay on this site. The service role key is rejected.</div>
@@ -1802,6 +1804,7 @@ select option{background:var(--s2);}
           <li>Add authorized redirect URI from Supabase → Auth → Providers → Google</li>
           <li>Paste Client ID + Client Secret into Supabase Google provider</li>
           <li>Add this site URL (and Android deeplink if needed) under Supabase → Auth → URL Configuration</li>
+          <li>For Drive backup, enable Google Drive API and add scope <strong>https://www.googleapis.com/auth/drive.file</strong> on that same OAuth client. No new client secret.</li>
         </ol>
       </div>
       <div class="fg"><label>Google Client ID <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--mut2)">(optional note)</span></label><input id="be-google" placeholder="xxxxx.apps.googleusercontent.com" autocomplete="off" spellcheck="false"></div>
@@ -1819,6 +1822,29 @@ select option{background:var(--s2);}
     <button class="btn btn-grey" onclick="X('sh-backend')">Cancel</button>
     <button class="btn btn-grey" onclick="resetBackendSettings()" title="Clear saved overrides">Reset</button>
     <button class="btn btn-gold" onclick="saveBackendSettings('be')">💾 Save &amp; Apply</button>
+  </div>
+</div></div>
+
+<!-- GOOGLE DRIVE BACKUP -->
+<div class="sh-ov" id="sh-drive"><div class="sh">
+  <div class="sh-grip"></div>
+  <div class="sh-hd"><div class="sh-title">Google Drive</div><button class="sh-x" onclick="X('sh-drive')">×</button></div>
+  <div class="sh-body">
+    <div id="drive-status" style="font-size:var(--fs-sm);line-height:1.45;margin-bottom:10px">Checking Google Drive…</div>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <button class="btn btn-gold" type="button" style="flex:1" onclick="driveBackup()">Back up now</button>
+      <button class="btn btn-grey" type="button" style="flex:1" id="drive-connect" onclick="connectDrive()">Connect Google Drive</button>
+    </div>
+    <div style="font-size:var(--fs-xs);color:var(--mut);text-transform:uppercase;letter-spacing:.7px;font-weight:700;margin-bottom:6px">Choose a backup to restore</div>
+    <div id="drive-list" style="margin-bottom:12px"></div>
+    <div class="be-help">
+      Backups use the Google account you already sign in with. The app only requests scope <strong>https://www.googleapis.com/auth/drive.file</strong> (files this app creates). Supabase sync stays as it is. Turn this on once, in the Google Cloud project that already holds the OAuth client used by Supabase:
+      <ol>
+        <li>APIs &amp; Services → Library → enable <strong>Google Drive API</strong>.</li>
+        <li>OAuth consent screen → Data Access → add scope <strong>https://www.googleapis.com/auth/drive.file</strong>.</li>
+      </ol>
+      Do not create a new client secret. The Client ID and secret stay in Supabase → Authentication → Providers → Google. After the scope is allowed, connect here once. Backups then run after changes and about every 15 minutes. Google access lasts about an hour; reconnect here when it expires.
+    </div>
   </div>
 </div></div>
 
@@ -3170,6 +3196,7 @@ function initSupa(){
     return;
   }
   if(authUnsub){try{authUnsub();}catch(e){}authUnsub=null;}
+  captureDriveFromLocation();
   supa=supabase.createClient(creds.url,creds.key,{
     auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}
   });
@@ -3177,11 +3204,14 @@ function initSupa(){
   // Listen for auth state changes
   const{data:{subscription}}=supa.auth.onAuthStateChange(async(event,session)=>{
     if(event==='SIGNED_IN'&&session){
+      captureDriveSession(session);
       await loadSupaData(session.user);
+      captureDriveSession(session);
       updateUserUI(session.user);
       launchApp();
     }else if(event==='SIGNED_OUT'){
       try{sessionStorage.setItem('bp_user_switched','1');}catch(e){}
+      clearDriveToken(curUid);
       resetDataMemory();
       curUid=null;
       sessionUser=null;
@@ -3189,6 +3219,7 @@ function initSupa(){
       document.getElementById('login').style.display='flex';
       toast('Signed out','info');
     }else if(event==='TOKEN_REFRESHED'){
+      captureDriveSession(session);
       setSync('synced');
     }
   });
@@ -3196,7 +3227,9 @@ function initSupa(){
   // Check existing session on load
   supa.auth.getSession().then(({data:{session}})=>{
     if(session){
+      captureDriveSession(session);
       loadSupaData(session.user).then(()=>{
+        captureDriveSession(session);
         updateUserUI(session.user);
         launchApp();
       });
@@ -3220,7 +3253,7 @@ async function signIn(){
     try{
       const{data,error}=await supa.auth.signInWithOAuth({
         provider:'google',
-        options:{redirectTo,skipBrowserRedirect:true}
+        options:googleSignInOptions({skipBrowserRedirect:true,redirectTo})
       });
       if(error)throw error;
       const Browser=capPlugin('Browser');
@@ -3230,7 +3263,7 @@ async function signIn(){
   }
   supa.auth.signInWithOAuth({
     provider:'google',
-    options:{redirectTo}
+    options:googleSignInOptions({redirectTo})
   });
 }
 
@@ -3244,6 +3277,7 @@ function initNativeAuth(){
     try{
       const frag=url.split('#')[1]||'';
       const q=new URLSearchParams(frag);
+      captureDriveFromParams(q);
       const access_token=q.get('access_token'),refresh_token=q.get('refresh_token');
       if(access_token&&refresh_token){
         await supa.auth.setSession({access_token,refresh_token});
@@ -3258,6 +3292,7 @@ function initNativeAuth(){
 
 async function signOut(){
   try{sessionStorage.setItem('bp_user_switched','1');}catch(e){}
+  clearDriveToken(curUid);
   if(backendCfg.mode==='local'){
     writeLocalData('local');
     resetDataMemory();
@@ -3382,7 +3417,8 @@ async function loadSupaData(user){
   }
 }
 
-async function writeSupabase(){
+async function writeSupabase(opts){
+  const replace=!!(opts&&opts.replace);
   if(!supa){writeLocalData(curUid);setSync('pending');return;}
   const{data:{session}}=await supa.auth.getSession();
   if(!session){writeLocalData(curUid);setSync('pending');return;}
@@ -3399,7 +3435,7 @@ async function writeSupabase(){
     writeLocalData(uid);
     // Conflict guard: if another device wrote since we last synced, merge first so nothing is clobbered.
     const{data:srv}=await supa.from('buildpro_data').select('data,updated_at').eq('user_id',uid).single();
-    if(srv&&srv.updated_at&&baseUpdatedAt&&srv.updated_at!==baseUpdatedAt&&srv.data){
+    if(!replace&&srv&&srv.updated_at&&baseUpdatedAt&&srv.updated_at!==baseUpdatedAt&&srv.data){
       D=mergeData(D,srv.data);
       if(!applyingRemote){applyingRemote=true;try{renderAll();refreshProfileUI();}catch(e){}applyingRemote=false;}
     }
@@ -3455,6 +3491,7 @@ function sched(){
   setSync('pending');
   clearTimeout(stmr);
   stmr=setTimeout(writeSupabase,2000);
+  queueDriveBackup();
 }
 
 async function syncNow(){
@@ -3480,11 +3517,12 @@ function launchApp(){
     window.__bpHooks=true;
     setInterval(()=>writeSupabase(),5*60*1000);         // periodic push
     setInterval(()=>pullRemote(),30*1000);              // periodic pull (freshness across devices)
-    document.addEventListener('visibilitychange',()=>{if(!document.hidden)pullRemote();}); // pull when tab refocused
+    setInterval(()=>driveBackup({auto:true}),15*60*1000); // Drive copy while the app stays open
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden){pullRemote();driveBackup({auto:true});}}); // pull when tab refocused
     // Auto-sync the moment the connection returns: push pending offline changes, then pull latest.
     window.addEventListener('online',async()=>{
       toast('Back online — syncing…','info');
-      try{await writeSupabase();await pullRemote();}catch(e){}
+      try{await writeSupabase();await pullRemote();await driveBackup({auto:true});}catch(e){}
     });
     window.addEventListener('offline',()=>{try{setSync('error');}catch(e){}});
   }
@@ -3492,6 +3530,7 @@ function launchApp(){
   renderAll();refreshProfileUI();
   prepareCompanyLogo().then(()=>{try{refreshProfileUI();}catch(e){}});
   if(typeof startTaskReminders==='function')startTaskReminders();
+  setTimeout(()=>{driveBackup({auto:true});},4000);
 }
 
 // ════ NAVIGATION ════
@@ -12425,9 +12464,385 @@ async function importBk(){
   inp.click();cMenu();
 }
 
+// ════ GOOGLE DRIVE BACKUP ════
+// Uses the Google account from Supabase sign-in. Scope is drive.file only
+// (files this app creates). No OAuth client secret lives in this app.
+const DRIVE_SCOPE='https://www.googleapis.com/auth/drive.file';
+const DRIVE_FOLDER='BuildPro CRM';
+let drivePending=null;
+let driveTimer=null;
+let driveBusy=false;
+let driveToldReconnect=false;
+let driveFiles=[];
+
+function googleSignInOptions(opts){
+  opts=opts||{};
+  const redirectTo=opts.redirectTo||(isNative()?resolveDeeplink():resolveRedirectTo());
+  const options={
+    redirectTo,
+    scopes:'openid email profile '+DRIVE_SCOPE,
+    queryParams:{access_type:'offline',include_granted_scopes:'true'}
+  };
+  if(opts.consent)options.queryParams.prompt='consent';
+  if(opts.skipBrowserRedirect)options.skipBrowserRedirect=true;
+  return options;
+}
+function driveUid(){
+  if(backendCfg&&backendCfg.mode==='local')return 'local';
+  return safeUid(curUid)||'';
+}
+function driveKey(kind){
+  const uid=driveUid();
+  return uid?('bp-drive-'+kind+':'+uid):'';
+}
+function rememberDriveToken(token,expiresAt){
+  if(!token)return;
+  drivePending={token:String(token),exp:expiresAt||(Date.now()+50*60*1000)};
+  const key=driveKey('token');
+  if(!key)return;
+  try{localStorage.setItem(key,JSON.stringify(drivePending));}catch(e){}
+}
+function persistDriveToken(){
+  if(!drivePending)return;
+  const key=driveKey('token');
+  if(!key)return;
+  try{localStorage.setItem(key,JSON.stringify(drivePending));}catch(e){}
+}
+function clearDriveToken(uid){
+  drivePending=null;
+  const id=(backendCfg&&backendCfg.mode==='local')?'local':(safeUid(uid||curUid)||'');
+  if(!id)return;
+  try{localStorage.removeItem('bp-drive-token:'+id);}catch(e){}
+}
+function driveToken(){
+  const key=driveKey('token');
+  if(!key)return '';
+  try{
+    const raw=localStorage.getItem(key);
+    if(!raw)return '';
+    const o=JSON.parse(raw);
+    if(!o||!o.token||!o.exp||o.exp<Date.now()+15000)return '';
+    return o.token;
+  }catch(e){return '';}
+}
+function captureDriveFromParams(q){
+  if(!q)return;
+  const token=q.get('provider_token');
+  if(!token)return;
+  const exp=parseInt(q.get('expires_in')||'3600',10);
+  const secs=isFinite(exp)?Math.max(120,exp-120):3000;
+  rememberDriveToken(token,Date.now()+secs*1000);
+}
+function captureDriveFromLocation(){
+  try{
+    const hash=(location.hash||'').replace(/^#/,'');
+    if(hash.indexOf('provider_token=')===-1)return;
+    captureDriveFromParams(new URLSearchParams(hash));
+  }catch(e){}
+}
+function captureDriveSession(session){
+  if(session&&session.provider_token)rememberDriveToken(session.provider_token,Date.now()+50*60*1000);
+  else persistDriveToken();
+}
+function driveNeedsReconnect(){
+  clearDriveToken(curUid);
+  if(!driveToldReconnect){
+    driveToldReconnect=true;
+    toast('Google Drive needs access again. Open the menu and tap Google Drive.','info');
+  }
+  paintDriveSheet();
+}
+function driveEsc(s){
+  return String(s==null?'':s).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
+function driveFetch(url,opts){
+  if(typeof window.__bpDriveFetch==='function')return window.__bpDriveFetch(url,opts||{});
+  return fetch(url,opts);
+}
+async function driveJson(url,opts){
+  const token=driveToken();
+  if(!token){const err=new Error('Google Drive is not connected');err.code='no-token';throw err;}
+  opts=opts||{};
+  const headers=Object.assign({Authorization:'Bearer '+token},opts.headers||{});
+  const res=await driveFetch(url,{method:opts.method||'GET',headers,body:opts.body});
+  if(res.status===401||res.status===403){
+    const err=new Error('Google Drive access expired');
+    err.code='auth';
+    err.status=res.status;
+    throw err;
+  }
+  if(!res.ok){
+    let msg='Drive error '+res.status;
+    try{
+      const j=await res.json();
+      if(j&&j.error&&(j.error.message||typeof j.error==='string'))msg=j.error.message||j.error;
+    }catch(e){}
+    const err=new Error(msg);
+    err.status=res.status;
+    throw err;
+  }
+  if(res.status===204)return null;
+  if(opts.raw)return res.text();
+  return res.json();
+}
+function backupBody(){
+  const snap=plainClone(D)||{};
+  const out={app:'buildpro',version:1};
+  out.company=(snap.company&&typeof snap.company==='object'&&!Array.isArray(snap.company))?snap.company:emptyData().company;
+  COLLECTIONS.forEach(k=>{out[k]=Array.isArray(snap[k])?snap[k]:[];});
+  out._tomb=Array.isArray(snap._tomb)?snap._tomb:[];
+  return out;
+}
+function backupFileObject(){
+  const body=backupBody();
+  body.exportedAt=new Date().toISOString();
+  return body;
+}
+function backupLooksValid(p){
+  if(!p||typeof p!=='object'||Array.isArray(p))return false;
+  if(p.app&&p.app!=='buildpro')return false;
+  if(p.company&&typeof p.company==='object')return true;
+  return COLLECTIONS.some(k=>Array.isArray(p[k]));
+}
+function driveDigest(text){
+  let h=5381;
+  for(let i=0;i<text.length;i++)h=Math.imul(h,33)^text.charCodeAt(i);
+  return String(h>>>0);
+}
+function replaceDataFromBackup(p){
+  const full=p&&p.app==='buildpro'&&p.version===1;
+  const prevIds=[];
+  if(full){
+    COLLECTIONS.forEach(k=>{(D[k]||[]).forEach(r=>{if(r&&r.id!=null)prevIds.push(String(r.id));});});
+    D=emptyData();
+  }
+  applyDataObject(p);
+  if(!full)return;
+  const next=new Set();
+  COLLECTIONS.forEach(k=>{(D[k]||[]).forEach(r=>{if(r&&r.id!=null)next.add(String(r.id));});});
+  const tombs=Array.isArray(D._tomb)?D._tomb.slice():[];
+  const ts=new Date().toISOString();
+  prevIds.forEach(id=>{if(!next.has(id)&&!tombs.some(t=>t&&String(t.id)===id))tombs.push({id,ts});});
+  D._tomb=tombs;
+  try{alignImportedPayments();}catch(e){}
+}
+async function driveFolderId(){
+  const key=driveKey('folder');
+  try{
+    const cached=key&&localStorage.getItem(key);
+    if(cached)return cached;
+  }catch(e){}
+  const q="mimeType='application/vnd.google-apps.folder' and name='"+DRIVE_FOLDER+"' and trashed=false";
+  const listed=await driveJson('https://www.googleapis.com/drive/v3/files?spaces=drive&fields=files(id,name)&q='+encodeURIComponent(q));
+  let id=listed&&listed.files&&listed.files[0]&&listed.files[0].id;
+  if(!id){
+    const created=await driveJson('https://www.googleapis.com/drive/v3/files?fields=id',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({name:DRIVE_FOLDER,mimeType:'application/vnd.google-apps.folder'})
+    });
+    id=created&&created.id;
+  }
+  if(!id)throw new Error('Could not open the BuildPro folder in Drive');
+  try{if(key)localStorage.setItem(key,id);}catch(e){}
+  return id;
+}
+async function driveUploadBackup(obj){
+  const folder=await driveFolderId();
+  const stamp=new Date().toISOString().replace(/[:.]/g,'-').replace('T','-').slice(0,19);
+  const name='buildpro-backup-'+stamp+'.json';
+  const boundary='bpbound'+Math.random().toString(36).slice(2);
+  const meta={name:name,mimeType:'application/json',parents:[folder]};
+  const body='--'+boundary+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+JSON.stringify(meta)+'\r\n--'+boundary+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+JSON.stringify(obj)+'\r\n--'+boundary+'--';
+  const created=await driveJson('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,createdTime',{
+    method:'POST',
+    headers:{'Content-Type':'multipart/related; boundary='+boundary},
+    body:body
+  });
+  return {id:created&&created.id,name:(created&&created.name)||name,createdTime:(created&&created.createdTime)||obj.exportedAt};
+}
+async function driveListBackups(){
+  const folder=await driveFolderId();
+  const q="'"+String(folder).replace(/'/g,"\\'")+"' in parents and trashed=false and name contains 'buildpro-backup-' and mimeType='application/json'";
+  const listed=await driveJson('https://www.googleapis.com/drive/v3/files?spaces=drive&orderBy='+encodeURIComponent('createdTime desc')+'&pageSize=50&fields='+encodeURIComponent('files(id,name,createdTime,size)')+'&q='+encodeURIComponent(q));
+  return (listed&&listed.files)||[];
+}
+async function drivePrune(files){
+  const extra=(files||[]).slice(20);
+  for(let i=0;i<extra.length;i++){
+    try{await driveJson('https://www.googleapis.com/drive/v3/files/'+encodeURIComponent(extra[i].id),{method:'DELETE'});}catch(e){}
+  }
+}
+async function driveDownload(id){
+  const text=await driveJson('https://www.googleapis.com/drive/v3/files/'+encodeURIComponent(id)+'?alt=media',{raw:true});
+  return JSON.parse(text);
+}
+function queueDriveBackup(){
+  if(window.__bpDriveHold)return;
+  if(!driveToken())return;
+  clearTimeout(driveTimer);
+  const wait=typeof window.__bpDriveDelay==='number'?window.__bpDriveDelay:30000;
+  driveTimer=setTimeout(()=>{driveBackup({auto:true});},wait);
+}
+async function driveBackup(opts){
+  opts=opts||{};
+  if(window.__bpDriveHold)return {ok:false,reason:'hold'};
+  if(!isAdminSession()){
+    if(!opts.auto)requireAdmin('back up to Google Drive');
+    return {ok:false,reason:'admin'};
+  }
+  if(driveBusy)return {ok:false,reason:'busy'};
+  if(!driveToken()){
+    if(!opts.auto)toast('Connect Google Drive once. After that, backups run on their own.','info');
+    return {ok:false,reason:'no-token'};
+  }
+  const digest=driveDigest(JSON.stringify(backupBody()));
+  const hashKey=driveKey('hash');
+  if(opts.auto&&hashKey){
+    try{if(localStorage.getItem(hashKey)===digest)return {ok:true,skipped:true};}catch(e){}
+  }
+  driveBusy=true;
+  try{
+    const file=backupFileObject();
+    const saved=await driveUploadBackup(file);
+    try{
+      if(hashKey)localStorage.setItem(hashKey,digest);
+      const statusKey=driveKey('status');
+      if(statusKey)localStorage.setItem(statusKey,JSON.stringify({at:file.exportedAt,name:saved.name,id:saved.id}));
+    }catch(e){}
+    try{await drivePrune(await driveListBackups());}catch(e){}
+    if(!opts.auto)toast('Backed up to Google Drive ✓','ok');
+    paintDriveSheet();
+    const sheet=e$('sh-drive');
+    if(sheet&&sheet.classList.contains('on'))refreshDriveList();
+    return {ok:true,file:saved,payload:file};
+  }catch(err){
+    if(err&&(err.code==='auth'||err.code==='no-token')){
+      if(err.code==='auth')driveNeedsReconnect();
+      return {ok:false,reason:err.code};
+    }
+    if(!opts.auto)toast('Drive backup failed: '+(err.message||err),'err');
+    return {ok:false,reason:err&&err.message?err.message:'error'};
+  }finally{driveBusy=false;}
+}
+async function connectDrive(){
+  if(!requireAdmin('connect Google Drive'))return;
+  if(!backendCfg||backendCfg.mode==='local'||!supa){
+    toast('Google Drive uses the Google account you sign in with. Switch off Local only, then sign in.','info');
+    return;
+  }
+  try{sessionStorage.setItem('bp_drive_connect','1');}catch(e){}
+  const redirectTo=isNative()?resolveDeeplink():resolveRedirectTo();
+  if(isNative()){
+    try{
+      const{data,error}=await supa.auth.signInWithOAuth({
+        provider:'google',
+        options:googleSignInOptions({consent:true,skipBrowserRedirect:true,redirectTo})
+      });
+      if(error)throw error;
+      const Browser=capPlugin('Browser');
+      if(Browser&&data&&data.url)await Browser.open({url:data.url});
+    }catch(e){toast('Could not connect Google Drive: '+(e.message||e),'err');}
+    return;
+  }
+  supa.auth.signInWithOAuth({
+    provider:'google',
+    options:googleSignInOptions({consent:true,redirectTo})
+  });
+}
+function paintDriveSheet(){
+  const el=e$('drive-status');
+  if(!el)return;
+  let st=null;
+  try{st=JSON.parse(localStorage.getItem(driveKey('status'))||'null');}catch(e){}
+  const token=driveToken();
+  const email=(sessionUser&&sessionUser.email)||'';
+  if(backendCfg&&backendCfg.mode==='local'){
+    el.textContent='Local only mode has no Google account. Switch to BuildPro hosted or your Supabase project, sign in with Google, then connect Drive. File export still works from the menu.';
+  }else if(!token){
+    el.textContent='Not connected. Connect once with the Google account you already use to sign in. Backups then run after changes and about every 15 minutes, until Google access expires (about an hour).';
+  }else{
+    const when=st&&st.at?st.at.replace('T',' ').slice(0,16):'';
+    el.textContent='Connected'+(email?' as '+email:'')+'. '+(when?('Last backup '+when+'. '):'No backup yet. ')+'Supabase sync is unchanged.';
+  }
+  const btn=e$('drive-connect');
+  if(btn)btn.textContent=token?'Reconnect Google Drive':'Connect Google Drive';
+}
+function paintDriveList(files){
+  driveFiles=files||[];
+  const box=e$('drive-list');
+  if(!box)return;
+  if(!driveFiles.length){
+    box.innerHTML='<div style="color:var(--mut);font-size:var(--fs-sm)">No Drive backups yet.</div>';
+    return;
+  }
+  box.innerHTML=driveFiles.map((f,i)=>{
+    const when=f.createdTime?String(f.createdTime).replace('T',' ').slice(0,16):'';
+    return '<div style="display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--bor)"><div style="flex:1;min-width:0"><div style="font-size:var(--fs-sm);font-weight:600;overflow:hidden;text-overflow:ellipsis">'+driveEsc(f.name||'backup')+'</div><div style="font-size:var(--fs-xs);color:var(--mut)">'+driveEsc(when)+'</div></div><button class="btn btn-grey" type="button" onclick="restoreDriveBackupAt('+i+')">Restore</button></div>';
+  }).join('');
+}
+async function refreshDriveList(){
+  const box=e$('drive-list');
+  if(!driveToken()){
+    if(box)box.innerHTML='<div style="color:var(--mut);font-size:var(--fs-sm)">Connect Google Drive to see backups.</div>';
+    return;
+  }
+  if(box)box.innerHTML='<div style="color:var(--mut);font-size:var(--fs-sm)">Loading backups…</div>';
+  try{
+    paintDriveList(await driveListBackups());
+  }catch(err){
+    if(err&&err.code==='auth')driveNeedsReconnect();
+    else if(box)box.innerHTML='<div style="color:var(--red);font-size:var(--fs-sm)">'+driveEsc(err.message||'Could not list backups')+'</div>';
+  }
+}
+function openDrive(){
+  if(!requireAdmin('use Google Drive backup'))return;
+  cMenu();
+  O('sh-drive');
+  paintDriveSheet();
+  refreshDriveList();
+}
+async function restoreDriveBackup(fileId,fileName){
+  if(!requireAdmin('restore a Drive backup'))return {ok:false,reason:'admin'};
+  const label=fileName||'this backup';
+  if(!window.confirm('Replace the current CRM data with '+label+'? This overwrites data on this device and in Supabase.'))return {ok:false,reason:'cancel'};
+  try{
+    const p=await driveDownload(fileId);
+    if(!backupLooksValid(p))throw new Error('That file is not a BuildPro backup');
+    replaceDataFromBackup(p);
+    writeLocalData(curUid);
+    await writeSupabase({replace:true});
+    try{renderAll();refreshProfileUI();}catch(e){}
+    try{
+      const hashKey=driveKey('hash');
+      if(hashKey)localStorage.setItem(hashKey,driveDigest(JSON.stringify(backupBody())));
+    }catch(e){}
+    toast('Restored from Google Drive ✓','ok');
+    X('sh-drive');
+    return {ok:true};
+  }catch(err){
+    if(err&&err.code==='auth'){driveNeedsReconnect();return {ok:false,reason:'auth'};}
+    toast('Restore failed: '+(err.message||err),'err');
+    return {ok:false,reason:err&&err.message?err.message:'error'};
+  }
+}
+function restoreDriveBackupAt(i){
+  const f=driveFiles[i];
+  if(!f)return;
+  return restoreDriveBackup(f.id,f.name);
+}
+function crmSnapshot(){
+  const body=backupBody();
+  const out={company:body.company};
+  COLLECTIONS.forEach(k=>{
+    out[k]=(body[k]||[]).slice().sort((a,b)=>String(a&&a.id).localeCompare(String(b&&b.id)));
+  });
+  return out;
+}
+
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-11-23-v106';
+const APP_VERSION='2026-11-23-v107';
 // Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
 // GitHub Pages is the live OTA source of truth while Wasmer Edge GitHub deploys are failing.
 const OTA_ORIGIN='https://abbashafiz.github.io/Buildpro-crm';
