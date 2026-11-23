@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BuildPro">
-<meta name="app-version" content="2026-11-23-v105">
+<meta name="app-version" content="2026-11-23-v106">
 <title>BuildPro CRM</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet">
@@ -69,6 +69,17 @@ body{color:var(--txt);font-family:'Inter',sans-serif;overscroll-behavior:none;fo
 
 /* TOPBAR */
 .topbar{background:var(--s1);border-bottom:1px solid var(--bor);padding:13px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.task-reminders{display:none;flex-shrink:0;background:#2a2118;border-bottom:1px solid rgba(232,184,75,.35);padding:10px 14px 8px;max-height:38vh;overflow:auto;-webkit-overflow-scrolling:touch;}
+.task-reminders.on{display:block;}
+.task-reminders .tr-hd{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px;}
+.task-reminders .tr-hd b{font-size:var(--fs-xs);letter-spacing:.4px;text-transform:uppercase;color:var(--gold);}
+.task-reminders .tr-x{background:none;border:none;color:var(--mut);font-size:16px;cursor:pointer;padding:0 4px;line-height:1;}
+.task-reminders .tr-row{display:flex;gap:8px;align-items:flex-start;justify-content:space-between;padding:7px 0;border-top:1px solid rgba(255,255,255,.06);cursor:pointer;}
+.task-reminders .tr-row:first-of-type{border-top:none;}
+.task-reminders .tr-k{font-size:10px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;}
+.task-reminders .tr-t{font-size:var(--fs-sm);font-weight:650;color:var(--txt);}
+.task-reminders .tr-s{font-size:var(--fs-xs);color:var(--mut);margin-top:2px;}
+.task-reminders .tr-perm{margin-top:6px;font-size:var(--fs-xs);color:var(--mut);display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
 .tb-l{display:flex;align-items:center;gap:11px;}
 .tb-logo{font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--gold);letter-spacing:2px;}
 .tb-pg{font-size:var(--fs-sm);color:var(--mut);font-weight:600;letter-spacing:.4px;text-transform:uppercase;}
@@ -438,6 +449,8 @@ select option{background:var(--s2);}
     </div>
   </div>
 
+  <div id="task-reminders" class="task-reminders" aria-live="polite"></div>
+
   <div class="umenu" id="umenu">
     <div class="um-nm" id="um-nm">—</div>
     <div class="um-i" onclick="syncNow();cMenu()">🔄 Sync Now</div>
@@ -688,6 +701,7 @@ select option{background:var(--s2);}
         <button id="tasks-tab-jobs" onclick="switchTasksTab('jobs')" style="padding:10px;border-radius:10px;font-size:var(--fs-sm);font-weight:700;cursor:pointer;background:var(--s1);color:var(--mut);border:1px solid var(--bor);font-family:Inter,sans-serif">👷 Worker Jobs</button>
       </div>
       <div id="tasks-pane-site">
+        <div id="task-remind-note" style="display:none;background:rgba(232,184,75,.08);border:1px solid rgba(232,184,75,.28);border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:var(--fs-xs);color:var(--mut)"></div>
         <div class="ftabs">
           <div class="ftab on" onclick="fTask('all',this)">All</div>
           <div class="ftab" onclick="fTask('pending',this)">Pending</div>
@@ -1888,6 +1902,15 @@ select option{background:var(--s2);}
     <div class="f2">
       <div class="fg"><label>Start Date</label><input type="date" id="tk-start"></div>
       <div class="fg"><label>Due Date</label><input type="date" id="tk-due"></div>
+    </div>
+    <div class="fg"><label>Reminder</label>
+      <select id="tk-remind">
+        <option value="both">Day before and on the due date</option>
+        <option value="before">Day before only</option>
+        <option value="due">On the due date</option>
+        <option value="off">No reminder</option>
+      </select>
+      <div style="font-size:var(--fs-xs);color:var(--mut);margin-top:4px">At 8:00. The banner stays on every screen while the task is due. Allow notifications to keep it after the app is closed.</div>
     </div>
     <div class="fg"><label>Assigned To</label><input id="tk-assign" placeholder="e.g. Raj Mistri, Electrician…"></div>
     <div class="fg"><label>Notes</label><textarea id="tk-notes" placeholder="Task details…" style="min-height:60px"></textarea></div>
@@ -3468,6 +3491,7 @@ function launchApp(){
   startRealtime();
   renderAll();refreshProfileUI();
   prepareCompanyLogo().then(()=>{try{refreshProfileUI();}catch(e){}});
+  if(typeof startTaskReminders==='function')startTaskReminders();
 }
 
 // ════ NAVIGATION ════
@@ -3484,7 +3508,7 @@ function goPage(p,el,title){
   else renderPage(p);
 }
 function renderPage(p){if(p==='admin'){syncPrivilegedUI();return;}if(p==='dash')renderDash();else if(p==='proj')renderProj();else if(p==='inv')renderInv();else if(p==='est')renderEst();else if(p==='pay')renderPay();else if(p==='sub')renderSub();else if(p==='agr')renderAgr();else if(p==='cli')renderCli();else if(p==='archive')renderArchive();else if(p==='tasks'){if(typeof tasksTabMode!=='undefined'&&tasksTabMode==='jobs')renderWorkOrders();else renderTasks();}else if(p==='exp')renderExp();else if(p==='dehari')renderDehari();else if(p==='ledger')renderLedger();}
-function renderAll(){renderDash();renderProj();renderInv();renderEst();renderPay();renderSub();renderAgr();renderCli();renderTasks();renderWorkOrders();renderExp();renderDehari();renderLedger();renderArchive();updateDots();syncPrivilegedUI();}
+function renderAll(){renderDash();renderProj();renderInv();renderEst();renderPay();renderSub();renderAgr();renderCli();renderTasks();renderWorkOrders();renderExp();renderDehari();renderLedger();renderArchive();updateDots();syncPrivilegedUI();if(typeof paintTaskReminderBanner==='function')paintTaskReminderBanner();}
 
 // ════ ARCHIVE (soft-hide; not tombstones) ════
 const ARCHIVE_STORES=['projects','clients','agreements','subcons','expenses','invoices','estimates','tasks','workorders','personals','cpays','subpays','stock','dehari','dehariAdv'];
@@ -8319,11 +8343,11 @@ _${c.name||'BuildPro'} — Construction Management_`;
 
 // ════ TASKS ════
 let taskFilter='all';
-function iTask(){sv('task-eid','');const eb=e$('task-eb');if(eb)eb.classList.remove('on');const sh=e$('task-sh-t');if(sh)sh.textContent='New Task';['tk-title','tk-assign','tk-notes','tk-proj-t','tk-proj-id'].forEach(id=>sv(id,''));sv('tk-status','pending');sv('tk-priority','high');sv('tk-start',today());sv('tk-due','');}
+function iTask(){sv('task-eid','');const eb=e$('task-eb');if(eb)eb.classList.remove('on');const sh=e$('task-sh-t');if(sh)sh.textContent='New Task';['tk-title','tk-assign','tk-notes','tk-proj-t','tk-proj-id'].forEach(id=>sv(id,''));sv('tk-status','pending');sv('tk-priority','high');sv('tk-start',today());sv('tk-due','');sv('tk-remind','both');}
 
-function eTask(id){const r=(D.tasks||[]).find(x=>x.id===id);if(!r)return;sv('task-eid',id);const eb=e$('task-eb');if(eb)eb.classList.add('on');const sh=e$('task-sh-t');if(sh)sh.textContent='Edit Task';sv('tk-title',r.title);sv('tk-status',r.status);sv('tk-priority',r.priority);sv('tk-start',r.start||'');sv('tk-due',r.due||'');sv('tk-assign',r.assign||'');sv('tk-notes',r.notes||'');const p=D.projects.find(x=>x.id===r.projectId);sv('tk-proj-t',p?p.name:'');sv('tk-proj-id',r.projectId||'');O('sh-task');}
+function eTask(id){const r=(D.tasks||[]).find(x=>x.id===id);if(!r)return;sv('task-eid',id);const eb=e$('task-eb');if(eb)eb.classList.add('on');const sh=e$('task-sh-t');if(sh)sh.textContent='Edit Task';sv('tk-title',r.title);sv('tk-status',r.status);sv('tk-priority',r.priority);sv('tk-start',r.start||'');sv('tk-due',r.due||'');sv('tk-remind',r.remind||'both');sv('tk-assign',r.assign||'');sv('tk-notes',r.notes||'');const p=D.projects.find(x=>x.id===r.projectId);sv('tk-proj-t',p?p.name:'');sv('tk-proj-id',r.projectId||'');O('sh-task');}
 
-function saveTask(){const eid=e$('task-eid').value;const doc={id:eid||uid(),title:e$('tk-title').value,projectId:e$('tk-proj-id').value,projectName:e$('tk-proj-t').value,status:e$('tk-status').value,priority:e$('tk-priority').value,start:e$('tk-start').value,due:e$('tk-due').value,assign:e$('tk-assign').value,notes:e$('tk-notes').value};if(!doc.title){toast('Enter task title','err');return;}if(!D.tasks)D.tasks=[];ups('tasks',doc);X('sh-task');renderTasks();updateDots();toast(eid?'Task updated ✓':'Task saved ✓');}
+function saveTask(){const eid=e$('task-eid').value;const doc={id:eid||uid(),title:e$('tk-title').value,projectId:e$('tk-proj-id').value,projectName:e$('tk-proj-t').value,status:e$('tk-status').value,priority:e$('tk-priority').value,start:e$('tk-start').value,due:e$('tk-due').value,remind:e$('tk-remind')?.value||'both',assign:e$('tk-assign').value,notes:e$('tk-notes').value};if(!doc.title){toast('Enter task title','err');return;}if(doc.due&&doc.remind!=='off'&&doc.status!=='done')requestTaskNotifyPermission();if(!D.tasks)D.tasks=[];ups('tasks',doc);X('sh-task');renderTasks();updateDots();paintTaskReminderBanner();syncTaskReminderAlarms();toast(eid?'Task updated ✓':'Task saved ✓');}
 
 function renderTasks(){
   const el=e$('list-tasks');if(!el)return;
@@ -8346,6 +8370,7 @@ function renderTasks(){
     <div style="display:flex;gap:12px;font-size:var(--fs-xs);color:var(--mut);margin-bottom:10px">
       ${r.start?`<span>Start: ${htmlEsc(r.start)}</span>`:''}
       ${r.due?`<span>Due: <span style="color:var(--red)">${htmlEsc(r.due)}</span></span>`:''}
+      ${r.due&&taskRemindMode(r)!=='off'?`<span>Remind 8:00</span>`:''}
     </div>
     ${r.notes?`<div style="font-size:var(--fs-sm);color:var(--mut);margin-bottom:10px">${htmlEsc(r.notes)}</div>`:''}
     <div class="card-acts">
@@ -8358,7 +8383,285 @@ function renderTasks(){
   updateListSelBar();
 }
 
-function markDone(id){const r=(D.tasks||[]).find(x=>x.id===id);if(!r)return;r.status='done';sched();renderTasks();toast('Task marked done ✅');}
+function markDone(id){const r=(D.tasks||[]).find(x=>x.id===id);if(!r)return;r.status='done';sched();renderTasks();paintTaskReminderBanner();syncTaskReminderAlarms();toast('Task marked done ✅');}
+
+// ════ TASK REMINDERS ════
+// Existing tasks with a due date remind at 08:00 local time. The banner stays on every
+// screen. A system notification is used when the browser or an already-installed
+// Capacitor local-notification plugin can deliver it after the app is closed.
+const REMIND_HOUR=8;
+let _remindTimer=null,_remindStarted=false,_remindSig='';
+function remindNow(){return window.__bpRemindNow instanceof Date?new Date(window.__bpRemindNow.getTime()):new Date();}
+function localDay(d){const p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());}
+function parseDay(iso){const m=String(iso||'').match(/^(\d{4})-(\d{2})-(\d{2})/);if(!m)return null;return new Date(+m[1],+m[2]-1,+m[3]);}
+function addDays(iso,n){const d=parseDay(iso);if(!d)return '';d.setDate(d.getDate()+n);return localDay(d);}
+function atHour(iso,hour){const d=parseDay(iso);if(!d)return 0;d.setHours(hour,0,0,0);return d.getTime();}
+function taskDueDay(t){const d=String(t&&t.due||'').slice(0,10);return /^\d{4}-\d{2}-\d{2}$/.test(d)?d:'';}
+function taskRemindMode(t){
+  if(t&&t.remind==='off')return 'off';
+  if(t&&(t.remind==='before'||t.remind==='due'||t.remind==='both'))return t.remind;
+  return 'both';
+}
+function taskReminderOpen(t){return !!(t&&!isArchived(t)&&t.status!=='done'&&taskDueDay(t)&&taskRemindMode(t)!=='off');}
+function taskBannerStage(t,today){
+  if(!taskReminderOpen(t))return '';
+  const due=taskDueDay(t),mode=taskRemindMode(t);
+  if(today>due)return 'overdue';
+  if(today===due)return 'due';
+  if(today===addDays(due,-1)&&(mode==='both'||mode==='before'))return 'before';
+  return '';
+}
+function taskNotifyStage(t,today,now){
+  if(!taskReminderOpen(t))return '';
+  if(now.getHours()<REMIND_HOUR)return '';
+  const due=taskDueDay(t),mode=taskRemindMode(t);
+  if(today>due)return 'overdue';
+  if(today===due&&(mode==='both'||mode==='due'))return 'due';
+  if(today===addDays(due,-1)&&(mode==='both'||mode==='before'))return 'before';
+  return '';
+}
+function remindCopy(stage,task){
+  const due=taskDueDay(task);
+  const when=stage==='before'?'Due tomorrow':stage==='due'?'Due today':'Overdue';
+  const title=stage==='overdue'?'Overdue task':stage==='before'?'Task due tomorrow':'Task due today';
+  const detail=[task.projectName,task.assign,due?('due '+due):''].filter(Boolean).join(' · ');
+  const body=[task.title||'Task',detail].filter(Boolean).join(' · ');
+  return {title,when,body,detail:detail||'Open the task'};
+}
+function remindState(){
+  try{const o=JSON.parse(localStorage.getItem('bp-task-remind')||'{}');return {sent:o.sent||{},scheduled:o.scheduled||{},dismiss:o.dismiss||{day:'',ids:{}}};}
+  catch(e){return {sent:{},scheduled:{},dismiss:{day:'',ids:{}}};}
+}
+function saveRemindState(s){try{localStorage.setItem('bp-task-remind',JSON.stringify(s));}catch(e){}}
+function remindKey(task,stage,day){return task.id+'|'+stage+'|'+day;}
+function notifyPermission(){
+  const LN=capPlugin('LocalNotifications');
+  if(LN)return 'native';
+  if(typeof Notification==='undefined')return 'unsupported';
+  return Notification.permission||'default';
+}
+function requestTaskNotifyPermission(){
+  const LN=capPlugin('LocalNotifications');
+  if(LN&&LN.requestPermissions){
+    Promise.resolve(LN.requestPermissions()).then(()=>syncTaskReminderAlarms()).catch(()=>{});
+    return;
+  }
+  if(typeof Notification!=='undefined'&&Notification.permission==='default'&&Notification.requestPermission){
+    const p=Notification.requestPermission();
+    if(p&&p.then)p.then(()=>syncTaskReminderAlarms()).catch(()=>{});
+  }
+}
+function openTaskReminder(id){
+  const bi=[...document.querySelectorAll('.bi')].find(b=>(b.getAttribute('onclick')||'').includes("'tasks'"));
+  goPage('tasks',bi||null,'Tasks & Schedule');
+  if(typeof switchTasksTab==='function')switchTasksTab('site');
+  if(id)eTask(id);
+}
+function dismissTaskReminder(id){
+  const s=remindState();
+  const today=localDay(remindNow());
+  if(s.dismiss.day!==today)s.dismiss={day:today,ids:{}};
+  s.dismiss.ids[id]=1;
+  saveRemindState(s);
+  paintTaskReminderBanner();
+}
+function paintTaskReminderBanner(){
+  const el=e$('task-reminders');if(!el)return;
+  const now=remindNow();
+  const today=localDay(now);
+  const s=remindState();
+  const dismissed=s.dismiss.day===today?s.dismiss.ids:{};
+  const rows=(D.tasks||[]).filter(t=>taskBannerStage(t,today)&&!dismissed[t.id]);
+  rows.sort((a,b)=>{
+    const rank={overdue:0,due:1,before:2};
+    return (rank[taskBannerStage(a,today)]-rank[taskBannerStage(b,today)])||taskDueDay(a).localeCompare(taskDueDay(b));
+  });
+  const note=e$('task-remind-note');
+  if(note){
+    const watching=(D.tasks||[]).some(taskReminderOpen);
+    const permNote=notifyPermission();
+    if(!watching){note.style.display='none';note.innerHTML='';}
+    else if(permNote==='granted'||permNote==='native'){
+      note.style.display='block';
+      note.textContent='Reminders fire at 8:00 on the day you chose, and each morning after the due date until the task is done. The banner stays on every screen.';
+    }else if(permNote==='denied'){
+      note.style.display='block';
+      note.textContent='Reminders show in the app. Notifications are blocked — allow them in the browser or app settings to be reminded after BuildPro is closed.';
+    }else if(permNote==='default'){
+      note.style.display='block';
+      note.innerHTML='Reminders show in the app at 8:00. <button type="button" class="btn btn-gold btn-sm" style="padding:4px 8px;font-size:var(--fs-xs);margin-left:6px" onclick="requestTaskNotifyPermission()">Allow notifications</button> so they can still arrive after the app is closed.';
+    }else{note.style.display='none';note.innerHTML='';}
+  }
+  if(!rows.length){el.classList.remove('on');el.innerHTML='';return;}
+  const perm=notifyPermission();
+  const permHtml=perm==='granted'||perm==='native'?'':perm==='denied'
+    ?`<div class="tr-perm">Notifications are blocked. Allow them in the browser or app settings so a reminder can still arrive after BuildPro is closed. This banner stays either way.</div>`
+    :perm==='unsupported'?'':`<div class="tr-perm"><button type="button" class="btn btn-gold btn-sm" style="padding:5px 10px;font-size:var(--fs-xs)" onclick="event.stopPropagation();requestTaskNotifyPermission()">Allow notifications</button><span>So a reminder can still arrive after the app is closed.</span></div>`;
+  el.innerHTML=`<div class="tr-hd"><b>Task reminders · ${rows.length}</b><button type="button" class="tr-x" onclick="dismissAllTaskReminders()" aria-label="Hide reminders today">×</button></div>`
+    +rows.map(t=>{
+      const stage=taskBannerStage(t,today);
+      const copy=remindCopy(stage,t);
+      const color=stage==='overdue'?'var(--red)':stage==='due'?'var(--gold)':'#4D94D4';
+      return `<div class="tr-row" data-task="${htmlEsc(t.id)}" onclick="openTaskReminder('${jsq(t.id)}')">
+        <div style="min-width:0"><div class="tr-k" style="color:${color}">${htmlEsc(copy.when)}</div><div class="tr-t">${htmlEsc(t.title)}</div><div class="tr-s">${htmlEsc(copy.detail)}</div></div>
+        <button type="button" class="tr-x" onclick="event.stopPropagation();dismissTaskReminder('${jsq(t.id)}')" aria-label="Hide this reminder">×</button>
+      </div>`;
+    }).join('')+permHtml;
+  el.classList.add('on');
+}
+function dismissAllTaskReminders(){
+  const today=localDay(remindNow());
+  const ids={};
+  (D.tasks||[]).forEach(t=>{if(taskBannerStage(t,today))ids[t.id]=1;});
+  const s=remindState();
+  s.dismiss={day:today,ids};
+  saveRemindState(s);
+  paintTaskReminderBanner();
+}
+async function swRegistration(){
+  if(!('serviceWorker' in navigator))return null;
+  try{
+    return await Promise.race([
+      navigator.serviceWorker.ready,
+      new Promise(resolve=>setTimeout(()=>resolve(null),1200))
+    ]);
+  }catch(e){return null;}
+}
+async function showTaskNotification(task,stage,day){
+  const copy=remindCopy(stage,task);
+  const tag='bp-task-'+task.id+'-'+stage+'-'+day;
+  if(typeof window.__bpNotify==='function'){window.__bpNotify({title:copy.title,body:copy.body,tag,taskId:task.id,stage});return true;}
+  const reg=await swRegistration();
+  if(reg&&reg.active){
+    try{
+      reg.active.postMessage({type:'TASK_REMIND',title:copy.title,body:copy.body,tag,taskId:task.id});
+      return true;
+    }catch(e){}
+  }
+  if(reg&&reg.showNotification){
+    try{await reg.showNotification(copy.title,{body:copy.body,tag,icon:'icon-192.png',data:{taskId:task.id}});return true;}catch(e){}
+  }
+  if(typeof Notification!=='undefined'&&Notification.permission==='granted'){
+    try{new Notification(copy.title,{body:copy.body,tag});return true;}catch(e){}
+  }
+  return false;
+}
+function futureReminderInstants(task,now){
+  const due=taskDueDay(task),mode=taskRemindMode(task);
+  if(!taskReminderOpen(task))return [];
+  const today=localDay(now);
+  const out=[];
+  const push=(stage,day)=>{
+    const when=atHour(day,REMIND_HOUR);
+    if(when>now.getTime()+2000 && when<now.getTime()+21*86400000)out.push({stage,day,when});
+  };
+  if(mode==='both'||mode==='before')push('before',addDays(due,-1));
+  if(mode==='both'||mode==='due')push('due',due);
+  let cursor=today>due?today:addDays(due,1);
+  for(let i=0;i<7;i++){
+    if(cursor>due)push('overdue',cursor);
+    cursor=addDays(cursor,1);
+  }
+  return out;
+}
+function remindNid(key){let h=0;for(let i=0;i<key.length;i++)h=(h*33+key.charCodeAt(i))>>>0;return (h%2000000000)+1;}
+async function scheduleFutureReminders(items){
+  const LN=capPlugin('LocalNotifications');
+  if(LN&&LN.schedule){
+    try{
+      if(LN.requestPermissions)await LN.requestPermissions();
+      if(LN.getPending&&LN.cancel){
+        const pending=await LN.getPending();
+        const mine=(pending&&pending.notifications||[]).filter(n=>n.extra&&n.extra.bp==='task');
+        if(mine.length)await LN.cancel({notifications:mine.map(n=>({id:n.id}))});
+      }
+      if(items.length){
+        await LN.schedule({notifications:items.map(item=>({
+          id:remindNid(item.key),
+          title:item.title,
+          body:item.body,
+          schedule:{at:new Date(item.when),allowWhileIdle:true},
+          extra:{bp:'task',taskId:item.taskId}
+        }))});
+      }
+      return true;
+    }catch(e){return false;}
+  }
+  if(typeof TimestampTrigger==='function'){
+    const reg=await swRegistration();
+    if(reg&&reg.showNotification){
+      try{
+        for(const item of items){
+          await reg.showNotification(item.title,{
+            body:item.body,
+            tag:item.tag,
+            icon:'icon-192.png',
+            showTrigger:new TimestampTrigger(item.when),
+            data:{taskId:item.taskId}
+          });
+        }
+        return true;
+      }catch(e){return false;}
+    }
+  }
+  return false;
+}
+async function syncTaskReminderAlarms(){
+  if(!D||!Array.isArray(D.tasks))return;
+  const now=remindNow();
+  const today=localDay(now);
+  const s=remindState();
+  const dueNow=[];
+  const future=[];
+  (D.tasks||[]).forEach(t=>{
+    const stage=taskNotifyStage(t,today,now);
+    if(stage){
+      const key=remindKey(t,stage,today);
+      if(!s.sent[key]&&!s.scheduled[key])dueNow.push({task:t,stage,day:today,key});
+    }
+    futureReminderInstants(t,now).forEach(inst=>{
+      const key=remindKey(t,inst.stage,inst.day);
+      const copy=remindCopy(inst.stage,t);
+      future.push({key,taskId:t.id,stage:inst.stage,day:inst.day,when:inst.when,title:copy.title,body:copy.body,tag:'bp-task-'+t.id+'-'+inst.stage+'-'+inst.day});
+    });
+  });
+  const perm=notifyPermission();
+  if((perm==='granted'||perm==='native')&&dueNow.length){
+    for(const item of dueNow){
+      const ok=await showTaskNotification(item.task,item.stage,item.day);
+      if(ok)s.sent[item.key]=1;
+    }
+    saveRemindState(s);
+  }
+  const sig=future.map(f=>f.key+'@'+f.when).join('|');
+  if(sig!==_remindSig&&(perm==='granted'||perm==='native')){
+    const ok=await scheduleFutureReminders(future);
+    if(ok){
+      const keep={};
+      future.forEach(f=>{s.scheduled[f.key]=1;keep[f.key]=1;});
+      Object.keys(s.scheduled).forEach(k=>{if(!keep[k])delete s.scheduled[k];});
+      saveRemindState(s);
+    }
+    _remindSig=sig;
+  }
+  paintTaskReminderBanner();
+  armReminderTimer(now);
+}
+function armReminderTimer(now){
+  if(_remindTimer)clearTimeout(_remindTimer);
+  const today=localDay(now);
+  let next=atHour(today,REMIND_HOUR);
+  if(next<=now.getTime())next=atHour(addDays(today,1),REMIND_HOUR);
+  const wait=Math.max(5000,Math.min(next-now.getTime(),15*60*1000));
+  _remindTimer=setTimeout(()=>syncTaskReminderAlarms(),wait);
+}
+function startTaskReminders(){
+  paintTaskReminderBanner();
+  if(_remindStarted)return;
+  _remindStarted=true;
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncTaskReminderAlarms();});
+  syncTaskReminderAlarms();
+}
 
 // ════ WORKER JOBS / WORK ORDERS ════
 let tasksTabMode='site';
@@ -12124,7 +12427,7 @@ async function importBk(){
 
 // ════ SERVICE WORKER / AUTO-UPDATE ════
 // Keep in sync with sw.js APP_VERSION and <meta name="app-version"> — bump all three together.
-const APP_VERSION='2026-11-23-v105';
+const APP_VERSION='2026-11-23-v106';
 // Primary OTA host for the Android Capacitor shell (see capacitor.config.json server.url).
 // GitHub Pages is the live OTA source of truth while Wasmer Edge GitHub deploys are failing.
 const OTA_ORIGIN='https://abbashafiz.github.io/Buildpro-crm';
@@ -12258,6 +12561,9 @@ if('serviceWorker' in navigator){
     if(typeof ServiceWorker!=='undefined'&&!(ev.source instanceof ServiceWorker))return;
     if(ev.data&&ev.data.type==='SW_ACTIVATED'&&ev.data.version&&ev.data.version!==APP_VERSION){
       reloadForNewSW();
+    }
+    if(ev.data&&ev.data.type==='OPEN_TASK'){
+      try{openTaskReminder(ev.data.taskId||'');}catch(e){}
     }
   });
 
